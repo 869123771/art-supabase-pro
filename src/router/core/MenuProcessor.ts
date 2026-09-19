@@ -11,10 +11,13 @@ import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchAccessibleApplications, fetchCurrentUserMenu } from '@/api/system-manage'
+import {
+  fetchAccessibleApplications,
+  fetchCurrentUserMenu
+} from '@/api/system-manage/application-access'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
-import { formatMenuTitle } from '@/utils'
+import { formatMenuTitle } from '@/utils/router'
 import { currentApplication, resolveHostedApplicationCodes } from '@/config/application'
 import { flattenStandaloneApplicationMenu } from './applicationMenu'
 

@@ -167,7 +167,7 @@
     addSystemParam,
     editSystemParam,
     fetchRegistrationRoleOptions
-  } from '@/api/system-manage'
+  } from '@/api/system-manage/system-param'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 

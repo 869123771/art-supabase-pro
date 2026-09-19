@@ -32,6 +32,3 @@ export function isAcceptedFileType(file: File, accept: string): boolean {
     return mimeType === acceptedType
   })
 }
-
-/** @deprecated Use `isAcceptedFileType` for images and other uploaded files. */
-export const isAcceptedImageType = isAcceptedFileType

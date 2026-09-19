@@ -54,8 +54,13 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
-  import { deactivateTenant, deactivateTenantBatch, fetchGetTenantList } from '@/api/system-manage'
+  import {
+    deactivateTenant,
+    deactivateTenantBatch,
+    fetchGetTenantList
+  } from '@/api/system-manage/tenant'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -306,7 +311,7 @@
       width: 112,
       fixed: 'right',
       formatter: (row) => (
-        <div class="tenant-row-actions">
+        <BusinessTableRowActions>
           <ArtButtonTable
             type="edit"
             permission="System:Tenant:Edit"
@@ -318,7 +323,7 @@
               onClick={(item: ButtonMoreItem) => handleTenantAction(item, row)}
             />
           ) : null}
-        </div>
+        </BusinessTableRowActions>
       )
     }
   ]
@@ -558,12 +563,6 @@
         color: var(--el-color-warning-dark-2);
         background: var(--el-color-warning-light-9);
       }
-    }
-
-    :deep(.tenant-row-actions) {
-      display: flex;
-      gap: 4px;
-      align-items: center;
     }
 
     :deep(.tenant-identity-cell) {

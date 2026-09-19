@@ -12,8 +12,18 @@
             <span><ArtSvgIcon icon="ri:shield-check-line" /></span>
             安全工作区
           </div>
-          <h3 class="title">{{ loginTitle }}</h3>
-          <p class="sub-title">{{ loginSubtitle || $t('login.subTitle') }}</p>
+          <h3 class="title">
+            {{ finishingOAuth ? '正在完成登录' : showFeishuQr ? '飞书扫码登录' : loginTitle }}
+          </h3>
+          <p class="sub-title">
+            {{
+              finishingOAuth
+                ? '正在验证身份并准备工作台，请稍候'
+                : showFeishuQr
+                  ? '使用飞书企业身份扫码，并在手机上确认'
+                  : loginSubtitle || $t('login.subTitle')
+            }}
+          </p>
           <ElAlert
             v-if="websiteConfig.maintenanceEnabled"
             class="mt-4"
@@ -31,7 +41,17 @@
             :title="oauthError"
             @close="oauthError = ''"
           />
+          <div
+            v-if="finishingOAuth"
+            class="auth-callback-progress"
+            role="status"
+            aria-live="polite"
+          >
+            <ArtSvgIcon icon="ri:loader-4-line" class="auth-callback-progress__spinner" />
+            <span>{{ oauthProgressText }}</span>
+          </div>
           <ElForm
+            v-else-if="!showFeishuQr"
             ref="formRef"
             :model="formData"
             :rules="rules"
@@ -91,9 +111,11 @@
               <ElCheckbox v-model="formData.rememberPassword">{{
                 $t('login.rememberPwd')
               }}</ElCheckbox>
-              <RouterLink class="text-theme" :to="{ name: 'ForgetPassword' }">{{
-                $t('login.forgetPwd')
-              }}</RouterLink>
+              <RouterLink
+                class="auth-page__support-link text-theme"
+                :to="{ name: 'ForgetPassword' }"
+                >{{ $t('login.forgetPwd') }}</RouterLink
+              >
             </div>
 
             <div style="margin-top: 30px">
@@ -112,13 +134,16 @@
 
             <div v-if="websiteConfig.registerEnabled" class="mt-5 text-sm text-gray-600">
               <span>{{ $t('login.noAccount') }}</span>
-              <RouterLink class="text-theme" :to="{ name: 'Register' }">{{
+              <RouterLink class="auth-page__support-link text-theme" :to="{ name: 'Register' }">{{
                 $t('login.register')
               }}</RouterLink>
             </div>
           </ElForm>
 
-          <div v-if="enabledAuthChannels.length" class="auth-channels">
+          <div
+            v-if="!finishingOAuth && !showFeishuQr && enabledAuthChannels.length"
+            class="auth-channels"
+          >
             <div class="auth-channels__divider"><span>其他方式</span></div>
             <div class="auth-channels__icons" role="group" aria-label="第三方登录方式">
               <ArtTooltip
@@ -146,6 +171,14 @@
             <p class="auth-channels__hint">首次使用需先在个人中心绑定</p>
           </div>
 
+          <FeishuQrLogin
+            v-if="!finishingOAuth && showFeishuQr && feishuQrChannel"
+            :channel="feishuQrChannel"
+            :redirect-to="feishuQrRedirectTo"
+            @back="showFeishuQr = false"
+            @redirect="handleFeishuRedirectLogin"
+          />
+
           <div class="form__trust">
             <span><ArtSvgIcon icon="ri:lock-line" /> TLS 安全连接</span>
             <i />
@@ -169,11 +202,12 @@
     signInWithAuthChannel
   } from '@/api/auth'
   import { MenuProcessor } from '@/router/core/MenuProcessor'
-  import { clearAccessibleApplicationsCache } from '@/api/system-manage'
-  import { getFirstMenuPath } from '@/utils'
+  import { clearAccessibleApplicationsCache } from '@/api/system-manage/application-access'
+  import { getFirstMenuPath } from '@/utils/navigation/route'
   import { useWebsiteConfig } from '@/hooks'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import FeishuQrLogin from './modules/feishu-qr-login.vue'
   import {
     isAbsoluteApplicationRedirect,
     resolveSafePostLoginRedirect
@@ -233,6 +267,11 @@
   const loading = ref(false)
   const oauthLoadingKey = ref('')
   const oauthError = ref('')
+  const finishingOAuth = ref(route.query.auth_action === 'login')
+  const oauthProgressText = ref('正在接收授权结果…')
+  const showFeishuQr = ref(false)
+  const feishuQrChannel = ref<Api.Auth.AuthChannel | null>(null)
+  const feishuQrRedirectTo = ref('')
   const enabledAuthChannels = computed(() =>
     websiteConfigLoaded.value
       ? websiteConfig.value.authChannels.filter((channel) => channel.enabled)
@@ -295,10 +334,12 @@
   onMounted(() => void initializeLoginPage())
 
   const initializeLoginPage = async (): Promise<void> => {
-    await loadWebsiteConfig()
-    if (route.query.auth_action === 'login') {
+    if (finishingOAuth.value) {
       await handleOAuthCallback()
+      if (!finishingOAuth.value) await loadWebsiteConfig()
+      return
     }
+    await loadWebsiteConfig()
   }
 
   const completeAuthenticatedLogin = async (tokens: {
@@ -361,19 +402,22 @@
     oauthLoadingKey.value = channelKey || 'oauth'
     oauthError.value = ''
     try {
+      oauthProgressText.value = '正在验证授权会话…'
       const tokens = await getCurrentAuthSession()
+      oauthProgressText.value = '正在核对工作区权限…'
       await checkCurrentUserAccess(true)
+      oauthProgressText.value = '正在打开工作台…'
       await completeAuthenticatedLogin(tokens)
     } catch (error) {
       oauthError.value = getFriendlySupabaseErrorMessage(error, '第三方登录未完成，请重新发起登录')
       await userStore.logOut()
+      finishingOAuth.value = false
     } finally {
       oauthLoadingKey.value = ''
     }
   }
 
   const handleAuthChannelLogin = async (channel: Api.Auth.AuthChannel): Promise<void> => {
-    oauthLoadingKey.value = channel.key
     oauthError.value = ''
     const requestedRedirect =
       typeof route.query.redirect === 'string' ? route.query.redirect : undefined
@@ -384,6 +428,13 @@
       channel.key,
       requestedRedirect
     )
+    if (channel.key === 'feishu' && !window.matchMedia('(max-width: 520px)').matches) {
+      feishuQrChannel.value = channel
+      feishuQrRedirectTo.value = redirectTo
+      showFeishuQr.value = true
+      return
+    }
+    oauthLoadingKey.value = channel.key
     try {
       await signInWithAuthChannel(channel, redirectTo)
     } catch (error) {
@@ -391,6 +442,20 @@
         error instanceof Error && error.message
           ? error.message
           : `${channel.label}登录暂时不可用，请稍后重试`
+    } finally {
+      oauthLoadingKey.value = ''
+    }
+  }
+
+  const handleFeishuRedirectLogin = async (): Promise<void> => {
+    if (!feishuQrChannel.value) return
+    oauthError.value = ''
+    oauthLoadingKey.value = 'feishu'
+    try {
+      await signInWithAuthChannel(feishuQrChannel.value, feishuQrRedirectTo.value)
+    } catch (error) {
+      oauthError.value =
+        error instanceof Error && error.message ? error.message : '飞书登录暂时不可用，请稍后重试'
     } finally {
       oauthLoadingKey.value = ''
     }
@@ -479,10 +544,6 @@
     }, 1000)
   }
 </script>
-
-<style scoped>
-  @import './style.css';
-</style>
 
 <style lang="scss" scoped>
   :deep(.turnstile-form-item .el-form-item__content) {

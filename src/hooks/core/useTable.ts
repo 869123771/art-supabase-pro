@@ -776,7 +776,6 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
       /** 更新列配置 */
       updateColumn: columnConfig.updateColumn,
       /** 批量更新列配置 */
-      batchUpdateColumns: columnConfig.batchUpdateColumns,
       /** 重新排序列 */
       reorderColumns: columnConfig.reorderColumns,
       /** 获取指定列配置 */

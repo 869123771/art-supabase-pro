@@ -2,8 +2,11 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import { loader } from '@guolao/vue-monaco-editor'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import PgSQLWorker from 'monaco-sql-languages/esm/languages/pgsql/pgsql.worker?worker'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js'
+import {
+  conf as pgsqlConfiguration,
+  language as pgsqlLanguage
+} from 'monaco-sql-languages/esm/languages/pgsql/pgsql'
 import {
   buildJoinSuggestions,
   buildSqlTemplateSuggestions,
@@ -14,15 +17,28 @@ import {
 
 loader.config({ monaco })
 
-import 'monaco-sql-languages/esm/languages/pgsql/pgsql.contribution'
-import { LanguageIdEnum, setupLanguageFeatures } from 'monaco-sql-languages'
+const PGSQL_LANGUAGE_ID = 'pgsql'
 
-// Monaco 在 Vite 里需要手动分发不同语言的 worker。
-// 这里把 pgsql worker 单独接进来，避免 SQL 提示和解析退化成纯文本。
+if (!monaco.languages.getLanguages().some(({ id }) => id === PGSQL_LANGUAGE_ID)) {
+  monaco.languages.register({
+    id: PGSQL_LANGUAGE_ID,
+    aliases: ['PgSQL', 'PostgreSQL', 'postgresql'],
+    extensions: ['.pgsql']
+  })
+}
+monaco.languages.setLanguageConfiguration(PGSQL_LANGUAGE_ID, pgsqlConfiguration)
+monaco.languages.setMonarchTokensProvider(PGSQL_LANGUAGE_ID, pgsqlLanguage)
+
+const pgsqlKeywords = Array.isArray(pgsqlLanguage.keywords)
+  ? pgsqlLanguage.keywords.filter(
+      (keyword: unknown): keyword is string => typeof keyword === 'string'
+    )
+  : []
+
+// SQL 诊断由服务端返回并映射到编辑器标记；浏览器端只需要编辑器与 JSON worker。
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     if (label === 'json') return new jsonWorker()
-    if (label === 'pgsql') return new PgSQLWorker()
     return new editorWorker()
   }
 }
@@ -195,74 +211,68 @@ function buildTemplateCompletionItems(range: monaco.IRange) {
   }))
 }
 
-setupLanguageFeatures(LanguageIdEnum.PG, {
-  completionItems: {
-    enable: true,
-    triggerCharacters: [' ', '.', '('],
-    completionService: async (
-      model: monaco.editor.ITextModel,
-      position: monaco.Position,
-      context: monaco.languages.CompletionContext,
-      suggestions: { keywords?: string[] } | null
-    ) => {
-      const range = createRange(model, position)
-      const fullSql = model.getValue()
-      const lineContent = model.getLineContent(position.lineNumber)
-      const textBeforeCursor = model.getValueInRange(
-        new monaco.Range(1, 1, position.lineNumber, position.column)
-      )
-      const items: monaco.languages.CompletionItem[] = []
-      const keywords = suggestions?.keywords || []
+monaco.languages.registerCompletionItemProvider(PGSQL_LANGUAGE_ID, {
+  triggerCharacters: [' ', '.', '('],
+  provideCompletionItems(
+    model: monaco.editor.ITextModel,
+    position: monaco.Position,
+    context: monaco.languages.CompletionContext
+  ) {
+    const range = createRange(model, position)
+    const fullSql = model.getValue()
+    const lineContent = model.getLineContent(position.lineNumber)
+    const textBeforeCursor = model.getValueInRange(
+      new monaco.Range(1, 1, position.lineNumber, position.column)
+    )
+    const items: monaco.languages.CompletionItem[] = []
 
-      const indexToCheck = position.column - 2
-      const charBefore = indexToCheck >= 0 ? lineContent.charAt(indexToCheck) : ''
-      const isDotTrigger = context.triggerCharacter === '.' || charBefore === '.'
+    const indexToCheck = position.column - 2
+    const charBefore = indexToCheck >= 0 ? lineContent.charAt(indexToCheck) : ''
+    const isDotTrigger = context.triggerCharacter === '.' || charBefore === '.'
 
-      // a. 点号补全只返回别名下的列，避免把全库字段全塞进来。
-      if (isDotTrigger) {
-        const textBeforeDot = textBeforeCursor.slice(0, -1)
-        const aliasMatch = textBeforeDot.match(/([a-zA-Z0-9_"]+)\s*$/)
-        const alias = aliasMatch?.[1]?.replace(/"/g, '')
+    // a. 点号补全只返回别名下的列，避免把全库字段全塞进来。
+    if (isDotTrigger) {
+      const textBeforeDot = textBeforeCursor.slice(0, -1)
+      const aliasMatch = textBeforeDot.match(/([a-zA-Z0-9_"]+)\s*$/)
+      const alias = aliasMatch?.[1]?.replace(/"/g, '')
 
-        if (alias) {
-          return buildColumnCompletionItems(range, fullSql, alias)
-        }
+      if (alias) {
+        return { suggestions: buildColumnCompletionItems(range, fullSql, alias) }
       }
-
-      const upperBeforeCursor = textBeforeCursor.toUpperCase()
-      const wantsTemplates =
-        /^\s*$/.test(textBeforeCursor) ||
-        /\b(SELECT|WITH|INSERT|UPDATE|DELETE)\s*$/i.test(textBeforeCursor)
-      const wantsTables = /\b(FROM|JOIN|UPDATE|INTO)\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
-      const wantsJoin = /\bJOIN\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
-      const wantsSelectColumns =
-        /\bSELECT\s+[^;]*$/i.test(textBeforeCursor) && /\bFROM\b/i.test(upperBeforeCursor)
-
-      // b. 空白位置和语句开头优先给整句模板，接近 Cursor / DataGrip 的起手体验。
-      if (wantsTemplates) {
-        items.push(...buildTemplateCompletionItems(range))
-      }
-
-      // c. JOIN 上下文优先给可直接落地的关联语句，而不是只给表名。
-      if (wantsJoin) {
-        items.push(...buildJoinCompletionItems(range, fullSql))
-      }
-
-      if (wantsTables) {
-        items.push(...buildTableCompletionItems(range))
-      }
-
-      if (wantsSelectColumns) {
-        items.push(...buildColumnCompletionItems(range, fullSql))
-      }
-
-      items.push(...buildFunctionCompletionItems(range))
-      items.push(...buildSchemaCompletionItems(range))
-      items.push(...buildTableCompletionItems(range))
-      items.push(...buildKeywordCompletionItems(range, keywords))
-
-      return items
     }
-  },
-  diagnostics: false
+
+    const upperBeforeCursor = textBeforeCursor.toUpperCase()
+    const wantsTemplates =
+      /^\s*$/.test(textBeforeCursor) ||
+      /\b(SELECT|WITH|INSERT|UPDATE|DELETE)\s*$/i.test(textBeforeCursor)
+    const wantsTables = /\b(FROM|JOIN|UPDATE|INTO)\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
+    const wantsJoin = /\bJOIN\s+[a-zA-Z0-9_."-]*$/i.test(textBeforeCursor)
+    const wantsSelectColumns =
+      /\bSELECT\s+[^;]*$/i.test(textBeforeCursor) && /\bFROM\b/i.test(upperBeforeCursor)
+
+    // b. 空白位置和语句开头优先给整句模板，接近 Cursor / DataGrip 的起手体验。
+    if (wantsTemplates) {
+      items.push(...buildTemplateCompletionItems(range))
+    }
+
+    // c. JOIN 上下文优先给可直接落地的关联语句，而不是只给表名。
+    if (wantsJoin) {
+      items.push(...buildJoinCompletionItems(range, fullSql))
+    }
+
+    if (wantsTables) {
+      items.push(...buildTableCompletionItems(range))
+    }
+
+    if (wantsSelectColumns) {
+      items.push(...buildColumnCompletionItems(range, fullSql))
+    }
+
+    items.push(...buildFunctionCompletionItems(range))
+    items.push(...buildSchemaCompletionItems(range))
+    items.push(...buildTableCompletionItems(range))
+    items.push(...buildKeywordCompletionItems(range, pgsqlKeywords))
+
+    return { suggestions: items }
+  }
 })

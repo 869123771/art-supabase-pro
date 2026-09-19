@@ -1,9 +1,12 @@
 <template>
   <div
     class="art-entity-summary"
-    :class="{ 'art-entity-summary--compact': compact }"
+    :class="{
+      'art-entity-summary--compact': compact,
+      'art-entity-summary--spaced': spaced
+    }"
     role="group"
-    :aria-label="ariaLabel || title"
+    :aria-label="ariaLabel || title || undefined"
   >
     <span v-if="icon || $slots.icon" class="art-entity-summary__icon" aria-hidden="true">
       <slot name="icon">
@@ -12,9 +15,11 @@
     </span>
 
     <div class="art-entity-summary__content">
-      <small v-if="eyebrow">{{ eyebrow }}</small>
-      <strong>{{ title }}</strong>
-      <p v-if="description">{{ description }}</p>
+      <slot>
+        <small v-if="eyebrow">{{ eyebrow }}</small>
+        <strong>{{ title }}</strong>
+        <p v-if="description">{{ description }}</p>
+      </slot>
     </div>
 
     <div v-if="$slots.aside" class="art-entity-summary__aside">
@@ -30,19 +35,22 @@
 
   withDefaults(
     defineProps<{
-      title: string
+      title?: string
       description?: string
       eyebrow?: string
       icon?: string
       ariaLabel?: string
       compact?: boolean
+      spaced?: boolean
     }>(),
     {
+      title: '',
       description: '',
       eyebrow: '',
       icon: '',
       ariaLabel: '',
-      compact: false
+      compact: false,
+      spaced: false
     }
   )
 </script>
@@ -74,14 +82,14 @@
     &__content {
       min-width: 0;
 
-      small,
-      strong,
-      p {
+      :deep(small),
+      :deep(strong),
+      :deep(p) {
         display: block;
         margin: 0;
       }
 
-      small {
+      :deep(small) {
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 10px;
@@ -92,7 +100,7 @@
         white-space: nowrap;
       }
 
-      strong {
+      :deep(strong) {
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 14px;
@@ -101,14 +109,13 @@
         white-space: nowrap;
       }
 
-      p {
+      :deep(p) {
         margin-top: 1px;
-        overflow: hidden;
-        text-overflow: ellipsis;
         font-size: 12px;
         line-height: 19px;
         color: var(--el-text-color-secondary);
-        white-space: nowrap;
+        overflow-wrap: anywhere;
+        white-space: normal;
       }
     }
 
@@ -128,6 +135,10 @@
         height: 38px;
         font-size: 18px;
       }
+    }
+
+    &--spaced {
+      margin-bottom: var(--art-space-4);
     }
 
     :global([data-box-mode='border-mode']) & {
@@ -150,11 +161,6 @@
       &__aside {
         grid-column: 1 / -1;
         justify-content: flex-start;
-      }
-
-      &__content p {
-        overflow-wrap: anywhere;
-        white-space: normal;
       }
     }
   }

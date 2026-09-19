@@ -1,0 +1,1 @@
+function e(e){return e?.trim()??``}function t(t){return e(t)||null}function n(e){if(e==null||e===``)return null;let t=Number(e);return Number.isFinite(t)?t:null}function r(e){return(Array.isArray(e)?e:e==null?[]:[e]).map(String)}export{r as i,n,t as r,e as t};

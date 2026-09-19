@@ -1,5 +1,5 @@
 import { useSupabase } from '@/hooks'
-import { calcFileHash, formatSize } from '@/utils'
+import { calcFileHash, formatSize } from '@/utils/file'
 import { useUserStore } from '@/store/modules/user'
 import dayjs from 'dayjs'
 import http from '@/utils/http'
@@ -67,7 +67,7 @@ export async function checkUnique(params: {
     })
   }
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle(() => query, {})
 }
 
 export async function uploadAttachment(
@@ -166,9 +166,7 @@ export async function uploadAttachment(
           .order('create_time', { ascending: false })
           .limit(1)
           .maybeSingle(),
-      {
-        ignoreCheck: true
-      }
+      {}
     )
 
     if (existed) return existed
@@ -198,9 +196,7 @@ export async function uploadAttachment(
     // 5️⃣ url
     const { data } = await responseHandle<{ publicUrl: string }>(
       () => Promise.resolve(supabase.storage.from(bucket).getPublicUrl(fullPath)),
-      {
-        ignoreCheck: true
-      }
+      {}
     )
 
     // 6️⃣ 写库
@@ -226,7 +222,6 @@ export async function uploadAttachment(
     const { data: inserted } = await responseHandle<Api.DataCenter.Resources.ResourceListItem>(
       () => query,
       {
-        ignoreCheck: true,
         showMessage: false,
         breakReturn: true
       }

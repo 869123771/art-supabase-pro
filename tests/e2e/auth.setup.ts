@@ -22,7 +22,7 @@ function keysToCamelDeep(value: unknown): unknown {
 
 function readDemoCredentials(): { email: string; password: string } {
   const loginSource = fs.readFileSync('src/views/auth/login/index.vue', 'utf8')
-  const email = process.env.E2E_EMAIL || loginSource.match(/email:\s*'([^']+)'/)?.[1]
+  const email = process.env.E2E_EMAIL || loginSource.match(/identifier:\s*'([^']+)'/)?.[1]
   const password = process.env.E2E_PASSWORD || loginSource.match(/password:\s*'([^']+)'/)?.[1]
 
   if (!email || !password) {

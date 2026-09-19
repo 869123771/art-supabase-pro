@@ -119,12 +119,6 @@ export interface DynamicColumnConfig<T = unknown> {
     updates?: Partial<ColumnOption<T>>
   ) => void
   /**
-   * 批量更新列（兼容旧版本，推荐使用 updateColumn 的数组模式）
-   * @param updates 列更新配置
-   * @deprecated 推荐使用 updateColumn 的数组模式
-   */
-  batchUpdateColumns: (updates: Array<{ prop: string; updates: Partial<ColumnOption<T>> }>) => void
-  /**
    * 重新排序列
    * @param fromIndex 源索引
    * @param toIndex 目标索引
@@ -276,20 +270,6 @@ export function useTableColumns<T = unknown>(
       columnChecks.value = getColumnChecks(initialColumns)
       dynamicColumns.value = initialColumns
     },
-
-    /**
-     * 批量更新列（兼容旧版本）
-     * @deprecated 推荐使用 updateColumn 的数组模式
-     */
-    batchUpdateColumns: (updates) =>
-      setDynamicColumns((cols) => {
-        const map = new Map(updates.map((u) => [u.prop, u.updates]))
-        return cols.map((c) => {
-          const key = getColumnKey(c)
-          const upd = map.get(key)
-          return upd ? { ...c, ...upd } : c
-        })
-      }),
 
     /**
      * 重新排序列

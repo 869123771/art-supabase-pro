@@ -45,10 +45,10 @@ import { StorageConfig } from '@/utils/storage/storage-config'
 import type { DictMap } from '@/types/store'
 
 import { fetchGetUserInfo, logout } from '@/api/auth'
-import { fetchGetDictList, fetchGetDictListByTypeCode } from '@/api/data-center'
 import { groupBy } from 'lodash-es'
 import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
+import { isDictionaryCacheFresh } from './dictionary-cache-policy'
 /**
  * 用户状态管理
  * 管理用户登录状态、个人信息、语言设置、搜索历史、锁屏状态等
@@ -76,7 +76,6 @@ export const useUserStore = defineStore(
     let userInfoFetchedAt = 0
     //数据字典数据
     const dictMap = ref<DictMap>({})
-    const DICT_CACHE_TTL_MS = 5 * 60 * 1000
     let dictListFetchedAt = 0
     let dictListRequest: Promise<void> | null = null
     let dictCacheVersion = 0
@@ -298,6 +297,7 @@ export const useUserStore = defineStore(
 
       const loadVersion = dictCacheVersion
       const request = (async () => {
+        const { fetchGetDictList } = await import('@/api/data-center')
         const { data } = await fetchGetDictList()
         if (!data || loadVersion !== dictCacheVersion) return
 
@@ -327,10 +327,8 @@ export const useUserStore = defineStore(
 
       const loadVersion = dictCacheVersion
       const request = (async () => {
+        const { fetchGetDictListByTypeCode } = await import('@/api/data-center')
         const { data, error } = await fetchGetDictListByTypeCode(dictCode)
-        console.info(
-          `[DictDiagnostic] code=${dictCode} count=${data?.length ?? 0} error=${error instanceof Error ? error.message : String(error)}`
-        )
         if (error) throw error
         if (loadVersion !== dictCacheVersion) return
 
@@ -351,9 +349,8 @@ export const useUserStore = defineStore(
 
     const ensureDictLoaded = async (dictCode: keyof DictMap | string): Promise<void> => {
       const code = String(dictCode)
-      const fetchedAt = dictCodeFetchedAt.get(code) ?? dictListFetchedAt
-      const cacheIsFresh = Date.now() - fetchedAt < DICT_CACHE_TTL_MS
-      if (dictMap.value[dictCode]?.length && cacheIsFresh) return
+      // 空字典也是已加载结果；不能按数组长度判断，否则每次渲染都会重新请求。
+      if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
       await fetchDictByCode(code)
     }
 
@@ -367,10 +364,8 @@ export const useUserStore = defineStore(
       }
 
       const code = String(dictCode)
-      const fetchedAt = dictCodeFetchedAt.get(code) ?? dictListFetchedAt
-      const cacheIsFresh = Date.now() - fetchedAt < DICT_CACHE_TTL_MS
-      const hasValue = Boolean(getDictItemByValue(dictCode, value))
-      if (hasValue && cacheIsFresh) return
+      // 查询过但不存在的值也遵循 TTL，避免表格中每个相同缺失值重复触发请求。
+      if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
       await fetchDictByCode(code)
     }
 

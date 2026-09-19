@@ -1,3 +1,5 @@
+import { omit } from 'lodash-es'
+
 export type FieldAccessLevel = 'hidden' | 'masked' | 'read' | 'edit'
 
 export type FieldAccessMap<TKey extends string = string> = Partial<Record<TKey, FieldAccessLevel>>
@@ -91,4 +93,34 @@ export const omitNonEditableFields = <
     if (!canEditField(access, field, fallback)) delete result[field]
   })
   return result
+}
+
+const WRITE_METADATA_FIELDS = [
+  'tenantId',
+  'createBy',
+  'createTime',
+  'updateBy',
+  'updateTime',
+  'fieldAccess',
+  'isRecordOwner'
+] as const
+
+/** Remove fields owned by the server or read model before a business payload is persisted. */
+export function omitWriteMetadata<TRecord extends object>(
+  record: TRecord,
+  extraFields: readonly string[] = []
+): TRecord {
+  return omit(record, [...WRITE_METADATA_FIELDS, ...extraFields]) as TRecord
+}
+
+/** Remove payload fields whose owning field-access group is not editable. */
+export function omitNonEditableFieldGroups<TRecord extends object, TField extends string>(
+  record: TRecord,
+  access: FieldAccessMap<TField> | null | undefined,
+  fieldGroups: Partial<Record<TField, readonly string[]>>
+): TRecord {
+  const restrictedKeys = (
+    Object.entries(fieldGroups) as Array<[TField, readonly string[]]>
+  ).flatMap(([field, keys]) => (canEditField(access, field) ? [] : keys))
+  return omit(record, restrictedKeys) as TRecord
 }

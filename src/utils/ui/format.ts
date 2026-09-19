@@ -30,6 +30,21 @@ export function formatNumberValue(value: unknown, locale = 'zh-CN'): string {
   return Number.isFinite(numberValue) ? numberValue.toLocaleString(locale) : String(value)
 }
 
+/** Format operational measurements with bounded precision and without trailing zeroes. */
+export function formatCompactNumberValue(
+  value: unknown,
+  fractionDigits = 2,
+  invalidText = '0'
+): string {
+  const numberValue = Number(value ?? 0)
+  if (!Number.isFinite(numberValue)) return invalidText
+
+  return numberValue
+    .toFixed(fractionDigits)
+    .replace(/(\.\d*?)0+$/, '$1')
+    .replace(/\.$/, '')
+}
+
 export function formatCurrencyValue(value: unknown, currency = 'CNY', locale = 'zh-CN'): string {
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) return String(value)

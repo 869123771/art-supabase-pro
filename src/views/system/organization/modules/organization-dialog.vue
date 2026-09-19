@@ -54,11 +54,11 @@
     addOrganization,
     editOrganization,
     fetchGetEnableOrganizationTree,
-    fetchGetEnableOrganizationUserList,
-    fetchGetEnableTenantList
+    fetchGetEnableOrganizationUserList
   } from '@/api/system-manage'
+  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
-  import { uniqueValidator } from '@/utils'
+  import { uniqueValidator } from '@/utils/form/validator'
 
   type Organization = Api.SystemManage.OrganizationListItem
   type OrganizationSavePayload = Api.SystemManage.OrganizationSavePayload

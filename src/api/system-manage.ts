@@ -1,17 +1,12 @@
 import { normalizeNullableText } from '@/utils/form/normalize'
-import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { AppRouteRecord } from '@/types/router'
-import type { ApplicationCode } from '@/config/application'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import { buildSpecsFromMap, applyFilters, fetchAllRangePages, type Op } from '@/utils/supabase'
-import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils'
+import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils/time/format'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
 import { resolveTenantScopeId } from '@/utils/tenant-scope-context'
-import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
-import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
-import type { QueryResult } from '@/types/api/response'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const organizationTreeUtils = new TreeUtils({
@@ -38,13 +33,7 @@ const ORGANIZATION_DETAIL_SELECT = `
   )
 `
 
-type TenantListItem = Api.SystemManage.TenantListItem
-type TenantSearchParams = Api.SystemManage.TenantSearchParams
 type SystemParamItem = Api.SystemManage.SystemParamItem
-type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
-type WebsiteConfigItem = Api.SystemManage.WebsiteConfigItem
-type WebsiteConfigParamMeta = Api.SystemManage.WebsiteConfigParamMeta
-const WEBSITE_CONFIG_PARAM_KEY = 'website.config'
 type GeofenceConfigItem = Api.SystemManage.GeofenceConfigItem
 const GEOFENCE_CONFIG_PARAM_KEY = 'tms.geofence.config'
 const GEOFENCE_CONFIG_REQUEST_TIMEOUT_MS = 20_000
@@ -139,7 +128,6 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   }
 
   const response = await responseHandle<Api.SystemManage.UserListItem[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true,
     breakReturn: true,
     errorMessage: '用户列表加载失败，请重试'
@@ -155,7 +143,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
       supabase.rpc('system_list_user_employee_references_secure', {
         p_user_ids: userIds
       }),
-    { ignoreCheck: true }
+    {}
   )
   const employeeByUserId = new Map(
     (employeeResponse.data?.records ?? []).map((employee) => [employee.userId, employee])
@@ -169,42 +157,6 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
     }
   })
   return response
-}
-
-// 获取租户列表
-export async function fetchGetTenantList(params: TenantSearchParams) {
-  const { tenantCode, tenantName, status, from = 0, to = 9 } = params
-  const specs = [
-    { col: 'tenant_code', op: 'ilike', val: tenantCode ? `%${tenantCode}%` : undefined },
-    { col: 'tenant_name', op: 'ilike', val: tenantName ? `%${tenantName}%` : undefined },
-    { col: 'status', op: 'eq', val: status }
-  ]
-
-  let query = supabase
-    .from('sys_tenant')
-    .select('*', { count: 'exact' })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle<TenantListItem[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-}
-
-// 获取可用租户列表
-export async function fetchGetEnableTenantList() {
-  const query = supabase
-    .from('sys_tenant')
-    .select('id, tenant_code, tenant_name, status, builtin_type')
-    .eq('status', '1')
-    .order('tenant_code', { ascending: true })
-
-  return await responseHandle<TenantListItem[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
 }
 
 export async function fetchGetOrganizationList(
@@ -222,7 +174,6 @@ export async function fetchGetOrganizationList(
         p_record_id: recordId || undefined
       }),
     {
-      ignoreCheck: true,
       showErrorMessage: true
     }
   )
@@ -242,7 +193,6 @@ export async function fetchGetOrganizationDetail(id: string) {
         .eq('id', id)
         .maybeSingle(),
     {
-      ignoreCheck: true,
       showErrorMessage: true
     }
   )
@@ -306,7 +256,6 @@ export async function fetchGetUserOrganizationTree(params: { tenantId?: string }
   const response = await responseHandle<
     Array<Api.SystemManage.OrganizationScopeFilterItem & { members?: Array<{ id: string }> }>
   >(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 
@@ -351,7 +300,6 @@ export async function fetchGetRoleOrganizationTree(params: { tenantId?: string }
   const response = await responseHandle<
     Array<Api.SystemManage.OrganizationScopeFilterItem & { roles?: Array<{ id: string }> }>
   >(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 
@@ -406,7 +354,6 @@ export async function fetchGetEnableOrganizationUserList(params: { tenantId?: st
     .order('nick_name', { ascending: true })
 
   return await responseHandle<Api.SystemManage.OrganizationMember[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }
@@ -454,368 +401,6 @@ export async function deleteOrganization(id: string) {
   )
 }
 
-// 新增租户
-export async function addTenant(params: TenantListItem) {
-  return await responseHandle(() => supabase.from('sys_tenant').insert(keysToSnakeDeep(params)), {
-    showMessage: true,
-    breakReturn: true
-  })
-}
-
-// 编辑租户
-export async function editTenant(params: TenantListItem) {
-  const { id, ...data } = params
-  return await responseHandle(
-    () => supabase.from('sys_tenant').update(keysToSnakeDeep(data)).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true
-    }
-  )
-}
-
-// 停用租户：保留组织、账号和业务历史，阻止继续作为有效租户使用。
-export async function deactivateTenant(id: string) {
-  return await responseHandle(
-    () =>
-      supabase
-        .from('sys_tenant')
-        .update({ status: '0' })
-        .eq('id', id)
-        .is('builtin_type', null)
-        .select('id'),
-    {
-      showMessage: true,
-      message: '租户已停用，历史数据已保留',
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: '系统预置租户不可停用，或当前账号没有操作权限'
-    }
-  )
-}
-
-// 批量停用租户
-export async function deactivateTenantBatch(ids: string[]) {
-  return await responseHandle(
-    () =>
-      supabase
-        .from('sys_tenant')
-        .update({ status: '0' })
-        .in('id', ids)
-        .is('builtin_type', null)
-        .select('id'),
-    {
-      showMessage: true,
-      message: '所选租户已停用，历史数据已保留',
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: '所选记录均为系统预置租户，或当前账号没有操作权限'
-    }
-  )
-}
-
-export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
-  const { keyword = '', groupCode, paramType, enabled, builtin, from = 0, to = 9 } = params
-  const specs = [
-    { col: 'group_code', op: 'eq', val: groupCode },
-    { col: 'param_type', op: 'eq', val: paramType },
-    { col: 'enabled', op: 'eq', val: enabled },
-    { col: 'builtin', op: 'eq', val: builtin }
-  ]
-
-  let query = supabase
-    .from('sys_param')
-    .select('*', { count: 'exact' })
-    .order('sort', { ascending: true })
-    .order('create_time', { ascending: false })
-    .range(from, to)
-
-  const trimmedKeyword = keyword.trim()
-  if (trimmedKeyword) {
-    query = query.or(buildOrIlikeFilter(['param_name', 'param_key', 'remark'], trimmedKeyword))
-  }
-
-  query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-}
-
-export async function fetchSystemParamStats(): Promise<{
-  data: Api.SystemManage.SystemParamStats
-  error: unknown | null
-}> {
-  const query = supabase.from('sys_param').select('id, enabled, builtin, group_code, update_time')
-  const { data, error } = await responseHandle<SystemParamItem[]>(() => query, {
-    ignoreCheck: true,
-    showErrorMessage: true
-  })
-
-  const rows = data ?? []
-  const latestUpdateTime = rows
-    .map((row) => row.updateTime || '')
-    .filter(Boolean)
-    .sort()
-    .at(-1)
-  const groupCounts = rows.reduce<Record<string, number>>((counts, row) => {
-    if (row.groupCode) {
-      counts[row.groupCode] = (counts[row.groupCode] ?? 0) + 1
-    }
-    return counts
-  }, {})
-
-  return {
-    data: {
-      total: rows.length,
-      enabled: rows.filter((row) => row.enabled).length,
-      builtin: rows.filter((row) => row.builtin).length,
-      groups: Object.keys(groupCounts).length,
-      groupCounts,
-      lastRefreshTime: latestUpdateTime
-    },
-    error
-  }
-}
-
-export async function fetchSystemParamByKey(paramKey: string): Promise<{
-  data: SystemParamItem | null
-  error: unknown | null
-}> {
-  return await responseHandle<SystemParamItem | null>(
-    () =>
-      supabase
-        .from('sys_param')
-        .select('*')
-        .eq('param_key', paramKey)
-        .eq('enabled', true)
-        .maybeSingle(),
-    {
-      ignoreCheck: true,
-      showErrorMessage: false
-    }
-  )
-}
-
-export async function fetchRegistrationRoleOptions() {
-  return await responseHandle<Api.SystemManage.RegistrationRoleOption[]>(
-    () => supabase.rpc('get_registration_role_options'),
-    {
-      ignoreCheck: true,
-      showErrorMessage: true
-    }
-  )
-}
-
-export async function addSystemParam(params: SystemParamItem) {
-  return await responseHandle(() => supabase.from('sys_param').insert(keysToSnakeDeep(params)), {
-    showMessage: true,
-    breakReturn: true
-  })
-}
-
-export async function editSystemParam(params: SystemParamItem) {
-  const { id, ...payload } = params
-  return await responseHandle(
-    () =>
-      supabase.from('sys_param').update(keysToSnakeDeep(payload), { count: 'exact' }).eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
-  )
-}
-
-export async function deleteSystemParam(id: string) {
-  return await responseHandle(
-    () => supabase.from('sys_param').delete({ count: 'exact' }).eq('id', id).eq('builtin', false),
-    {
-      showMessage: true,
-      requireAffected: true,
-      noAffectedMessage: '内置参数不允许删除，或当前账号没有删除权限'
-    }
-  )
-}
-
-export async function deleteSystemParamBatch(ids: string[]) {
-  return await responseHandle(
-    () => supabase.from('sys_param').delete({ count: 'exact' }).in('id', ids).eq('builtin', false),
-    {
-      showMessage: true,
-      requireAffected: true,
-      noAffectedMessage: '未删除任何数据，请确认未选择内置参数且当前账号有删除权限'
-    }
-  )
-}
-
-/*重置密码*/
-const getWebsiteConfigParamMeta = (row: SystemParamItem): WebsiteConfigParamMeta => ({
-  paramName: row.paramName,
-  paramKey: row.paramKey,
-  groupCode: row.groupCode,
-  groupName: row.groupName,
-  paramType: row.paramType,
-  defaultValue: row.defaultValue ?? null,
-  extendConfig: row.extendConfig ?? {},
-  enabled: row.enabled,
-  builtin: row.builtin,
-  sort: row.sort,
-  remark: row.remark ?? null
-})
-
-const parseWebsiteConfigParam = (row: SystemParamItem | null): WebsiteConfigItem | null => {
-  if (!row?.paramValue) return null
-
-  try {
-    const parsed = JSON.parse(row.paramValue) as WebsiteConfigItem
-    return {
-      ...parsed,
-      id: row.id,
-      tenantId: row.tenantId,
-      paramMeta: getWebsiteConfigParamMeta(row),
-      createBy: row.createBy,
-      createTime: row.createTime,
-      updateBy: row.updateBy,
-      updateTime: row.updateTime
-    }
-  } catch {
-    return null
-  }
-}
-
-export async function fetchWebsiteConfig(): Promise<{
-  data: WebsiteConfigItem | null
-  error: unknown | null
-}> {
-  const { data, error } = await responseHandle<SystemParamItem | null>(
-    () =>
-      supabase
-        .from('sys_param')
-        .select('*')
-        .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
-        .eq('enabled', true)
-        .maybeSingle(),
-    {
-      ignoreCheck: true,
-      showErrorMessage: false
-    }
-  )
-
-  return {
-    data: parseWebsiteConfigParam(data),
-    error
-  }
-}
-
-export async function saveWebsiteConfig(params: WebsiteConfigItem) {
-  const { id, paramMeta } = params
-  const payload = omit(params, [
-    'id',
-    'tenantId',
-    'paramMeta',
-    'createBy',
-    'createTime',
-    'updateBy',
-    'updateTime'
-  ])
-
-  const paramValue = JSON.stringify(payload)
-
-  if (!id) {
-    const existing = await responseHandle<SystemParamItem | null>(
-      () =>
-        supabase
-          .from('sys_param')
-          .select('*')
-          .eq('param_key', WEBSITE_CONFIG_PARAM_KEY)
-          .maybeSingle(),
-      {
-        ignoreCheck: true,
-        showErrorMessage: false
-      }
-    )
-    if (existing.data?.id) {
-      const existingId = existing.data.id
-      const updatePayload = {
-        ...omit(paramMeta ?? getWebsiteConfigParamMeta(existing.data), ['paramKey']),
-        paramValue
-      }
-      return await responseHandle(
-        () =>
-          supabase
-            .from('sys_param')
-            .update(keysToSnakeDeep(updatePayload), { count: 'exact' })
-            .eq('id', existingId),
-        {
-          showMessage: true,
-          breakReturn: true,
-          requireAffected: true,
-          noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-        }
-      )
-    }
-
-    if (!paramMeta) {
-      throw new Error('未找到网站配置参数记录，无法保存网站配置')
-    }
-
-    return await responseHandle(
-      () => supabase.from('sys_param').insert(keysToSnakeDeep({ ...paramMeta, paramValue })),
-      {
-        showMessage: true,
-        breakReturn: true
-      }
-    )
-  }
-
-  return await responseHandle(
-    () =>
-      supabase
-        .from('sys_param')
-        .update(
-          keysToSnakeDeep({
-            ...(paramMeta ? omit(paramMeta, ['paramKey']) : {}),
-            paramValue
-          }),
-          { count: 'exact' }
-        )
-        .eq('id', id),
-    {
-      showMessage: true,
-      breakReturn: true,
-      requireAffected: true,
-      noAffectedMessage: WRITE_PERMISSION_DENIED_MESSAGE
-    }
-  )
-}
-
-export async function generateWebsiteWordmark(
-  params: Api.SystemManage.WebsiteWordmarkGenerateRequest
-): Promise<Api.SystemManage.WebsiteWordmarkGenerateResponse> {
-  const { data, error } =
-    await invokeSupabaseFunctionWithSessionRecovery<Api.SystemManage.WebsiteWordmarkGenerateResponse>(
-      'ai-website-wordmark',
-      { body: params }
-    )
-
-  if (error) {
-    throw await createFriendlySupabaseFunctionError(
-      error,
-      'AI 品牌字图生成服务暂时不可用，请稍后重试'
-    )
-  }
-  if (
-    !data?.imageBase64 ||
-    !data.runId ||
-    !['image/png', 'image/jpeg', 'image/webp'].includes(data.mimeType)
-  ) {
-    throw new Error('AI 品牌字图服务返回了无效结果')
-  }
-  return data
-}
-
 const parseGeofenceConfig = (row: SystemParamItem | null): GeofenceConfigItem | null => {
   if (!row?.paramValue) return null
 
@@ -854,7 +439,7 @@ export async function fetchGeofenceConfig(): Promise<{
         .eq('enabled', true)
         .abortSignal(AbortSignal.timeout(GEOFENCE_CONFIG_REQUEST_TIMEOUT_MS))
         .maybeSingle(),
-    { ignoreCheck: true, showErrorMessage: false }
+    { showErrorMessage: false }
   )
   return { data: parseGeofenceConfig(data), error }
 }
@@ -1010,9 +595,7 @@ export async function fetchGetEnableRoleList(params: { tenantId?: string } = {})
     .eq('enabled', true)
     .order('role_code', { ascending: true })
 
-  return await responseHandle(() => query, {
-    ignoreCheck: true
-  })
+  return await responseHandle(() => query, {})
 }
 
 // 获取角色列表
@@ -1073,7 +656,7 @@ export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams
     query = query.in('organization_id', organizationIds)
   }
 
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle(() => query, {})
 }
 
 /*删除角色*/
@@ -1124,7 +707,7 @@ export async function getCurrentRoleMenus(params: { id: string }) {
             .eq('role_id', id)
             .order('menu_id', { ascending: true })
             .range(from, to),
-        { ignoreCheck: true }
+        {}
       ),
     { pageSize: 500 }
   )
@@ -1142,7 +725,7 @@ export async function fetchGetEnableMenuList() {
             .order('sort', { ascending: true })
             .order('id', { ascending: true })
             .range(from, to),
-        { ignoreCheck: true }
+        {}
       ),
     { pageSize: 500 }
   )
@@ -1185,7 +768,7 @@ async function fetchMenuRows(
 
   return await responseHandle<AppRouteRecord[]>(
     () => (signal ? query.abortSignal(signal) : query),
-    { ignoreCheck: true }
+    {}
   )
 }
 
@@ -1292,85 +875,7 @@ export async function saveMenuTreeOrder(
   )
 }
 
-/*获取当前用户的菜单权限*/
-export async function fetchCurrentUserMenu(applicationCode: ApplicationCode, signal?: AbortSignal) {
-  const query = supabase.rpc('get_menus_for_current_application', {
-    p_app_code: applicationCode
-  })
-  return await responseHandle<{ flat: AppRouteRecord[]; tree: AppRouteRecord[] }>(
-    () => (signal ? query.abortSignal(signal) : query),
-    {
-      showMessage: false,
-      ignoreCheck: true
-    }
-  )
-}
-
-export interface AccessibleApplication {
-  code: ApplicationCode
-  name: string
-  description: string | null
-  baseUrl: string
-  sort: number
-}
-
-const ACCESSIBLE_APPLICATIONS_CACHE_TTL_MS = 30_000
-let accessibleApplicationsCache: { data: AccessibleApplication[]; fetchedAt: number } | undefined
-let accessibleApplicationsRequest: Promise<QueryResult<AccessibleApplication[]>> | undefined
-let accessibleApplicationsCacheVersion = 0
-
-/** 登录身份切换时清理用户维度缓存，避免复用上一账号的应用范围。 */
-export function clearAccessibleApplicationsCache(): void {
-  accessibleApplicationsCacheVersion += 1
-  accessibleApplicationsCache = undefined
-  accessibleApplicationsRequest = undefined
-}
-
-function getCachedAccessibleApplications(): QueryResult<AccessibleApplication[]> | undefined {
-  if (
-    !accessibleApplicationsCache ||
-    Date.now() - accessibleApplicationsCache.fetchedAt >= ACCESSIBLE_APPLICATIONS_CACHE_TTL_MS
-  ) {
-    return undefined
-  }
-
-  const data = accessibleApplicationsCache.data.slice()
-  return { data, total: data.length, error: null }
-}
-
-async function requestAccessibleApplications(
-  signal?: AbortSignal
-): Promise<QueryResult<AccessibleApplication[]>> {
-  const requestCacheVersion = accessibleApplicationsCacheVersion
-  const query = supabase.rpc('get_accessible_applications')
-  const result = await responseHandle<AccessibleApplication[]>(
-    () => (signal ? query.abortSignal(signal) : query),
-    {
-      showMessage: false,
-      ignoreCheck: true
-    }
-  )
-
-  if (requestCacheVersion === accessibleApplicationsCacheVersion && !result.error && result.data) {
-    accessibleApplicationsCache = {
-      data: result.data.slice(),
-      fetchedAt: Date.now()
-    }
-  }
-
-  return result
-}
-
-/** 获取当前用户可进入的独立应用。 */
-export async function fetchAccessibleApplications(signal?: AbortSignal) {
-  const cached = getCachedAccessibleApplications()
-  if (cached) return cached
-
-  // 路由初始化携带的 signal 只服务当前导航，不能共享给壳层组件。
-  if (signal) return await requestAccessibleApplications(signal)
-
-  accessibleApplicationsRequest ??= requestAccessibleApplications().finally(() => {
-    accessibleApplicationsRequest = undefined
-  })
-  return await accessibleApplicationsRequest
-}
+export * from './system-manage/application-access'
+export * from './system-manage/system-param'
+export * from './system-manage/tenant'
+export * from './system-manage/website-config'

@@ -34,7 +34,7 @@
  * @module utils/sys/upgrade
  * @author Art Design Pro Team
  */
-import { upgradeLogList } from '@/mock/upgrade/changeLog'
+import type { UpgradeLog } from '@/mock/upgrade/changeLog'
 import { ElNotification } from 'element-plus'
 import { useUserStore } from '@/store/modules/user'
 import { StorageConfig } from '@/utils/storage/storage-config'
@@ -114,14 +114,16 @@ class VersionManager {
   /**
    * 检查是否需要重新登录
    */
-  private shouldRequireReLogin(storedVersion: string): boolean {
+  private shouldRequireReLogin(storedVersion: string, upgradeLogs: readonly UpgradeLog[]): boolean {
     const normalizedCurrent = this.normalizeVersion(StorageConfig.CURRENT_VERSION)
     const normalizedStored = this.normalizeVersion(storedVersion)
 
-    return upgradeLogList.value.some((item) => {
+    return upgradeLogs.some((item) => {
       const itemVersion = this.normalizeVersion(item.version)
       return (
-        item.requireReLogin && itemVersion > normalizedStored && itemVersion <= normalizedCurrent
+        item.requireReLogin &&
+        itemVersion.localeCompare(normalizedStored, undefined, { numeric: true }) > 0 &&
+        itemVersion.localeCompare(normalizedCurrent, undefined, { numeric: true }) <= 0
       )
     })
   }
@@ -129,8 +131,8 @@ class VersionManager {
   /**
    * 构建升级通知消息
    */
-  private buildUpgradeMessage(requireReLogin: boolean): string {
-    const { title: content } = upgradeLogList.value[0]
+  private buildUpgradeMessage(requireReLogin: boolean, upgradeLogs: readonly UpgradeLog[]): string {
+    const content = upgradeLogs[0]?.title ?? '系统功能与体验已更新'
 
     const messageParts = [
       `<p style="color: var(--art-gray-800) !important; padding-bottom: 5px;">`,
@@ -198,13 +200,14 @@ class VersionManager {
     legacyStorage: ReturnType<typeof this.findLegacyStorage>
   ): Promise<void> {
     try {
-      if (!upgradeLogList.value.length) {
+      const { upgradeLogList } = await import('@/mock/upgrade/changeLog')
+      if (!upgradeLogList.length) {
         console.warn('[Upgrade] 升级日志列表为空')
         return
       }
 
-      const requireReLogin = this.shouldRequireReLogin(storedVersion)
-      const message = this.buildUpgradeMessage(requireReLogin)
+      const requireReLogin = this.shouldRequireReLogin(storedVersion, upgradeLogList)
+      const message = this.buildUpgradeMessage(requireReLogin, upgradeLogList)
 
       // 显示升级通知
       this.showUpgradeNotification(message)

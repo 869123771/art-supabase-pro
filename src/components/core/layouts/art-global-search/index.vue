@@ -46,6 +46,7 @@
                 v-for="(item, index) in searchResult"
                 :key="getItemKey(item)"
                 type="button"
+                :disabled="navigationPending"
                 class="search-item"
                 :class="{ 'is-highlighted': isHighlighted(index) }"
                 @click="searchGoPage(item)"
@@ -76,7 +77,12 @@
                 :class="{ 'is-highlighted': historyHIndex === index }"
                 @mouseenter="highlightOnHoverHistory(index)"
               >
-                <button type="button" class="search-item__main" @click="searchGoPage(item)">
+                <button
+                  type="button"
+                  class="search-item__main"
+                  :disabled="navigationPending"
+                  @click="searchGoPage(item)"
+                >
                   <span class="search-item__icon" aria-hidden="true">
                     <ArtSvgIcon icon="ri:history-line" />
                   </span>
@@ -118,6 +124,7 @@
 
       <template #footer>
         <div class="dialog-footer box-border flex-c">
+          <span v-if="navigationPending" role="status">正在打开页面…</span>
           <div class="flex-cc">
             <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" class="keyboard" />
             <span class="mr-3.5 text-xs text-g-700">{{ $t('search.selectKeydown') }}</span>
@@ -144,8 +151,10 @@
   import { mittBus } from '@/utils/sys'
   import { useMenuStore } from '@/store/modules/menu'
   import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump } from '@/utils/navigation'
-  import { type ScrollbarInstance } from 'element-plus'
+  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
+  import { router } from '@/router'
+  import { isNavigationFailure, NavigationFailureType } from 'vue-router'
+  import { ElMessage, type ScrollbarInstance } from 'element-plus'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   defineOptions({ name: 'ArtGlobalSearch' })
@@ -165,6 +174,7 @@
   const historyHIndex = ref(0)
   const searchResultScrollbar = ref<ScrollbarInstance>()
   const isKeyboardNavigating = ref(false) // 新增状态：是否正在使用键盘导航
+  const navigationPending = ref(false)
 
   const getItemKey = (item: AppRouteRecord) =>
     item.path || String(item.meta.link || item.name || '')
@@ -351,12 +361,38 @@
     return highlightedIndex.value === index
   }
 
-  const searchGoPage = (item: AppRouteRecord) => {
-    showSearchDialog.value = false
-    addHistory(item)
-    handleMenuJump(item)
-    searchVal.value = ''
-    searchResult.value = []
+  const searchGoPage = async (item: AppRouteRecord) => {
+    if (navigationPending.value) return
+    navigationPending.value = true
+    try {
+      if (!(item.meta.link && !item.meta.isIframe)) {
+        await preloadMenuRoute(item, false, true)
+      }
+      const failure = await handleMenuJump(item)
+      if (
+        failure &&
+        isNavigationFailure(failure) &&
+        !isNavigationFailure(failure, NavigationFailureType.duplicated)
+      ) {
+        throw failure
+      }
+      if (
+        !(item.meta.link && !item.meta.isIframe) &&
+        router.currentRoute.value.path !== router.resolve(item.path).path
+      ) {
+        throw new Error('导航未进入目标页面')
+      }
+      await nextTick()
+      addHistory(item)
+      showSearchDialog.value = false
+      searchVal.value = ''
+      searchResult.value = []
+    } catch (error) {
+      console.error('[GlobalSearch] 页面导航失败:', error)
+      ElMessage.error('页面打开失败，请重试或从左侧菜单进入')
+    } finally {
+      navigationPending.value = false
+    }
   }
 
   // 历史记录管理

@@ -156,7 +156,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { StorageConfig } from '@/utils'
+  import { StorageConfig } from '@/utils/storage/storage-config'
 
   defineOptions({ name: 'PageDesignReference' })
 

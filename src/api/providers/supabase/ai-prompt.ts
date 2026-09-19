@@ -68,7 +68,6 @@ export async function fetchAiPromptList(params: AiPromptSearchParams) {
   }
 
   return await responseHandle<AiPromptTemplate[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }

@@ -20,7 +20,7 @@
       @refresh="refreshAll"
     >
       <template #actions>
-        <ElButton type="primary" plain @click="analyticsDialogRef?.handleOpen()">
+        <ElButton type="primary" plain @click="openAnalytics">
           <ArtSvgIcon icon="ri:bar-chart-box-line" />运营分析
         </ElButton>
       </template>
@@ -99,10 +99,28 @@
       />
     </ArtSectionCard>
 
-    <WorkflowInstanceDrawer ref="instanceDrawerRef" />
-    <WorkflowCancelDialog ref="cancelDialogRef" @success="handleCancelSuccess" />
-    <WorkflowCallbackOutboxDrawer ref="callbackOutboxDrawerRef" @change="loadCallbackHealth" />
-    <WorkflowAnalyticsDialog ref="analyticsDialogRef" />
+    <component
+      :is="instanceDrawerComponent"
+      v-if="instanceDrawerComponent"
+      ref="instanceDrawerRef"
+    />
+    <component
+      :is="cancelDialogComponent"
+      v-if="cancelDialogComponent"
+      ref="cancelDialogRef"
+      @success="handleCancelSuccess"
+    />
+    <component
+      :is="callbackOutboxDrawerComponent"
+      v-if="callbackOutboxDrawerComponent"
+      ref="callbackOutboxDrawerRef"
+      @change="loadCallbackHealth"
+    />
+    <component
+      :is="analyticsDialogComponent"
+      v-if="analyticsDialogComponent"
+      ref="analyticsDialogRef"
+    />
   </div>
 </template>
 
@@ -124,6 +142,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import {
@@ -131,10 +150,6 @@
     fetchWorkflowMonitorList,
     fetchWorkflowMonitorSummary
   } from '@/api/workflow'
-  import WorkflowInstanceDrawer from '../workbench/modules/workflow-instance-drawer.vue'
-  import WorkflowCancelDialog from './modules/workflow-cancel-dialog.vue'
-  import WorkflowCallbackOutboxDrawer from './modules/workflow-callback-outbox-drawer.vue'
-  import WorkflowAnalyticsDialog from './modules/workflow-analytics-dialog.vue'
   import { getWorkflowBusinessTypeLabel } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowMonitor' })
@@ -180,6 +195,17 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
+  const { component: analyticsDialogComponent, load: loadAnalyticsDialog } = useLazyComponent(
+    () => import('./modules/workflow-analytics-dialog.vue')
+  )
+  const { component: instanceDrawerComponent, load: loadInstanceDrawer } = useLazyComponent(
+    () => import('../workbench/modules/workflow-instance-drawer.vue')
+  )
+  const { component: cancelDialogComponent, load: loadCancelDialog } = useLazyComponent(
+    () => import('./modules/workflow-cancel-dialog.vue')
+  )
+  const { component: callbackOutboxDrawerComponent, load: loadCallbackOutboxDrawer } =
+    useLazyComponent(() => import('./modules/workflow-callback-outbox-drawer.vue'))
   const analyticsDialogRef = ref<AnalyticsDialogExpose>()
   const instanceDrawerRef = ref<InstanceDrawerExpose>()
   const cancelDialogRef = ref<CancelDialogExpose>()
@@ -209,7 +235,18 @@
     if (hours < 24) return `${hours.toFixed(1)} 小时`
     return `${(hours / 24).toFixed(1)} 天`
   }
-  const openInstance = (id: string) => instanceDrawerRef.value?.handleOpen(id)
+  async function openAnalytics(): Promise<void> {
+    await loadAnalyticsDialog()
+    await analyticsDialogRef.value?.handleOpen()
+  }
+  async function openInstance(id: string): Promise<void> {
+    await loadInstanceDrawer()
+    await instanceDrawerRef.value?.handleOpen(id)
+  }
+  async function openCancel(row: MonitorRow): Promise<void> {
+    await loadCancelDialog()
+    await cancelDialogRef.value?.handleOpen(row)
+  }
 
   const createBusinessCell = (row: MonitorRow) => (
     <div class="workflow-monitor__business-cell">
@@ -331,13 +368,17 @@
         fixed: 'right',
         formatter: (row) => (
           <div class="workflow-monitor__actions">
-            <ArtButtonTable type="view" label="查看轨迹" onClick={() => openInstance(row.id)} />
+            <ArtButtonTable
+              type="view"
+              label="查看轨迹"
+              onClick={() => void openInstance(row.id)}
+            />
             {isPlatformSuper.value && row.status === 'running' ? (
               <ArtButtonTable
                 type="delete"
                 icon="ri:stop-circle-line"
                 label="终止流程"
-                onClick={() => cancelDialogRef.value?.handleOpen(row)}
+                onClick={() => void openCancel(row)}
               />
             ) : null}
           </div>
@@ -425,8 +466,9 @@
     }
   }
 
-  function openCallbackOutbox(focusFailures = false): void {
-    void callbackOutboxDrawerRef.value?.handleOpen({ focusFailures })
+  async function openCallbackOutbox(focusFailures = false): Promise<void> {
+    await loadCallbackOutboxDrawer()
+    await callbackOutboxDrawerRef.value?.handleOpen({ focusFailures })
   }
 
   async function refreshAll(): Promise<void> {
@@ -445,10 +487,6 @@
 
 <style scoped lang="scss">
   .workflow-monitor {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
     overflow: hidden;
 
     &__alert {

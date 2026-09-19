@@ -32,9 +32,6 @@ importers:
       '@tiptap/core':
         specifier: 3.31.0
         version: 3.31.0(@tiptap/pm@3.31.0)
-      '@tiptap/extension-bubble-menu':
-        specifier: 3.31.0
-        version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0)
       '@tiptap/extension-character-count':
         specifier: 3.31.0
         version: 3.31.0(@tiptap/extensions@3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0))
@@ -62,9 +59,6 @@ importers:
       '@tiptap/extension-text-style':
         specifier: 3.31.0
         version: 3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))
-      '@tiptap/pm':
-        specifier: 3.31.0
-        version: 3.31.0
       '@tiptap/starter-kit':
         specifier: 3.31.0
         version: 3.31.0
@@ -86,9 +80,6 @@ importers:
       '@vue-flow/minimap':
         specifier: 1.5.4
         version: 1.5.4(@vue-flow/core@1.48.2(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))
-      '@vue/reactivity':
-        specifier: ^3.5.38
-        version: 3.5.40
       '@vueuse/core':
         specifier: ^14.3.0
         version: 14.3.0(vue@3.5.40(typescript@6.0.3))
@@ -6631,6 +6622,7 @@ snapshots:
       '@floating-ui/dom': 1.8.0
       '@tiptap/core': 3.31.0(@tiptap/pm@3.31.0)
       '@tiptap/pm': 3.31.0
+    optional: true
 
   '@tiptap/extension-bullet-list@3.31.0(@tiptap/extension-list@3.31.0(@tiptap/core@3.31.0(@tiptap/pm@3.31.0))(@tiptap/pm@3.31.0))':
     dependencies:

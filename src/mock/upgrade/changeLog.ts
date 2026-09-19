@@ -1,6 +1,4 @@
-import { ref } from 'vue'
-
-interface UpgradeLog {
+export interface UpgradeLog {
   version: string // 版本号
   title: string // 更新标题
   date: string // 更新日期
@@ -9,7 +7,7 @@ interface UpgradeLog {
   remark?: string // 备注
 }
 
-export const upgradeLogList = ref<UpgradeLog[]>([
+export const upgradeLogList: readonly UpgradeLog[] = [
   {
     version: 'v3.0.2',
     title: '问题修复、表单与路由体验优化',
@@ -448,4 +446,4 @@ export const upgradeLogList = ref<UpgradeLog[]>([
     ],
     requireReLogin: true
   }
-])
+]

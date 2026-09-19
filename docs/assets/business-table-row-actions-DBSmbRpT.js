@@ -1,0 +1,1 @@
+import{Bt as e,Mt as t,ln as n,on as r}from"./framework-x7XoaZj-.js";import{t as i}from"./_plugin-vue_export-helper-BDNMzG2s.js";var a={class:`business-table-row-actions`},o=i(e({name:`BusinessTableRowActions`,__name:`index`,setup(e){return(e,i)=>(r(),t(`div`,a,[n(e.$slots,`default`,{},void 0,!0)]))}}),[[`__scopeId`,`data-v-21f6e6d6`]]);export{o as t};

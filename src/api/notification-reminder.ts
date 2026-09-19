@@ -9,7 +9,6 @@ export async function fetchNotificationReminderWorkspace(tenantId?: string) {
         p_tenant_id: tenantId || null
       }),
     {
-      ignoreCheck: true,
       showErrorMessage: true,
       errorMessage: '消息提醒工作台加载失败，请稍后重试'
     }
@@ -79,7 +78,6 @@ export async function testNotificationChannel(tenantId: string, channelCode: str
     await responseHandle<Api.NotificationReminder.DispatchResult>(
       () => supabase.functions.invoke('notification-dispatcher', { body: { limit: 20 } }),
       {
-        ignoreCheck: true,
         showErrorMessage: true,
         errorMessage: '通知渠道测试投递失败，请稍后重试'
       }
@@ -92,7 +90,6 @@ export async function runNotificationRemindersNow(tenantId: string) {
   const reminderResult = await responseHandle<Api.NotificationReminder.DispatchResult>(
     () => supabase.rpc('run_notification_reminders_now', { p_tenant_id: tenantId }),
     {
-      ignoreCheck: true,
       showErrorMessage: true,
       errorMessage: '提醒任务执行失败，请稍后重试'
     }
@@ -100,7 +97,6 @@ export async function runNotificationRemindersNow(tenantId: string) {
   const dispatchResult = await responseHandle<Api.NotificationReminder.DispatchResult>(
     () => supabase.functions.invoke('notification-dispatcher', { body: { limit: 100 } }),
     {
-      ignoreCheck: true,
       showErrorMessage: true,
       errorMessage: '外部通知投递失败，请稍后重试'
     }

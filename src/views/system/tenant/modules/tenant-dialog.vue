@@ -48,7 +48,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { addTenant, editTenant } from '@/api/system-manage'
+  import { addTenant, editTenant } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
   import { omit } from 'lodash-es'
 

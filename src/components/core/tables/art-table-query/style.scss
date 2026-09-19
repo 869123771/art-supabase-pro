@@ -1,6 +1,7 @@
 .art-table-query {
   display: flex;
-  flex: 1 1 0;
+  // 普通文档流中保留表格内容高度；全高弹性容器仍可按可用空间收缩。
+  flex: 1 1 auto;
   flex-direction: column;
   width: 100%;
   min-width: 0;
@@ -43,7 +44,8 @@
 
 :deep(.art-table-card) {
   display: flex;
-  flex: 1 1 0;
+  // 卡片必须与外层使用相同基准，否则表格会被压成 0 高度。
+  flex: 1 1 auto;
   flex-direction: column;
   width: 100%;
   min-width: 0;

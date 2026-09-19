@@ -409,7 +409,7 @@
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep, isEqual, omit } from 'lodash-es'
   import { useEventListener } from '@vueuse/core'
-  import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage'
+  import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage/website-config'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
   import { getPageScrollContainer } from '@/hooks/core/useCommon'

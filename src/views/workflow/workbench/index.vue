@@ -112,10 +112,29 @@
       </ElTabs>
     </ArtSectionCard>
 
-    <WorkflowActionDialog ref="actionDialogRef" @success="handleActionSuccess" />
-    <WorkflowTransferDialog ref="transferDialogRef" @success="handleActionSuccess" />
-    <WorkflowDelegationDialog ref="delegationDialogRef" @success="handleActionSuccess" />
-    <WorkflowInstanceDrawer ref="instanceDrawerRef" />
+    <component
+      :is="actionDialogComponent"
+      v-if="actionDialogComponent"
+      ref="actionDialogRef"
+      @success="handleActionSuccess"
+    />
+    <component
+      :is="transferDialogComponent"
+      v-if="transferDialogComponent"
+      ref="transferDialogRef"
+      @success="handleActionSuccess"
+    />
+    <component
+      :is="delegationDialogComponent"
+      v-if="delegationDialogComponent"
+      ref="delegationDialogRef"
+      @success="handleActionSuccess"
+    />
+    <component
+      :is="instanceDrawerComponent"
+      v-if="instanceDrawerComponent"
+      ref="instanceDrawerRef"
+    />
   </div>
 </template>
 
@@ -139,6 +158,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useUserStore } from '@/store/modules/user'
   import {
     fetchHandledWorkflowTasks,
@@ -148,10 +168,6 @@
     fetchWorkflowWorkbenchSummary,
     withdrawWorkflow
   } from '@/api/workflow'
-  import WorkflowActionDialog from './modules/workflow-action-dialog.vue'
-  import WorkflowTransferDialog from './modules/workflow-transfer-dialog.vue'
-  import WorkflowDelegationDialog from './modules/workflow-delegation-dialog.vue'
-  import WorkflowInstanceDrawer from './modules/workflow-instance-drawer.vue'
   import {
     getWorkflowBusinessContract,
     getWorkflowBusinessTypeLabel
@@ -208,6 +224,18 @@
   const globalTableRef = ref<ArtTableQueryExpose>()
   const handledTableRef = ref<ArtTableQueryExpose>()
   const initiatedTableRef = ref<ArtTableQueryExpose>()
+  const { component: actionDialogComponent, load: loadActionDialog } = useLazyComponent(
+    () => import('./modules/workflow-action-dialog.vue')
+  )
+  const { component: transferDialogComponent, load: loadTransferDialog } = useLazyComponent(
+    () => import('./modules/workflow-transfer-dialog.vue')
+  )
+  const { component: delegationDialogComponent, load: loadDelegationDialog } = useLazyComponent(
+    () => import('./modules/workflow-delegation-dialog.vue')
+  )
+  const { component: instanceDrawerComponent, load: loadInstanceDrawer } = useLazyComponent(
+    () => import('./modules/workflow-instance-drawer.vue')
+  )
   const actionDialogRef = ref<ActionDialogExpose>()
   const transferDialogRef = ref<TransferDialogExpose>()
   const delegationDialogRef = ref<DelegationDialogExpose>()
@@ -259,8 +287,23 @@
   }
 
   const formatDate = (value?: string | null) => (value ? formatWithDayjs(value) : '--')
-  const openInstance = (instanceId?: string) =>
-    instanceId && instanceDrawerRef.value?.handleOpen(instanceId)
+  async function openInstance(instanceId?: string): Promise<void> {
+    if (!instanceId) return
+    await loadInstanceDrawer()
+    await instanceDrawerRef.value?.handleOpen(instanceId)
+  }
+  async function openAction(
+    task: Task,
+    action: 'approve' | 'reject',
+    options?: { platformOverride?: boolean }
+  ): Promise<void> {
+    await loadActionDialog()
+    await actionDialogRef.value?.handleOpen(task, action, options)
+  }
+  async function openTransfer(task: Task): Promise<void> {
+    await loadTransferDialog()
+    await transferDialogRef.value?.handleOpen(task)
+  }
 
   const createBusinessCell = (instance?: Instance) => {
     const contract = getWorkflowBusinessContract(instance?.businessType || '')
@@ -398,19 +441,19 @@
             <ArtButtonTable
               type="sign"
               label="通过审批"
-              onClick={() => actionDialogRef.value?.handleOpen(row, 'approve')}
+              onClick={() => void openAction(row, 'approve')}
             />
             <ArtButtonTable
               type="delete"
               icon="ri:close-line"
               label="驳回申请"
-              onClick={() => actionDialogRef.value?.handleOpen(row, 'reject')}
+              onClick={() => void openAction(row, 'reject')}
             />
             <ArtButtonTable
               type="edit"
               icon="ri:user-received-2-line"
               label="转交"
-              onClick={() => transferDialogRef.value?.handleOpen(row)}
+              onClick={() => void openTransfer(row)}
             />
             <ArtButtonTable
               type="view"
@@ -466,23 +509,19 @@
               <ArtButtonTable
                 type="sign"
                 label="代为通过"
-                onClick={() =>
-                  actionDialogRef.value?.handleOpen(row, 'approve', { platformOverride: true })
-                }
+                onClick={() => void openAction(row, 'approve', { platformOverride: true })}
               />
               <ArtButtonTable
                 type="delete"
                 icon="ri:close-line"
                 label="代为驳回"
-                onClick={() =>
-                  actionDialogRef.value?.handleOpen(row, 'reject', { platformOverride: true })
-                }
+                onClick={() => void openAction(row, 'reject', { platformOverride: true })}
               />
               <ArtButtonTable
                 type="edit"
                 icon="ri:user-received-2-line"
                 label="转交"
-                onClick={() => transferDialogRef.value?.handleOpen(row)}
+                onClick={() => void openTransfer(row)}
               />
               <ArtButtonTable
                 type="view"
@@ -720,8 +759,12 @@
     if (!currentUserId.value) throw new Error('当前用户信息尚未就绪')
     return currentUserId.value
   }
-  function openDelegation(): void {
-    delegationDialogRef.value?.handleOpen(requireUserId(), String(getUserInfo.value.tenantId || ''))
+  async function openDelegation(): Promise<void> {
+    await loadDelegationDialog()
+    await delegationDialogRef.value?.handleOpen(
+      requireUserId(),
+      String(getUserInfo.value.tenantId || '')
+    )
   }
   function fetchPendingData(params: TaskTableParams) {
     const { from, to } = pageInfoHandler(params)
@@ -853,7 +896,7 @@
     if (!instanceId || instanceId === openedRouteInstanceId) return
     openedRouteInstanceId = instanceId
     await nextTick()
-    await instanceDrawerRef.value?.handleOpen(instanceId)
+    await openInstance(instanceId)
   }
 
   watch(
@@ -874,11 +917,6 @@
 
 <style scoped lang="scss">
   .workflow-workbench {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-
     &__hero {
       display: flex;
       gap: 24px;

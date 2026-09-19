@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
   import { computed, onMounted } from 'vue'
-  import * as monaco from 'monaco-editor'
+  import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
   import { ElMessage } from 'element-plus'
   import VueMonacoEditor from '@guolao/vue-monaco-editor'
   import { fetchDatabaseMetadata } from '@/api/data-center'

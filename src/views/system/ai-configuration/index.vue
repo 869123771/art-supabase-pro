@@ -319,7 +319,12 @@
     ) as ColumnOption<AiFeatureConfig>[]
 
   onMounted(async () => {
-    await Promise.all([userStore.fetchDictList(), loadOverview()])
+    await Promise.all([
+      userStore.ensureDictLoaded('aiRunFeature'),
+      userStore.ensureDictLoaded('aiProvider'),
+      userStore.ensureDictLoaded('commonBoolean'),
+      loadOverview()
+    ])
   })
 </script>
 

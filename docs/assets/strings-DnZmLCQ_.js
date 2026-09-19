@@ -1,1 +1,0 @@
-import{Hn as e}from"./framework-ClRJ96jm.js";var t=(e=``)=>e.replace(/[|\\{}()[\]^$+*?.]/g,`\\$&`).replace(/-/g,`\\x2d`),n=t=>e(t);export{t as n,n as t};

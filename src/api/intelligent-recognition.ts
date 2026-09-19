@@ -56,7 +56,6 @@ export async function fetchRecognitionArtifactList(params: SearchParams) {
   const filterableQuery = query
   const filteredQuery = applyArtifactFilters(filterableQuery, params)
   return await responseHandle<Artifact[]>(() => filteredQuery, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }
@@ -64,13 +63,12 @@ export async function fetchRecognitionArtifactList(params: SearchParams) {
 export async function fetchRecognitionArtifactDetail(id: string) {
   return await responseHandle<Artifact>(
     () => supabase.from('ai_artifact_review').select(ARTIFACT_SELECT).eq('id', id).single(),
-    { ignoreCheck: true, showErrorMessage: true }
+    { showErrorMessage: true }
   )
 }
 
 export async function fetchRecognitionOverview() {
   return await responseHandle<Overview>(() => supabase.rpc('ai_ocr_recognition_overview'), {
-    ignoreCheck: true,
     showErrorMessage: true,
     convertToCamelShadow: true
   })

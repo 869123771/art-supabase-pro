@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fetchGetTenantList } from '@/api/system-manage'
+import { fetchGetTenantList } from '@/api/system-manage/tenant'
 import { clearAiProviderCatalogCache } from '@/api/providers/supabase/ai-configuration'
 import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
 import {

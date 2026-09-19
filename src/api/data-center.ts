@@ -78,9 +78,7 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
     .order('name', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: false })
-  return await responseHandle<Api.DataCenter.DictTypeItem[]>(() => query, {
-    ignoreCheck: true
-  })
+  return await responseHandle<Api.DataCenter.DictTypeItem[]>(() => query, {})
 }
 
 /** 获取可配置为级联上级的启用字典类型。 */
@@ -95,7 +93,6 @@ export async function fetchGetDictionaryTypeOptions(params: { excludeId?: string
   if (params.excludeId) query = query.neq('id', params.excludeId)
 
   return await responseHandle<DictionaryTypeOption[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }
@@ -113,7 +110,7 @@ export async function fetchGetDictDirectoryTree(params: { excludeId?: string } =
         .eq('node_type', 'directory')
         .order('sort', { ascending: true })
         .order('name', { ascending: true }),
-    { ignoreCheck: true, showErrorMessage: true }
+    { showErrorMessage: true }
   )
   const tree = dictTypeTreeUtils.listToTree(response.data ?? [], (a, b) => {
     const sortDiff = Number(a.sort ?? 0) - Number(b.sort ?? 0)
@@ -205,13 +202,13 @@ export async function fetchGetDictListByTypeId(
     .order('label', { ascending: true })
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
-  return await responseHandle(() => query, { ignoreCheck: true })
+  return await responseHandle(() => query, {})
 }
 
 export async function fetchDictTypeIdByDictionaryId(id: string): Promise<string | undefined> {
   const { data } = await responseHandle<{ typeId?: string } | null>(
     () => supabase.from('sys_dictionary').select('type_id').eq('id', id).maybeSingle(),
-    { ignoreCheck: true }
+    {}
   )
   return data?.typeId
 }
@@ -247,7 +244,7 @@ export async function fetchGetDictList(): Promise<QueryResult<DictionaryWithType
         .order('id', { ascending: true })
         .range(from, to)
 
-      return responseHandle<DictionaryWithType[]>(() => query, { ignoreCheck: true })
+      return responseHandle<DictionaryWithType[]>(() => query, {})
     },
     { pageSize: DICTIONARY_BATCH_SIZE }
   )
@@ -285,7 +282,7 @@ export async function fetchGetDictListByTypeCode(
         .eq('dict_type_table.code', dictCode)
         .order('sort', { ascending: true })
         .order('id', { ascending: true }),
-    { ignoreCheck: true }
+    {}
   )
 }
 
@@ -367,7 +364,6 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
 
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle<Api.DataCenter.Resources.ResourceListItem[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }
@@ -401,9 +397,7 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
 
   const { data: resourceItem } = await responseHandle(
     () => supabase.from('sys_attachment').select().eq('id', id).single(),
-    {
-      ignoreCheck: true
-    }
+    {}
   )
 
   if (!resourceItem) throw new Error('未找到待删除的附件')

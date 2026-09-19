@@ -33,8 +33,6 @@ export interface RunQueryOptions {
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
   requireAffected?: boolean // 写操作是否要求至少影响一行，用于识别 RLS 导致的 0 行更新/删除
-  /** @deprecated Kept for API compatibility. Database authorization is enforced by Supabase RLS. */
-  ignoreCheck?: boolean
 }
 
 /**
@@ -134,8 +132,7 @@ export function useSupabase() {
       convertToCamelShadow: false,
       returnRawError: false,
       breakReturn: false,
-      requireAffected: false,
-      ignoreCheck: false
+      requireAffected: false
     }
   ): Promise<QueryResult<T>> {
     const {
@@ -145,11 +142,8 @@ export function useSupabase() {
       convertToCamel = true,
       convertToCamelShadow = false,
       returnRawError = false,
-      requireAffected = false,
-      ignoreCheck = false
+      requireAffected = false
     } = options ?? {}
-    // Frontend checks are not an authorization boundary. Supabase RLS owns data access control.
-    void ignoreCheck
 
     let queryResponse = await queryFactory()
     let sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)

@@ -30,7 +30,7 @@
             {{ item.value }}
             <em v-if="item.unit">{{ item.unit }}</em>
           </strong>
-          <small>{{ item.hint }}</small>
+          <small :title="item.hint">{{ item.hint }}</small>
         </div>
         <span class="metric-card__arrow" aria-hidden="true">
           <ArtSvgIcon icon="ri:arrow-right-up-line" />
@@ -200,7 +200,10 @@
       }
 
       small {
+        line-height: 1.35;
         color: var(--el-text-color-placeholder);
+        overflow-wrap: anywhere;
+        white-space: normal;
       }
     }
 

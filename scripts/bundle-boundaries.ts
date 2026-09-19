@@ -18,7 +18,7 @@ const LAZY_CAPABILITY_NAMES = [
 
 const LAZY_CAPABILITY_PATTERN = new RegExp(`(?:${LAZY_CAPABILITY_NAMES.join('|')})`, 'i')
 const LAZY_STYLE_PATTERN =
-  /(?:^|\/)(?:assets\/(?:monaco|rich-editor|art-file-viewer)[.-]|vendor\/pdf\/)/i
+  /(?:^|\/)(?:assets\/(?:monaco|rich-editor|art-file-viewer|art-settings-panel|art-global-search|art-chat-window|art-fireworks-effect)[.-]|vendor\/pdf\/)/i
 
 export const isLazyCapabilityAsset = (assetPath: string): boolean =>
   LAZY_CAPABILITY_PATTERN.test(assetPath)

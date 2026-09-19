@@ -231,7 +231,7 @@
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { formatSize } from '@/utils'
+  import { formatSize } from '@/utils/file'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useTimeoutFn } from '@vueuse/core'
   import dayjs from 'dayjs'

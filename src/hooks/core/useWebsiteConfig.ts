@@ -1,6 +1,6 @@
 import { computed, readonly, ref } from 'vue'
 import AppConfig from '@/config'
-import { fetchWebsiteConfig } from '@/api/system-manage'
+import { fetchWebsiteConfig } from '@/api/system-manage/website-config'
 import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
 import { normalizeAuthChannels } from '@/utils/supabase'
 

@@ -73,7 +73,8 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
  */
 export const preloadMenuRoute = async (
   item: AppRouteRecord,
-  jumpToFirst: boolean = false
+  jumpToFirst: boolean = false,
+  throwOnError: boolean = false
 ): Promise<void> => {
   if (item.meta.link && !item.meta.isIframe) return
 
@@ -81,9 +82,12 @@ export const preloadMenuRoute = async (
   if (!target || (target.meta.link && !target.meta.isIframe)) return
 
   const matchedRoutes = router.resolve(target.path).matched
-  await Promise.allSettled(
-    matchedRoutes.flatMap((route) =>
-      Object.values(route.components ?? {}).map((component) => preloadRouteComponent(component))
-    )
+  const preloadTasks = matchedRoutes.flatMap((route) =>
+    Object.values(route.components ?? {}).map((component) => preloadRouteComponent(component))
   )
+  if (throwOnError) {
+    await Promise.all(preloadTasks)
+  } else {
+    await Promise.allSettled(preloadTasks)
+  }
 }

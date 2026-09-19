@@ -124,6 +124,9 @@
   }
 </script>
 
+<!-- All authorization routes share this unscoped shell stylesheet through this shared component. -->
+<style src="@/views/auth/login/style.css"></style>
+
 <style scoped>
   .btn {
     color: var(--art-gray-800);

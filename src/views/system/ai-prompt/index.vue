@@ -389,7 +389,11 @@
     ) as ColumnOption<AiPromptTemplate>[]
 
   onMounted(async () => {
-    await Promise.all([userStore.fetchDictList(), loadOverview()])
+    await Promise.all([
+      userStore.ensureDictLoaded('aiRunFeature'),
+      userStore.ensureDictLoaded('aiPromptStatus'),
+      loadOverview()
+    ])
   })
 </script>
 

@@ -99,6 +99,7 @@
     loading: boolean
     loaded: boolean
     error: Error | null
+    lastUpdatedAt: number | null
     requestId: number
     period: DashboardTrendPeriod
     data: DashboardData
@@ -125,6 +126,7 @@
     loading: false,
     loaded: false,
     error: null,
+    lastUpdatedAt: null,
     requestId: 0,
     period: 'month',
     data: createEmptyDashboard()
@@ -171,8 +173,21 @@
       weekday: 'long'
     }).format(new Date())
   )
+  const dataStatusTag = computed<BusinessWorkspaceTag>(() => {
+    if (overview.loading) return { label: '运营数据更新中', type: 'info', effect: 'plain' }
+    if (overview.error) return { label: '更新失败，请重试', type: 'danger', effect: 'plain' }
+    if (!overview.lastUpdatedAt) return { label: '等待加载运营数据', type: 'info', effect: 'plain' }
+
+    const updatedAt = new Intl.DateTimeFormat(locale.value, {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(overview.lastUpdatedAt)
+    return { label: `更新于 ${updatedAt}`, type: 'success', effect: 'plain' }
+  })
   const workspaceTags = computed<BusinessWorkspaceTag[]>(() => [
-    { label: '运营数据实时同步', type: 'success', effect: 'plain' },
+    dataStatusTag.value,
     { label: dateText.value, type: 'info', effect: 'plain' },
     ...(userContext.value
       ? [{ label: userContext.value, type: 'primary' as const, effect: 'plain' as const }]
@@ -282,6 +297,7 @@
       if (requestId !== overview.requestId) return
       overview.data = data
       overview.loaded = true
+      overview.lastUpdatedAt = Date.now()
     } catch (error) {
       if (requestId !== overview.requestId) return
       overview.error = error instanceof Error ? error : new Error('运营工作台加载失败')

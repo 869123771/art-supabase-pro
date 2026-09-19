@@ -1,4 +1,4 @@
-import { fetchAccessibleApplications } from '@/api/system-manage'
+import { fetchAccessibleApplications } from '@/api/system-manage/application-access'
 import { resolveApplicationBaseUrl, type ApplicationCode } from '@/config/application'
 
 export async function navigateToApplication(

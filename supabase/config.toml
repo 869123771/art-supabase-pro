@@ -169,8 +169,8 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
-# Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
+# The account center explicitly links OAuth identities after the user has signed in.
+enable_manual_linking = true
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
@@ -434,6 +434,11 @@ verify_jwt = true
 
 [functions.ai-bank-statement-batch-match]
 verify_jwt = true
+
+# OAuth endpoints are called by external identity providers and Supabase Auth.
+# The function validates redirect URIs, upstream client credentials, and its own signed bridge token.
+[functions.oauth-provider-bridge]
+verify_jwt = false
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

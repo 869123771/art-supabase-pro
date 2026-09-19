@@ -18,7 +18,9 @@
       >
         {{ label }}
       </button>
-      <strong v-else class="business-record-link__static">{{ label }}</strong>
+      <strong v-else class="business-record-link__static" :title="title || label">
+        {{ label }}
+      </strong>
       <span v-if="meta" class="business-record-link__meta" :title="meta">{{ meta }}</span>
     </div>
     <small v-if="description" :title="description">{{ description }}</small>

@@ -91,7 +91,7 @@
 <script setup lang="ts">
   import { ElMessage } from 'element-plus'
   import { uploadAttachment } from '@/api/common'
-  import { generateWebsiteWordmark } from '@/api/system-manage'
+  import { generateWebsiteWordmark } from '@/api/system-manage/website-config'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import { createGeneratedWordmarkFiles } from './wordmark-image'

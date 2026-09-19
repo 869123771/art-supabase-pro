@@ -84,12 +84,8 @@
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import {
-    addUser,
-    editUser,
-    fetchGetEnableOrganizationTree,
-    fetchGetEnableTenantList
-  } from '@/api/system-manage'
+  import { addUser, editUser, fetchGetEnableOrganizationTree } from '@/api/system-manage'
+  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { useSystemParam } from '@/hooks'
 

@@ -57,7 +57,7 @@
   import { cloneDeep, isEmpty, omit } from 'lodash-es'
   import { addDict, editDict, fetchGetDictListByTypeId } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
-  import { uniqueValidator } from '@/utils'
+  import { uniqueValidator } from '@/utils/form/validator'
   import TreeUtils from '@/utils/tree'
 
   type DictListItem = Api.DataCenter.DictListItem

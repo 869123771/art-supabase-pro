@@ -18,6 +18,13 @@ Build features in the project's established Vue 3, TypeScript, Element Plus, and
    - `src/hooks/core/useTable.ts`
 4. Keep changes inside the feature boundary unless a shared abstraction is genuinely required.
 
+## Tailwind-First Styling
+
+- Prefer existing Tailwind utilities for ordinary layout, spacing, sizing, typography, overflow, responsive states, and theme-token colors in Vue templates and TSX/JSX. Use complete, literal utility names so Tailwind can detect them; use the project's theme variables instead of hard-coded accent colors. Do not add a page-local CSS class solely to restate available utilities.
+- A table `formatter` returns VNodes rendered by `ArtTable`, outside the page's own template scope. A class defined only in that page's `<style scoped>` may therefore miss the rendered cell. For simple cell styling, put Tailwind utilities directly on the JSX element or Element Plus component; use the v4 trailing important modifier (for example `w-full!`) only when the component's own width rule requires it.
+- Keep scoped CSS/SCSS when it is the clearer tool for shared component internals, `:deep()` selectors, complex responsive relationships, pseudo-elements, animations, or genuinely dynamic values. For a formatter that needs such CSS, anchor a `:deep()` selector to the owning table or feature root and verify the actual DOM; do not remove working complex styles just to force a long utility string.
+- The main host registers business-module sources in `src/assets/styles/core/tailwind.css`; independently run modules register their own source through `scripts/module-vite-config.mjs`. Keep both paths in sync when adding a module. After adding utilities, verify the generated stylesheet and rendered result; a class attribute alone does not prove the utility was emitted or won the cascade.
+
 ## Route And Menu Source
 
 This project runs business navigation from backend Supabase menu data. Do not add feature or business pages to `src/router/routes/staticRoutes.ts`, and do not add new business route modules under `src/router/modules/**` just to make a sidebar item appear.

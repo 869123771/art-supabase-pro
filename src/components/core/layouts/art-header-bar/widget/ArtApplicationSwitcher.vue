@@ -38,7 +38,10 @@
 </template>
 
 <script setup lang="ts">
-  import { fetchAccessibleApplications, type AccessibleApplication } from '@/api/system-manage'
+  import {
+    fetchAccessibleApplications,
+    type AccessibleApplication
+  } from '@/api/system-manage/application-access'
   import {
     currentApplication,
     resolveApplicationBaseUrl,

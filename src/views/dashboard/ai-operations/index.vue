@@ -40,8 +40,19 @@
       />
     </section>
 
+    <div
+      v-if="overview.loaded && overview.error"
+      role="alert"
+      class="flex flex-wrap items-center justify-between gap-2 rounded-[var(--art-control-radius)] bg-[var(--el-color-warning-light-9)] px-3 py-2 text-sm text-[var(--el-color-warning-dark-2)]"
+    >
+      <span>
+        近 {{ overview.days }} 天的数据暂未更新，当前显示近 {{ overview.data.days }} 天的上次结果。
+      </span>
+      <ElButton link type="warning" @click="loadOverview">重试加载</ElButton>
+    </div>
+
     <ArtSectionCard
-      v-show="activeSection === 'forms'"
+      v-if="activeSection === 'forms'"
       class="ai-operations__quality"
       preserve-content-structure
     >
@@ -156,7 +167,7 @@
       @view-run="openRunById"
     />
 
-    <section v-show="activeSection === 'overview'" class="ai-operations__insights">
+    <section v-if="activeSection === 'overview'" class="ai-operations__insights">
       <article class="ai-operations__trend art-card-xs">
         <header class="ai-operations__card-header">
           <div>
@@ -201,14 +212,14 @@
 
       <article class="ai-operations__features art-card-xs">
         <header class="ai-operations__card-header">
-          <div>
+          <div class="min-w-0">
             <span>能力清单</span>
             <h2>可用 AI 能力与调用情况</h2>
             <p class="ai-operations__card-hint">
               普通用户与管理员能力清单一致，调用数据按当前账号统计
             </p>
           </div>
-          <strong>{{ featureInventory.length }} 项可用</strong>
+          <strong class="shrink-0 whitespace-nowrap">{{ featureInventory.length }} 项可用</strong>
         </header>
         <div class="ai-operations__feature-content">
           <div class="ai-operations__feature-chart">
@@ -259,7 +270,7 @@
     </section>
 
     <ArtSectionCard
-      v-show="activeSection === 'overview'"
+      v-if="activeSection === 'overview'"
       class="ai-operations__health"
       preserve-content-structure
     >
@@ -303,7 +314,7 @@
         :search-items="searchItems"
         :api-fn="fetchAiRunList"
         :columns-factory="columnsFactory"
-        :search-bar-props="{ span: 6, labelWidth: 84 }"
+        :search-bar-props="{ span: 5, labelWidth: 84 }"
         :table-props="{ rowKey: 'id', tableLayout: 'fixed' }"
       />
     </section>
@@ -661,24 +672,24 @@
   ])
 
   const columnsFactory = (): ColumnOption<AiRunListItem>[] => [
-    { type: 'globalIndex', label: '序号', width: 76 },
+    { type: 'globalIndex', label: '序号', width: 64 },
     {
       prop: 'feature',
       label: '功能场景',
-      minWidth: 120,
+      minWidth: 122,
       dict: { code: 'aiRunFeature', display: 'text' }
     },
     {
       prop: 'status',
       label: '状态',
-      width: 92,
+      width: 82,
       dict: { code: 'aiRunStatus', display: 'auto' }
     },
-    { prop: 'model', label: '模型', minWidth: 160, showOverflowTooltip: true },
+    { prop: 'model', label: '模型', minWidth: 134, showOverflowTooltip: true },
     {
       prop: 'latencyMs',
       label: '耗时',
-      width: 100,
+      width: 90,
       formatter: (row) => (
         <span class={getLatencyClass(row.latencyMs)}>{formatDuration(row.latencyMs)}</span>
       )
@@ -686,58 +697,67 @@
     {
       prop: 'tokens',
       label: 'Token',
-      width: 112,
+      width: 92,
       formatter: (row) => <span>{formatNumber(row.inputTokens + row.outputTokens)}</span>
     },
     {
       prop: 'toolCalls',
       label: '工具',
-      width: 78,
+      width: 62,
       formatter: (row) => <span>{row.toolCalls?.length ?? 0}</span>
     },
     {
       prop: 'feedback',
       label: '反馈',
-      width: 88,
+      width: 70,
       formatter: (row) => renderFeedback(row)
     },
     {
       prop: 'startedAt',
       label: '开始时间',
-      width: 170,
+      width: 168,
       formatter: (row) => <span>{formatDateTime(row.startedAt)}</span>
     },
     {
       prop: 'operation',
       label: '操作',
-      width: 76,
+      width: 68,
       fixed: 'right',
       formatter: (row) => <ArtButtonTable type="view" onClick={() => openDetail(row)} />
     }
   ]
 
-  async function loadOverview(): Promise<void> {
+  let overviewRequestId = 0
+
+  async function loadOverview(): Promise<boolean> {
+    const requestId = ++overviewRequestId
+    const days = overview.days
     overview.loading = true
     overview.error = null
     try {
-      overview.data = await fetchAiOperationsOverview(overview.days)
+      const data = await fetchAiOperationsOverview(days)
+      if (requestId !== overviewRequestId) return false
+      overview.data = data
       overview.loaded = true
+      return true
     } catch (error) {
-      overview.error = error instanceof Error ? error : new Error('AI 运行中心加载失败')
+      if (requestId !== overviewRequestId) return false
+      overview.error = new Error('AI 运行概览加载失败，请重试。', { cause: error })
+      return false
     } finally {
-      overview.loading = false
+      if (requestId === overviewRequestId) overview.loading = false
     }
   }
 
   async function refreshAll(): Promise<void> {
     if (overview.loading) return
     try {
-      await Promise.all([
+      const [overviewUpdated] = await Promise.all([
         loadOverview(),
         tableQueryRef.value?.refreshData(),
         ocrQualityPanelRef.value?.loadData()
       ])
-      ElMessage.success('AI 运行数据已刷新')
+      if (overviewUpdated) ElMessage.success('AI 运行概览已更新')
     } catch {
       // 接口层已统一展示错误信息。
     }
@@ -756,11 +776,11 @@
   }
 
   function refreshAfterDiagnosis(): void {
-    void Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
+    void Promise.allSettled([loadOverview(), tableQueryRef.value?.refreshData()])
   }
 
   function refreshAfterFeedbackResolution(): void {
-    void Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
+    void Promise.allSettled([loadOverview(), tableQueryRef.value?.refreshData()])
   }
 
   function renderFeedback(row: AiRunListItem) {
@@ -840,7 +860,16 @@
   }
 
   onMounted(async () => {
-    await Promise.all([userStore.fetchDictList(), loadOverview()])
+    await Promise.all([
+      ...['aiRunFeature', 'aiRunStatus', 'aiFeedbackIssueType', 'aiFeedbackResolutionStatus'].map(
+        (code) => userStore.ensureDictLoaded(code)
+      ),
+      loadOverview()
+    ])
+  })
+
+  onBeforeUnmount(() => {
+    overviewRequestId += 1
   })
 </script>
 
@@ -1491,7 +1520,10 @@
     }
 
     &__table {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      height: clamp(560px, 70vh, 820px);
     }
 
     @media (width <= 1200px) {

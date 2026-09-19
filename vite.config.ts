@@ -78,6 +78,15 @@ const getElementPlusStyleDeps = (root: string): string[] => {
     .sort()
 }
 
+const matchElementPlusStyles = (id: string) => {
+  const normalizedId = normalizeModuleId(id)
+  return (
+    (normalizedId.includes('/node_modules/element-plus/es/components/') &&
+      normalizedId.includes('/style/')) ||
+    normalizedId.includes('/node_modules/element-plus/theme-chalk/src/')
+  )
+}
+
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
@@ -180,6 +189,13 @@ export default ({ mode }: { mode: string }) => {
                 name: 'framework',
                 test: matchFrameworkPackages,
                 priority: 100
+              },
+              {
+                // Element Plus theme modules are used across nearly every business route.
+                // Emit them once to avoid repeated CSS and route-level style waterfalls.
+                name: 'element-plus-styles',
+                test: matchElementPlusStyles,
+                priority: 95
               },
               {
                 // These utilities are shared by Element Plus, tables and feature renderers.
@@ -355,10 +371,9 @@ export default ({ mode }: { mode: string }) => {
         'qrcode.vue',
         'vue-img-cutter',
         'element-plus/es',
-        // 预打包 Monaco Editor 的核心和语言 Worker 文件
+        // 预打包 SQL 控制台实际使用的 Monaco 核心与 JSON Worker。
         'monaco-editor/esm/vs/editor/editor.worker',
-        'monaco-editor/esm/vs/language/json/json.worker',
-        'monaco-sql-languages/esm/languages/pgsql/pgsql.worker.js'
+        'monaco-editor/esm/vs/language/json/json.worker'
       ]
     },
     css: {

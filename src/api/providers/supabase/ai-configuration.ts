@@ -231,7 +231,6 @@ export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchPara
   }
 
   return await responseHandle<AiFeatureConfig[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }

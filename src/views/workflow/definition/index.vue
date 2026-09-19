@@ -17,7 +17,7 @@
     >
       <template #actions>
         <BusinessTableWorkspaceActions :table="tableQueryRef" />
-        <ElButton plain @click="catalogRef?.handleOpen()">
+        <ElButton plain @click="openCatalog">
           <ArtSvgIcon icon="ri:apps-2-line" />业务覆盖
         </ElButton>
       </template>
@@ -72,14 +72,26 @@
       </ArtWorkspaceSplitter>
     </div>
 
-    <WorkflowVersionHistoryDialog ref="versionHistoryRef" @success="handleSaveSuccess" />
-    <WorkflowBusinessCatalogDialog
+    <component
+      :is="versionHistoryComponent"
+      v-if="versionHistoryComponent"
+      ref="versionHistoryRef"
+      @success="handleSaveSuccess"
+    />
+    <component
+      :is="catalogComponent"
+      v-if="catalogComponent"
       ref="catalogRef"
       :menu-tree="menuTree"
       :loading="menuLoading"
       @refresh="handleMenuRefresh"
     />
-    <WorkflowTemplateLibraryDialog ref="templateLibraryRef" @select="openNewDesigner" />
+    <component
+      :is="templateLibraryComponent"
+      v-if="templateLibraryComponent"
+      ref="templateLibraryRef"
+      @select="openNewDesigner"
+    />
     <ArtDrawer ref="menuDrawerRef">
       <WorkflowBusinessMenuFilter
         class="workflow-definition__drawer-filter"
@@ -117,8 +129,10 @@
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchGetEnableMenuList, fetchGetEnableTenantList } from '@/api/system-manage'
+  import { fetchGetEnableMenuList } from '@/api/system-manage'
+  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
   import TreeUtils from '@/utils/tree'
   import {
     deleteWorkflowDefinition,
@@ -126,10 +140,6 @@
     publishWorkflowDefinition,
     setWorkflowDefinitionEnabled
   } from '@/api/workflow'
-  import WorkflowDesignerWorkspace from './modules/workflow-designer-workspace.vue'
-  import WorkflowVersionHistoryDialog from './modules/workflow-version-history-dialog.vue'
-  import WorkflowBusinessCatalogDialog from './modules/workflow-business-catalog-dialog.vue'
-  import WorkflowTemplateLibraryDialog from './modules/workflow-template-library-dialog.vue'
   import WorkflowBusinessMenuFilter from './modules/workflow-business-menu-filter.vue'
   import {
     getWorkflowBusinessTypeLabel,
@@ -137,6 +147,10 @@
   } from '../modules/workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowDefinition' })
+
+  const WorkflowDesignerWorkspace = defineAsyncComponent(
+    () => import('./modules/workflow-designer-workspace.vue')
+  )
 
   type Definition = Api.Workflow.WorkflowDefinitionRecord
   type SearchParams = Pick<
@@ -169,6 +183,15 @@
   const router = useRouter()
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { confirmAction, confirmDelete } = useArtFeedback()
+  const { component: versionHistoryComponent, load: loadVersionHistory } = useLazyComponent(
+    () => import('./modules/workflow-version-history-dialog.vue')
+  )
+  const { component: catalogComponent, load: loadCatalog } = useLazyComponent(
+    () => import('./modules/workflow-business-catalog-dialog.vue')
+  )
+  const { component: templateLibraryComponent, load: loadTemplateLibrary } = useLazyComponent(
+    () => import('./modules/workflow-template-library-dialog.vue')
+  )
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const versionHistoryRef = ref<VersionHistoryExpose>()
   const catalogRef = ref<CatalogExpose>()
@@ -180,6 +203,18 @@
   const selectedMenuLabel = ref('全部业务')
   const isDesktopMenuLayout = useMediaQuery('(min-width: 1201px)')
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
+  async function openVersionHistory(row: Definition): Promise<void> {
+    await loadVersionHistory()
+    await versionHistoryRef.value?.handleOpen(row, { canManage: isPlatformSuper.value })
+  }
+  async function openCatalog(): Promise<void> {
+    await loadCatalog()
+    await catalogRef.value?.handleOpen()
+  }
+  async function openTemplateLibrary(): Promise<void> {
+    await loadTemplateLibrary()
+    await templateLibraryRef.value?.handleOpen()
+  }
   const designer = reactive({
     mode: computed(() => typeof route.query.designer === 'string'),
     definitionId: computed(() =>
@@ -235,7 +270,7 @@
             {
               type: 'add',
               label: '新建流程',
-              onClick: () => templateLibraryRef.value?.handleOpen()
+              onClick: () => void openTemplateLibrary()
             }
           ]
         : []
@@ -299,12 +334,7 @@
             <div class="workflow-definition__version-cell">
               {version ? <ElTag effect="plain">V{version.versionNo}</ElTag> : <span>--</span>}
               <small>{version?.config.nodes.length ?? 0} 个审批节点</small>
-              <button
-                type="button"
-                onClick={() =>
-                  versionHistoryRef.value?.handleOpen(row, { canManage: isPlatformSuper.value })
-                }
-              >
+              <button type="button" onClick={() => void openVersionHistory(row)}>
                 查看版本
               </button>
             </div>
@@ -512,11 +542,6 @@
 
 <style scoped lang="scss">
   .workflow-definition {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-
     &__hero {
       display: flex;
       gap: 24px;

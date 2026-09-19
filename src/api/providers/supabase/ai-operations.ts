@@ -481,7 +481,6 @@ export async function fetchAiRunList(params: AiRunSearchParams) {
   }
 
   return await responseHandle<AiRunListItem[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
 }

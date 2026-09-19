@@ -155,17 +155,17 @@ export function resetRouteInitializationForRetry(): void {
 /**
  * 设置路由全局前置守卫
  */
-export function setupBeforeEachGuard(router: Router): void {
-  // 初始化路由注册器
-  routeRegistry = new RouteRegistry(router)
-
+export function setupBeforeEachGuard(
+  router: Router,
+  loadHostedApplications?: () => Promise<unknown>
+): void {
   router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized) => {
     if (routeRegistry?.isRegistered() && to.path !== from.path) {
       startRouteLoading(to)
     }
 
     try {
-      return await handleRouteGuard(to, router)
+      return await handleRouteGuard(to, router, loadHostedApplications)
     } catch (error) {
       console.error('[RouteGuard] 路由守卫处理失败:', error)
       closeLoading()
@@ -214,7 +214,8 @@ function startRouteLoading(to: RouteLocationNormalized, immediate = false): void
  */
 async function handleRouteGuard(
   to: RouteLocationNormalized,
-  router: Router
+  router: Router,
+  loadHostedApplications?: () => Promise<unknown>
 ): Promise<NavigationGuardReturn> {
   const settingStore = useSettingStore()
   const userStore = useUserStore()
@@ -258,7 +259,7 @@ async function handleRouteGuard(
       // 正在初始化中，等待完成后重新导航
       return false
     }
-    return handleDynamicRoutes(to, router)
+    return handleDynamicRoutes(to, router, loadHostedApplications)
   }
 
   // 4. 处理根路径重定向
@@ -335,7 +336,8 @@ function isStaticRoute(path: string): boolean {
  */
 async function handleDynamicRoutes(
   to: RouteLocationNormalized,
-  router: Router
+  router: Router,
+  loadHostedApplications?: () => Promise<unknown>
 ): Promise<NavigationGuardReturn> {
   const userStore = useUserStore()
 
@@ -355,18 +357,22 @@ async function handleDynamicRoutes(
       throw new RouteInitializationAccessError('当前账号缺少有效的业务用户资料')
     }
 
-    // 2. 获取菜单数据
-    const menuList = await runRouteInitializationStage('menu-permissions', (signal) =>
-      menuProcessor.getMenuList(signal)
-    )
+    // 2. 菜单请求与宿主子仓页面表并行加载；公开页面无需下载页面表。
+    const [menuList] = await Promise.all([
+      runRouteInitializationStage('menu-permissions', (signal) =>
+        menuProcessor.getMenuList(signal)
+      ),
+      loadHostedApplications?.()
+    ])
 
     // 3. 验证菜单数据
     if (!menuProcessor.validateMenuList(menuList)) {
       throw new RouteInitializationAccessError('当前账号未分配可访问的业务菜单')
     }
 
-    // 4. 注册动态路由
-    routeRegistry?.register(menuList)
+    // 4. 页面表加载完成后创建注册器，让 ComponentLoader 获取完整的子仓映射。
+    routeRegistry ??= new RouteRegistry(router)
+    routeRegistry.register(menuList)
 
     // 5. 装配路由
     const menuStore = useMenuStore()

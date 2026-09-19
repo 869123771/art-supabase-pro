@@ -37,7 +37,7 @@ import AppConfig from '@/config'
 import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/appEnum'
 import { setElementThemeColor } from '@/utils/ui'
 import { useCeremony } from '@/hooks/core/useCeremony'
-import { StorageConfig } from '@/utils'
+import { StorageConfig } from '@/utils/storage/storage-config'
 import { SETTING_DEFAULT_CONFIG } from '@/config/setting'
 
 /**

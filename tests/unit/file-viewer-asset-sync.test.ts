@@ -54,7 +54,7 @@ test('skips byte-identical file-viewer assets instead of replacing them', async 
   assert.equal(manifest.assets[0]?.to, path.join(fixture.targetRoot, 'vendor/pdf/fonts'))
 
   const secondResult = await syncFileViewerAssets(fixture.sourceRoot, fixture.targetRoot)
-  assert.deepEqual(secondResult, { copied: 0, unchanged: 2, total: 2 })
+  assert.deepEqual(secondResult, { copied: 0, pruned: 0, unchanged: 2, total: 2 })
 })
 
 test('copies missing and changed file-viewer assets', async (context) => {
@@ -74,7 +74,7 @@ test('copies missing and changed file-viewer assets', async (context) => {
     await readFile(path.join(fixture.targetRoot, 'vendor/pdf/pdf.worker.mjs'), 'utf8'),
     'worker-content'
   )
-  assert.deepEqual(result, { copied: 3, unchanged: 0, total: 3 })
+  assert.deepEqual(result, { copied: 3, pruned: 0, unchanged: 0, total: 3 })
 })
 
 test('omits compatibility assets that the application bundle already emits', async (context) => {
@@ -82,8 +82,11 @@ test('omits compatibility assets that the application bundle already emits', asy
   context.after(() => rm(fixture.root, { recursive: true, force: true }))
 
   const sourceWorker = path.join(fixture.sourceRoot, 'vendor/pptx/pptx.worker.js')
+  const targetWorker = path.join(fixture.targetRoot, 'vendor/pptx/pptx.worker.js')
   await mkdir(path.dirname(sourceWorker), { recursive: true })
+  await mkdir(path.dirname(targetWorker), { recursive: true })
   await writeFile(sourceWorker, 'bundled-worker-content')
+  await writeFile(targetWorker, 'stale-public-copy')
   await writeFile(
     path.join(fixture.sourceRoot, 'flyfish-viewer-assets.json'),
     `${JSON.stringify({
@@ -102,10 +105,20 @@ test('omits compatibility assets that the application bundle already emits', asy
     await readFile(path.join(fixture.targetRoot, 'flyfish-viewer-assets.json'), 'utf8')
   ) as { assets: Array<{ id: string }> }
 
-  await assert.rejects(stat(path.join(fixture.targetRoot, 'vendor/pptx/pptx.worker.js')))
+  await assert.rejects(stat(targetWorker))
   assert.deepEqual(
     manifest.assets.map((asset) => asset.id),
     ['pdf-cjk-font-fallback']
   )
-  assert.deepEqual(result, { copied: 1, unchanged: 1, total: 2 })
+  assert.deepEqual(result, { copied: 1, pruned: 1, unchanged: 1, total: 2 })
+})
+
+test('rejects excluded paths outside the build output', async (context) => {
+  const fixture = await createFixture()
+  context.after(() => rm(fixture.root, { recursive: true, force: true }))
+
+  await assert.rejects(
+    syncFileViewerAssets(fixture.sourceRoot, fixture.targetRoot, ['../outside.js']),
+    /排除资源路径无效/
+  )
 })

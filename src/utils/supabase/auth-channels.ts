@@ -43,6 +43,7 @@ export const AUTH_CHANNEL_PRESETS: Api.Auth.AuthChannel[] = [
     provider: 'custom:wechat',
     icon: 'ri:wechat-fill',
     description: '使用微信扫码登录',
+    scopes: 'snsapi_login',
     enabled: false,
     allowLinking: true
   },
@@ -70,6 +71,7 @@ export const AUTH_CHANNEL_PRESETS: Api.Auth.AuthChannel[] = [
     provider: 'custom:feishu',
     icon: 'ri:building-2-line',
     description: '使用飞书企业身份登录',
+    scopes: 'contact:user.base:readonly contact:user.email:readonly',
     enabled: false,
     allowLinking: true
   },

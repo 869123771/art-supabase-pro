@@ -71,7 +71,7 @@
     deleteSystemParamBatch,
     fetchGetSystemParamList,
     fetchSystemParamStats
-  } from '@/api/system-manage'
+  } from '@/api/system-manage/system-param'
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
@@ -362,7 +362,7 @@
         fixed: 'right',
         formatter: (row) =>
           isWritableRow(row) ? (
-            <div class="system-param-page__operation">
+            <div class="inline-flex items-center gap-2">
               <ArtButtonTable
                 type="edit"
                 permission="System:SystemParam:Edit"
@@ -558,12 +558,6 @@
 
     &__groups {
       padding: 8px 12px;
-    }
-
-    &__operation {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
     }
 
     :deep(.system-param-identity-cell) {

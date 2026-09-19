@@ -70,7 +70,6 @@ export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
   }
 
   const result = await responseHandle<NumberRule[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: true
   })
   return { ...result, data: (result.data ?? []).map(enhanceRule) }
@@ -85,7 +84,6 @@ export async function fetchDocumentNumberRulesByKeys(ruleKeys: string[], tenantI
     .eq('enabled', true)
   if (tenantId) query = query.eq('tenant_id', tenantId)
   const result = await responseHandle<NumberRule[]>(() => query, {
-    ignoreCheck: true,
     showErrorMessage: false
   })
   return { ...result, data: (result.data ?? []).map(enhanceRule) }
@@ -100,7 +98,7 @@ export async function fetchDocumentNumberRuleStats(): Promise<{
       supabase
         .from('sys_document_number_rule')
         .select('id, tenant_id, category, auto_enabled, update_time'),
-    { ignoreCheck: true, showErrorMessage: true }
+    { showErrorMessage: true }
   )
   const rows = data ?? []
   const categoryCounts: Record<Api.SystemManage.DocumentNumberCategory, number> = {
@@ -161,7 +159,7 @@ export async function fetchDocumentNumberSceneList() {
         .eq('enabled', true)
         .order('category', { ascending: true })
         .order('rule_name', { ascending: true }),
-    { ignoreCheck: true, showErrorMessage: true }
+    { showErrorMessage: true }
   )
 }
 
@@ -178,6 +176,6 @@ export async function addDocumentNumberRules(payload: CreatePayload) {
         p_timezone: payload.timezone,
         p_remark: payload.remark || null
       }),
-    { ignoreCheck: true, showErrorMessage: true }
+    { showErrorMessage: true }
   )
 }

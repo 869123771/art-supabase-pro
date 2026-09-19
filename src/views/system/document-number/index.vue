@@ -128,7 +128,8 @@
     fetchDocumentNumberRuleStats,
     fetchDocumentNumberSceneList
   } from '@/api/document-number'
-  import { fetchGetEnableMenuList, fetchGetEnableTenantList } from '@/api/system-manage'
+  import { fetchGetEnableMenuList } from '@/api/system-manage'
+  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
   import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'

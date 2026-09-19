@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { parse as parseSfc } from '@vue/compiler-sfc'
@@ -28,6 +29,8 @@ async function collectFiles(directory: string): Promise<string[]> {
 }
 
 async function collectModuleUiFiles(): Promise<string[]> {
+  if (!existsSync(modulesRoot)) return []
+
   const entries = await readdir(modulesRoot, { withFileTypes: true })
   const nested = await Promise.all(
     entries

@@ -244,6 +244,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessWorkspaceHeader, {
@@ -468,7 +469,7 @@
       width: 104,
       fixed: 'right',
       formatter: (row) => (
-        <div class="notification-reminder-page__row-actions">
+        <BusinessTableRowActions>
           <ArtButtonTable
             type="edit"
             label="编辑提醒规则"
@@ -483,7 +484,7 @@
             disabled={isAllTenants.value}
             onClick={() => void removeRule(row)}
           />
-        </div>
+        </BusinessTableRowActions>
       )
     }
   ]
@@ -850,16 +851,11 @@
       }
     }
 
-    :deep(.notification-reminder-page__tag-list),
-    :deep(.notification-reminder-page__row-actions) {
+    :deep(.notification-reminder-page__tag-list) {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
       align-items: center;
-    }
-
-    :deep(.notification-reminder-page__row-actions .art-button-table) {
-      margin-right: 0;
     }
 
     :deep(.notification-reminder-page__status) {

@@ -99,8 +99,7 @@ export async function register(payload: Api.Auth.RegisterParams) {
     })
   return await responseHandle(invokeResp, {
     showMessage: true,
-    message: '注册成功,请前往登录',
-    ignoreCheck: true
+    message: '注册成功,请前往登录'
   })
 }
 
@@ -116,7 +115,6 @@ async function checkUserAccess(
       body: payload
     })
   await responseHandle(invokeResp, {
-    ignoreCheck: true,
     breakReturn: true,
     showErrorMessage
   })
@@ -139,8 +137,7 @@ export async function login(params: Api.Auth.LoginParams) {
       {
         showMessage: true,
         message: '登录成功',
-        showErrorMessage: true,
-        ignoreCheck: true
+        showErrorMessage: true
       }
     )
     const { accessToken, refreshToken } = result.data?.session ?? {}
@@ -169,7 +166,6 @@ export async function login(params: Api.Auth.LoginParams) {
     {
       showMessage: true,
       message: '登录成功',
-      ignoreCheck: true,
       formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
@@ -206,10 +202,10 @@ const createOAuthOptions = (channel: Api.Auth.AuthChannel, redirectTo: string) =
       : undefined
 })
 
-export async function signInWithAuthChannel(
+async function createAuthChannelAuthorizationUrl(
   channel: Api.Auth.AuthChannel,
   redirectTo: string
-): Promise<void> {
+): Promise<string> {
   const result = await responseHandle<OAuthStartResponse>(
     () =>
       supabase.auth.signInWithOAuth({
@@ -220,7 +216,6 @@ export async function signInWithAuthChannel(
         }
       }),
     {
-      ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: false,
       formatErrorMessage: formatSupabaseAuthErrorMessage
@@ -229,6 +224,61 @@ export async function signInWithAuthChannel(
 
   const authorizationUrl = result.data?.url
   if (!authorizationUrl) throw new Error(`${channel.label}登录地址生成失败，请稍后重试`)
+  return authorizationUrl
+}
+
+export async function prepareFeishuQrLogin(
+  channel: Api.Auth.AuthChannel,
+  redirectTo: string
+): Promise<string> {
+  if (channel.provider !== 'custom:feishu') {
+    throw new Error('当前渠道不支持飞书扫码登录')
+  }
+  const authorizationUrl = await createAuthChannelAuthorizationUrl(channel, redirectTo)
+  const projectUrl = import.meta.env.VITE_SUPABASE_URL
+  if (!projectUrl) throw new Error('飞书扫码登录服务尚未配置')
+
+  let response: Response
+  try {
+    response = await fetch(
+      new URL('/functions/v1/oauth-provider-bridge/feishu/qr-prepare', projectUrl),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authorizationUrl }),
+        credentials: 'omit'
+      }
+    )
+  } catch (error) {
+    throw new Error('飞书二维码加载失败，请稍后重试', { cause: error })
+  }
+  if (!response.ok) throw new Error('飞书扫码登录暂时不可用，请联系平台管理员')
+
+  const payload: unknown = await response.json().catch(() => null)
+  const goto =
+    payload && typeof payload === 'object' && 'goto' in payload ? payload.goto : undefined
+  if (typeof goto !== 'string') throw new Error('飞书二维码地址无效，请刷新重试')
+  let gotoUrl: URL
+  try {
+    gotoUrl = new URL(goto)
+  } catch {
+    throw new Error('飞书二维码地址无效，请刷新重试')
+  }
+  if (
+    gotoUrl.origin !== 'https://passport.feishu.cn' ||
+    gotoUrl.pathname !== '/suite/passport/oauth/authorize' ||
+    !gotoUrl.searchParams.get('state')
+  ) {
+    throw new Error('飞书二维码地址无效，请刷新重试')
+  }
+  return gotoUrl.toString()
+}
+
+export async function signInWithAuthChannel(
+  channel: Api.Auth.AuthChannel,
+  redirectTo: string
+): Promise<void> {
+  const authorizationUrl = await createAuthChannelAuthorizationUrl(channel, redirectTo)
 
   let response: Response
   try {
@@ -260,7 +310,6 @@ export async function linkCurrentUserIdentity(
         options: createOAuthOptions(channel, redirectTo)
       }),
     {
-      ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: true,
       formatErrorMessage: formatSupabaseAuthErrorMessage
@@ -290,7 +339,6 @@ export async function unlinkCurrentUserIdentity(identityId: string): Promise<voi
   if ((data?.identities.length ?? 0) < 2) throw new Error('请至少保留一种可用的登录方式')
 
   await responseHandle(() => supabase.auth.unlinkIdentity(identity), {
-    ignoreCheck: true,
     breakReturn: true,
     showMessage: true,
     message: '登录方式已解绑',
@@ -308,7 +356,6 @@ export async function forgetPassword(params: Api.Auth.ForgetPwdParams) {
         redirectTo
       }),
     {
-      ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: true,
       formatErrorMessage: formatSupabaseAuthErrorMessage
@@ -330,7 +377,6 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
         password
       }),
     {
-      ignoreCheck: true,
       breakReturn: true,
       showErrorMessage: true,
       formatErrorMessage: formatSupabaseAuthErrorMessage
@@ -376,12 +422,8 @@ export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUse
   const superQuery = supabase.rpc('current_is_super')
 
   const [profileResult, superResult] = await Promise.all([
-    responseHandle<Api.SystemManage.UserListItem>(() => profileQuery, {
-      ignoreCheck: true
-    }),
-    responseHandle<boolean>(() => (signal ? superQuery.abortSignal(signal) : superQuery), {
-      ignoreCheck: true
-    })
+    responseHandle<Api.SystemManage.UserListItem>(() => profileQuery, {}),
+    responseHandle<boolean>(() => (signal ? superQuery.abortSignal(signal) : superQuery), {})
   ])
 
   signal?.throwIfAborted()
@@ -415,7 +457,6 @@ export async function updateCurrentUserProfile(params: Api.Auth.UserInfo) {
       message: '个人资料保存成功',
       breakReturn: true,
       requireAffected: true,
-      ignoreCheck: true,
       formatErrorMessage: (error) => {
         const code =
           error && typeof error === 'object' && 'code' in error ? String(error.code) : undefined
@@ -437,7 +478,6 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     {
       showErrorMessage: true,
       breakReturn: true,
-      ignoreCheck: true,
       formatErrorMessage: formatSupabaseAuthErrorMessage
     }
   )
@@ -446,7 +486,6 @@ export async function updateCurrentUserPassword(currentPassword: string, newPass
     showMessage: true,
     message: '密码修改成功',
     breakReturn: true,
-    ignoreCheck: true,
     formatErrorMessage: formatSupabaseAuthErrorMessage
   })
 }

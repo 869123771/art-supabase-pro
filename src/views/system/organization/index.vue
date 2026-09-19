@@ -55,8 +55,8 @@
 </template>
 
 <script setup lang="ts">
-  import type { Component } from 'vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -118,9 +118,14 @@
   const organizationDialogRef = ref<OrganizationDialogExpose>()
   const organizationDetailDrawerRef = ref<OrganizationDetailDrawerExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
-  const organizationDialogComponent = shallowRef<Component>()
-  const organizationDetailDrawerComponent = shallowRef<Component>()
-  const deleteGuardComponent = shallowRef<Component>()
+  const { component: organizationDialogComponent, load: loadOrganizationDialog } = useLazyComponent(
+    () => import('./modules/organization-dialog.vue')
+  )
+  const { component: organizationDetailDrawerComponent, load: loadOrganizationDetailDrawer } =
+    useLazyComponent(() => import('./modules/organization-detail-drawer.vue'))
+  const { component: deleteGuardComponent, load: loadDeleteGuard } = useLazyComponent(
+    () => import('@/components/business/master-data-delete-guard/index.vue')
+  )
   const organizationDepthMap = shallowRef(new Map<string, number>())
   const overview = reactive<OverviewState>({
     organizations: 0,
@@ -260,14 +265,6 @@
   const getRoleCount = (row: Organization): number => row.roleCount ?? row.roles?.length ?? 0
 
   const isProtectedOrganization = (row: Organization): boolean => Boolean(row.isSystem)
-
-  const ensureLazyComponent = async (
-    target: { value: Component | undefined },
-    loader: () => Promise<{ default: Component }>
-  ): Promise<void> => {
-    if (!target.value) target.value = markRaw((await loader()).default)
-    await nextTick()
-  }
 
   const columnsFactory = (): ColumnOption<Organization>[] => [
     {
@@ -432,18 +429,12 @@
     row?: Organization,
     parent?: Organization
   ): Promise<void> => {
-    await ensureLazyComponent(
-      organizationDialogComponent,
-      () => import('./modules/organization-dialog.vue')
-    )
+    await loadOrganizationDialog()
     await organizationDialogRef.value?.handleOpen({ type, row, parent })
   }
 
   const openOrganizationDetail = async (row: Organization): Promise<void> => {
-    await ensureLazyComponent(
-      organizationDetailDrawerComponent,
-      () => import('./modules/organization-detail-drawer.vue')
-    )
+    await loadOrganizationDetailDrawer()
     await organizationDetailDrawerRef.value?.handleOpen(row)
   }
 
@@ -492,10 +483,7 @@
   const handleDelete = async (row: Organization): Promise<void> => {
     if (!row.id || isProtectedOrganization(row)) return
     try {
-      await ensureLazyComponent(
-        deleteGuardComponent,
-        () => import('@/components/business/master-data-delete-guard/index.vue')
-      )
+      await loadDeleteGuard()
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'organization',
         resourceLabel: '组织',

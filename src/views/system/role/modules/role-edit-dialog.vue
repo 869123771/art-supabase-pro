@@ -48,13 +48,9 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import {
-    addRole,
-    editRole,
-    fetchGetEnableOrganizationTree,
-    fetchGetEnableTenantList
-  } from '@/api/system-manage'
-  import { uniqueValidator } from '@/utils'
+  import { addRole, editRole, fetchGetEnableOrganizationTree } from '@/api/system-manage'
+  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { uniqueValidator } from '@/utils/form/validator'
   import { useUserStore } from '@/store/modules/user'
 
   type RoleListItem = Api.SystemManage.RoleListItem

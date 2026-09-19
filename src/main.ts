@@ -1,4 +1,5 @@
-import './bootstrapHostedApplications'
 import { bootstrapPlatformApp } from './bootstrap'
 
-bootstrapPlatformApp()
+bootstrapPlatformApp({
+  loadHostedApplications: () => import('./bootstrapHostedApplications')
+})

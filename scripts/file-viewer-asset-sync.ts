@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { Plugin, ResolvedConfig } from 'vite'
@@ -14,6 +14,7 @@ interface FileViewerAssetManifest {
 
 export interface FileViewerAssetSyncResult {
   copied: number
+  pruned: number
   total: number
   unchanged: number
 }
@@ -99,6 +100,36 @@ async function writeFileIfChanged(target: string, content: Buffer): Promise<bool
 
 const normalizeRelativePath = (relativePath: string): string => relativePath.replace(/\\/g, '/')
 
+function normalizeExcludedFilePath(relativePath: string): string {
+  const normalizedPath = normalizeRelativePath(path.normalize(relativePath))
+  if (
+    !normalizedPath ||
+    normalizedPath === '.' ||
+    path.isAbsolute(relativePath) ||
+    normalizedPath === '..' ||
+    normalizedPath.startsWith('../')
+  ) {
+    throw new Error(`File Viewer 排除资源路径无效：${relativePath}`)
+  }
+
+  return normalizedPath
+}
+
+async function removeFileIfPresent(target: string): Promise<boolean> {
+  try {
+    const targetInfo = await stat(target)
+    if (!targetInfo.isFile()) {
+      throw new Error(`File Viewer 排除资源不是文件：${target}`)
+    }
+  } catch (error) {
+    if (isNodeError(error) && error.code === 'ENOENT') return false
+    throw error
+  }
+
+  await rm(target, { force: true })
+  return true
+}
+
 async function createOutputManifest(
   sourceRoot: string,
   targetRoot: string,
@@ -138,7 +169,9 @@ async function createOutputManifest(
  * Incrementally synchronizes File Viewer assets into the Vite output directory.
  * Existing byte-identical files are never removed or overwritten, which avoids
  * Windows EBUSY failures when antivirus or a preview process temporarily holds
- * a generated font file open.
+ * a generated font file open. Explicitly excluded compatibility files are
+ * pruned from the final output so Vite's public directory cannot reintroduce a
+ * duplicate of an asset already emitted by the application bundle.
  */
 export async function syncFileViewerAssets(
   sourceRoot: string,
@@ -150,12 +183,13 @@ export async function syncFileViewerAssets(
     throw new Error(`File Viewer 构建资源目录不存在：${sourceRoot}`)
   }
 
-  const excludedFiles = new Set(excludedFilePaths.map(normalizeRelativePath))
+  const excludedFiles = new Set(excludedFilePaths.map(normalizeExcludedFilePath))
   const relativeFiles = (await listFiles(sourceRoot)).filter((relativePath) => {
     const normalizedPath = normalizeRelativePath(relativePath)
     return normalizedPath !== ASSET_MANIFEST && !excludedFiles.has(normalizedPath)
   })
   let copied = 0
+  let pruned = 0
   let unchanged = 0
 
   for (const relativeFile of relativeFiles) {
@@ -178,8 +212,14 @@ export async function syncFileViewerAssets(
   if (manifestChanged) copied += 1
   else unchanged += 1
 
+  for (const excludedFile of excludedFiles) {
+    const target = path.resolve(targetRoot, excludedFile)
+    if (await removeFileIfPresent(target)) pruned += 1
+  }
+
   return {
     copied,
+    pruned,
     unchanged,
     total: relativeFiles.length + 1
   }
@@ -211,7 +251,7 @@ export function createFileViewerAssetSyncPlugin(options: FileViewerAssetSyncPlug
           options.excludedFiles
         )
         console.log(
-          `[vite] File Viewer 资源同步完成：复制 ${result.copied}，跳过未变化 ${result.unchanged}`
+          `[vite] File Viewer 资源同步完成：复制 ${result.copied}，跳过未变化 ${result.unchanged}，移除重复 ${result.pruned}`
         )
       }
     }

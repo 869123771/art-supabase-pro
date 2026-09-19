@@ -1,4 +1,13 @@
 @import 'tailwindcss' source('../../..');
+@source '../../../../modules/art-supabase-fms/src';
+@source '../../../../modules/art-supabase-hr/src';
+@source '../../../../modules/art-supabase-mdm/src';
+@source '../../../../modules/art-supabase-mes/src';
+@source '../../../../modules/art-supabase-pmis/src';
+@source '../../../../modules/art-supabase-smis/src';
+@source '../../../../modules/art-supabase-tms/src';
+@source '../../../../modules/art-supabase-vms/src';
+@source '../../../../modules/art-supabase-wms/src';
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ==================== Light Mode Variables ==================== */

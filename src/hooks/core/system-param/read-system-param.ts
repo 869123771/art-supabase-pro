@@ -1,4 +1,4 @@
-import { fetchSystemParamByKey } from '@/api/system-manage'
+import { fetchSystemParamByKey } from '@/api/system-manage/system-param'
 
 type SystemParamItem = Api.SystemManage.SystemParamItem
 

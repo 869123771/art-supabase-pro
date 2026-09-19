@@ -111,3 +111,25 @@ test('全局固定操作栏保持提示在左、操作在右', async ({ page }) 
   await expectNoHorizontalOverflow(page)
   expect(pageErrors).toEqual([])
 })
+
+test('运营工作台显示真实更新时间，并在刷新失败后保留数据和重试入口', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
+
+  const header = page.locator('.operations-dashboard .business-workspace-header')
+  const status = header.locator('.business-workspace-header__tags .el-tag').first()
+  const refresh = header.getByRole('button', { name: '刷新运营数据' })
+  await expect(status).toContainText('更新于', { timeout: 60_000 })
+  await expect(page.getByRole('heading', { name: '今日运营概览' })).toBeVisible()
+
+  await page.route('**/rest/v1/rpc/get_dashboard_console', (route) => route.abort())
+  await refresh.click()
+  await expect(status).toContainText('更新失败，请重试')
+  await expect(page.getByRole('heading', { name: '今日运营概览' })).toBeVisible()
+  await expect(refresh).toBeEnabled()
+
+  await page.unroute('**/rest/v1/rpc/get_dashboard_console')
+  await refresh.click()
+  await expect(status).toContainText('更新于', { timeout: 60_000 })
+  await expectNoHorizontalOverflow(page)
+})

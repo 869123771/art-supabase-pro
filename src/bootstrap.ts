@@ -16,10 +16,12 @@ import { setupSupabaseSessionLifecycle } from './plugins/supabase-session'
  * 独立业务应用在调用前注册自己的页面模块，即可复用统一布局、认证、
  * Store、动态菜单和权限守卫，而无需复制公共源码。
  */
-export function bootstrapPlatformApp(): VueApp<Element> {
+export function bootstrapPlatformApp(
+  options: { loadHostedApplications?: () => Promise<unknown> } = {}
+): VueApp<Element> {
   const app = createApp(App)
   initStore(app)
-  initRouter(app)
+  initRouter(app, options.loadHostedApplications)
   setupSupabaseSessionLifecycle()
   setupGlobDirectives(app)
   setupErrorHandle(app)

@@ -26,9 +26,13 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
   test.setTimeout(120_000)
   const requestTimings = new Map<Request, RequestTiming>()
   const pageErrors: string[] = []
+  const hostedApplicationRequests: string[] = []
 
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('request', (request) => {
+    if (/bootstrapHostedApplications(?:-|\.ts)/.test(new URL(request.url()).pathname)) {
+      hostedApplicationRequests.push(request.url())
+    }
     if (!request.url().includes('supabase.co')) return
     requestTimings.set(request, {
       method: request.method(),
@@ -52,6 +56,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
   await expect(page.getByRole('heading', { name: '欢迎使用', exact: true })).toBeVisible({
     timeout: 30_000
   })
+  expect(hostedApplicationRequests).toEqual([])
   await page.getByRole('textbox', { name: '邮箱或手机号' }).fill(credentials.email)
   await page.locator('input[name="password"]').fill(credentials.password)
 
@@ -62,6 +67,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
     timeout: 90_000
   })
   const dashboardReadyAt = Date.now()
+  expect(hostedApplicationRequests.length).toBeGreaterThan(0)
 
   await page.getByRole('menuitem', { name: '系统管理', exact: true }).click()
   const targetMenu = page.locator('.el-menu-item').filter({ hasText: '电子围栏配置' }).first()

@@ -293,10 +293,6 @@
   }
 </script>
 
-<style scoped>
-  @import '../login/style.css';
-</style>
-
 <style lang="scss" scoped>
   .auth-register-page {
     .agreement-form-item {
