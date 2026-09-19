@@ -126,6 +126,39 @@ test('desktop Feishu login switches the card to an inline QR and back', async ({
   await expect(page.locator('input[name="username"]')).toBeVisible()
 })
 
+test('OAuth callback shows progress instead of briefly exposing the login form', async ({
+  page
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'sb-ckbftoopuyophiebamwy-auth-token',
+      JSON.stringify({
+        access_token: 'a.b.c',
+        refresh_token: 'test-refresh-token',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        token_type: 'bearer',
+        user: {
+          id: '00000000-0000-0000-0000-000000000000',
+          aud: 'authenticated',
+          role: 'authenticated'
+        }
+      })
+    )
+  })
+  await page.route('**/functions/v1/check_user_status', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3_000))
+    await route.abort()
+  })
+
+  await page.goto('/#/auth/login?auth_action=login&channel=feishu', {
+    waitUntil: 'domcontentloaded'
+  })
+  await expect(page.getByRole('heading', { name: '正在完成登录' })).toBeVisible()
+  await expect(page.locator('input[name="username"]')).toHaveCount(0)
+  await expect(page.getByRole('status')).toContainText('正在')
+  await expectNoHorizontalOverflow(page)
+})
+
 test('anonymous login does not download hosted business page mappings', async ({ page }) => {
   const hostedRequests: string[] = []
   page.on('request', (request) => {

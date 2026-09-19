@@ -335,8 +335,8 @@
 
   const initializeLoginPage = async (): Promise<void> => {
     if (finishingOAuth.value) {
+      void loadWebsiteConfig()
       await handleOAuthCallback()
-      if (!finishingOAuth.value) await loadWebsiteConfig()
       return
     }
     await loadWebsiteConfig()

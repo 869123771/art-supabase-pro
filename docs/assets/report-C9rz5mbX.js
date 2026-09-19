@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./task-workspace-DFzRJyea.js";var i=t({name:`PmisInspectionReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`inspection`,mode:`report`}))}});export{i as default};
