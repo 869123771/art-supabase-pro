@@ -3,9 +3,9 @@
     class="production-work-center-navigator"
     title="生产范围"
     subtitle="先选车间，再定位工作中心"
-    :loading="loading"
+    :loading="loading && !hasLoaded"
     :error="error"
-    :empty="!loading && !error && !workshops.length && !workCenters.length"
+    :empty="hasLoaded && !error && !workshops.length && !workCenters.length"
     empty-title="暂无可用车间"
     empty-description="请先在“部门 / 产线”与“工作中心”中完成基础配置。"
     body-class="production-work-center-navigator__body"
@@ -13,7 +13,12 @@
     @retry="$emit('refresh')"
   >
     <template #actions>
-      <ArtIconButton icon="ri:refresh-line" label="刷新生产范围" @click="$emit('refresh')" />
+      <ArtIconButton
+        icon="ri:refresh-line"
+        label="刷新生产范围"
+        :loading="loading"
+        @click="$emit('refresh')"
+      />
       <ArtIconButton
         v-if="collapsible"
         icon="ri:side-bar-line"
@@ -170,6 +175,7 @@
   }>()
 
   const keyword = ref('')
+  const hasLoaded = ref(Boolean(props.workshops.length || props.workCenters.length))
   const filteredCenters = computed(() => {
     const value = keyword.value.trim().toLocaleLowerCase()
     if (!value) return props.workCenters
@@ -181,6 +187,13 @@
   watch(
     () => props.selectedWorkshopId,
     () => (keyword.value = '')
+  )
+
+  watch(
+    () => props.loading,
+    (loading, wasLoading) => {
+      if (wasLoading && !loading) hasLoaded.value = true
+    }
   )
 </script>
 

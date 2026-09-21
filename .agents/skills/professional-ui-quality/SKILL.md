@@ -29,6 +29,12 @@ Before implementation or review, identify:
 
 Inspect the target, child modules, relevant Art/Element Plus APIs, and at least one polished neighboring workflow before making visual decisions.
 
+### User-approved page references
+
+The user identifies starred or explicitly praised pages as preferred design references. For every new business page or substantial redesign, inspect a reachable approved page in the running app and its implementation, then compare the new page at the same viewport. The user's screenshots and named references take priority over an inferred star list. The “角色与权限” page is one named reference; choose a closer approved workflow when its business structure fits better.
+
+The star in the global header is `PageDesignReference`, a platform-super-only control. Its saved references live in `public.ai_ui_design_reference` (route, title, preference tags, note, and style snapshot), with optional images in `public.ai_ui_design_reference_image`. For each new page or substantial redesign, read the current saved references through the scoped Supabase MCP when available, choose the closest approved business shape, and inspect that page's implementation and rendered UI. This is a read-only design lookup; never alter the platform-super gate or expose its management UI to ordinary users. The super-admin session may be in a separate incognito browser that the available browser tools cannot reach. Do not confuse the adjacent “快捷入口” popover with the star or infer an empty list from an ordinary session. If the saved records or browser are unavailable, use the supplied screenshots and named pages, then state exactly which references were verified. Carry over the reference page's information hierarchy, action placement, search/table integration, full-height behavior, focus-mode control location, spacing, and state treatment. Adapt the business content rather than copying decorative details. In a table workspace, avoid an extra titled strip or duplicate refresh control when the page header and `ArtTableQuery` already cover those jobs.
+
 ## Build With Project Identity
 
 - Apply `art-supabase-pro-conventions` together with this skill.

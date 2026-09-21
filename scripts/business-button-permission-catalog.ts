@@ -85,6 +85,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   })),
   {
+    menuName: 'MdmComponentType',
+    buttons: [...crud({ view: true }), button('ManageGroup', '管理行业分组')]
+  },
+  {
     menuName: 'MdmBomMaintenance',
     buttons: [
       ...crud({ view: true, export: true }),

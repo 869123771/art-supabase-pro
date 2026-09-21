@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
   import { useUserStore } from './store/modules/user'
+  import { useSettingStore } from './store/modules/setting'
   import zh from 'element-plus/es/locale/lang/zh-cn'
   import en from 'element-plus/es/locale/lang/en'
   import { systemUpgrade } from './utils/sys'
@@ -27,8 +28,21 @@
   import { LanguageEnum } from './enums/appEnum'
 
   const userStore = useUserStore()
+  const settingStore = useSettingStore()
   const { language } = storeToRefs(userStore)
+  const { boxBorderMode } = storeToRefs(settingStore)
   const { loadWebsiteConfig } = useWebsiteConfig()
+
+  watch(
+    boxBorderMode,
+    (enabled) => {
+      document.documentElement.setAttribute(
+        'data-box-mode',
+        enabled ? 'border-mode' : 'shadow-mode'
+      )
+    },
+    { immediate: true }
+  )
 
   const locales = {
     zh: zh,

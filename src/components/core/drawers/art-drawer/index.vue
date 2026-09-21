@@ -58,7 +58,7 @@
       }"
       @wheel.capture="handleWheelBoundary"
     >
-      <div class="art-drawer__content">
+      <div ref="contentRef" class="art-drawer__content">
         <ArtOverlayLoading
           :loading="contentLoading"
           :text="options.loadingText"
@@ -77,7 +77,7 @@
       </div>
     </ElScrollbar>
 
-    <div v-else class="art-drawer__content">
+    <div v-else ref="contentRef" class="art-drawer__content">
       <ArtOverlayLoading
         :loading="contentLoading"
         :text="options.loadingText"
@@ -133,6 +133,7 @@
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
+  import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
 
   defineOptions({
@@ -177,6 +178,7 @@
   const attrs = useAttrs()
   const drawerRef = shallowRef<unknown>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
+  const contentRef = ref<HTMLElement>()
 
   const getDefaultOptions = (): ArtDrawerOptions<T> => ({
     title: props.title,
@@ -235,7 +237,8 @@
     emitReset: () => {
       if (!props.onReset || options.value.onReset !== props.onReset) emit('reset')
     },
-    emitError: (error) => emit('error', error)
+    emitError: (error) => emit('error', error),
+    onConfirmRejected: () => focusFirstInvalidFormField(contentRef)
   })
 
   const {

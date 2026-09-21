@@ -96,6 +96,8 @@ interface UseArtOverlayConfig<TData, TOptions, TApi> {
   emitConfirm: (data: TData) => void
   emitReset: () => void
   emitError: (error: unknown) => void
+  /** 确认被表单校验阻止时，由具体弹层定位其内容中的错误字段。 */
+  onConfirmRejected?: () => void
 }
 
 export const cloneOverlayData = <TValue>(value: TValue): TValue => {
@@ -219,11 +221,20 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
     confirmLoading.value = true
     try {
       const result = await options.value.onConfirm(openData.value, config.getApi())
+      if (result === false) {
+        await nextTick()
+        config.onConfirmRejected?.()
+      }
       if (result !== false && options.value.autoClose) await handleClose()
       return result !== false
     } catch (error) {
       config.emitError(error)
-      if (options.value.closeOnConfirmError) await handleClose(true)
+      if (options.value.closeOnConfirmError) {
+        await handleClose(true)
+      } else {
+        await nextTick()
+        config.onConfirmRejected?.()
+      }
       return false
     } finally {
       confirmLoading.value = false

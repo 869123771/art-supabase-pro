@@ -199,10 +199,6 @@ export function useSettingsPanel() {
       themeCleanup = themeHandlers.listenerSystemTheme()
       initColorWeak()
 
-      // 设置盒子模式
-      const boxMode = settingStore.boxBorderMode ? 'border-mode' : 'shadow-mode'
-      domOperations.setRootAttribute('data-box-mode', boxMode)
-
       themeHandlers.initSystemTheme()
       openFestival()
     }

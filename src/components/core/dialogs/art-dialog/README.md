@@ -186,7 +186,7 @@ dialogRef.value?.handleOpen(data, {
 </script>
 ```
 
-`onConfirm` 返回 `false` 时弹窗不会关闭，适合表单校验失败或接口提交失败的场景。
+`onConfirm` 返回 `false` 时弹窗不会关闭，适合表单校验失败或接口提交失败的场景。若内容中的 `ElFormItem` 已显示校验错误，弹窗会在错误渲染后滚动并聚焦第一个错误字段；业务表单仍需配置 `prop` 和规则。自定义底部按钮绕过 `api.handleConfirm()` 时，请在校验失败分支调用 `focusFirstInvalidFormField`。
 
 ## 响应式尺寸预设
 

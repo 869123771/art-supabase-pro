@@ -212,6 +212,34 @@ export async function fetchGetOrganizationTree(
   }
 }
 
+/** Organization selectors need hierarchy and identity, not the management page's aggregate counts. */
+export async function fetchGetOrganizationOptionsTree(
+  params: Pick<Api.SystemManage.OrganizationSearchParams, 'tenantId' | 'status'> = {}
+) {
+  const scopedTenantId = resolveTenantScopeId(params.tenantId)
+  let query = supabase
+    .from('mdm_organization')
+    .select(
+      `id,tenant_id,parent_id,organization_code,organization_name,organization_type,status,sort,is_system,
+       tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code,tenant_name)`
+    )
+    .order('sort')
+    .order('organization_name')
+  if (scopedTenantId) query = query.eq('tenant_id', scopedTenantId)
+  if (params.status) query = query.eq('status', params.status)
+
+  const response = await responseHandle<Api.SystemManage.OrganizationListItem[]>(() => query, {
+    showErrorMessage: true
+  })
+  return {
+    ...response,
+    data: organizationTreeUtils.listToTree(response.data ?? [], (a, b) => {
+      const sortDiff = (a.sort ?? 0) - (b.sort ?? 0)
+      return sortDiff || a.organizationName.localeCompare(b.organizationName, 'zh-CN')
+    })
+  }
+}
+
 export async function fetchGetEnableOrganizationTree(
   params: {
     tenantId?: string
@@ -222,7 +250,7 @@ export async function fetchGetEnableOrganizationTree(
     return { data: [], error: null }
   }
 
-  const response = await fetchGetOrganizationTree({
+  const response = await fetchGetOrganizationOptionsTree({
     tenantId: params.tenantId,
     status: '1'
   })
@@ -248,6 +276,7 @@ export async function fetchGetUserOrganizationTree(params: { tenantId?: string }
       `
     )
     .eq('status', '1')
+    .is('members.deleted_at', null)
     .order('sort', { ascending: true })
     .order('organization_name', { ascending: true })
 

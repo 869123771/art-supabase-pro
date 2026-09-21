@@ -20,6 +20,10 @@
       margin-right: 0;
     }
 
+    :deep(.el-button + .el-button) {
+      margin-left: 0;
+    }
+
     :deep(.el-dropdown) {
       display: inline-flex;
     }

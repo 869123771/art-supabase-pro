@@ -1,0 +1,1 @@
+var e=e=>`MES_WORK_ORDER:${e.id}`;export{e as t};

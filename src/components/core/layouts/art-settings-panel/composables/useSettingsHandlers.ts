@@ -21,12 +21,6 @@ export function useSettingsHandlers() {
       }
     },
 
-    // 设置根元素属性
-    setRootAttribute: (attribute: string, value: string) => {
-      const el = document.documentElement
-      el.setAttribute(attribute, value)
-    },
-
     // 设置body类名
     setBodyClass: (className: string, add: boolean) => {
       const el = document.getElementsByTagName('body')[0]
@@ -142,7 +136,6 @@ export function useSettingsHandlers() {
       }
 
       setTimeout(() => {
-        domOperations.setRootAttribute('data-box-mode', type)
         settingStore.setBorderMode()
       }, 50)
     }

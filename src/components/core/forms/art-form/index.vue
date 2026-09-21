@@ -162,7 +162,13 @@
             :style="actionButtonsStyle"
           >
             <div class="flex gap-2 md:justify-center">
-              <ElButton v-if="showReset" class="reset-button" @click="handleReset" v-ripple>
+              <ElButton
+                v-if="showReset"
+                class="reset-button"
+                :loading="resetLoading"
+                @click="handleReset"
+                v-ripple
+              >
                 <ElIcon>
                   <RefreshLeft />
                 </ElIcon>
@@ -474,6 +480,8 @@
     buttonLeftLimit?: number
     /** 是否显示重置按钮 */
     showReset?: boolean
+    /** 异步重置业务筛选时的按钮加载状态 */
+    resetLoading?: boolean
     /** 是否显示提交按钮 */
     showSubmit?: boolean
     /** 是否禁用提交按钮 */
@@ -508,6 +516,7 @@
     labelWidth: '70px',
     buttonLeftLimit: 2,
     showReset: true,
+    resetLoading: false,
     showSubmit: true,
     disabledSubmit: false,
     rootClass: '',

@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./qualification-catalog-page-R2ZtZtfi.js";var i=t({name:`SmisWorkCategory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"catalog-type":`work_category`}))}});export{i as default};

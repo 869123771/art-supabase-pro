@@ -106,9 +106,14 @@
     if (!keyword) return props.options
 
     return props.options.filter((option) =>
-      [option.nickName, option.userEmail, option.userName, option.label].some((value) =>
-        normalizeSearchText(value).includes(keyword)
-      )
+      [
+        option.nickName,
+        option.userEmail,
+        option.userName,
+        option.label,
+        option.departmentName,
+        option.secondaryText
+      ].some((value) => normalizeSearchText(value).includes(keyword))
     )
   })
 
@@ -132,6 +137,8 @@
   }
 
   function getSecondaryIdentity(option: ArtUserSelectOption): string {
+    const secondaryText = normalizeIdentityText(option.secondaryText)
+    if (secondaryText) return secondaryText
     const email = normalizeIdentityText(option.userEmail)
     const departmentName = normalizeIdentityText(option.departmentName)
     const identities = [departmentName, email === getDisplayName(option) ? '' : email].filter(

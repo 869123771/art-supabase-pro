@@ -62,7 +62,12 @@
       />
 
       <!-- 列设置 -->
-      <ElPopover v-if="shouldShow('columns')" placement="bottom" trigger="click" :width="232">
+      <ElPopover
+        v-if="shouldShow('columns') && visibleColumnsModel.length"
+        placement="bottom"
+        trigger="click"
+        :width="232"
+      >
         <template #reference>
           <ArtIconButton
             class="art-table-header__action"

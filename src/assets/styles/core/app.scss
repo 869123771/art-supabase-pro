@@ -120,10 +120,10 @@
   border: 1px solid var(--art-card-border) !important;
 }
 
-@mixin art-card-base($border-color, $shadow: none, $radius-diff: 4px) {
+@mixin art-card-base($border-color, $shadow: none) {
   background: var(--default-box-color);
   border: 1px solid #{$border-color} !important;
-  border-radius: calc(var(--custom-radius) + #{$radius-diff}) !important;
+  border-radius: var(--art-surface-radius) !important;
   box-shadow: #{$shadow} !important;
 
   --el-card-border-color: var(--default-border) !important;
@@ -143,15 +143,15 @@
   }
 
   .art-card {
-    @include art-card-base(var(--art-card-border), none, 4px);
+    @include art-card-base(var(--art-card-border));
   }
 
   .art-card-sm {
-    @include art-card-base(var(--art-card-border), none, 0px);
+    @include art-card-base(var(--art-card-border));
   }
 
   .art-card-xs {
-    @include art-card-base(var(--art-card-border), none, -4px);
+    @include art-card-base(var(--art-card-border));
   }
 }
 
@@ -168,15 +168,15 @@
   }
 
   .art-card {
-    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm), 4px);
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm));
   }
 
   .art-card-sm {
-    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm), 2px);
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm));
   }
 
   .art-card-xs {
-    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-xs), -4px);
+    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-xs));
   }
 }
 
@@ -203,7 +203,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 12px;
-  border-radius: calc(var(--custom-radius) / 2 + 2px) !important;
+  border-radius: var(--art-surface-radius) !important;
 
   .el-card__body {
     height: 100%;

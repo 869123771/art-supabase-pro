@@ -10,6 +10,7 @@
     :label-width="labelWidth"
     :button-left-limit="buttonLeftLimit"
     :show-reset="showReset"
+    :reset-loading="resetLoading"
     :show-submit="showSearch"
     :disabled-submit="disabledSearch"
     :sanitize-output="sanitizeOutput"
@@ -52,6 +53,7 @@
     showExpand?: boolean
     buttonLeftLimit?: number
     showReset?: boolean
+    resetLoading?: boolean
     showSearch?: boolean
     disabledSearch?: boolean
     enableEnterSearch?: boolean
@@ -69,6 +71,7 @@
     showExpand: true,
     buttonLeftLimit: 0,
     showReset: true,
+    resetLoading: false,
     showSearch: true,
     disabledSearch: false,
     enableEnterSearch: true,
@@ -136,6 +139,7 @@
     showExpand,
     buttonLeftLimit,
     showReset,
+    resetLoading,
     showSearch,
     disabledSearch,
     sanitizeOutput

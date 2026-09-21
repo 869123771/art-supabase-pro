@@ -344,6 +344,8 @@
     buttonLeftLimit?: number
     /** 是否显示重置按钮 */
     showReset?: boolean
+    /** 异步重置业务筛选时的按钮加载状态 */
+    resetLoading?: boolean
     /** 是否显示查询按钮 */
     showSearch?: boolean
     /** 是否禁用查询按钮 */

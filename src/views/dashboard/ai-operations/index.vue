@@ -369,7 +369,7 @@
     handleOpen: (data: { item: AiFeedbackQueueItem }) => Promise<void>
   }
 
-  type MetricTone = 'primary' | 'success' | 'warning' | 'purple'
+  type MetricTone = 'primary' | 'success' | 'warning'
   type OperationsSection = 'overview' | 'forms' | 'ocr' | 'feedback' | 'runs'
   type TrendWindow = 'recent' | 'period'
 
@@ -512,7 +512,7 @@
       value: formatCompactNumber(overview.data.inputTokens + overview.data.outputTokens),
       hint: `输入 ${formatCompactNumber(overview.data.inputTokens)} · 输出 ${formatCompactNumber(overview.data.outputTokens)}`,
       icon: 'ri:coins-line',
-      tone: 'purple'
+      tone: 'primary'
     }
   ])
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() =>
@@ -521,7 +521,7 @@
       value: metric.value,
       description: metric.hint,
       icon: metric.icon,
-      tone: metric.tone === 'purple' ? 'primary' : metric.tone
+      tone: metric.tone
     }))
   )
 
@@ -540,7 +540,7 @@
       value: `${overview.data.quality.reviewCompletionRate.toFixed(1)}%`,
       hint: `${overview.data.quality.reviewedArtifacts} 条已形成闭环`,
       icon: 'ri:user-follow-line',
-      tone: 'purple'
+      tone: 'primary'
     },
     {
       key: 'application',
@@ -881,85 +881,11 @@
       padding-bottom: var(--art-space-5);
     }
 
-    &__hero {
-      position: relative;
-      display: flex;
-      gap: 24px;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 128px;
-      padding: 24px 28px;
-      overflow: hidden;
-
-      &::after {
-        position: absolute;
-        top: -95px;
-        right: 8%;
-        width: 260px;
-        height: 260px;
-        pointer-events: none;
-        content: '';
-        background: radial-gradient(circle, rgb(91 143 249 / 14%), transparent 68%);
-      }
-    }
-
-    &__hero-main,
-    &__hero-actions,
     &__health-title,
     &__feedback,
     &__feedback > div {
       display: flex;
       align-items: center;
-    }
-
-    &__hero-main {
-      gap: 18px;
-      min-width: 0;
-
-      span {
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--el-color-primary);
-        letter-spacing: 0.16em;
-      }
-
-      h1 {
-        margin: 3px 0 5px;
-        font-size: 23px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.7;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__brand {
-      display: grid;
-      flex: 0 0 58px;
-      place-items: center;
-      width: 58px;
-      height: 58px;
-      font-size: 27px;
-      color: #fff;
-      background: linear-gradient(145deg, var(--el-color-primary), #7259e7);
-      border-radius: var(--art-feature-radius);
-      box-shadow: 0 14px 30px rgb(64 116 255 / 25%);
-    }
-
-    &__hero-actions {
-      z-index: 1;
-      flex-shrink: 0;
-      gap: 10px;
-    }
-
-    &__metrics {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
     }
 
     &__workspace-nav {
@@ -1070,11 +996,6 @@
       &.is-warning {
         color: var(--el-color-warning);
         background: var(--el-color-warning-light-9);
-      }
-
-      &.is-purple {
-        color: #7259e7;
-        background: color-mix(in srgb, #7259e7 10%, var(--el-bg-color));
       }
     }
 
@@ -1299,11 +1220,11 @@
       }
 
       .is-success::before {
-        background: #36c98f;
+        background: var(--el-color-success);
       }
 
       .is-danger::before {
-        background: #f56c6c;
+        background: var(--el-color-danger);
       }
     }
 
@@ -1454,8 +1375,8 @@
     }
 
     &__health-icon {
-      color: #7259e7;
-      background: color-mix(in srgb, #7259e7 10%, var(--el-bg-color));
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 10%, var(--el-bg-color));
     }
 
     &__feedback {
@@ -1527,10 +1448,6 @@
     }
 
     @media (width <= 1200px) {
-      &__metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
       &__quality-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -1562,24 +1479,6 @@
     }
 
     @media (width <= 720px) {
-      &__hero {
-        align-items: flex-start;
-        padding: 20px;
-      }
-
-      &__hero,
-      &__hero-actions {
-        flex-direction: column;
-      }
-
-      &__hero-main {
-        align-items: flex-start;
-      }
-
-      &__metrics {
-        grid-template-columns: 1fr;
-      }
-
       &__workspace-nav {
         position: static;
         flex-direction: column;
