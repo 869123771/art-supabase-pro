@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./execution-event-workspace-D9IXbKC-.js";var i=t({name:`MesMold`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`mold`}))}});export{i as default};

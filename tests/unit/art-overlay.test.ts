@@ -8,7 +8,10 @@ interface TestData {
 
 type TestOptions = ArtOverlayOptions<TestData, { setLoading: (value: boolean) => void }>
 
-const createOverlay = (emitError: (error: unknown) => void = () => undefined) => {
+const createOverlay = (
+  emitError: (error: unknown) => void = () => undefined,
+  onConfirmRejected?: () => void
+) => {
   let setLoading: (value: boolean) => void = () => undefined
   const overlay = useArtOverlay<TestData, { setLoading: (value: boolean) => void }, TestOptions>({
     getDefaultOptions: () => ({ autoClose: true, resetOnClose: true }),
@@ -16,7 +19,8 @@ const createOverlay = (emitError: (error: unknown) => void = () => undefined) =>
     getApi: () => ({ setLoading }),
     emitConfirm: () => undefined,
     emitReset: () => undefined,
-    emitError
+    emitError,
+    onConfirmRejected
   })
   setLoading = overlay.setLoading
   return overlay
@@ -67,4 +71,43 @@ test('confirm locking prevents duplicate side effects while a submit is pending'
   assert.equal(second, false)
   assert.equal(await first, true)
   assert.equal(submitCount, 1)
+})
+
+test('invalid confirmation requests field focus and leaves the overlay available for correction', async () => {
+  let focusRequests = 0
+  const overlay = createOverlay(undefined, () => {
+    focusRequests += 1
+  })
+  await overlay.handleOpen({}, { onConfirm: () => false })
+
+  assert.equal(await overlay.handleConfirm(), false)
+  assert.equal(focusRequests, 1)
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.confirmLoading.value, false)
+})
+
+test('rejected validation requests focus unless the overlay closes on error', async () => {
+  let focusRequests = 0
+  const errors: unknown[] = []
+  const overlay = createOverlay(
+    (error) => errors.push(error),
+    () => {
+      focusRequests += 1
+    }
+  )
+  const failure = new Error('invalid form')
+  const onConfirm = () => {
+    throw failure
+  }
+  await overlay.handleOpen({}, { onConfirm })
+  assert.equal(await overlay.handleConfirm(), false)
+  assert.equal(focusRequests, 1)
+  assert.equal(overlay.visible.value, true)
+
+  overlay.setOptions({ closeOnConfirmError: true })
+  assert.equal(await overlay.handleConfirm(), false)
+  assert.equal(focusRequests, 1)
+  assert.equal(overlay.visible.value, false)
+  assert.equal(overlay.confirmLoading.value, false)
+  assert.deepEqual(errors, [failure, failure])
 })
