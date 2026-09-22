@@ -408,7 +408,7 @@
   import { dataSelectDefaults } from './defaults'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
-  import { get, isEqual, uniqBy } from 'lodash-es'
+  import { get, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
   import type { ElTree } from 'element-plus'
@@ -811,7 +811,7 @@
   const open = async () => {
     if (props.disabled || isOpen.value) return
     isOpen.value = true
-    draftRows.value = confirmedRows.value.map((row) => ({ ...row }))
+    draftRows.value = props.resetDraftOnOpen ? [] : confirmedRows.value.map((row) => ({ ...row }))
     emit('open')
     const usesSizePreset =
       typeof props.dialogWidth === 'string' &&
@@ -1001,17 +1001,6 @@
   )
 
   watch(navigationKeyword, (value) => navigationTreeRef.value?.filter?.(value))
-
-  watch(
-    () => confirmedRows.value,
-    (rows) => {
-      const nextValue = getModelValueFromRows(rows)
-      if (!isEqual(nextValue, props.modelValue)) {
-        emit('update:modelValue', nextValue)
-      }
-    },
-    { deep: true }
-  )
 
   defineExpose<ArtDataSelectExpose>({
     open,

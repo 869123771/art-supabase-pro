@@ -9,17 +9,228 @@
   <component name="ChangeListManager">
     <list default="true" id="b8f35119-660a-46e7-82f4-53eee06863eb" name="Changes" comment="build: refresh GitHub Pages">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-fms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-fms" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-hr" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-hr" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mdm" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/403-B3hRS1bM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/404-Z9EzahAG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/500-BgtYd7k3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/ArtException-dfI3lzab.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/Iframe-CRbMtJ01.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/LoginLeftView-CQRIU0uK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/api-B3EFhc-c.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/archive-BSyitOa2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/archive-dialog-D9yy_Avg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-button-more-OhSeSDgP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-button-table-BOQcNCdc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-chat-window-Cx2T7qgH.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-data-select-BOKIUJYb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-data-select-D-VsO5AF.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-descriptions-D0uVzlrn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-dialog-BwByLZO8.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-drawer-CjdMkjuv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-employee-select-CZy32Ims.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-fireworks-effect-BoMZyWbp.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-form-78Vkjy7G.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-global-search-BFdSmR1r.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-logo-DizuBGBl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-material-select-C4Q75GD7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-permission-guard-B77FPLP5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-screen-lock-VFJRi-A6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-settings-panel-CFhm7zQ0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-table-Crv2A9Tt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-table-query-BN0Unpd2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-upload-file-D0GaqsgH.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-upload-image-BkTWAexd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/art-watermark-DJit9U7p.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/business-permission-B1aw0f9N.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/business-table-workspace-actions-BdGBefdT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/business-type-DOsWS_Ga.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/calendar-BgsBlbdg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/catalog-DyMEKYls.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/category-DGaHDqWC.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/category-tree-panel-BoUlK--z.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/center-DT2zIkqQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/changes-wQeIkKFl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/common-Cz6Id2H9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/component-type-2jRG67Vh.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/configuration-Cee8jqg2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/data-center-BdbmdKVP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/department-BDQWoIR7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/distribution-CeIVbDz3.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/document-type-DxJcvQDt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/esop-BIo_MauF.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/feishu-qr-login-G5kTi1BK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/forget-password-CkI00h80.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/golden-record--urVuyDq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/group-dialog-Bp9AGUMy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/index-C2SV8S3b.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/index-CS7OcuPU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/index-DttTnnpT.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/login-CJww3-Af.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/maintenance-BjEKD9x1.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/maintenance-CAQHC1GX.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/master-group-panel-BZ7xL0Nw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/module-unavailable-EeOh38kE.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/my-shift-schedule-mZW5B3ho.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/operation-template-C78stB0Z.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/operational-master-Uo2PqSmd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/personnel-CHW_6nVR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/personnel-work-center-alNI7wZA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/process-route-DnQyqPJJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/production-CMgsvnC5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/production-model-CNsAyr_B.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/production-tree-C3kMn0Zk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/quality-CqPfkIKm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/record-detail-DuVy6RBq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/reference-BEFIn4Cu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/register-hwkpC5Xj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/reset-password-Dybq2xvo.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/route-dialog-BEXmdTfH.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/shift-scheduling-CY6fvm0y.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/statutory-holiday-B36GsKjz.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/steps-dialog-CZq7WdVy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/structure-B1v5vA3M.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-9QMVjMch.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-B3mkIqu6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-BFtBC3eD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-C4VjPqg7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-CGADDz-a.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-CROXTQJU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-CScG8vdl.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-CZX-CbOW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-d0CbTmSq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/style-rFfA8SFb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/system-manage-AO588MMr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/table-multiple-U8H9KTDV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/table-single-CFTQaeJg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/upload-model-utils-C_b6uprD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/useArtFeedback-ssJfiqX0.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/user-BYVlBFUu.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/warehouse-CsWP8-14.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/work-center-D8HU1dDL.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/workbench-BXdDSyeG.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/assets/workstation-D3TDwruL.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mdm/docs/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/src/views/bom/maintenance/modules/bom-detail-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mdm/src/views/bom/maintenance/modules/bom-detail-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mdm/src/views/bom/maintenance/modules/bom-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mdm/src/views/bom/maintenance/modules/bom-dialog.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/execution-pmis.ts" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/execution-pmis.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-pmis" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-pmis" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-smis" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-smis" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-tms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-tms" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-vms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-vms" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/art-supabase-wms" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-wms" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/art-overlay.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/art-overlay.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/403-BacXAKEm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/404-DrvNI298.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/500-B9u12_P_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/ArtException-BiBKKRiU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/Iframe-CcfWBYEd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/LoginLeftView-BiqBi858.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/andon-BcZXhoek.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/api-BqqKn-ud.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-button-more-Sd1Cfo_L.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-button-table-D7I0bb-l.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-chat-window-CYP36aS_.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-descriptions-BeUf0NWy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-drawer-J1Jpv5_T.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-excel-import-S4s3NWlT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-fireworks-effect-Cr4bLxdK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-form-CIAq2foi.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-form-DMalQke5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-global-search-DRmpvvp7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-logo-BghcXkD9.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-permission-guard-DhaBsdlz.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-screen-lock-BMIowSRR.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-settings-panel-BPQu6Gaq.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-table-qwdE8Izj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/art-watermark-Bqh1__pC.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/business-permission-BR8STBq7.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/business-table-workspace-actions-BR25AZnY.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/business-table-workspace-actions-TZpyrFBk.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/data-center-C51sHmqa.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/defect-management-CEs2ClfH.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/defect-management-CsMwaCu4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/defect-reasons-BShHwAYJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/equipment-L_GYiDaM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/exception-tTDmcZ_n.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/execution-analytics-RDBvvwbV.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/execution-event-workspace-7HPuofvA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/execution-user-options-CMbifjOt.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/feishu-qr-login-BCUZJgwS.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/forget-password-DJ35RNcc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/gantt-scheduling-BUWyL5Jn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/index-BI3LdYIz.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/index-Blay48Iy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/index-CvLWsnO2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/inspection-rBcST6lU.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/labor-efficiency-Ct11UQeg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/line-achievement-B6dELE-r.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/login-BGaMM2xc.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/machine-achievement-CSAPZwFi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/manufacturing-BT7sgYXO.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/manufacturing-iXWhKdMW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/misc-piecework-C6IHikyv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/misc-report-CSjQQMK4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/module-unavailable-CnIRug12.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/mold-CactAZVJ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/mold-detail-BiB7PRTm.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/operation-report-R6NeXCV4.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/pack-rules-DyMJRJVZ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/packing-BOqo9yJl.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/packing-CXS8D9As.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/production-report-CsmLi4am.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/production-report-form-CnLtZiSK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/production-work-center-navigator-D22xHYXT.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/production-workspace-BO8mwPNQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/register-CgrT--_W.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/report-allocation-3_G2sz4J.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/report-approval-il4A4i7e.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/report-defects-BWAcVpL6.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/report-detail-CgGj-xjb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/report-ledger-CH0JN3Dn.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/reset-password-OvY9nsCj.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/schedule-dialog-CIZKJxEy.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/scheduling-DKKjNQZW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/scheduling-rules-CRCztA-A.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/shift-achievement-CoyuCm6v.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-8CrZsBzW.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-B7zBSv5O.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-B8_vZhYg.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-C1yXZyIf.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-CBDZq6FI.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-CK8rujPr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-DKk6Im2S.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-DMTNAfDQ.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-DlSfFURY.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/style-wpxzEDLb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/task-annotation-dialog-5sZnvp1Q.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/task-detail-dialog-CBB1t1ng.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/task-due-date-dialog-C8UuiOl2.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/use-execution-scope-CbWjOKdi.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/useArtFeedback-DYaJ1RoM.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/useWorkspaceFocus-CYqWzXfb.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/useWorkspaceFocus-ekubA9mb.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/user-Cm7NGWhd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-annotation-dialog-Cj2jUHrv.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-dialog-33dhs2fd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-dialog-DMfFp7xE.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-due-date-dialog-DaUorR6h.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-print-sheet-LKWMJ5OP.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-progress-dialog-CxBEy_4r.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-qr-label-sheet-BSuBsmcB.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-snapshot-dialog-BGOk94ve.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-snapshot-dialog-DaowutZw.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/assets/work-order-urgency-segmented-CUwQBEmK.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/docs/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/docs/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/manufacturing.ts" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/manufacturing.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/manufacturing.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/manufacturing.types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/packing.ts" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/api/packing.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-detail.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-detail.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-details.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-details.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-print-sheet.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-print-sheet.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-qr-label-sheet.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-qr-label-sheet.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-snapshot-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/manufacturing/modules/work-order-snapshot-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/packing/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/packing/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/packing/modules/packing-board-spec-dialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/modules/art-supabase-mes/src/views/packing/modules/packing-board-spec-dialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/business/art-material-select/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/business/art-material-select/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/business/art-material-select/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/business/art-material-select/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-data-select/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-data-select/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/core/forms/art-data-select/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/core/forms/art-data-select/types.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,7 +238,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="48026" />
+    <option name="cachedIndexableFilesCount" value="53838" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -62,23 +273,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0" />
-      <entry key="S2" value="1.0" />
-      <entry key="S5" value="1.0" />
-      <entry key="S10" value="1.0" />
-      <entry key="S30" value="1.0" />
-      <entry key="S60" value="1.0" />
-      <entry key="M2" value="1.0" />
-      <entry key="M5" value="1.0" />
-      <entry key="M10" value="1.0" />
-      <entry key="M15" value="1.0" />
-      <entry key="M30" value="1.0000000000014393" />
-      <entry key="H1" value="1.000004872304571" />
-      <entry key="H2" value="1.0090905091067455" />
-      <entry key="H4" value="1.4053409731158115" />
-      <entry key="D1" value="39.31330785768288" />
-      <entry key="W1" value="501.7523126206717" />
+      <entry key="MS100" value="1.0000000000381375" />
+      <entry key="MS500" value="1.0084199986124418" />
+      <entry key="S2" value="1.4943586714604864" />
+      <entry key="S5" value="2.4038747582286026" />
+      <entry key="S10" value="3.039676504274768" />
+      <entry key="S30" value="3.6344761283347014" />
+      <entry key="S60" value="3.810848140712239" />
+      <entry key="M2" value="3.9037674352024707" />
+      <entry key="M5" value="3.9611015501138125" />
+      <entry key="M10" value="3.980482540626165" />
+      <entry key="M15" value="3.9869731476394064" />
+      <entry key="M30" value="3.993478955000282" />
+      <entry key="H1" value="3.9967424364312745" />
+      <entry key="H2" value="4.007452907585986" />
+      <entry key="H4" value="4.404393231327587" />
+      <entry key="D1" value="42.31109561933913" />
+      <entry key="W1" value="504.74841650693486" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -88,35 +299,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="1.4457969043805473E-199" />
-      <entry key="M5" value="5.627335431646188E-80" />
-      <entry key="M10" value="4.108751560163963E-40" />
-      <entry key="M15" value="7.97100709356316E-27" />
-      <entry key="M30" value="1.5463827144391407E-13" />
-      <entry key="H1" value="6.811128297333885E-7" />
-      <entry key="H2" value="0.0014294541193293252" />
-      <entry key="H4" value="0.06551185999025422" />
-      <entry key="D1" value="2.3385143990070074" />
-      <entry key="W1" value="19.858888373892945" />
+      <entry key="M2" value="1.3904705992159878E-199" />
+      <entry key="M5" value="5.540189388121969E-80" />
+      <entry key="M10" value="4.076812950995733E-40" />
+      <entry key="M15" value="7.929645973434433E-27" />
+      <entry key="M30" value="1.5423654486265446E-13" />
+      <entry key="H1" value="6.802275409117761E-7" />
+      <entry key="H2" value="0.001428524837738493" />
+      <entry key="H4" value="0.06549056204786192" />
+      <entry key="D1" value="2.3383876731162316" />
+      <entry key="W1" value="19.858734631978244" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.6813737730050832E-5" />
-      <entry key="MS500" value="0.11095141715868721" />
-      <entry key="S2" value="0.5771427087584191" />
-      <entry key="S5" value="0.8026261133976053" />
-      <entry key="S10" value="0.8958940302276857" />
-      <entry key="S30" value="0.9640188978878844" />
-      <entry key="S60" value="0.9818446404028921" />
-      <entry key="M2" value="0.9908807397476712" />
-      <entry key="M5" value="0.9963422677651442" />
-      <entry key="M10" value="0.9981694584413732" />
-      <entry key="M15" value="0.9987792663374151" />
-      <entry key="M30" value="0.9993894467826838" />
-      <entry key="H1" value="0.9997002284733644" />
-      <entry key="H2" value="1.0103657289234167" />
-      <entry key="H4" value="1.4707420617356826" />
-      <entry key="D1" value="41.65151848960423" />
-      <entry key="W1" value="521.7530629686798" />
+      <entry key="MS100" value="0.03928166798988738" />
+      <entry key="MS500" value="0.5316559342450394" />
+      <entry key="S2" value="1.3028367490208277" />
+      <entry key="S5" value="2.262200409295798" />
+      <entry key="S10" value="2.94146816193934" />
+      <entry key="S30" value="3.5924557357781675" />
+      <entry key="S60" value="3.788404768852878" />
+      <entry key="M2" value="3.892163541889898" />
+      <entry key="M5" value="3.956365037688559" />
+      <entry key="M10" value="3.9780981826454567" />
+      <entry key="M15" value="3.985379976783267" />
+      <entry key="M30" value="3.9926805649380355" />
+      <entry key="H1" value="3.9963434677704806" />
+      <entry key="H2" value="4.008679935660825" />
+      <entry key="H4" value="4.469749376070801" />
+      <entry key="D1" value="44.64917559475914" />
+      <entry key="W1" value="524.7490114509034" />
     </decayedShown>
   </component>
   <component name="PackageJsonUpdateNotifier">
@@ -375,6 +586,7 @@
       <workItem from="1789258343985" duration="14785000" />
       <workItem from="1789549859461" duration="19784000" />
       <workItem from="1789720144441" duration="2752000" />
+      <workItem from="1790043691069" duration="2280000" />
     </task>
     <task id="LOCAL-00031" summary="feat reset pwd">
       <option name="closed" value="true" />

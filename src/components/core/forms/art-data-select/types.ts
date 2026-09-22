@@ -101,6 +101,8 @@ export interface ArtDataSelectProps {
   showPagination?: boolean
   showSearch?: boolean
   showSelectedPanel?: boolean
+  /** Start each dialog visit with an empty draft while retaining the confirmed field value. */
+  resetDraftOnOpen?: boolean
   clearable?: boolean
   disabled?: boolean
   reserveSelected?: boolean

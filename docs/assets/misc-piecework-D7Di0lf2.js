@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./execution-event-workspace-BsT53ZIM.js";var i=t({name:`MesMiscPiecework`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`misc_piece`}))}});export{i as default};

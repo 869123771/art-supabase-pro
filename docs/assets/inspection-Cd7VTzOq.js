@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./execution-event-workspace-BsT53ZIM.js";var i=t({name:`MesInspection`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`inspection`}))}});export{i as default};

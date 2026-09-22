@@ -7,7 +7,7 @@
     :columns="columns"
     :navigation="navigation"
     row-key="id"
-    :label-key="getMaterialLabel"
+    :label-key="labelKey || getMaterialLabel"
     :description-key="getMaterialDescription"
     :title="title"
     :subtitle="subtitle"
@@ -19,6 +19,7 @@
     :disabled="disabled"
     :clearable="clearable"
     :show-selected-panel="showSelectedPanel"
+    :reset-draft-on-open="resetDraftOnOpen"
     :show-pagination="true"
     :page-size="10"
     :page-sizes="[10, 20, 30, 50]"
@@ -27,7 +28,11 @@
     @change="handleChange"
     @confirm="handleConfirm"
     @clear="emit('clear')"
-  />
+  >
+    <template v-if="$slots.trigger" #trigger="slotProps">
+      <slot name="trigger" v-bind="slotProps" />
+    </template>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -56,6 +61,7 @@
     id: string
     materialCode?: string | null
     materialName?: string | null
+    description?: string | null
     specificationModel?: string | null
     drawingNo?: string | null
     materialComposition?: string | null
@@ -84,6 +90,8 @@
     disabled?: boolean
     clearable?: boolean
     showSelectedPanel?: boolean
+    labelKey?: string | ((row: DataSelectRecord) => string)
+    resetDraftOnOpen?: boolean
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -101,7 +109,8 @@
     disabledKey: undefined,
     disabled: false,
     clearable: true,
-    showSelectedPanel: true
+    showSelectedPanel: true,
+    resetDraftOnOpen: false
   })
 
   const emit = defineEmits<{
@@ -128,6 +137,7 @@
   const columns: DataSelectColumn[] = [
     { prop: 'materialCode', label: '物料编码', minWidth: 150 },
     { prop: 'materialName', label: '物料名称', minWidth: 180 },
+    { prop: 'description', label: '物料描述', minWidth: 220 },
     { prop: 'specificationModel', label: '规格型号', minWidth: 150 },
     { prop: 'drawingNo', label: '图号', minWidth: 130 },
     { prop: 'materialComposition', label: '材质', minWidth: 120 },
