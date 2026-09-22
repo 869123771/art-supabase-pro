@@ -50,6 +50,7 @@ Art Supabase Pro 不是只展示表格、表单和图表的 UI 模板。它以 *
 | [`art-supabase-fms`](https://gitee.com/wangyanghub/art-supabase-fms) | FMS 运输财务与企业核算 | `3012` |
 | [`art-supabase-hr`](https://gitee.com/wangyanghub/art-supabase-hr) | HR 人力资源与人才运营 | `3013` |
 | [`art-supabase-smis`](https://gitee.com/wangyanghub/art-supabase-smis) | SMIS 安全生产与设备治理 | `3014` |
+| [`art-supabase-scm`](https://gitee.com/wangyanghub/art-supabase-scm) | SCM供应链管理：报价、合同、订单与发运 | `3021` |
 | [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | 面向司机的 H5 / 微信小程序运输执行端 | — |
 | [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | 使用、开发、部署与运维文档站 | `5173` |
 
@@ -311,6 +312,7 @@ art-supabase-pro/
 │  ├─ art-supabase-doc/            # 官方 VitePress 文档站
 │  ├─ art-supabase-fms/            # FMS 财务管理应用
 │  ├─ art-supabase-hr/             # HR 人力资源应用
+│  ├─ art-supabase-scm/            # SCM 供应链管理子仓
 │  ├─ art-supabase-smis/           # SMIS 安全生产应用
 │  ├─ art-supabase-tms/            # TMS 智慧运输应用
 │  └─ art-supabase-vms/            # VMS 车辆管理应用

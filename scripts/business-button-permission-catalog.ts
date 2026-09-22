@@ -2493,6 +2493,81 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'FinanceWaybillProfit',
     buttons: [button('AiProfitAnalysis', 'AI 利润诊断'), button('Export', '导出')]
+  },
+  {
+    menuName: 'ScmQuoteExpense',
+    buttons: crud({ view: true, import: true, export: true })
+  },
+  {
+    menuName: 'ScmQuoteCategory',
+    buttons: [...crud({ view: true, import: true, export: true }), button('Copy', '复制')]
+  },
+  {
+    menuName: 'ScmSalesQuotationDoc',
+    buttons: [
+      ...crud({ view: true, import: true, export: true }),
+      button('Copy', '复制'),
+      button('Activate', '生效'),
+      button('Expire', '失效')
+    ]
+  },
+  {
+    menuName: 'ScmProjectQuotation',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Activate', '生效'),
+      button('Complete', '完结'),
+      button('Close', '关闭'),
+      button('GenerateContract', '生成合同'),
+      button('GeneratePlan', '生成计划')
+    ]
+  },
+  {
+    menuName: 'ScmSalesContract',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交评审'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核'),
+      button('Activate', '生效'),
+      button('Terminate', '终止'),
+      button('Archive', '归档')
+    ]
+  },
+  {
+    menuName: 'ScmSalesOrder',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核'),
+      button('Fulfill', '履约'),
+      button('Complete', '完结'),
+      button('Cancel', '取消')
+    ]
+  },
+  {
+    menuName: 'ScmShippingNotice',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Ship', '确认发货'),
+      button('Complete', '完成')
+    ]
+  },
+  {
+    menuName: 'ScmLoading',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Load', '确认装车'),
+      button('Complete', '完成')
+    ]
   }
 ]
 

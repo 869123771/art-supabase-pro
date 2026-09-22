@@ -69,6 +69,15 @@ registerHostedApplication(
   ])
 )
 registerHostedApplication(
+  'scm',
+  '../modules/art-supabase-scm/src/views',
+  import.meta.glob<HostedRouteComponentModule>([
+    '../modules/art-supabase-scm/src/views/**/*.vue',
+    '!../modules/art-supabase-scm/src/views/**/modules/**/*.vue',
+    '!../modules/art-supabase-scm/src/views/**/components/**/*.vue'
+  ])
+)
+registerHostedApplication(
   'smis',
   '../modules/art-supabase-smis/src/views',
   import.meta.glob<HostedRouteComponentModule>([

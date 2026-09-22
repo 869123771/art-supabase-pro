@@ -24,6 +24,7 @@ export const hostedApplicationSourceDirectories = {
   '@mdm': 'modules/art-supabase-mdm/src',
   '@mes': 'modules/art-supabase-mes/src',
   '@pmis': 'modules/art-supabase-pmis/src',
+  '@scm': 'modules/art-supabase-scm/src',
   '@smis': 'modules/art-supabase-smis/src',
   '@tms': 'modules/art-supabase-tms/src',
   '@vms': 'modules/art-supabase-vms/src',

@@ -12,6 +12,7 @@ export const APPLICATION_CODES = [
   'mdm',
   'mes',
   'pmis',
+  'scm',
   'smis',
   'tms',
   'vms',
@@ -82,6 +83,14 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
     defaultPath: '/pmis/inspection/inspection-sheet',
     deploymentPath: '/art-supabase-pmis/',
     developmentPort: 3020
+  },
+  scm: {
+    code: 'scm',
+    name: 'SCM供应链管理',
+    description: '销售报价、销售合同、订单与发运协同',
+    defaultPath: '/scm/sales-quotation/expense-definition',
+    deploymentPath: '/art-supabase-scm/',
+    developmentPort: 3021
   },
   smis: {
     code: 'smis',

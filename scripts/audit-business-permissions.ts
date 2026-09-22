@@ -20,7 +20,18 @@ const requiredPermissionMigrations = [
 // Local migration SQL is intentionally absent; new migrations must remain unique.
 const remoteDuplicateMigrationAllowlist = new Set<string>()
 type ManagedModule =
-  'tms' | 'vms' | 'fms' | 'hr' | 'mdm' | 'mes' | 'pmis' | 'smis' | 'wms' | 'system' | 'workflow'
+  | 'tms'
+  | 'vms'
+  | 'fms'
+  | 'hr'
+  | 'mdm'
+  | 'mes'
+  | 'pmis'
+  | 'smis'
+  | 'wms'
+  | 'scm'
+  | 'system'
+  | 'workflow'
 
 const managedViewRoots = new Map<ManagedModule, string>([
   ['tms', join(projectRoot, 'modules/art-supabase-tms/src/views')],
@@ -33,7 +44,8 @@ const managedViewRoots = new Map<ManagedModule, string>([
   ['mes', join(projectRoot, 'modules/art-supabase-mes/src/views')],
   ['pmis', join(projectRoot, 'modules/art-supabase-pmis/src/views')],
   ['smis', join(projectRoot, 'modules/art-supabase-smis/src/views')],
-  ['wms', join(projectRoot, 'modules/art-supabase-wms/src/views')]
+  ['wms', join(projectRoot, 'modules/art-supabase-wms/src/views')],
+  ['scm', join(projectRoot, 'modules/art-supabase-scm/src/views')]
 ])
 const businessModules = new Set<ManagedModule>([
   'tms',
@@ -44,16 +56,29 @@ const businessModules = new Set<ManagedModule>([
   'mes',
   'pmis',
   'smis',
-  'wms'
+  'wms',
+  'scm'
 ])
 const sourceExtensions = new Set(['.ts', '.tsx', '.vue'])
 const permissionPattern =
-  /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Pmis|Smis|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
+  /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Pmis|Smis|Scm|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
 // These files use platform-super only for cross-tenant context or for controlled AI writes.
 // Adding a file here requires an explicit security rationale; normal business maintenance is forbidden.
 const platformSuperAllowlist = new Map<string, string>([
+  [
+    'modules/art-supabase-scm/src/views/sales-document/scm-document-workspace.vue',
+    'cross-tenant document selector and tenant column'
+  ],
+  [
+    'modules/art-supabase-scm/src/views/sales-quotation/expense-definition/index.vue',
+    'cross-tenant quote expense selector and tenant column'
+  ],
+  [
+    'modules/art-supabase-scm/src/views/sales-quotation/item-category/index.vue',
+    'cross-tenant quote category selector'
+  ],
   [
     'modules/art-supabase-fms/src/views/account-set/index.vue',
     'cross-tenant account-set selector and tenant columns'

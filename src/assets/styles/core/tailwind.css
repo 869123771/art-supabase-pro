@@ -4,6 +4,7 @@
 @source '../../../../modules/art-supabase-mdm/src';
 @source '../../../../modules/art-supabase-mes/src';
 @source '../../../../modules/art-supabase-pmis/src';
+@source '../../../../modules/art-supabase-scm/src';
 @source '../../../../modules/art-supabase-smis/src';
 @source '../../../../modules/art-supabase-tms/src';
 @source '../../../../modules/art-supabase-vms/src';
