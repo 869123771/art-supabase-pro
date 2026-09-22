@@ -351,9 +351,11 @@ function listDependencyProblems(moduleRoot: string, manifest: PackageManifest): 
   const problems = listMissingDirectDependencies(moduleRoot, manifest).map(
     (dependencyName) => `缺少 ${dependencyName}`
   )
-  const duplicatedSharedDependencies = hostedModuleSharedDependencies.filter(
-    (dependencyName) => dependencyName in (manifest.dependencies ?? {})
-  )
+  const duplicatedSharedDependencies = readPlatformPackageReference(manifest)
+    ? hostedModuleSharedDependencies.filter(
+        (dependencyName) => dependencyName in (manifest.dependencies ?? {})
+      )
+    : []
   for (const dependencyName of duplicatedSharedDependencies) {
     problems.push(`公共运行时 ${dependencyName} 必须由主仓提供，请改为 peerDependencies`)
   }

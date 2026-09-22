@@ -53,6 +53,7 @@ Art Supabase Pro 不是只展示表格、表单和图表的 UI 模板。它以 *
 | [`art-supabase-scm`](https://gitee.com/wangyanghub/art-supabase-scm) | SCM供应链管理：报价、合同、订单与发运 | `3021` |
 | [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | 面向司机的 H5 / 微信小程序运输执行端 | — |
 | [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | 使用、开发、部署与运维文档站 | `5173` |
+| [`art-supabase-site`](https://gitee.com/wangyanghub/art-supabase-site) | 亿企工场独立官网与产品矩阵 | `3022` |
 
 主仓通过 Git submodule 固定各业务应用的提交，统一装载认证、租户、菜单、权限、布局、公共组件和 Supabase 客户端。业务仓保留领域页面、API、类型与规则的所有权；司机端通过受控服务端契约与 TMS 共享同一条运单履约链路。
 
@@ -313,6 +314,7 @@ art-supabase-pro/
 │  ├─ art-supabase-fms/            # FMS 财务管理应用
 │  ├─ art-supabase-hr/             # HR 人力资源应用
 │  ├─ art-supabase-scm/            # SCM 供应链管理子仓
+│  ├─ art-supabase-site/           # 亿企工场独立官网
 │  ├─ art-supabase-smis/           # SMIS 安全生产应用
 │  ├─ art-supabase-tms/            # TMS 智慧运输应用
 │  └─ art-supabase-vms/            # VMS 车辆管理应用

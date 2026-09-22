@@ -44,6 +44,7 @@ The project currently includes:
 | [`art-supabase-smis`](https://gitee.com/wangyanghub/art-supabase-smis) | Safety management and equipment governance | `3014` |
 | [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | Driver-facing H5 and WeChat Mini Program | — |
 | [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | Product, development, deployment, and operations documentation | `5173` |
+| [`art-supabase-site`](https://gitee.com/wangyanghub/art-supabase-site) | Independent official website and product ecosystem | `3022` |
 
 The main repository pins domain applications with Git submodules and supplies authentication, tenancy, navigation, permissions, layout, shared components, and the Supabase client. Domain repositories own their pages, APIs, types, and business rules. The driver app joins the same TMS execution lifecycle through controlled server contracts.
 
