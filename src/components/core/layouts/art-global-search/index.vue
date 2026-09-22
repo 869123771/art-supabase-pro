@@ -13,6 +13,7 @@
     >
       <ElInput
         v-model.trim="searchVal"
+        :readonly="navigationPending"
         :placeholder="$t('search.placeholder')"
         @input="search"
         ref="searchInput"
@@ -47,8 +48,9 @@
                 :key="getItemKey(item)"
                 type="button"
                 :disabled="navigationPending"
+                :aria-busy="isOpening(item) || undefined"
                 class="search-item"
-                :class="{ 'is-highlighted': isHighlighted(index) }"
+                :class="{ 'is-highlighted': isHighlighted(index), 'is-opening': isOpening(item) }"
                 @click="searchGoPage(item)"
                 @mouseenter="highlightOnHover(index)"
               >
@@ -56,7 +58,11 @@
                   <ArtSvgIcon icon="ri:file-list-3-line" />
                 </span>
                 <span class="search-item__label">{{ formatMenuTitle(item.meta.title) }}</span>
-                <span class="search-item__enter" aria-hidden="true">
+                <span v-if="isOpening(item)" class="search-item__progress" aria-hidden="true">
+                  <ArtSvgIcon icon="ri:loader-4-line" class="search-item__spinner" />
+                  打开中
+                </span>
+                <span v-else class="search-item__enter" aria-hidden="true">
                   <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" />
                 </span>
               </button>
@@ -74,13 +80,17 @@
                 v-for="(item, index) in historyResult"
                 :key="getItemKey(item)"
                 class="search-item search-item--history"
-                :class="{ 'is-highlighted': historyHIndex === index }"
+                :class="{
+                  'is-highlighted': historyHIndex === index,
+                  'is-opening': isOpening(item)
+                }"
                 @mouseenter="highlightOnHoverHistory(index)"
               >
                 <button
                   type="button"
                   class="search-item__main"
                   :disabled="navigationPending"
+                  :aria-busy="isOpening(item) || undefined"
                   @click="searchGoPage(item)"
                 >
                   <span class="search-item__icon" aria-hidden="true">
@@ -92,10 +102,15 @@
                   class="search-item__remove size-7.5! text-[13px]!"
                   icon="ri:close-large-fill"
                   tone="danger"
+                  :disabled="navigationPending"
                   :label="`${$t('search.deleteHistory')}：${formatMenuTitle(item.meta.title)}`"
                   @click.stop="deleteHistory(index)"
                 />
-                <span class="search-item__enter" aria-hidden="true">
+                <span v-if="isOpening(item)" class="search-item__progress" aria-hidden="true">
+                  <ArtSvgIcon icon="ri:loader-4-line" class="search-item__spinner" />
+                  打开中
+                </span>
+                <span v-else class="search-item__enter" aria-hidden="true">
                   <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" />
                 </span>
               </div>
@@ -121,10 +136,12 @@
           </div>
         </Transition>
       </ElScrollbar>
+      <span class="sr-only" role="status" aria-live="polite">
+        {{ navigationPending ? `正在打开${navigationTargetTitle}` : '' }}
+      </span>
 
       <template #footer>
         <div class="dialog-footer box-border flex-c">
-          <span v-if="navigationPending" role="status">正在打开页面…</span>
           <div class="flex-cc">
             <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" class="keyboard" />
             <span class="mr-3.5 text-xs text-g-700">{{ $t('search.selectKeydown') }}</span>
@@ -175,6 +192,8 @@
   const searchResultScrollbar = ref<ScrollbarInstance>()
   const isKeyboardNavigating = ref(false) // 新增状态：是否正在使用键盘导航
   const navigationPending = ref(false)
+  const navigationTargetKey = ref<string | null>(null)
+  const navigationTargetTitle = ref('')
 
   const getItemKey = (item: AppRouteRecord) =>
     item.path || String(item.meta.link || item.name || '')
@@ -264,6 +283,7 @@
 
   // 高亮控制并实现滚动条跟随
   const highlightPrevious = () => {
+    if (navigationPending.value) return
     isKeyboardNavigating.value = true
     if (searchVal.value) {
       if (!searchResult.value.length) return finishKeyboardNavigation()
@@ -280,6 +300,7 @@
   }
 
   const highlightNext = () => {
+    if (navigationPending.value) return
     isKeyboardNavigating.value = true
     if (searchVal.value) {
       if (!searchResult.value.length) return finishKeyboardNavigation()
@@ -361,8 +382,13 @@
     return highlightedIndex.value === index
   }
 
+  const isOpening = (item: AppRouteRecord) =>
+    navigationPending.value && navigationTargetKey.value === getItemKey(item)
+
   const searchGoPage = async (item: AppRouteRecord) => {
     if (navigationPending.value) return
+    navigationTargetKey.value = getItemKey(item)
+    navigationTargetTitle.value = formatMenuTitle(item.meta.title)
     navigationPending.value = true
     try {
       if (!(item.meta.link && !item.meta.isIframe)) {
@@ -392,6 +418,8 @@
       ElMessage.error('页面打开失败，请重试或从左侧菜单进入')
     } finally {
       navigationPending.value = false
+      navigationTargetKey.value = null
+      navigationTargetTitle.value = ''
     }
   }
 
@@ -443,13 +471,13 @@
 
   // 修改 hover 高亮逻辑，只有在非键盘导航时才生效
   const highlightOnHover = (index: number) => {
-    if (!isKeyboardNavigating.value && searchVal.value) {
+    if (!navigationPending.value && !isKeyboardNavigating.value && searchVal.value) {
       highlightedIndex.value = index
     }
   }
 
   const highlightOnHoverHistory = (index: number) => {
-    if (!isKeyboardNavigating.value && !searchVal.value) {
+    if (!navigationPending.value && !isKeyboardNavigating.value && !searchVal.value) {
       historyHIndex.value = index
     }
   }
@@ -572,7 +600,8 @@
         box-shadow: var(--art-themed-action-focus-shadow);
       }
 
-      &.is-highlighted {
+      &.is-highlighted,
+      &.is-opening {
         color: var(--theme-color) !important;
         background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color)) !important;
         border-color: var(--art-themed-action-active-border);
@@ -670,6 +699,23 @@
           transform var(--art-motion-duration-fast) var(--art-motion-ease-out);
       }
 
+      &__progress {
+        display: inline-flex;
+        flex: none;
+        gap: 6px;
+        align-items: center;
+        margin-left: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--theme-color);
+        white-space: nowrap;
+      }
+
+      &__spinner {
+        font-size: 16px;
+        animation: art-search-spinner 900ms linear infinite;
+      }
+
       &__remove {
         flex: none;
         opacity: 0.72;
@@ -748,6 +794,12 @@
     background-color: rgb(2 6 23 / 62%);
   }
 
+  @keyframes art-search-spinner {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   @media (width <= 640px) {
     .art-global-search-dialog {
       .el-dialog__body {
@@ -781,6 +833,10 @@
       .search-list-leave-active,
       .search-list-move {
         transition-duration: 0.01ms !important;
+      }
+
+      .search-item__spinner {
+        animation: none;
       }
     }
   }

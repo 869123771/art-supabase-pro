@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./center-CfShJxll.js";var i=t({name:`MdmDataDistribution`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`outbox`}))}});export{i as default};
