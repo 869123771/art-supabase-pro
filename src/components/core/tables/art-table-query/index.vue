@@ -271,7 +271,7 @@
     type VNode,
     type VNodeChild
   } from 'vue'
-  import type { TableColumnCtx, TableProps } from 'element-plus'
+  import type { ButtonProps, TableColumnCtx, TableProps } from 'element-plus'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { useEventListener, useResizeObserver } from '@vueuse/core'
   import { cloneDeep } from 'lodash-es'
@@ -375,6 +375,9 @@
   // business callbacks narrow it through the exported generic helper types below.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQueryRecord = Record<string, any>
+  type HeaderButtonProps = Omit<Partial<ButtonProps>, 'type'> & {
+    type?: '' | 'default' | 'primary' | 'success' | 'warning' | 'info' | 'danger' | 'text'
+  }
   // Page APIs own incompatible parameter models, so the non-generic SFC boundary remains broad.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQueryApiParams = any
@@ -595,7 +598,7 @@
     /** 自定义渲染组件；传入后不渲染默认按钮 */
     render?: Component
     /** 透传给 ElButton 的属性 */
-    buttonProps?: TableQueryRecord
+    buttonProps?: HeaderButtonProps
     exportColumns?: ArtTableQueryExcelColumns
     exportFilename?: string | ((ctx: ArtTableQueryHeaderActionContext) => string)
     exportSheetName?: string
@@ -1016,7 +1019,7 @@
     {
       label: string
       icon: string
-      buttonProps: TableQueryRecord
+      buttonProps: HeaderButtonProps
       selectionRequired?: boolean
       confirm?: boolean
       confirmTitle?: string

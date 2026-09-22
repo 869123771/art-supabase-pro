@@ -177,6 +177,9 @@
                   :label="item.label"
                   :value="item.value"
                 />
+                <template #empty>
+                  <ArtPickerEmpty title="没有匹配的筛选项" />
+                </template>
               </ElSelect>
             </div>
             <div
@@ -407,6 +410,7 @@
 <script setup lang="ts">
   import { dataSelectDefaults } from './defaults'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { get, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'

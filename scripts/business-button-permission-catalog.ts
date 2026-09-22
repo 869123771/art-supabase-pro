@@ -2568,6 +2568,47 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Load', '确认装车'),
       button('Complete', '完成')
     ]
+  },
+  {
+    menuName: 'ScmPurchaseContract',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核'),
+      button('Activate', '生效'),
+      button('Expire', '失效')
+    ]
+  },
+  {
+    menuName: 'ScmPurchaseRequest',
+    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+  },
+  {
+    menuName: 'ScmPurchaseOrder',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核'),
+      button('Complete', '完结'),
+      button('RecentPrice', '获取最近采购价')
+    ]
+  },
+  {
+    menuName: 'ScmReceiptNotice',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Complete', '确认收料'),
+      button('GenerateBatch', '生成批号'),
+      button('GenerateSerial', '生成序列号'),
+      button('RecentPrice', '获取最近采购价')
+    ]
   }
 ]
 

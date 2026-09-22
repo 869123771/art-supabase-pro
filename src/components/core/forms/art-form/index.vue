@@ -131,6 +131,10 @@
                     />
                   </template>
 
+                  <template v-if="hasPickerEmptySlot(item) && !getSlots(item).empty" #empty>
+                    <ArtPickerEmpty :title="getPickerEmptyTitle(item)" />
+                  </template>
+
                   <!-- 动态插槽支持 -->
                   <template
                     v-for="(slotFn, slotName) in getSlots(item)"
@@ -252,6 +256,7 @@
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
   import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
   import {
@@ -1017,6 +1022,14 @@
       }
     })
     return validSlots
+  }
+
+  const hasPickerEmptySlot = (item: FormItem): boolean =>
+    ['select', 'cascader', 'treeSelect'].includes(String(item.type))
+
+  const getPickerEmptyTitle = (item: FormItem): string => {
+    const configured = getProps(item).noDataText
+    return typeof configured === 'string' && configured.trim() ? configured : '暂无可选数据'
   }
 
   // 组件

@@ -72,6 +72,10 @@ const platformSuperAllowlist = new Map<string, string>([
     'cross-tenant document selector and tenant column'
   ],
   [
+    'modules/art-supabase-scm/src/views/purchase-document/purchase-workspace.vue',
+    'cross-tenant purchase document selector'
+  ],
+  [
     'modules/art-supabase-scm/src/views/sales-quotation/expense-definition/index.vue',
     'cross-tenant quote expense selector and tenant column'
   ],

@@ -699,6 +699,48 @@ function updateOneModule(module: ModuleDefinition, remote: boolean): void {
   }
 }
 
+function checkoutModuleMaster(module: ModuleDefinition): void {
+  const moduleRoot = resolve(projectRoot, module.path)
+  const remoteMaster = executeCommand(
+    'git',
+    ['show-ref', '--verify', '--quiet', 'refs/remotes/origin/master'],
+    moduleRoot,
+    false
+  )
+  if (remoteMaster.status !== 0) throw new Error(`${module.path} 的 origin/master 不存在。`)
+
+  const localMaster = executeCommand(
+    'git',
+    ['show-ref', '--verify', '--quiet', 'refs/heads/master'],
+    moduleRoot,
+    false
+  )
+  const currentBranch = executeCommand(
+    'git',
+    ['symbolic-ref', '--quiet', '--short', 'HEAD'],
+    moduleRoot,
+    false
+  ).output.trim()
+  if (localMaster.status === 0 && currentBranch !== 'master') {
+    const fastForward = executeCommand(
+      'git',
+      ['merge-base', '--is-ancestor', 'master', 'origin/master'],
+      moduleRoot,
+      false
+    )
+    if (fastForward.status !== 0) {
+      throw new Error(`${module.path} 的本地 master 含有未推送提交，不能自动改写分支。`)
+    }
+    runGit(['branch', '-f', 'master', 'origin/master'], moduleRoot)
+  }
+
+  if (localMaster.status === 0) runGit(['checkout', 'master'], moduleRoot)
+  else runGit(['checkout', '--track', '-b', 'master', 'origin/master'], moduleRoot)
+
+  runGit(['merge', '--ff-only', 'origin/master'], moduleRoot)
+  runGit(['branch', '--set-upstream-to=origin/master', 'master'], moduleRoot)
+}
+
 function runForEveryModule(
   modules: ModuleDefinition[],
   actionLabel: string,
@@ -723,14 +765,125 @@ function runForEveryModule(
   }
 }
 
-function pullModules(modules: ModuleDefinition[], remote = false): void {
+function pullModules(modules: ModuleDefinition[], remote = false, checkoutMaster = false): void {
   console.log(
     remote
       ? '\n[module] 更新到各子仓配置分支的最新提交。完成后请检查主仓 gitlink 变化。'
       : '\n[module] 初始化子仓并拉取主仓锁定版本。'
   )
   runGit(['submodule', 'sync', '--recursive'])
-  runForEveryModule(modules, remote ? '更新' : '拉取', (module) => updateOneModule(module, remote))
+  runForEveryModule(modules, remote ? '更新' : '拉取', (module) => {
+    updateOneModule(module, remote)
+    if (checkoutMaster) checkoutModuleMaster(module)
+  })
+}
+
+function syncIdeGitMappings(modules: ModuleDefinition[]): void {
+  const mappingPath = join(projectRoot, '.idea', 'vcs.xml')
+  if (!existsSync(mappingPath)) return
+
+  const contents = readFileSync(mappingPath, 'utf8')
+  const componentStart = contents.indexOf('<component name="VcsDirectoryMappings">')
+  const componentEnd = contents.indexOf('</component>', componentStart)
+  if (componentStart < 0 || componentEnd < 0) {
+    throw new Error('.idea/vcs.xml 缺少 VcsDirectoryMappings，无法登记新增子仓。')
+  }
+
+  const existingMappings = contents.slice(componentStart, componentEnd)
+  const missingModules = modules.filter(
+    (module) => !existingMappings.includes(`directory="$PROJECT_DIR$/${module.path}"`)
+  )
+  if (missingModules.length === 0) {
+    console.log(`[module] IDE Git 映射文件已包含全部 ${modules.length} 个子仓。`)
+    return
+  }
+  const newline = contents.includes('\r\n') ? '\r\n' : '\n'
+  const additions = missingModules
+    .map((module) => `    <mapping directory="$PROJECT_DIR$/${module.path}" vcs="Git" />${newline}`)
+    .join('')
+  const insertionIndex = contents.lastIndexOf('\n', componentEnd - 1) + 1
+  writeFileSync(
+    mappingPath,
+    `${contents.slice(0, insertionIndex)}${additions}${contents.slice(insertionIndex)}`
+  )
+  console.log(`[module] IDE Git 映射文件新增 ${missingModules.length} 个子仓。`)
+}
+
+function pullLatestRepositories(selectors: string[]): void {
+  const currentModules = readModuleDefinitions()
+  const dirtyModules = new Set<string>()
+  for (const module of currentModules) {
+    if (!isModuleInitialized(module.path)) continue
+    const moduleRoot = resolve(projectRoot, module.path)
+    const changes = executeCommand(
+      'git',
+      ['status', '--porcelain=v1', '--untracked-files=all'],
+      moduleRoot,
+      false
+    )
+    if (changes.status !== 0) throw new Error(`无法检查 ${module.path} 的工作区状态。`)
+    if (changes.output.trim()) {
+      const head = executeCommand('git', ['rev-parse', 'HEAD'], moduleRoot, false)
+      const remoteMaster = executeCommand('git', ['rev-parse', 'origin/master'], moduleRoot, false)
+      if (
+        head.status !== 0 ||
+        remoteMaster.status !== 0 ||
+        head.output.trim() !== remoteMaster.output.trim()
+      ) {
+        throw new Error(`${module.path} 存在未提交的文件变更，且当前提交不是 origin/master。`)
+      }
+      dirtyModules.add(module.path)
+      console.warn(
+        `[module] ${module.path} 有未提交文件，当前提交已是 origin/master；将保留这些文件。`
+      )
+    }
+  }
+
+  const pointerChanges = executeCommand(
+    'git',
+    ['diff', '--name-only', '--', ...currentModules.map((module) => module.path)],
+    projectRoot,
+    false
+  )
+  if (pointerChanges.status !== 0) throw new Error('无法检查主仓子仓指针状态。')
+  const changedPaths = new Set(pointerChanges.output.split(/\r?\n/).filter(Boolean))
+  const cleanChangedModules = currentModules.filter(
+    (module) => changedPaths.has(module.path) && !dirtyModules.has(module.path)
+  )
+  if (cleanChangedModules.length > 0) {
+    console.log('\n[module] 对齐无本地文件变更的子仓指针，准备快进主仓。')
+    for (const module of cleanChangedModules) {
+      runGit(['submodule', 'update', '--init', '--recursive', '--', module.path])
+    }
+  }
+  console.log('\n[module] 拉取主仓上游分支的最新提交。')
+  for (let attempt = 1; attempt <= gitRetryLimit; attempt += 1) {
+    const result = executeCommand('git', [
+      ...gitNetworkOptions,
+      'pull',
+      '--ff-only',
+      '--no-recurse-submodules'
+    ])
+    if (result.status === 0) break
+    if (attempt === gitRetryLimit || !isTransientGitFailure(result.output)) {
+      if (
+        /local changes .* would be overwritten by merge|would be overwritten by merge/i.test(
+          result.output
+        )
+      ) {
+        throw new Error(
+          '主仓与本地文件同时有改动，Git 已保留本地文件。请处理上方列出的冲突文件后重试。'
+        )
+      }
+      throw new Error('主仓拉取失败，请确认上游分支已配置且本地可以快进。')
+    }
+    console.warn(`[module] 主仓网络传输中断，自动重试 ${attempt}/${gitRetryLimit - 1}。`)
+  }
+
+  const modules = selectModules(readModuleDefinitions(), selectors)
+  pullModules(modules, true, true)
+  syncIdeGitMappings(readModuleDefinitions())
+  console.log('\n[module] 主仓和子仓已更新；子仓新提交会显示为主仓 gitlink 变化。')
 }
 
 function initializeMissingModules(modules: ModuleDefinition[]): void {
@@ -842,7 +995,7 @@ function printUsage(): void {
   console.log(`
 统一子仓管理命令（每条命令默认作用于 .gitmodules 中的全部子仓）：
   pnpm modules:status   查看全部子仓状态
-  pnpm modules:pull     初始化并拉取主仓锁定版本；网络失败自动重试
+  pnpm modules:pull     快进主仓，发现新增子仓，拉取最新提交并切到各子仓 master
   pnpm modules:update   更新到各子仓远端配置分支的最新提交
   pnpm modules:install  自动初始化并按各仓 lockfile 安装依赖
   pnpm modules:check    自动初始化并执行全部子仓质量门禁
@@ -882,11 +1035,11 @@ function main(): void {
     const selectors = process.argv
       .slice(3)
       .filter((argument) => argument !== '--' && argument !== '--workspace-platform')
-    const modules = selectModules(allModules, selectors)
+    const modules = action === 'pull' ? [] : selectModules(allModules, selectors)
 
     switch (action) {
       case 'pull':
-        pullModules(modules)
+        pullLatestRepositories(selectors)
         break
       case 'update':
         pullModules(modules, true)

@@ -14,7 +14,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
-import { createBuildLogPolicy } from './scripts/build-log-policy'
+import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
 import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
 import {

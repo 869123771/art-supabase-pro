@@ -40,12 +40,16 @@
         :label="option.label"
         :value="option.value"
       />
+      <template #empty>
+        <ArtPickerEmpty title="暂无可选设置" />
+      </template>
     </ElSelect>
   </div>
 </template>
 
 <script setup lang="ts">
   import type { ComputedRef } from 'vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
 
   type SettingValue = string | number | boolean | null | undefined
   type SettingOptionValue = string | number | boolean

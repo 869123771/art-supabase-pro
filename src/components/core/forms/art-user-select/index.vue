@@ -41,11 +41,15 @@
         </span>
       </div>
     </ElOption>
+    <template #empty>
+      <ArtPickerEmpty :title="searchKeyword ? noMatchText : noDataText" />
+    </template>
   </ElSelect>
 </template>
 
 <script setup lang="ts">
   import { computed, ref, type CSSProperties } from 'vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import type { ArtUserSelectOption, ArtUserSelectValue } from './types'
 
   defineOptions({ name: 'ArtUserSelect', inheritAttrs: false })

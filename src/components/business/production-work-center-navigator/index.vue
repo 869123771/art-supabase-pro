@@ -48,6 +48,9 @@
             <small>{{ workshop.path }}</small>
           </div>
         </ElOption>
+        <template #empty>
+          <ArtPickerEmpty title="没有匹配的车间或产线" />
+        </template>
       </ElSelect>
     </div>
 
@@ -126,6 +129,7 @@
 
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'

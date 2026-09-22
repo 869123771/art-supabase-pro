@@ -1,0 +1,1 @@
+import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./domain-command-screen-CzV6N-BN.js";var i=t({name:`WorkflowEfficiencyCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`workflow-efficiency`}))}});export{i as default};

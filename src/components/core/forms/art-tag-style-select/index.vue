@@ -20,11 +20,15 @@
         </ElTag>
       </div>
     </ElOption>
+    <template #empty>
+      <ArtPickerEmpty title="暂无可选标签样式" />
+    </template>
   </ElSelect>
 </template>
 
 <script setup lang="ts">
   import { ElOption, ElSelect, ElTag } from 'element-plus'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
 
   defineOptions({ name: 'ArtTagStyleSelect' })
 

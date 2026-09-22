@@ -19,7 +19,11 @@
             :disabled="disabled"
             :loading="regionLoading"
             @change="handleRegionChange"
-          />
+          >
+            <template #empty>
+              <ArtPickerEmpty title="暂无可选地区" />
+            </template>
+          </ElCascader>
         </ElFormItem>
       </ElCol>
 
@@ -181,6 +185,7 @@
   import { ElMessage } from 'element-plus'
   import { isNil, trim } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
   import ArtAddressMap from './modules/map.vue'

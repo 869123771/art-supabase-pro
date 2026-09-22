@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   createBuildLogPolicy,
   getKnownFileViewerExternalization
-} from '../../scripts/build-log-policy'
+} from '../../scripts/build-log-policy.mjs'
 
 test('build log policy recognizes known lazy file-viewer transitive warnings', () => {
   const warning = getKnownFileViewerExternalization({

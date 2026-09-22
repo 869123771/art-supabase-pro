@@ -230,6 +230,8 @@
 | `iconPicker` | `ArtIconPicker` | 无 |
 | `divider` | 内置分区标题 | 使用 `label` 作为标题，建议 `span: 24` |
 
+`select`、`cascader` 和 `treeSelect` 在没有可选项或搜索无匹配项时，默认显示统一的插画空状态。可通过 `props.noDataText` 指定业务提示；需要特殊内容时，用字段的 `slots.empty` 覆盖默认空状态。主仓与子仓复用同一个 `ArtForm`，无需在业务页面重复实现。
+
 字段组件的 Element Plus Props 和事件写在 `item.props` 中：
 
 ```ts
