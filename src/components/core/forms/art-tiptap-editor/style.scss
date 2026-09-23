@@ -399,15 +399,9 @@ $editor-radius: 10px;
   gap: 11px;
   align-items: center;
   min-height: 72px;
-  padding: 14px;
+  padding: 8px;
   color: var(--tt-text-muted);
   cursor: pointer;
-  background: color-mix(in srgb, var(--tt-surface) 60%, var(--tt-bg));
-  border: 1px dashed var(--tt-border-strong);
-  border-radius: 10px;
-  transition:
-    border-color 120ms ease,
-    background-color 120ms ease;
 
   > span:last-child {
     display: grid;
@@ -425,11 +419,6 @@ $editor-radius: 10px;
     line-height: 18px;
   }
 
-  &:hover {
-    background: var(--tt-brand-soft);
-    border-color: var(--tt-brand);
-  }
-
   &.is-loading {
     cursor: wait;
 
@@ -443,6 +432,17 @@ $editor-radius: 10px;
 .art-tiptap-editor__media-panel .el-upload {
   display: block;
   width: 100%;
+}
+
+.art-tiptap-editor__media-panel .art-upload-file__controls {
+  display: flex;
+  width: 100%;
+}
+
+.art-tiptap-editor__media-panel .art-upload-file__controls > .el-upload,
+.art-tiptap-editor__media-panel .art-upload-file__controls > .art-upload-file__trigger {
+  flex: 1;
+  min-width: 0;
 }
 
 .art-tiptap-editor__media-upload-icon {

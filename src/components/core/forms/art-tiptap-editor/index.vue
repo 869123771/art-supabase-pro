@@ -587,7 +587,6 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-  import type { UploadFile } from 'element-plus'
   import { useFullscreen } from '@vueuse/core'
   import { uploadAttachment } from '@/api/common'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
@@ -610,7 +609,8 @@
   import ToolbarButton from './art-tiptap-toolbar-button.vue'
   import type { ArtTiptapEditorFeature, ArtTiptapEditorProps, ArtTiptapMediaKind } from './types'
   import { ArtAudio, ArtFileAttachment, ArtVideo } from './media-extensions'
-  import { isAcceptedFileType, normalizeEditorUrl } from './utils'
+  import { isAcceptedFileType } from '@/utils/file/accept'
+  import { normalizeEditorUrl } from './utils'
 
   defineOptions({ name: 'ArtTiptapEditor' })
 
@@ -1027,29 +1027,29 @@
   const insertUploadedMedia = (
     kind: keyof typeof mediaConfig,
     resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
+    fileName: string
   ) => {
-    const normalized = getUploadedResource(resource, file.name)
+    const normalized = getUploadedResource(resource, fileName)
     if (!normalized) return
     runCommand(() => insertMediaNode(kind, normalized))
   }
 
   const insertUploadedImage = (
     resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
-  ) => insertUploadedMedia('image', resource, file)
+    fileName: string
+  ) => insertUploadedMedia('image', resource, fileName)
   const insertUploadedVideo = (
     resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
-  ) => insertUploadedMedia('video', resource, file)
+    fileName: string
+  ) => insertUploadedMedia('video', resource, fileName)
   const insertUploadedAudio = (
     resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
-  ) => insertUploadedMedia('audio', resource, file)
+    fileName: string
+  ) => insertUploadedMedia('audio', resource, fileName)
   const insertUploadedFile = (
     resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
-  ) => insertUploadedMedia('file', resource, file)
+    fileName: string
+  ) => insertUploadedMedia('file', resource, fileName)
 
   const insertMediaUrl = (
     kind: keyof typeof mediaConfig,

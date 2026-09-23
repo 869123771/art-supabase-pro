@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./analysis-workspace-pX5ag8A8.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`preventive`}))}});export{i as default};

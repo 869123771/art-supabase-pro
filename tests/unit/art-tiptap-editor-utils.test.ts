@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {
-  isAcceptedFileType,
-  normalizeEditorUrl
-} from '../../src/components/core/forms/art-tiptap-editor/utils'
+import { isAcceptedFileType } from '../../src/utils/file/accept'
+import { normalizeEditorUrl } from '../../src/components/core/forms/art-tiptap-editor/utils'
 
 test('normalizeEditorUrl normalizes safe links and rejects unsafe protocols', () => {
   assert.equal(

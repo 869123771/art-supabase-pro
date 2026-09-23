@@ -13,8 +13,11 @@
 ```
 
 - 普通文件、文档和压缩包使用本组件。
+- 默认显示资源管理器切换复选框，使用 Element Plus 复选框。默认上传本地文件；勾选后，同一入口改为打开资源管理器，悬停复选框可查看说明。特殊场景可传 `:show-resource-picker="false"`。单文件选择会替换当前附件；多文件选择会追加并按 `limit` 去重。资源选择同样校验 `accept`。
+- 组件统一绘制附件区虚线外框，外框 hover 高亮默认开启；传 `:hover-effect="false"` 可关闭悬停高亮。业务页面不需要再包一层上传外框。
+- 跨租户表单可传 `resource-tenant-id`，只允许关联目标租户的资源。单文件表单可传 `file-name` 显示业务文件名，避免将存储对象的哈希名展示给用户。
 - 图片预览上传使用 `ArtUploadImage`。
 - 结构化 Excel 导入使用 `ArtExcelImport`。
-- 仅需要上传事件时可关闭 `show-file-list`，监听 `upload-success` 获取资源信息。
+- 仅需要资源事件时可关闭 `show-file-list`，监听 `resource-change` 获取本地上传或资源管理器选择的资源信息；`upload-success` 仅在本地上传成功时触发。
 - 附件名称点击后统一进入公共文件预览页；附件行右侧提供下载、查看和删除操作。
 - `readonly` 模式不显示上传触发器和删除操作，仅保留附件名称、下载与查看。

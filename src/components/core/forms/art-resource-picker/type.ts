@@ -2,6 +2,7 @@ import type { DialogEmits } from 'element-plus'
 
 export interface Resource {
   id?: number
+  tenantId?: string
   storageMode?: number
   originName?: string
   objectName?: string

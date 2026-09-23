@@ -39,7 +39,7 @@
         :disabled="disabled"
         :show-file-list="false"
         :show-tip="false"
-        @upload-success="handleUploadSuccess"
+        @resource-change="handleResourceChange"
       >
         <template #trigger="{ uploading }">
           <span
@@ -85,7 +85,6 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-  import type { UploadFile } from 'element-plus'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
   import ToolbarButton from './art-tiptap-toolbar-button.vue'
   import type { ArtTiptapMediaKind } from './types'
@@ -111,7 +110,7 @@
   )
 
   const emit = defineEmits<{
-    upload: [resource: Api.DataCenter.Resources.ResourceListItem, file: UploadFile]
+    upload: [resource: Api.DataCenter.Resources.ResourceListItem, fileName: string]
     url: [value: { url: string; name?: string }]
     visibilityChange: [visible: boolean]
   }>()
@@ -157,11 +156,10 @@
     return `单个文件不超过 ${size} MB`
   })
 
-  const handleUploadSuccess = (
-    resource: Api.DataCenter.Resources.ResourceListItem,
-    file: UploadFile
-  ) => {
-    emit('upload', resource, file)
+  const handleResourceChange = (resources: Api.DataCenter.Resources.ResourceListItem[]) => {
+    const resource = resources[0]
+    if (!resource) return
+    emit('upload', resource, resource.originName || resource.objectName || '附件')
     visible.value = false
   }
 
