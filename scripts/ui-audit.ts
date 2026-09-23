@@ -133,6 +133,12 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
     })
   }
 
+  if (relativeFile.startsWith('modules/art-supabase-scm/src/')) {
+    for (const match of content.matchAll(/\bElTable(?:Column)?\b|<\/?el-table(?:-column)?\b/g)) {
+      if (match.index != null) addFinding(match.index, 'consistency/scm-use-art-table')
+    }
+  }
+
   if (
     path.extname(file) === '.vue' &&
     relativeFile !== 'src/components/core/feedback/art-tooltip/index.vue'

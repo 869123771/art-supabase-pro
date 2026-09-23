@@ -1,0 +1,1 @@
+import{Mt as e,ln as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./_plugin-vue_export-helper-BDNMzG2s.js";var i={},a={class:`pmis-detail-drawer-sections`};function o(r,i){return n(),e(`div`,a,[t(r.$slots,`default`,{},void 0,!0)])}var s=r(i,[[`render`,o],[`__scopeId`,`data-v-ae673243`]]);export{s as t};

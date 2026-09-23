@@ -6,6 +6,7 @@
       :data="tableData"
       :columns="tableColumns"
       :cell-class-name="cellClassName"
+      :show-table-header="false"
       border
       class="h-full"
       @cell-click="handleCellClick"

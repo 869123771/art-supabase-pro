@@ -58,7 +58,116 @@ export interface SqlErrorLocation {
   endColumn: number
 }
 
+export interface SqlCompletionContext {
+  statement: string
+  kind: 'start' | 'table' | 'qualified' | 'column' | 'general' | 'none'
+  qualifier?: string
+  isJoin?: boolean
+}
+
 const SYSTEM_SCHEMAS = new Set(['pg_catalog', 'information_schema', 'pg_toast'])
+const SQL_CLAUSE_WORDS = new Set([
+  'as',
+  'on',
+  'where',
+  'join',
+  'left',
+  'right',
+  'full',
+  'inner',
+  'outer',
+  'cross',
+  'natural',
+  'group',
+  'order',
+  'having',
+  'limit',
+  'offset',
+  'union',
+  'returning',
+  'set',
+  'values',
+  'using',
+  'for',
+  'window',
+  'fetch'
+])
+
+// Mask comments and literals while preserving offsets. Semicolons inside them do not split statements.
+function maskSql(sql: string) {
+  let masked = ''
+  let state: 'code' | 'single' | 'double' | 'line' | 'block' = 'code'
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index]
+    const next = sql[index + 1]
+
+    if (state === 'code') {
+      if (char === "'") state = 'single'
+      else if (char === '"') state = 'double'
+      else if (char === '-' && next === '-') state = 'line'
+      else if (char === '/' && next === '*') state = 'block'
+      else {
+        masked += char
+        continue
+      }
+    } else if (state === 'single' && char === "'" && next === "'") {
+      masked += '  '
+      index += 1
+      continue
+    } else if (state === 'single' && char === "'") state = 'code'
+    else if (state === 'double' && char === '"' && next === '"') {
+      masked += '  '
+      index += 1
+      continue
+    } else if (state === 'double' && char === '"') state = 'code'
+    else if (state === 'line' && char === '\n') state = 'code'
+    else if (state === 'block' && char === '*' && next === '/') {
+      masked += '  '
+      index += 1
+      state = 'code'
+      continue
+    }
+
+    masked += char === '\n' ? '\n' : ' '
+  }
+
+  return { masked, state }
+}
+
+export function getSqlCompletionContext(sql: string, cursorOffset: number): SqlCompletionContext {
+  const offset = Math.max(0, Math.min(cursorOffset, sql.length))
+  const before = maskSql(sql.slice(0, offset))
+  if (before.state !== 'code') return { statement: '', kind: 'none' }
+
+  const masked = maskSql(sql).masked
+  const start = before.masked.lastIndexOf(';') + 1
+  const nextDelimiter = masked.indexOf(';', offset)
+  const end = nextDelimiter === -1 ? sql.length : nextDelimiter
+  const statement = sql.slice(start, end)
+  const prefix = before.masked.slice(start)
+
+  if (!prefix.trim()) return { statement, kind: 'start' }
+
+  const tableMatch = prefix.match(/\b(FROM|JOIN|UPDATE|INTO)\s+(?:([a-zA-Z_][\w]*)\.)?([\w]*)$/i)
+  if (tableMatch) {
+    return {
+      statement,
+      kind: 'table',
+      qualifier: tableMatch[2],
+      isJoin: tableMatch[1].toUpperCase() === 'JOIN'
+    }
+  }
+
+  const qualifiedMatch = prefix.match(/\b([a-zA-Z_][\w]*)\.([\w]*)$/)
+  if (qualifiedMatch) return { statement, kind: 'qualified', qualifier: qualifiedMatch[1] }
+
+  if (/\b(SELECT|WHERE|ON|HAVING|GROUP\s+BY|ORDER\s+BY|SET|RETURNING)\b[\s\S]*$/i.test(prefix)) {
+    return { statement, kind: 'column' }
+  }
+
+  return { statement, kind: 'general' }
+}
 
 export function getTableKey(schema: string, table: string) {
   return `${schema}.${table}`.toLowerCase()
@@ -90,7 +199,9 @@ export function extractSqlAliases(sql: string): SqlAliasRef[] {
   while ((match = aliasPattern.exec(sql)) !== null) {
     const schema = match[3] || 'public'
     const tableName = match[4]
-    const alias = match[5] || tableName
+    const candidate = match[5]
+    const alias =
+      candidate && !SQL_CLAUSE_WORDS.has(candidate.toLowerCase()) ? candidate : tableName
 
     aliases.set(alias.toLowerCase(), {
       alias,

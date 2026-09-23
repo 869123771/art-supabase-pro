@@ -397,11 +397,11 @@
         </template>
         <div>
           <div class="mt-4">
-            <ElTable :data="comparisonData" border>
+            <ArtTable :pagination="false" :show-table-header="false" :data="comparisonData" border>
               <ElTableColumn prop="feature" label="功能特性" width="150" />
               <ElTableColumn prop="frontend" label="前端模式" />
               <ElTableColumn prop="backend" label="后端模式" />
-            </ElTable>
+            </ArtTable>
           </div>
         </div>
       </ElCard>
@@ -410,6 +410,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
   import { computed, ref } from 'vue'
   import { ArrowDown, Lock } from '@element-plus/icons-vue'
   import { useAuth } from '@/hooks/core/useAuth'

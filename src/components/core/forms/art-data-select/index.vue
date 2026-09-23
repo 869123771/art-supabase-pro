@@ -202,10 +202,12 @@
                   @retry="loadData"
                 />
               </ElScrollbar>
-              <ElTable
+              <ArtTable
                 v-else-if="mode === 'table'"
                 ref="tableRef"
                 :data="tableRows"
+                :pagination="false"
+                :show-table-header="false"
                 :row-key="getTableRowKey"
                 height="100%"
                 :empty-text="emptyText"
@@ -285,7 +287,7 @@
                     </template>
                   </template>
                 </ElTableColumn>
-              </ElTable>
+              </ArtTable>
 
               <ArtEmptyState
                 v-else-if="!loading && !tableRows.length && (emptyDescription || $slots.empty)"
@@ -414,11 +416,12 @@
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { get, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
-  import type { ComponentPublicInstance } from 'vue'
   import type { ElTree } from 'element-plus'
   import { ArrowDown, CircleClose, Search } from '@element-plus/icons-vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import type { ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
   import type { ArtDialogExpose, ArtDialogSize } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
@@ -437,12 +440,6 @@
 
   defineOptions({ name: 'ArtDataSelect' })
 
-  type DataSelectTableInstance = ComponentPublicInstance & {
-    clearSelection: () => void
-    toggleRowSelection: (row: DataSelectRecord, selected?: boolean) => void
-    setCurrentRow: (row?: DataSelectRecord | null) => void
-  }
-
   const props = withDefaults(defineProps<ArtDataSelectProps>(), {
     ...dataSelectDefaults,
     mode: 'table',
@@ -454,7 +451,7 @@
   const emit = defineEmits<ArtDataSelectEmits>()
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
 
-  const tableRef = ref<DataSelectTableInstance>()
+  const tableRef = ref<ArtTableExpose>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const navigationTreeRef = ref<InstanceType<typeof ElTree>>()
   const dialogRef = ref<ArtDialogExpose<void>>()
@@ -675,17 +672,17 @@
     syncingSelection.value = true
     try {
       if (props.mode === 'table') {
-        tableRef.value?.clearSelection?.()
+        tableRef.value?.elTableRef?.clearSelection()
         if (props.multiple) {
           tableRows.value.forEach((row) => {
             if (draftKeys.value.includes(getRowKey(row))) {
-              tableRef.value?.toggleRowSelection?.(row, true)
+              tableRef.value?.elTableRef?.toggleRowSelection(row, true)
             }
           })
         } else if (draftRows.value[0]) {
-          tableRef.value?.setCurrentRow?.(draftRows.value[0])
+          tableRef.value?.elTableRef?.setCurrentRow(draftRows.value[0])
         } else {
-          tableRef.value?.setCurrentRow?.(null as never)
+          tableRef.value?.elTableRef?.setCurrentRow(null)
         }
         await nextTick()
         return

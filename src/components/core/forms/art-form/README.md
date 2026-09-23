@@ -81,6 +81,7 @@
 | `showSubmit` | `boolean` | `true` | 是否显示提交按钮 |
 | `disabledSubmit` | `boolean` | `false` | 是否禁用提交按钮 |
 | `rootClass` | `string` | `''` | 根节点附加 class |
+| `formClass` | `string` | `''` | 内部 `ElForm` 附加 class，适用于自定义布局 |
 | `customLayout` | `boolean` | `false` | 使用默认插槽接管复杂表单布局，仍复用 ArtForm 的校验和 Ref API |
 | `resetText` | `string` | i18n 默认值 | 重置按钮文字 |
 | `submitText` | `string` | i18n 默认值 | 提交按钮文字 |
@@ -165,6 +166,7 @@
 | --- | --- | --- |
 | `ref` | `Ref<FormInstance \| undefined>` | 底层 `ElForm` 实例 |
 | `validate(...args)` | `FormInstance['validate']` | 执行校验 |
+| `validateField(...args)` | `FormInstance['validateField']` | 校验指定字段 |
 | `clearValidate(...args)` | `FormInstance['clearValidate']` | 清除校验状态 |
 | `scrollToField(...args)` | `FormInstance['scrollToField']` | 滚动定位到指定字段，适用于长表单或跨页签校验 |
 | `reset()` | `() => void` | 执行组件重置逻辑并触发 `reset` |
@@ -172,7 +174,7 @@
 | `reloadOptions(key?)` | `(key?: string) => Promise<unknown>` | 重新加载指定字段或全部异步选项 |
 | `getOutput()` | `() => Record<string, any>` | 获取按 `sanitizeOutput` 清洗后的表单输出 |
 
-底层 `ElForm` 的其他方法可通过 `formRef.value?.ref.value` 访问，例如 `validateField`、`resetFields`、`scrollToField`、`fields`。
+底层 `ElForm` 的其他方法可通过 `formRef.value?.ref.value` 访问，例如 `resetFields`、`fields`。
 
 ## FormItem
 
@@ -210,6 +212,7 @@
 | type | 底层组件 | 选项写法 |
 | --- | --- | --- |
 | `input` | `ElInput` | 无 |
+| `autocomplete` | `ElAutocomplete` | 通过 `props.fetchSuggestions` 提供建议 |
 | `textarea` | `ElInput type="textarea"` | 默认 4 行高、`maxlength: 300`、显示字数统计并允许纵向拉伸 |
 | `inputTag` | `ElInputTag` | 无 |
 | `number` | `ElInputNumber` | 无 |
@@ -217,7 +220,9 @@
 | `tagStyleSelect` | `ArtTagStyleSelect` | `props.options` / `options` / `api`；选项右侧显示 Tag 预览 |
 | `segment` | `ElSegmented` | `props.options` / `options` / `api`；默认保持紧凑宽度，需要铺满时显式传入 `props.block` |
 | `switch` | `ElSwitch` | 无 |
+| `colorPicker` | `ElColorPicker` | 无 |
 | `checkbox` | `ElCheckbox` | 无 |
+| `radio` | `ElRadio` | 无 |
 | `checkboxGroup` | `ElCheckboxGroup` + `ElCheckbox` / `ElCheckboxButton` | `props.options` / `options` / `api`；`props.optionType='button'` 使用按钮样式 |
 | `radioGroup` | `ElRadioGroup` + `ElRadio` / `ElRadioButton` | `props.options` / `options` / `api`；`props.optionType='button'` 使用按钮样式 |
 | `date` | `ElDatePicker` | 无 |
@@ -228,6 +233,8 @@
 | `timeSelect` | `ElTimeSelect` | 无 |
 | `treeSelect` | `ElTreeSelect` | `props.data` / `options` / `api` |
 | `iconPicker` | `ArtIconPicker` | 无 |
+| `uploadFile` | `ArtUploadFile` | 通过 `props` 设置文件类型、数量和提示 |
+| `uploadImage` | `ArtUploadImage` | 通过 `props` 设置图片类型、数量和尺寸 |
 | `divider` | 内置分区标题 | 使用 `label` 作为标题，建议 `span: 24` |
 
 `select`、`cascader` 和 `treeSelect` 在没有可选项或搜索无匹配项时，默认显示统一的插画空状态。可通过 `props.noDataText` 指定业务提示；需要特殊内容时，用字段的 `slots.empty` 覆盖默认空状态。主仓与子仓复用同一个 `ArtForm`，无需在业务页面重复实现。
@@ -339,5 +346,6 @@ const items: FormItem[] = [
 - 标准栅格布局会在 `ArtForm` 根节点约束横向溢出，用于吸收 `ElRow gutter` 产生的负 margin，避免放入 `ArtDialog`、`ArtDrawer` 或其他滚动容器后出现无意义的横向滚动条。`customLayout` 模式不应用该约束，自定义内容需要自行管理横向滚动区域。
 - 父组件可使用 `ref` 或 `reactive` 承接 `v-model`；组件会在现有表单对象上更新当前字段，避免无关的复杂控件因引用变化而重建。
 - 普通字段优先用 `items` 描述；复杂字段用同名插槽。
+- 已有复杂布局可使用 `custom-layout` 和默认插槽复用表单校验；此模式下 `items` 可省略，原有表单样式类通过 `form-class` 传给内部 `ElForm`。
 - 业务弹窗中配合 `ArtDialog` 使用时，通常设置 `show-reset=false`、`show-submit=false`，把提交交给弹窗 Footer。
 - Element Plus 字段组件的所有 Props 和事件都写到 `item.props`，例如 `maxlength`、`showWordLimit`、`onChange`。

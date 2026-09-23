@@ -53,7 +53,14 @@
             </div>
           </template>
 
-          <ElForm :model="connectForm" label-position="top" class="max-w-md">
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
+            v-model="connectForm"
+            label-position="top"
+            form-class="max-w-md"
+          >
             <ElFormItem label="服务器地址">
               <ElInput v-model="connectForm.url" placeholder="ws://localhost:8080/ws" clearable />
             </ElFormItem>
@@ -79,7 +86,7 @@
                 <ElButton @click="handleReconnect" :disabled="isConnecting">重连</ElButton>
               </ElSpace>
             </ElFormItem>
-          </ElForm>
+          </ArtForm>
         </ElCard>
       </ElCol>
 
@@ -89,7 +96,14 @@
             <span class="text-base font-bold">发送消息</span>
           </template>
 
-          <ElForm :model="messageForm" label-position="top" @submit.prevent="handleSendMessage">
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
+            v-model="messageForm"
+            label-position="top"
+            @submit="handleSendMessage"
+          >
             <ElFormItem label="消息类型">
               <ElSelect v-model="messageForm.type" class="w-full">
                 <ElOption label="文本消息" value="text" />
@@ -117,7 +131,7 @@
                 <ElButton @click="clearMessageForm">清空</ElButton>
               </ElSpace>
             </ElFormItem>
-          </ElForm>
+          </ArtForm>
         </ElCard>
       </ElCol>
     </ElRow>
@@ -192,6 +206,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import WebSocketClient from '@/utils/socket'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'

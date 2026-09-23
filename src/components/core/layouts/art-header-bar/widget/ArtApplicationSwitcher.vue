@@ -43,6 +43,7 @@
     type AccessibleApplication
   } from '@/api/system-manage/application-access'
   import {
+    APPLICATION_PROFILES,
     currentApplication,
     resolveApplicationBaseUrl,
     type ApplicationCode
@@ -63,13 +64,16 @@
   const applications = ref<AccessibleApplication[]>([])
   const documentationEntry: SwitcherEntry = {
     code: 'docs',
-    name: 'Art Supabase DOC',
+    name: 'DOC官方文档',
     description: '官方文档、使用指南与技术支持',
     baseUrl: WEB_LINKS.DOCS
   }
   const switcherEntries = computed<SwitcherEntry[]>(() => [
     ...(applications.value.length
-      ? applications.value
+      ? applications.value.map((application) => ({
+          ...application,
+          name: APPLICATION_PROFILES[application.code].name
+        }))
       : [
           {
             code: currentApplication.code,

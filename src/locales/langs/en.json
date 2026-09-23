@@ -176,13 +176,15 @@
     }
   },
   "forgetPassword": {
+    "eyebrow": "ACCOUNT RECOVERY",
     "title": "Forgot password?",
-    "subTitle": "Enter your email to reset your password",
+    "subTitle": "Enter your account email and we'll send you a password reset link",
     "placeholder": "Please enter your email",
-    "submitBtnText": "Submit",
-    "backBtnText": "Back"
+    "submitBtnText": "Send reset email",
+    "backBtnText": "Back to login"
   },
   "resetPassword": {
+    "eyebrow": "ACCOUNT SECURITY",
     "title": "Reset password",
     "subTitle": "Enter and confirm your new password to complete the reset",
     "submitBtnText": "Reset password",

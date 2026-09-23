@@ -31,7 +31,7 @@
             :class="{
               'menu-item-active text-theme': item.isActive
             }"
-            @click="handleMenuJump(item, true)"
+            @click="startMenuJump(item, true)"
           >
             <ArtSvgIcon
               :icon="item.meta.icon"
@@ -70,7 +70,7 @@
   import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
   import { useThrottleFn } from '@vueuse/core'
   import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump } from '@/utils/navigation'
+  import { startMenuJump } from '@/utils/navigation'
   import type { AppRouteRecord } from '@/types/router'
 
   defineOptions({ name: 'ArtMixedMenu' })

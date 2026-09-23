@@ -1,61 +1,84 @@
 <template>
-  <div class="flex w-full h-screen">
+  <div class="auth-page auth-recovery-page">
     <LoginLeftView />
 
-    <div class="relative flex-1">
+    <div class="auth-page__panel">
       <AuthTopBar />
 
       <div class="auth-right-wrap">
         <div class="form">
+          <div class="form__eyebrow">
+            <span><ArtSvgIcon icon="ri:shield-keyhole-line" /></span>
+            {{ $t('resetPassword.eyebrow') }}
+          </div>
           <h3 class="title">{{ $t('resetPassword.title') }}</h3>
           <p class="sub-title">{{ $t('resetPassword.subTitle') }}</p>
-          <div class="mt-5">
-            <ElForm ref="formRef" :model="form" :rules="rules">
-              <ElFormItem prop="password">
-                <ElInput
-                  class="custom-height"
-                  v-model.trim="form.password"
-                  name="password"
-                  :placeholder="$t('register.placeholder.password')"
-                  type="password"
-                  autocomplete="new-password"
-                  :aria-label="$t('register.placeholder.password')"
-                  show-password
-                />
-              </ElFormItem>
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
+            form-class="mt-7.5"
+            ref="formRef"
+            v-model="form"
+            :rules="rules"
+          >
+            <ElFormItem prop="password">
+              <ElInput
+                class="custom-height"
+                v-model.trim="form.password"
+                name="password"
+                :placeholder="$t('register.placeholder.password')"
+                type="password"
+                autocomplete="new-password"
+                :aria-label="$t('register.placeholder.password')"
+                show-password
+              >
+                <template #prefix><ArtSvgIcon icon="ri:lock-2-line" /></template>
+              </ElInput>
+            </ElFormItem>
 
-              <ElFormItem prop="confirmPassword">
-                <ElInput
-                  class="custom-height"
-                  v-model.trim="form.confirmPassword"
-                  name="confirmPassword"
-                  :placeholder="$t('register.placeholder.confirmPassword')"
-                  type="password"
-                  autocomplete="new-password"
-                  :aria-label="$t('register.placeholder.confirmPassword')"
-                  @keyup.enter="handleSubmit"
-                  show-password
-                />
-              </ElFormItem>
-            </ElForm>
-          </div>
-
-          <div class="mt-[15px]">
+            <ElFormItem prop="confirmPassword">
+              <ElInput
+                class="custom-height"
+                v-model.trim="form.confirmPassword"
+                name="confirmPassword"
+                :placeholder="$t('register.placeholder.confirmPassword')"
+                type="password"
+                autocomplete="new-password"
+                :aria-label="$t('register.placeholder.confirmPassword')"
+                @keyup.enter="handleSubmit"
+                show-password
+              >
+                <template #prefix><ArtSvgIcon icon="ri:shield-keyhole-line" /></template>
+              </ElInput>
+            </ElFormItem>
             <ElButton
-              class="w-full custom-height"
+              class="mt-5 w-full custom-height"
               type="primary"
               @click="handleSubmit"
               :loading="loading"
               v-ripple
             >
-              {{ $t('resetPassword.submitBtnText') }}
+              <span>{{ $t('resetPassword.submitBtnText') }}</span>
+              <ArtSvgIcon icon="ri:arrow-right-line" />
             </ElButton>
-          </div>
 
-          <div class="mt-[15px]">
-            <ElButton class="w-full custom-height" plain @click="toLogin">
+            <RouterLink
+              class="auth-page__support-link mt-5 text-sm text-theme"
+              :to="{ name: 'Login' }"
+            >
+              <ArtSvgIcon icon="ri:arrow-left-line" />
               {{ $t('resetPassword.backBtnText') }}
-            </ElButton>
+            </RouterLink>
+          </ArtForm>
+
+          <div class="form__trust">
+            <span>
+              <ArtSvgIcon icon="ri:lock-line" />
+              {{ $t('register.trust.tls') }}
+            </span>
+            <i aria-hidden="true" />
+            <span>{{ $t('register.trust.isolation') }}</span>
           </div>
         </div>
       </div>
@@ -64,7 +87,8 @@
 </template>
 
 <script setup lang="ts">
-  import type { FormInstance, FormRules } from 'element-plus'
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
+  import type { FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import { resetPassword } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
@@ -84,7 +108,7 @@
 
   const loading = ref(false)
 
-  const formRef = ref<FormInstance>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
 
   const form = ref({
     password: '',
@@ -156,7 +180,7 @@
   }
 
   const handleSubmit = async () => {
-    await formRef.value?.validate()
+    if (loading.value || !(await formRef.value?.validate()?.catch(() => false))) return
     try {
       loading.value = true
       if (route.query.auth_action !== 'recovery') {

@@ -1,48 +1,71 @@
 <template>
-  <div class="flex w-full h-screen">
+  <div class="auth-page auth-recovery-page">
     <LoginLeftView />
 
-    <div class="relative flex-1">
+    <div class="auth-page__panel">
       <AuthTopBar />
 
       <div class="auth-right-wrap">
         <div class="form">
+          <div class="form__eyebrow">
+            <span><ArtSvgIcon icon="ri:mail-send-line" /></span>
+            {{ $t('forgetPassword.eyebrow') }}
+          </div>
           <h3 class="title">{{ $t('forgetPassword.title') }}</h3>
           <p class="sub-title">{{ $t('forgetPassword.subTitle') }}</p>
-          <div class="mt-5">
-            <ElForm ref="formRef" :model="form" :rules="rules">
-              <ElFormItem prop="email">
-                <ElInput
-                  class="custom-height"
-                  :placeholder="$t('forgetPassword.placeholder')"
-                  v-model.trim="form.email"
-                  name="email"
-                  type="email"
-                  inputmode="email"
-                  autocomplete="email"
-                  :aria-label="$t('forgetPassword.placeholder')"
-                  :spellcheck="false"
-                />
-              </ElFormItem>
-            </ElForm>
-          </div>
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
+            form-class="mt-7.5"
+            ref="formRef"
+            v-model="form"
+            :rules="rules"
+          >
+            <ElFormItem prop="email">
+              <ElInput
+                class="custom-height"
+                :placeholder="$t('forgetPassword.placeholder')"
+                v-model.trim="form.email"
+                name="email"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                :aria-label="$t('forgetPassword.placeholder')"
+                :spellcheck="false"
+                @keyup.enter="handleSubmit"
+              >
+                <template #prefix><ArtSvgIcon icon="ri:mail-line" /></template>
+              </ElInput>
+            </ElFormItem>
 
-          <div class="mt-[15px]">
             <ElButton
-              class="w-full custom-height"
+              class="mt-5 w-full custom-height"
               type="primary"
               @click="handleSubmit"
               :loading="loading"
               v-ripple
             >
-              {{ $t('forgetPassword.submitBtnText') }}
+              <span>{{ $t('forgetPassword.submitBtnText') }}</span>
+              <ArtSvgIcon icon="ri:arrow-right-line" />
             </ElButton>
-          </div>
 
-          <div class="mt-[15px]">
-            <ElButton class="w-full custom-height" plain @click="toLogin">
+            <RouterLink
+              class="auth-page__support-link mt-5 text-sm text-theme"
+              :to="{ name: 'Login' }"
+            >
+              <ArtSvgIcon icon="ri:arrow-left-line" />
               {{ $t('forgetPassword.backBtnText') }}
-            </ElButton>
+            </RouterLink>
+          </ArtForm>
+
+          <div class="form__trust">
+            <span>
+              <ArtSvgIcon icon="ri:lock-line" />
+              {{ $t('register.trust.tls') }}
+            </span>
+            <i aria-hidden="true" />
+            <span>{{ $t('register.trust.isolation') }}</span>
           </div>
         </div>
       </div>
@@ -51,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import type { FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import { forgetPassword } from '@/api/auth'
@@ -58,9 +82,7 @@
   defineOptions({ name: 'ForgetPassword' })
 
   const { t } = useI18n()
-  const router = useRouter()
-
-  const formRef = ref<HTMLFormElement | null>(null)
+  const formRef = ref<InstanceType<typeof ArtForm>>()
   const form = ref({
     email: ''
   })
@@ -78,7 +100,7 @@
   const loading = ref(false)
 
   const handleSubmit = async () => {
-    await formRef.value?.validate()
+    if (loading.value || !(await formRef.value?.validate()?.catch(() => false))) return
     try {
       loading.value = true
       const params: Api.Auth.ForgetPwdParams = {
@@ -88,14 +110,10 @@
       }
       const { error } = await forgetPassword(params)
       if (!error) {
-        ElMessage.success('邮件已经下发到您的邮箱,请前往重置密码')
+        ElMessage.success('如果邮箱已注册，重置链接将发送至该邮箱，请查收')
       }
     } finally {
       loading.value = false
     }
-  }
-
-  const toLogin = () => {
-    router.push({ name: 'Login' })
   }
 </script>

@@ -41,7 +41,7 @@
                 :style="{
                   height: dualMenuShowText ? '60px' : '46px'
                 }"
-                @click="handleMenuJump(menu, true)"
+                @click="startMenuJump(menu, true)"
               >
                 <ArtSvgIcon
                   class="menu-icon text-g-700 dark:text-g-800"
@@ -150,7 +150,7 @@
   import { MenuThemeEnum, MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
   import { useMenuStore } from '@/store/modules/menu'
   import { isIframe } from '@/utils/navigation'
-  import { handleMenuJump } from '@/utils/navigation'
+  import { startMenuJump } from '@/utils/navigation'
   import SidebarSubmenu from './widget/SidebarSubmenu.vue'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useWindowSize, useTimeoutFn } from '@vueuse/core'

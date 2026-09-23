@@ -29,12 +29,15 @@
             alt="用户头像"
           />
           <div class="mt-7.5 mb-3.5 text-base font-medium">{{ userInfo.userName }}</div>
-          <ElForm
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
             ref="formRef"
-            :model="formData"
+            v-model="formData"
             :rules="rules"
-            class="w-[90%]"
-            @submit.prevent="handleLock"
+            form-class="w-[90%]"
+            @submit="handleLock"
           >
             <ElFormItem prop="password">
               <ElInput
@@ -63,7 +66,7 @@
             <ElButton type="primary" class="w-full mt-0.5" @click="handleLock" v-ripple>
               {{ $t('lockScreen.lock.btnText') }}
             </ElButton>
-          </ElForm>
+          </ArtForm>
         </div>
       </ElDialog>
     </div>
@@ -81,12 +84,15 @@
         <div class="mt-3 mb-3.5 text-base font-medium">
           {{ userInfo.userName }}
         </div>
-        <ElForm
+        <ArtForm
+          custom-layout
+          :show-reset="false"
+          :show-submit="false"
           ref="unlockFormRef"
-          :model="unlockForm"
+          v-model="unlockForm"
           :rules="rules"
-          class="w-full !px-2.5"
-          @submit.prevent="handleUnlock"
+          form-class="w-full !px-2.5"
+          @submit="handleUnlock"
         >
           <ElFormItem prop="password">
             <ElInput
@@ -124,16 +130,17 @@
               {{ $t('lockScreen.unlock.backBtnText') }}
             </ElButton>
           </div>
-        </ElForm>
+        </ArtForm>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { Lock, Unlock } from '@element-plus/icons-vue'
   import { useScrollLock } from '@vueuse/core'
-  import { ElInput, type FormInstance, type FormRules } from 'element-plus'
+  import { ElInput, type FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import CryptoJS from 'crypto-js'
   import { useUserStore } from '@/store/modules/user'
@@ -157,8 +164,8 @@
   const showDevToolsWarning = ref<boolean>(false)
 
   // 表单相关
-  const formRef = ref<FormInstance>()
-  const unlockFormRef = ref<FormInstance>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
+  const unlockFormRef = ref<InstanceType<typeof ArtForm>>()
 
   const formData = reactive({
     password: ''

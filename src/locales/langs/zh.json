@@ -176,13 +176,15 @@
     }
   },
   "forgetPassword": {
+    "eyebrow": "账户找回",
     "title": "忘记密码？",
-    "subTitle": "输入您的电子邮件来重置您的密码",
+    "subTitle": "输入注册邮箱，我们将发送密码重置链接",
     "placeholder": "请输入您的电子邮件",
-    "submitBtnText": "提交",
-    "backBtnText": "返回"
+    "submitBtnText": "发送重置邮件",
+    "backBtnText": "返回登录"
   },
   "resetPassword": {
+    "eyebrow": "账户安全",
     "title": "重置密码",
     "subTitle": "输入新密码并再次确认，完成密码重置",
     "submitBtnText": "确认重置",

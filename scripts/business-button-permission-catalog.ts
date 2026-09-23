@@ -2507,6 +2507,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       ...crud({ view: true, import: true, export: true }),
       button('Copy', '复制'),
+      button('Convert', '报价转单'),
       button('Activate', '生效'),
       button('Expire', '失效')
     ]
@@ -2541,6 +2542,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       ...crud({ view: true, export: true }),
       button('Copy', '复制'),
+      button('Import', '导入'),
+      button('Select', '选单'),
+      button('Push', '下推发货单'),
       button('Submit', '提交'),
       button('Withdraw', '撤回'),
       button('Approve', '审核'),

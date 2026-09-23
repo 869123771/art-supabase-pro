@@ -50,17 +50,21 @@
             <ArtSvgIcon icon="ri:loader-4-line" class="auth-callback-progress__spinner" />
             <span>{{ oauthProgressText }}</span>
           </div>
-          <ElForm
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
             v-else-if="!showFeishuQr"
             ref="formRef"
-            :model="formData"
+            v-model="formData"
             :rules="rules"
             :key="formKey"
-            @keyup.enter="handleSubmit"
-            class="mt-[25px]"
+            @submit="handleSubmit"
+            form-class="mt-[25px]"
           >
             <ElFormItem prop="identifier">
               <ElInput
+                ref="identifierInputRef"
                 class="custom-height"
                 :placeholder="$t('login.placeholder.identifier')"
                 v-model.trim="formData.identifier"
@@ -75,9 +79,10 @@
             </ElFormItem>
             <ElFormItem prop="password">
               <ElInput
+                ref="passwordInputRef"
                 class="custom-height"
                 :placeholder="$t('login.placeholder.password')"
-                v-model.trim="formData.password"
+                v-model="formData.password"
                 type="password"
                 name="password"
                 autocomplete="current-password"
@@ -117,12 +122,11 @@
                 >{{ $t('login.forgetPwd') }}</RouterLink
               >
             </div>
-
             <div style="margin-top: 30px">
               <ElButton
                 class="w-full custom-height"
                 type="primary"
-                @click="handleSubmit"
+                native-type="submit"
                 :loading="loading || websiteConfigLoading"
                 :disabled="!websiteConfigLoaded || Boolean(oauthLoadingKey)"
                 v-ripple
@@ -138,7 +142,7 @@
                 $t('login.register')
               }}</RouterLink>
             </div>
-          </ElForm>
+          </ArtForm>
 
           <div
             v-if="!finishingOAuth && !showFeishuQr && enabledAuthChannels.length"
@@ -191,10 +195,11 @@
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
-  import { ElMessage, ElNotification, type FormInstance, type FormRules } from 'element-plus'
+  import { ElInput, ElMessage, ElNotification, type FormRules } from 'element-plus'
   import {
     checkCurrentUserAccess,
     getCurrentAuthSession,
@@ -213,6 +218,14 @@
     resolveSafePostLoginRedirect
   } from '@/utils/auth-redirect'
   import { preparePostLoginData } from './modules/post-login-data'
+  import {
+    readBrowserPassword,
+    readRememberPasswordPreference,
+    readRememberedIdentifier,
+    requestBrowserPasswordSave,
+    writeRememberPasswordPreference,
+    writeRememberedIdentifier
+  } from './modules/remember-password'
   import { buildAuthCallbackUrl, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'Login' })
@@ -254,15 +267,22 @@
     execute?: () => Promise<string>
   }>()
 
-  const formRef = ref<FormInstance>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
+  const identifierInputRef = ref<InstanceType<typeof ElInput>>()
+  const passwordInputRef = ref<InstanceType<typeof ElInput>>()
+  const rememberPasswordPreference = readRememberPasswordPreference()
+  const rememberedIdentifier = rememberPasswordPreference ? readRememberedIdentifier() : ''
 
   const formData = reactive({
     account: '',
     username: '',
-    identifier: '624944977@qq.com',
+    identifier: rememberedIdentifier || '624944977@qq.com',
     password: '123456',
-    rememberPassword: true
+    rememberPassword: rememberPasswordPreference
   })
+  if (rememberedIdentifier && rememberedIdentifier !== '624944977@qq.com') {
+    formData.password = ''
+  }
 
   const loading = ref(false)
   const oauthLoadingKey = ref('')
@@ -331,7 +351,38 @@
     return getFirstMenuPath(menuList) || '/'
   }
 
-  onMounted(() => void initializeLoginPage())
+  onMounted(() => {
+    void initializeLoginPage()
+    if (rememberedIdentifier && !finishingOAuth.value) void restoreBrowserPassword()
+  })
+
+  watch(
+    () => formData.rememberPassword,
+    (rememberPassword) => {
+      writeRememberPasswordPreference(rememberPassword)
+      if (!rememberPassword) writeRememberedIdentifier('')
+    }
+  )
+
+  const restoreBrowserPassword = async (): Promise<void> => {
+    const initialPassword = formData.password
+    const password = await readBrowserPassword(rememberedIdentifier)
+    if (
+      password &&
+      formData.rememberPassword &&
+      formData.identifier === rememberedIdentifier &&
+      formData.password === initialPassword
+    ) {
+      formData.password = password
+    }
+  }
+
+  const syncBrowserAutofill = (): void => {
+    const identifier = identifierInputRef.value?.input?.value.trim()
+    const password = passwordInputRef.value?.input?.value
+    if (identifier && identifier !== formData.identifier) formData.identifier = identifier
+    if (password && password !== formData.password) formData.password = password
+  }
 
   const initializeLoginPage = async (): Promise<void> => {
     if (finishingOAuth.value) {
@@ -466,6 +517,7 @@
     if (!formRef.value || !websiteConfigLoaded.value || loading.value) return
 
     try {
+      syncBrowserAutofill()
       // 表单验证
       const valid = await formRef.value.validate()
       if (!valid) return
@@ -491,6 +543,19 @@
       // 验证token
       if (!accessToken) {
         throw new Error('Login failed - no token received')
+      }
+
+      if (formData.rememberPassword) {
+        if (!writeRememberedIdentifier(identifier)) {
+          ElMessage.warning('浏览器未能记住账号，请检查浏览器存储设置')
+        }
+        void requestBrowserPasswordSave(identifier, password).then((status) => {
+          if (status === 'failed') {
+            ElMessage.warning('浏览器未能保存密码，可在浏览器的密码管理器中手动保存')
+          }
+        })
+      } else {
+        writeRememberedIdentifier('')
       }
 
       await completeAuthenticatedLogin({ accessToken, refreshToken })

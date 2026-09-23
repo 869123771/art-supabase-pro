@@ -67,7 +67,7 @@
   import { computed } from 'vue'
   import type { AppRouteRecord } from '@/types/router'
   import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
+  import { preloadMenuRoute, startMenuJump } from '@/utils/navigation'
   import { useSettingStore } from '@/store/modules/setting'
 
   interface MenuTheme {
@@ -120,7 +120,7 @@
    */
   const goPage = (item: AppRouteRecord): void => {
     closeMenu()
-    handleMenuJump(item)
+    startMenuJump(item)
   }
 
   /**

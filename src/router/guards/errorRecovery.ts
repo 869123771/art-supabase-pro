@@ -35,6 +35,16 @@ export function setupRouteErrorRecovery(router: Router): void {
     }
     sessionStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(recoveryState))
 
+    // The loader clears its rejected promise, so a transient chunk failure can
+    // succeed on the next navigation without replacing the URL or old view.
+    if (recoveryState.attempts === 1) {
+      void router.replace(to.fullPath).catch((retryError: unknown) => {
+        console.error('[RouteRecovery] 页面重试失败:', retryError)
+        redirectToFailurePage(router, to.fullPath)
+      })
+      return
+    }
+
     reloadAtRoute(to.fullPath)
   })
 
@@ -63,9 +73,10 @@ function redirectToFailurePage(router: Router, targetPath: string): void {
 function reloadAtRoute(path: string): void {
   const recoveryUrl = new URL(window.location.href)
   recoveryUrl.hash = path
-  recoveryUrl.searchParams.delete(RECOVERY_QUERY_KEY)
-  window.history.replaceState(window.history.state, '', recoveryUrl)
-  window.location.reload()
+  // A distinct document URL forces a real reload. Updating the hash first and
+  // then calling reload() can expose the new address over the old route view.
+  recoveryUrl.searchParams.set(RECOVERY_QUERY_KEY, String(Date.now()))
+  window.location.replace(recoveryUrl.toString())
 }
 
 function isModuleLoadError(error: unknown): boolean {

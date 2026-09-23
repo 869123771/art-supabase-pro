@@ -19,8 +19,9 @@
     var(--el-bg-color);
 }
 
-.auth-login-page .auth-page__support-link {
+.auth-page .auth-page__support-link {
   display: inline-flex;
+  gap: 6px;
   align-items: center;
   justify-content: center;
   min-height: 32px;
@@ -349,7 +350,7 @@
     min-height: 100dvh;
   }
 
-  .auth-login-page .auth-page__support-link {
+  .auth-page .auth-page__support-link {
     min-width: 44px;
     min-height: 44px;
   }

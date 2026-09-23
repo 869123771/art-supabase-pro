@@ -14,10 +14,13 @@
           </div>
           <h3 class="title">{{ $t('register.title') }}</h3>
           <p class="sub-title">{{ $t('register.subTitle') }}</p>
-          <ElForm
-            class="mt-7.5"
+          <ArtForm
+            custom-layout
+            :show-reset="false"
+            :show-submit="false"
+            form-class="mt-7.5"
             ref="formRef"
-            :model="formData"
+            v-model="formData"
             :rules="rules"
             label-position="top"
             :key="formKey"
@@ -97,7 +100,7 @@
                 $t('register.toLogin')
               }}</RouterLink>
             </div>
-          </ElForm>
+          </ArtForm>
 
           <div class="form__trust">
             <span>
@@ -114,8 +117,9 @@
 </template>
 
 <script setup lang="ts">
+  import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useI18n } from 'vue-i18n'
-  import type { FormInstance, FormItemRule, FormRules } from 'element-plus'
+  import type { FormItemRule, FormRules } from 'element-plus'
   import type { QueryResult } from '@/types/api/response'
   import { register } from '@/api/auth'
   import { useSystemParam } from '@/hooks'
@@ -145,7 +149,7 @@
   } = useSystemParam()
   const { websiteConfig, loadWebsiteConfig } = useWebsiteConfig()
 
-  const formRef = ref<FormInstance>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
 
   const loading = ref(false)
   const formKey = ref(0)
@@ -261,7 +265,7 @@
       return
     }
 
-    const valid = await formRef.value.validate().catch(() => false)
+    const valid = await formRef.value.validate()?.catch(() => false)
     if (!valid) return
 
     loading.value = true

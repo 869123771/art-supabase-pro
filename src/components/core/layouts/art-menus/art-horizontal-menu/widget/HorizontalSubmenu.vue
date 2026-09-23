@@ -49,7 +49,7 @@
 <script lang="ts" setup>
   import { computed, type PropType } from 'vue'
   import { AppRouteRecord } from '@/types/router'
-  import { handleMenuJump, preloadMenuRoute } from '@/utils/navigation'
+  import { preloadMenuRoute, startMenuJump } from '@/utils/navigation'
   import { formatMenuTitle } from '@/utils/router'
 
   const props = defineProps({
@@ -93,7 +93,7 @@
 
   const goPage = (item: AppRouteRecord) => {
     closeMenu()
-    handleMenuJump(item)
+    startMenuJump(item)
   }
 
   const closeMenu = () => {

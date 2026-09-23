@@ -11,12 +11,15 @@
   >
     <ElForm
       ref="formRef"
+      :class="formClass"
       :model="modelValue"
       :rules="props.rules"
       :label-position="labelPosition"
+      :disabled="props.disabled"
       :validate-on-rule-change="props.validateOnRuleChange"
       v-bind="{ ...$attrs }"
       @validate="handleValidate"
+      @submit.prevent="handleSubmit"
     >
       <slot v-if="customLayout" :model-value="modelValue" />
       <ElRow v-else class="flex flex-wrap" :gutter="gutter">
@@ -221,9 +224,11 @@
   import { onMounted, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
   import {
     ElCascader,
+    ElAutocomplete,
     ElCheckbox,
     ElCheckboxButton,
     ElCheckboxGroup,
+    ElColorPicker,
     ElDatePicker,
     ElIcon,
     ElInput,
@@ -255,6 +260,8 @@
   import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
+  import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
+  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
@@ -271,6 +278,7 @@
 
   const componentMap = {
     input: ElInput, // 输入框
+    autocomplete: ElAutocomplete, // 自动补全输入框
     textarea: ElInput, // 多行文本框
     inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
@@ -278,7 +286,9 @@
     tagStyleSelect: ArtTagStyleSelect, // 标签样式选择器
     segment: ElSegmented, // 分段选择器
     switch: ElSwitch, // 开关
+    colorPicker: ElColorPicker, // 颜色选择器
     checkbox: ElCheckbox, // 复选框
+    radio: ElRadio, // 单选框
     checkboxGroup: ElCheckboxGroup, // 复选框组
     radioGroup: ElRadioGroup, // 单选框组
     date: ElDatePicker, // 日期选择器
@@ -293,7 +303,9 @@
     treeSelect: ElTreeSelect, // 树选择器
     iconPicker: ArtIconPicker, // 图标选择器
     dataSelect: ArtDataSelect, // 数据选择器
-    userSelect: ArtUserSelect // 用户选择器
+    userSelect: ArtUserSelect, // 用户选择器
+    uploadFile: ArtUploadFile, // 文件上传
+    uploadImage: ArtUploadImage // 图片上传
   }
 
   const dividerType = 'divider'
@@ -472,7 +484,7 @@
     Omit<FormPropsPublic, 'model' | 'labelPosition' | 'labelWidth'>
   > {
     /** 表单数据 */
-    items: FormItem[]
+    items?: FormItem[]
     /** 每列的宽度（基于 24 格布局） */
     span?: number
     /** 表单控件间隙 */
@@ -493,6 +505,8 @@
     disabledSubmit?: boolean
     /** 根节点附加 class */
     rootClass?: string
+    /** 自定义布局时传给内部 ElForm 的 class */
+    formClass?: string
     /** 使用默认插槽接管表单内部布局，校验和 Ref API 仍由 ArtForm 提供 */
     customLayout?: boolean
     /** 重置按钮文本 */
@@ -525,6 +539,7 @@
     showSubmit: true,
     disabledSubmit: false,
     rootClass: '',
+    formClass: '',
     customLayout: false,
     resetText: '',
     submitText: '',
@@ -854,7 +869,7 @@
       return `请选择${label}`
     }
 
-    if (['input', 'textarea', 'inputTag', 'number'].includes(String(item.type))) {
+    if (['input', 'autocomplete', 'textarea', 'inputTag', 'number'].includes(String(item.type))) {
       return `请输入${label}`
     }
 
@@ -873,6 +888,7 @@
     if (
       [
         'input',
+        'autocomplete',
         'inputTag',
         'select',
         'cascader',
@@ -1238,6 +1254,8 @@
     ref: formInstance,
     validate: (...args: Parameters<FormInstance['validate']>) =>
       formInstance.value?.validate(...args),
+    validateField: (...args: Parameters<FormInstance['validateField']>) =>
+      formInstance.value?.validateField(...args),
     clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>
       formInstance.value?.clearValidate(...args),
     scrollToField: (...args: Parameters<FormInstance['scrollToField']>) =>

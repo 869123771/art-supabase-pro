@@ -38,7 +38,7 @@ export interface ApplicationLocation {
 export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> = {
   platform: {
     code: 'platform',
-    name: 'Art Supabase Platform',
+    name: '平台管理',
     description: '系统、租户、菜单、权限与数据中心基座',
     defaultPath: '/dashboard',
     deploymentPath: '/art-supabase-pro/',
@@ -46,7 +46,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   fms: {
     code: 'fms',
-    name: 'Art Supabase FMS',
+    name: 'FMS财务管理',
     description: '财务管理系统',
     defaultPath: '/fms',
     deploymentPath: '/art-supabase-fms/',
@@ -54,7 +54,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   hr: {
     code: 'hr',
-    name: 'Art Supabase HR',
+    name: 'HR人力资源管理',
     description: '人力资源管理系统',
     defaultPath: '/hr',
     deploymentPath: '/art-supabase-hr/',
@@ -62,7 +62,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   mdm: {
     code: 'mdm',
-    name: 'Art Supabase MDM',
+    name: 'MDM主数据管理',
     description: '跨业务域主数据治理与统一目录',
     defaultPath: '/mdm/workbench',
     deploymentPath: '/art-supabase-mdm/',
@@ -70,7 +70,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   mes: {
     code: 'mes',
-    name: 'Art Supabase MES',
+    name: 'MES生产管理',
     description: '生产执行、工艺与制造协同',
     defaultPath: '/mes/workbench',
     deploymentPath: '/art-supabase-mes/',
@@ -94,7 +94,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   smis: {
     code: 'smis',
-    name: 'Art Supabase SMIS',
+    name: 'SMIS安全生产管理',
     description: '安全生产管理系统',
     defaultPath: '/smis',
     deploymentPath: '/art-supabase-smis/',
@@ -102,7 +102,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   tms: {
     code: 'tms',
-    name: 'Art Supabase TMS',
+    name: 'TMS运输管理',
     description: '智慧运输管理系统',
     defaultPath: '/tms/order-open',
     deploymentPath: '/art-supabase-tms/',
@@ -110,7 +110,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   vms: {
     code: 'vms',
-    name: 'Art Supabase VMS',
+    name: 'VMS车辆管理',
     description: '车辆管理系统',
     defaultPath: '/vms/vehicle-archive-manage',
     deploymentPath: '/art-supabase-vms/',
@@ -118,7 +118,7 @@ export const APPLICATION_PROFILES: Record<ApplicationCode, ApplicationProfile> =
   },
   wms: {
     code: 'wms',
-    name: 'Art Supabase WMS',
+    name: 'WMS仓储管理',
     description: '仓库、库存与作业执行',
     defaultPath: '/wms/workbench',
     deploymentPath: '/art-supabase-wms/',

@@ -67,6 +67,15 @@ export const handleMenuJump = (item: AppRouteRecord, jumpToFirst: boolean = fals
   return router.push(firstChild.path)
 }
 
+/** 菜单点击是即发即忘操作；路由加载异常由全局恢复器处理，这里消费原导航的拒绝。 */
+export const startMenuJump = (item: AppRouteRecord, jumpToFirst = false): void => {
+  void Promise.resolve()
+    .then(() => handleMenuJump(item, jumpToFirst))
+    .catch((error: unknown) => {
+      console.error('[MenuNavigation] 页面跳转失败:', error)
+    })
+}
+
 /**
  * 鼠标悬停或键盘聚焦菜单时预热对应的异步页面组件。
  * 只加载用户正在指向的页面，不在登录后批量下载全部业务模块。

@@ -13,6 +13,13 @@ interface AuthPageExpectation {
 
 const authPages: AuthPageExpectation[] = [
   {
+    path: '/auth/login',
+    fields: [
+      { name: 'username', autocomplete: 'username' },
+      { name: 'password', autocomplete: 'current-password' }
+    ]
+  },
+  {
     path: '/auth/register',
     mayBeDisabled: true,
     fields: [
@@ -41,6 +48,14 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   }))
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth + 1)
 }
+
+test('login keeps its default account and password with the remember option', async ({ page }) => {
+  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('input[name="username"]')).toHaveValue('624944977@qq.com')
+  await expect(page.locator('input[name="password"]')).toHaveValue('123456')
+  await expect(page.getByRole('checkbox', { name: '记住密码' })).toBeChecked()
+  await expect(page.locator('button[type="submit"]')).toContainText('登录')
+})
 
 for (const authPage of authPages) {
   test(`${authPage.path} exposes semantic form fields`, async ({ page }) => {

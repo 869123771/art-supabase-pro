@@ -1,0 +1,1 @@
+import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./domain-command-screen-C_OoHNfc.js";var i=t({name:`AiSafetyCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`ai-safety`}))}});export{i as default};

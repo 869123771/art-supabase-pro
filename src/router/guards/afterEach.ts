@@ -4,12 +4,23 @@ import { Router } from 'vue-router'
 import NProgress from 'nprogress'
 import { useCommon } from '@/hooks/core/useCommon'
 import { finishPendingLoading, getPendingLoading } from './beforeEach'
+import { setWorktab } from '@/utils/navigation'
+import { setPageTitle } from '@/utils/router'
 
 /** 路由全局后置守卫 */
 export function setupAfterEachGuard(router: Router) {
   const { scrollToTop } = useCommon()
 
-  router.afterEach((to, from) => {
+  router.afterEach((to, from, failure) => {
+    if (failure) {
+      finishPendingLoading(to.fullPath)
+      NProgress.done()
+      return
+    }
+
+    setWorktab(to)
+    setPageTitle(to)
+
     if (to.path !== from.path) {
       scrollToTop()
     }

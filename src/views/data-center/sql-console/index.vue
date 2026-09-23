@@ -71,7 +71,13 @@
               description="正在查询数据库并整理结果，请稍候"
               class="result-section__loading"
             />
-            <ElScrollbar class="tabs-content">
+            <div
+              v-if="result?.status === 'ok' && result.rows?.length"
+              class="tabs-content result-table"
+            >
+              <ResultTable :loading="executing" :data="result.rows" :columns="result.columns" />
+            </div>
+            <ElScrollbar v-else class="tabs-content">
               <div class="tabs-content__inner">
                 <div v-if="!result" class="empty-state">
                   <ArtEmptyState
@@ -82,38 +88,24 @@
                     :visual-size="76"
                   />
                 </div>
-                <template v-else>
-                  <div v-if="result.status === 'error'" class="error-panel">
-                    <div class="error-toolbar">
-                      <el-tag type="danger" effect="light" round>执行失败</el-tag>
-                      <el-button size="small" text type="primary" @click="openAiDialog('fix')">
-                        AI 修复这条 SQL
-                      </el-button>
-                    </div>
-                    <pre class="error-message">{{ result.errorMessage }}</pre>
-                    <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
+                <div v-else-if="result.status === 'error'" class="error-panel">
+                  <div class="error-toolbar">
+                    <el-tag type="danger" effect="light" round>执行失败</el-tag>
+                    <el-button size="small" text type="primary" @click="openAiDialog('fix')">
+                      AI 修复这条 SQL
+                    </el-button>
                   </div>
-
-                  <div
-                    v-if="result.status === 'ok' && result.rows && result.rows.length > 0"
-                    class="result-table"
-                  >
-                    <ResultTable
-                      :loading="executing"
-                      :data="result.rows"
-                      :columns="result.columns"
-                    />
-                  </div>
-
-                  <div v-else-if="result.status === 'ok'" class="empty-result">
-                    <ArtEmptyState
-                      title="执行成功，暂无数据行"
-                      description="当前语句没有返回记录，可以调整查询条件后重新执行"
-                      size="compact"
-                      :visual-size="76"
-                    />
-                  </div>
-                </template>
+                  <pre class="error-message">{{ result.errorMessage }}</pre>
+                  <pre v-if="errorCaretPreview" class="error-caret">{{ errorCaretPreview }}</pre>
+                </div>
+                <div v-else class="empty-result">
+                  <ArtEmptyState
+                    title="执行成功，暂无数据行"
+                    description="当前语句没有返回记录，可以调整查询条件后重新执行"
+                    size="compact"
+                    :visual-size="76"
+                  />
+                </div>
               </div>
             </ElScrollbar>
           </div>
@@ -361,6 +353,8 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
+    min-height: 0;
+    overflow: hidden;
     background: var(--el-bg-color);
 
     > .tabs-header {
@@ -407,11 +401,13 @@
 
     > .result-section__loading {
       top: 40px;
+      height: auto;
     }
 
     > .tabs-content {
       position: relative;
       flex: 1;
+      min-width: 0;
       min-height: 0;
 
       :deep(.el-scrollbar__view) {
@@ -467,35 +463,35 @@
         }
       }
 
-      .result-table {
-        height: 100%;
-
-        :deep(.art-table) {
-          height: 100% !important;
-        }
-
-        :deep(.el-table) {
-          margin: 0;
-
-          &::before {
-            width: 0;
-          }
-
-          .el-table__inner-wrapper {
-            &::before,
-            &::after {
-              background-color: transparent;
-            }
-
-            .el-table__border-left-patch {
-              background-color: transparent;
-            }
-          }
-        }
-      }
-
       .empty-result {
         padding: 40px;
+      }
+    }
+
+    > .result-table {
+      overflow: hidden;
+
+      :deep(.art-table) {
+        height: 100% !important;
+      }
+
+      :deep(.el-table) {
+        margin: 0;
+
+        &::before {
+          width: 0;
+        }
+
+        .el-table__inner-wrapper {
+          &::before,
+          &::after {
+            background-color: transparent;
+          }
+
+          .el-table__border-left-patch {
+            background-color: transparent;
+          }
+        }
       }
     }
   }
