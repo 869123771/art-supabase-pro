@@ -1,6 +1,10 @@
 <template>
   <ArtDialog size="lg" ref="dialogRef" show-fullscreen-button @opened="handleDialogOpened">
     <div class="menu-dialog-content">
+      <ElAlert v-if="treeError" type="error" :closable="false" show-icon>
+        <template #title>菜单层级加载失败</template>
+        <ElButton link type="primary" @click="loadMenuTree">重新加载</ElButton>
+      </ElAlert>
       <section class="menu-dialog-content__context art-card-xs">
         <span class="menu-dialog-content__context-icon" aria-hidden="true">
           <ArtSvgIcon :icon="menuTypeMeta.icon" />
@@ -81,6 +85,7 @@
     type?: 'folder' | 'menu' | 'button'
     parent?: AppRouteRecord | MenuFormData
     menuTree?: AppRouteRecord[]
+    loadMenuTree?: () => Promise<AppRouteRecord[]>
   }
 
   interface Emits {
@@ -123,6 +128,8 @@
 
   const form = ref<MenuFormModel>(createInitialForm())
   const sourceMenuTree = shallowRef<AppRouteRecord[]>([])
+  const treeError = ref(false)
+  const menuTreeLoader = shallowRef<(() => Promise<AppRouteRecord[]>) | undefined>()
   const originalParentId = ref<string | null>(null)
   const originalSort = ref(1)
 
@@ -201,14 +208,20 @@
         key: 'type',
         type: 'segment',
         span: 24,
+        options: getDictMap.value.menuType?.length
+          ? getDictMap.value.menuType
+          : [
+              { label: '目录', value: 'folder' },
+              { label: '菜单', value: 'menu' },
+              { label: '按钮权限', value: 'button' }
+            ],
         description: form.value.id
           ? '菜单类型创建后不建议变更，避免影响现有路由和授权。'
           : '请选择目录、菜单或按钮权限。按钮权限需挂在具体菜单下。',
         props: {
           disabled: !!form.value.id,
           validateEvent: false,
-          onChange: handleMenuTypeChange,
-          options: getDictMap.value.menuType ?? []
+          onChange: handleMenuTypeChange
         }
       }
     ]
@@ -504,6 +517,10 @@
    * 提交表单
    */
   const handleSubmit = async (): Promise<boolean> => {
+    if (treeError.value) {
+      ElMessage.warning('请先重新加载菜单层级')
+      return false
+    }
     if (!formRef.value) return false
 
     try {
@@ -570,7 +587,7 @@
     }
   }
 
-  const initializeForm = async (data: MenuDialogOpenData = {}): Promise<void> => {
+  const initializeForm = (data: MenuDialogOpenData = {}): void => {
     Object.assign(form.value, createInitialForm())
     sourceMenuTree.value = data.menuTree ?? []
     originalParentId.value = normalizeMenuParentId(data.row?.parentId)
@@ -582,7 +599,21 @@
     loadFormData(data.row ?? {}, data.type ?? 'menu')
     select.value.menuTree = filterMenuParentTree(sourceMenuTree.value, form.value.id)
     syncComponentByType()
-    await handleResetFields()
+  }
+
+  const loadMenuTree = async (): Promise<void> => {
+    if (!menuTreeLoader.value) return
+    treeError.value = false
+    dialogRef.value?.setLoading(true)
+    try {
+      const tree = await menuTreeLoader.value()
+      sourceMenuTree.value = tree
+      select.value.menuTree = filterMenuParentTree(tree, form.value.id)
+    } catch {
+      treeError.value = true
+    } finally {
+      dialogRef.value?.setLoading(false)
+    }
   }
 
   const handleReset = async (): Promise<void> => {
@@ -595,7 +626,9 @@
   }
 
   const handleOpen = async (data: MenuDialogOpenData = {}): Promise<void> => {
-    await initializeForm(data)
+    initializeForm(data)
+    treeError.value = false
+    menuTreeLoader.value = data.menuTree?.length ? undefined : data.loadMenuTree
     await dialogRef.value?.handleOpen(data, {
       title: `${data.row?.id != null ? '编辑' : '新增'}${menuTypeLabel.value}`,
       dialogProps: {
@@ -603,6 +636,11 @@
       },
       contentMaxHeight: '72vh',
       confirmText: data.row?.id != null ? '保存修改' : `创建${menuTypeLabel.value}`,
+      loading: !data.menuTree?.length && Boolean(data.loadMenuTree),
+      loadingText: '正在加载菜单层级…',
+      onOpen: async () => {
+        await Promise.all([handleResetFields(), loadMenuTree()])
+      },
       onConfirm: handleSubmit,
       onReset: () => {
         handleReset()

@@ -1,0 +1,1 @@
+import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./defect-management-CObBYJB2.js";var i=t({name:`MesDefectManagement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

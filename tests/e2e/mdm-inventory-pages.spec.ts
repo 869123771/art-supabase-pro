@@ -409,6 +409,44 @@ async function installFixtures(page: Page): Promise<void> {
   await page.route('**/rest/v1/mdm_warehouse?*', (route) => route.fulfill({ json: [warehouse] }))
   await page.route('**/rest/v1/mdm_warehouse_zone?*', (route) => route.fulfill({ json: zoneRows }))
   await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => route.fulfill({ json: binRows }))
+  await page.route('**/rest/v1/mdm_outbound_rule?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'f4b342d2-d619-48a8-8d24-e67ef208f7a4',
+          tenant_id: tenantId,
+          rule_code: 'OUT-001',
+          rule_name: '先进先出库规则',
+          status: 'enabled',
+          sorts: [],
+          update_time: '2026-09-24T08:00:00Z'
+        }
+      ],
+      headers: { 'content-range': '0-0/1' }
+    })
+  )
+  await page.route('**/rest/v1/mdm_supply_chain_code_rule?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: '20b1abda-cc2e-4c47-b859-8c4d4cddf5cd',
+          tenant_id: tenantId,
+          rule_code: 'CODE-001',
+          rule_name: '批号编码规则',
+          example_code: 'B20260924001',
+          apply_batch: true,
+          apply_serial: false,
+          apply_tracking: false,
+          per_material: true,
+          separator: '',
+          status: 'enabled',
+          segments: [],
+          update_time: '2026-09-24T08:00:00Z'
+        }
+      ],
+      headers: { 'content-range': '0-0/1' }
+    })
+  )
   await page.route('**/rest/v1/wms_inventory_batch?*', (route) =>
     route.fulfill({
       status: 206,
@@ -597,7 +635,11 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({
       timeout: 120_000
     })
+    await expect(page.locator('.art-page-view:visible').last()).toHaveCSS('opacity', '1')
     await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 30_000 })
+    await expect(page.locator('.art-overlay-loading.is-loading:visible')).toHaveCount(0, {
+      timeout: 30_000
+    })
     const themeTipDismiss = page.getByText('知道了', { exact: true })
     if (await themeTipDismiss.isVisible()) await themeTipDismiss.click()
     const overflow = await page.evaluate(() => ({
@@ -605,6 +647,16 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       content: document.documentElement.scrollWidth
     }))
     expect(overflow.content, `${title} 出现横向溢出`).toBeLessThanOrEqual(overflow.viewport + 1)
+    if (path === 'outbound-rule' || path === 'supply-chain-code-rule') {
+      const identity = page.locator('.business-table-identity-cell:visible').first()
+      await expect(identity.locator('strong')).toBeVisible()
+      await expect(identity.locator('small')).toBeVisible()
+      const primary = await identity.locator('strong').boundingBox()
+      const secondary = await identity.locator('small').boundingBox()
+      expect(primary).not.toBeNull()
+      expect(secondary).not.toBeNull()
+      expect(secondary!.y).toBeGreaterThan(primary!.y)
+    }
     await page.screenshot({ path: join(visualDir, `mdm-${path}.png`), fullPage: true })
     if (path === 'zone' || path === 'bin') {
       await expect(page.getByRole('button', { name: '进入专注模式' })).toHaveCount(0)
@@ -612,7 +664,7 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.locator('.art-section-card .el-scrollbar').first()).toBeVisible()
     } else {
       await expect(
-        page.locator('.business-workspace-header').getByText('专注模式', { exact: true })
+        page.locator('.business-workspace-header:visible').getByText('专注模式', { exact: true })
       ).toBeVisible()
       if (path === 'batch') {
         await page.getByRole('switch', { name: '显示表格右侧工具栏' }).locator('..').click()
@@ -841,4 +893,30 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
     allowed_issue_warehouse_types: string[]
   }
   expect(payload.allowed_issue_warehouse_types).toEqual(['raw_material', 'finished'])
+})
+
+test('库区新增弹窗先出现，再等待基础数据', async ({ page }) => {
+  await installFixtures(page)
+  await page.goto('/#/mdm/inventory-master/zone', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '库区管理', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '新增库区' })).toBeEnabled()
+
+  let releaseCategories!: () => void
+  const categoryGate = new Promise<void>((resolve) => {
+    releaseCategories = resolve
+  })
+  await page.route('**/rest/v1/mdm_material_category*', async (route) => {
+    await categoryGate
+    await route.fulfill({ json: [] })
+  })
+
+  try {
+    await page.getByRole('button', { name: '新增库区' }).click()
+    const dialog = page.locator('.el-dialog:visible').filter({ hasText: '新增库区' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.art-overlay-loading.is-loading')).toBeVisible()
+  } finally {
+    releaseCategories()
+  }
+  await expect(page.locator('.el-dialog:visible .art-overlay-loading.is-loading')).toHaveCount(0)
 })

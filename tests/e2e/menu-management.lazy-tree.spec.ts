@@ -99,3 +99,125 @@ test('菜单管理首层与展开请求保持精简且层级正确', async ({ pa
   await page.keyboard.press('Escape')
   await expect(breadcrumb).toBeHidden()
 })
+
+test('菜单新增弹窗先显示，再加载完整菜单树', async ({ page }, testInfo) => {
+  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  const addButton = page.getByRole('button', { name: '添加菜单' })
+  await expect(addButton).toBeEnabled()
+
+  let releaseTree!: () => void
+  const treeGate = new Promise<void>((resolve) => {
+    releaseTree = resolve
+  })
+  await page.route('**/rest/v1/rpc/list_menu_management_nodes', async (route) => {
+    const payload = readMenuRpcPayload(route.request())
+    if (!payload.p_root_only && payload.p_parent_id === null) await treeGate
+    await route.continue()
+  })
+
+  try {
+    await addButton.click()
+    const dialog = page.locator('.el-dialog:visible').filter({ hasText: '新增菜单' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.art-overlay-loading.is-loading')).toBeVisible()
+  } finally {
+    releaseTree()
+  }
+
+  await expect(page.locator('.el-dialog:visible .art-overlay-loading.is-loading')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '创建菜单' })).toBeEnabled()
+  await page.locator('.el-dialog:visible').screenshot({
+    path: testInfo.outputPath('menu-add-dialog.png')
+  })
+})
+
+test('菜单编辑弹窗先显示，再加载完整菜单树', async ({ page }) => {
+  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+
+  let releaseTree!: () => void
+  const treeGate = new Promise<void>((resolve) => {
+    releaseTree = resolve
+  })
+  await page.route('**/rest/v1/rpc/list_menu_management_nodes', async (route) => {
+    const payload = readMenuRpcPayload(route.request())
+    if (!payload.p_root_only && payload.p_parent_id === null) await treeGate
+    await route.continue()
+  })
+
+  try {
+    await page
+      .locator('.el-table__body-wrapper tbody tr')
+      .first()
+      .getByRole('button', { name: '更多操作' })
+      .click()
+    await page
+      .locator('.el-dropdown-menu:visible .el-dropdown-menu__item')
+      .filter({
+        hasText: /^编辑/
+      })
+      .first()
+      .click()
+    const dialog = page.locator('.el-dialog:visible').filter({ hasText: /^编辑/ })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.art-overlay-loading.is-loading')).toBeVisible()
+  } finally {
+    releaseTree()
+  }
+
+  await expect(page.locator('.el-dialog:visible .art-overlay-loading.is-loading')).toHaveCount(0)
+})
+
+test('菜单详情和树形排序先显示，再加载完整菜单树', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  let releaseTree!: () => void
+  let treeGate = new Promise<void>((resolve) => {
+    releaseTree = resolve
+  })
+  await page.route('**/rest/v1/rpc/list_menu_management_nodes', async (route) => {
+    const payload = readMenuRpcPayload(route.request())
+    if (!payload.p_root_only && payload.p_parent_id === null) await treeGate
+    await route.continue()
+  })
+
+  try {
+    await page
+      .locator('.el-table__body-wrapper tbody tr')
+      .first()
+      .getByRole('button', { name: '查看详情' })
+      .click()
+    const drawer = page.locator('.el-drawer:visible')
+    await expect(drawer).toBeVisible()
+    await expect(drawer.locator('.art-overlay-loading.is-loading')).toBeVisible()
+  } finally {
+    releaseTree()
+  }
+  await expect(page.locator('.el-drawer:visible .art-overlay-loading.is-loading')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.el-drawer:visible')).toHaveCount(0)
+
+  treeGate = new Promise<void>((resolve) => {
+    releaseTree = resolve
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  const sortButton = page.getByRole('button', { name: '树形排序' })
+  await expect(sortButton).toBeEnabled()
+  try {
+    await sortButton.click()
+    const dialog = page.locator('.el-dialog:visible').filter({ hasText: '树形拖拽排序' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator('.art-overlay-loading.is-loading')).toBeVisible()
+  } finally {
+    releaseTree()
+  }
+  await expect(page.locator('.el-dialog:visible .art-overlay-loading.is-loading')).toHaveCount(0)
+})

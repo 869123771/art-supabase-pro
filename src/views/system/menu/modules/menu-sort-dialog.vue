@@ -1,6 +1,10 @@
 <template>
   <ArtDialog ref="dialogRef" :loading="tree.loading">
     <div class="menu-tree-sort">
+      <ElAlert v-if="loadError" type="error" :closable="false" show-icon>
+        <template #title>菜单层级加载失败</template>
+        <ElButton link type="primary" @click="loadMenuTree">重新加载</ElButton>
+      </ElAlert>
       <ArtSectionCard
         class="menu-tree-sort__guide"
         aria-label="拖拽规则"
@@ -148,6 +152,8 @@
 
   const dialogRef = ref<ArtDialogExpose>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
+  const loadError = ref(false)
+  const menuTreeLoader = shallowRef<(() => Promise<AppRouteRecord[]>) | undefined>()
   const tree = reactive<TreeState>({
     keyword: '',
     loading: false,
@@ -261,9 +267,30 @@
     }
   }
 
-  const handleOpen = async (menuTree: AppRouteRecord[]): Promise<void> => {
+  const loadMenuTree = async (): Promise<void> => {
+    if (!menuTreeLoader.value) return
+    loadError.value = false
+    dialogRef.value?.setLoading(true)
+    try {
+      tree.data = cloneDeep(await menuTreeLoader.value())
+      tree.expandedKeys = tree.data.map(getNodeKey).filter((item): item is string => !!item)
+      await nextTick()
+      treeRef.value?.filter(tree.keyword)
+    } catch {
+      loadError.value = true
+    } finally {
+      dialogRef.value?.setLoading(false)
+    }
+  }
+
+  const handleOpen = async (
+    menuTree: AppRouteRecord[],
+    loadTree?: () => Promise<AppRouteRecord[]>
+  ): Promise<void> => {
     tree.keyword = ''
     tree.loading = false
+    loadError.value = false
+    menuTreeLoader.value = menuTree.length ? undefined : loadTree
     tree.data = cloneDeep(menuTree)
     tree.dragSourceData = []
     tree.expandedKeys = tree.data.map(getNodeKey).filter((item): item is string => !!item)
@@ -273,8 +300,10 @@
       size: 'lg',
       contentHeight: '68vh',
       showFooter: false,
+      loading: Boolean(menuTreeLoader.value),
+      loadingText: '正在加载菜单层级…',
       onOpen: async () => {
-        await nextTick()
+        await Promise.all([nextTick(), loadMenuTree()])
         treeRef.value?.filter(tree.keyword)
       },
       onReset: () => {
@@ -282,6 +311,8 @@
         tree.data = []
         tree.expandedKeys = []
         tree.dragSourceData = []
+        loadError.value = false
+        menuTreeLoader.value = undefined
       }
     })
   }

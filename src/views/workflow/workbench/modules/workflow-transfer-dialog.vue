@@ -144,17 +144,25 @@
   async function handleOpen(task: Api.Workflow.WorkflowTaskRecord): Promise<void> {
     state.task = task
     Object.assign(form.data, { assigneeUserId: '', reason: '' })
-    const response = await fetchWorkflowUserOptions({ tenantId: task.tenantId })
-    state.users = response.data ?? []
+    state.users = []
     rebuildItems()
     await dialogRef.value?.handleOpen(undefined, {
       title: '转交审批待办',
       subtitle: '新审批人必须属于同一租户且账号处于启用状态。',
       confirmText: '确认转交',
       contentMaxHeight: '70vh',
-      onOpen: async () => {
+      loading: true,
+      loadingText: '正在加载审批人…',
+      onOpen: async (_openData, api) => {
         await nextTick()
         formRef.value?.clearValidate()
+        try {
+          const response = await fetchWorkflowUserOptions({ tenantId: task.tenantId })
+          state.users = response.data ?? []
+          rebuildItems()
+        } finally {
+          api.setLoading(false)
+        }
       },
       onConfirm: handleSubmit,
       onReset: () => {

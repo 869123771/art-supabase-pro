@@ -10,6 +10,7 @@ export interface ScmReceiptTargetDocument {
   documentNo: string
   sourceReceiptId: string
   projectId: string | null
+  constructionNo: string | null
   supplierId: string | null
   status: ScmReceiptTargetStatus
   totalAmount: number
@@ -24,6 +25,7 @@ export interface ScmReceiptTargetLine {
   id: string
   sourceLineId: string
   lineSnapshot: {
+    materialId?: string
     lineNo?: number
     materialCode?: string
     materialDescription?: string
@@ -35,6 +37,8 @@ export interface ScmReceiptTargetLine {
     batchNo?: string
     gift?: boolean
   }
+  serialNos: string[]
+  serialManagementEnabled?: boolean
   amount: number
 }
 
@@ -73,14 +77,52 @@ export async function fetchScmReceiptTargets(
 }
 
 export async function fetchScmReceiptTargetLines(targetId: string) {
-  return responseHandle<ScmReceiptTargetLine[]>(
+  const result = await responseHandle<ScmReceiptTargetLine[]>(
     () =>
       supabase
         .from('scm_receipt_target_line')
-        .select('id,source_line_id,line_snapshot,amount')
+        .select('id,source_line_id,line_snapshot,serial_nos,amount')
         .eq('target_document_id', targetId)
         .order('created_at'),
     { breakReturn: true, showErrorMessage: true, errorMessage: '目标单据明细加载失败' }
+  )
+  const lines = result.data ?? []
+  const materialIds = [
+    ...new Set(
+      lines.map((line) => line.lineSnapshot.materialId).filter((id): id is string => Boolean(id))
+    )
+  ]
+  if (!materialIds.length) return result
+  const controls = await responseHandle<Array<{ id: string; serialManagementEnabled: boolean }>>(
+    () =>
+      supabase.from('mdm_material').select('id,serial_management_enabled').in('id', materialIds),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '物料 SN 管控信息加载失败' }
+  )
+  const enabledById = new Map(
+    (controls.data ?? []).map((row) => [row.id, row.serialManagementEnabled])
+  )
+  return {
+    ...result,
+    data: lines.map((line) => ({
+      ...line,
+      serialManagementEnabled: enabledById.get(line.lineSnapshot.materialId || '') ?? false
+    }))
+  }
+}
+
+export async function setScmReceiptLineSerials(lineId: string, serialNos: string[]) {
+  await responseHandle(
+    () =>
+      supabase.rpc('wms_set_receipt_line_serials_secure', {
+        p_line_id: lineId,
+        p_serial_nos: serialNos
+      }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '收料 SN 已保存',
+      errorMessage: 'SN 保存失败，请核对件数、重复编码与权限'
+    }
   )
 }
 
@@ -134,6 +176,37 @@ export async function transitionScmReceiptTarget(id: string, kind: ScmReceiptTar
       showMessage: true,
       message: kind === 'inbound' ? '已确认入库并写入库存流水' : '资产应付已审核',
       errorMessage: kind === 'inbound' ? '入库确认失败，请检查仓库与库存数量' : '应付审核失败'
+    }
+  )
+}
+
+export async function fetchScmReceiptProjectSections(projectId: string) {
+  const { data } = await responseHandle<
+    Array<{ constructionNo: string; sectionName: string; status: 'active' | 'closed' }>
+  >(
+    () =>
+      supabase
+        .from('mdm_project_construction')
+        .select('construction_no,section_name,status')
+        .eq('project_id', projectId)
+        .order('construction_no'),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '施工号加载失败，请重试' }
+  )
+  return data ?? []
+}
+
+export async function setScmReceiptScope(targetId: string, constructionNo: string) {
+  await responseHandle(
+    () =>
+      supabase.rpc('wms_set_receipt_scope_secure', {
+        p_target_id: targetId,
+        p_construction_no: constructionNo
+      }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '入库施工号已保存',
+      errorMessage: '施工号保存失败，请核对项目状态与权限'
     }
   )
 }

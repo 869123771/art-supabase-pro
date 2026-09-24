@@ -39,11 +39,43 @@
               <strong>{{ activeDocument.documentNo }}</strong>
               <small>来源通知单：{{ activeDocument.source?.documentNo || '—' }}</small>
               <small>项目：{{ activeDocument.project?.projectName || '—' }}</small>
+              <small v-if="kind === 'inbound'"
+                >施工号：{{ activeDocument.constructionNo || '待指定' }}</small
+              >
               <small>供应商：{{ activeDocument.supplier?.supplierName || '—' }}</small>
             </div>
             <ElTag :type="activeDocument.status === 'draft' ? 'warning' : 'success'">
               {{ statusLabel(activeDocument.status) }}
             </ElTag>
+          </div>
+          <div
+            v-if="
+              kind === 'inbound' && activeDocument.projectId && activeDocument.status === 'draft'
+            "
+            class="flex min-w-0 flex-wrap items-end gap-3 rounded-lg bg-[var(--el-fill-color-light)] p-3"
+          >
+            <label class="grid min-w-[220px] flex-1 gap-1 text-sm">
+              <span class="text-[var(--el-text-color-secondary)]">项目施工号</span>
+              <ElSelect v-model="selectedConstructionNo" filterable placeholder="选择本项目施工号">
+                <ElOption
+                  v-for="section in projectSections"
+                  :key="section.constructionNo"
+                  :label="`${section.constructionNo} · ${section.sectionName}`"
+                  :value="section.constructionNo"
+                  :disabled="section.status !== 'active'"
+                />
+              </ElSelect>
+            </label>
+            <ElButton
+              v-if="scopePermission"
+              v-auth="scopePermission"
+              :disabled="
+                !selectedConstructionNo || selectedConstructionNo === activeDocument.constructionNo
+              "
+              :loading="savingScope"
+              @click="saveScope"
+              >保存施工号</ElButton
+            >
           </div>
           <ArtTable
             :data="activeLines"
@@ -60,6 +92,7 @@
           </div>
         </div>
       </ArtDrawer>
+      <ReceiptSerialDialog ref="serialDialogRef" @success="reloadActiveLines" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -87,6 +120,8 @@
   import {
     fetchScmReceiptTargets,
     fetchScmReceiptTargetLines,
+    fetchScmReceiptProjectSections,
+    setScmReceiptScope,
     transitionScmReceiptTarget,
     type ScmReceiptTargetDocument,
     type ScmReceiptTargetKind,
@@ -94,12 +129,15 @@
     type ScmReceiptTargetQuery,
     type ScmReceiptTargetStatus
   } from '@/api/scm-receipt-target'
+  import ReceiptSerialDialog from './modules/receipt-serial-dialog.vue'
 
   defineOptions({ name: 'ScmReceiptTargetWorkspace' })
   const props = defineProps<{
     kind: ScmReceiptTargetKind
     viewPermission: string
     actionPermission: string
+    scopePermission?: string
+    serialPermission?: string
   }>()
   const title = computed(() => (props.kind === 'inbound' ? '收料入库' : '资产应付'))
   const description = computed(() =>
@@ -109,14 +147,22 @@
   )
   const viewPermission = computed(() => props.viewPermission)
   const actionPermission = computed(() => props.actionPermission)
+  const scopePermission = computed(() => props.scopePermission)
+  const serialPermission = computed(() => props.serialPermission)
   const { hasAuth } = useAuth()
   const { confirmAction } = useArtFeedback()
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tableRef = ref<ArtTableQueryExpose>()
   const detailRef = ref<ArtDrawerExpose<ScmReceiptTargetDocument>>()
+  const serialDialogRef = ref<InstanceType<typeof ReceiptSerialDialog>>()
   const activeDocument = ref<ScmReceiptTargetDocument>()
   const activeLines = ref<ScmReceiptTargetLine[]>([])
+  const projectSections = ref<
+    Array<{ constructionNo: string; sectionName: string; status: 'active' | 'closed' }>
+  >([])
+  const selectedConstructionNo = ref('')
+  const savingScope = ref(false)
   const search = ref<ScmReceiptTargetQuery>({ keyword: '' })
   const searchItems = computed<SearchFormItem[]>(() => [
     ...(isPlatformSuper.value && !effectiveTenantId.value
@@ -168,6 +214,7 @@
         { key: 'documentNo', title: `${title.value}单号` },
         { key: 'sourceNo', title: '来源通知单' },
         { key: 'projectName', title: '项目名称' },
+        { key: 'constructionNo', title: '施工号' },
         { key: 'supplierName', title: '供应商全称' },
         { key: 'statusName', title: '状态' },
         { key: 'totalAmount', title: '金额' },
@@ -200,10 +247,40 @@
     })
   }
   async function openDetail(row: ScmReceiptTargetDocument) {
-    const { data } = await fetchScmReceiptTargetLines(row.id)
+    const [{ data }, sections] = await Promise.all([
+      fetchScmReceiptTargetLines(row.id),
+      props.kind === 'inbound' && row.projectId
+        ? fetchScmReceiptProjectSections(row.projectId)
+        : Promise.resolve([])
+    ])
     activeDocument.value = row
     activeLines.value = data ?? []
+    projectSections.value = sections
+    selectedConstructionNo.value = row.constructionNo ?? ''
     await detailRef.value?.handleOpen(row, { title: row.documentNo })
+  }
+  function openSerialDialog(line: ScmReceiptTargetLine): void {
+    if (!activeDocument.value || activeDocument.value.status !== 'draft') return
+    void serialDialogRef.value?.handleOpen({ documentNo: activeDocument.value.documentNo, line })
+  }
+  async function reloadActiveLines(): Promise<void> {
+    if (!activeDocument.value) return
+    const { data } = await fetchScmReceiptTargetLines(activeDocument.value.id)
+    activeLines.value = data ?? []
+  }
+  async function saveScope() {
+    const document = activeDocument.value
+    if (!document || !selectedConstructionNo.value || savingScope.value) return
+    savingScope.value = true
+    try {
+      await setScmReceiptScope(document.id, selectedConstructionNo.value)
+      document.constructionNo = selectedConstructionNo.value
+      await tableRef.value?.refreshUpdate()
+    } catch {
+      /* API 边界已展示中文业务错误，保留抽屉便于修改重试。 */
+    } finally {
+      savingScope.value = false
+    }
   }
   async function complete(row: ScmReceiptTargetDocument) {
     try {
@@ -248,6 +325,16 @@
         minWidth: 170,
         formatter: (row) => row.project?.projectName || '—'
       },
+      ...(props.kind === 'inbound'
+        ? [
+            {
+              prop: 'constructionNo',
+              label: '施工号',
+              minWidth: 150,
+              formatter: (row: ScmReceiptTargetDocument) => row.constructionNo || '待指定'
+            } as ColumnOption<ScmReceiptTargetDocument>
+          ]
+        : []),
       {
         prop: 'supplier',
         label: '供应商全称',
@@ -305,7 +392,7 @@
       }
     ]
   }
-  const lineColumns: ColumnOption<ScmReceiptTargetLine>[] = [
+  const lineColumns = computed<ColumnOption<ScmReceiptTargetLine>[]>(() => [
     {
       prop: 'lineNo',
       label: '行号',
@@ -354,6 +441,32 @@
       minWidth: 155,
       formatter: (row) => row.lineSnapshot.batchNo || '—'
     },
+    ...(props.kind === 'inbound'
+      ? [
+          {
+            prop: 'serialNos',
+            label: '序列号',
+            minWidth: 154,
+            formatter: (row: ScmReceiptTargetLine) =>
+              row.serialManagementEnabled ? (
+                activeDocument.value?.status === 'draft' ? (
+                  <ArtButtonTable
+                    type="edit"
+                    icon="ri:qr-scan-2-line"
+                    label={`录入 SN (${row.serialNos?.length || 0})`}
+                    showLabel
+                    permission={serialPermission.value}
+                    onClick={() => openSerialDialog(row)}
+                  />
+                ) : (
+                  `${row.serialNos?.length || 0} 件 SN`
+                )
+              ) : (
+                '—'
+              )
+          } as ColumnOption<ScmReceiptTargetLine>
+        ]
+      : []),
     {
       prop: 'amount',
       label: '价税合计',
@@ -361,7 +474,7 @@
       align: 'right',
       formatter: (row) => formatCurrencyValue(row.amount)
     }
-  ]
+  ])
 </script>
 
 <style scoped lang="scss">

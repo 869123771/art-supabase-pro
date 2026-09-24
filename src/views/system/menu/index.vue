@@ -118,6 +118,7 @@
     type?: MenuType
     parent?: AppRouteRecord
     menuTree: AppRouteRecord[]
+    loadMenuTree?: () => Promise<AppRouteRecord[]>
   }
 
   interface MenuDialogExpose {
@@ -125,11 +126,18 @@
   }
 
   interface MenuSortDialogExpose {
-    handleOpen: (menuTree: AppRouteRecord[]) => Promise<void>
+    handleOpen: (
+      menuTree: AppRouteRecord[],
+      loadMenuTree: () => Promise<AppRouteRecord[]>
+    ) => Promise<void>
   }
 
   interface MenuDetailDrawerExpose {
-    handleOpen: (row: AppRouteRecord, menuTree: AppRouteRecord[]) => Promise<void>
+    handleOpen: (
+      row: AppRouteRecord,
+      menuTree: AppRouteRecord[],
+      loadMenuTree: () => Promise<AppRouteRecord[]>
+    ) => Promise<void>
   }
 
   interface MasterDataDeleteGuardExpose {
@@ -338,6 +346,7 @@
   const tableData = ref<AppRouteRecord[]>([])
   const loadedChildrenByParent = reactive(new Map<string, AppRouteRecord[]>())
   const completeMenuTreeCache = shallowRef<AppRouteRecord[] | null>(null)
+  let completeMenuTreeLoad: Promise<AppRouteRecord[]> | null = null
   const loadedMenuRows = computed(() =>
     uniqBy([tableData.value, ...loadedChildrenByParent.values()].flat(), (row) => row.id)
   )
@@ -446,13 +455,18 @@
 
   const loadCompleteMenuTree = async (): Promise<AppRouteRecord[]> => {
     if (completeMenuTreeCache.value) return completeMenuTreeCache.value
-
-    const { data, error } = await fetchGetAllMenuList()
-    if (error) throw error
-
-    const tree = treeUtils.listToTree(data ?? [], (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-    completeMenuTreeCache.value = tree
-    return tree
+    if (!completeMenuTreeLoad) {
+      completeMenuTreeLoad = (async () => {
+        const { data, error } = await fetchGetAllMenuList()
+        if (error) throw error
+        const tree = treeUtils.listToTree(data ?? [], (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+        completeMenuTreeCache.value = tree
+        return tree
+      })().finally(() => {
+        completeMenuTreeLoad = null
+      })
+    }
+    return completeMenuTreeLoad
   }
 
   const showMenuTreeLoadError = (error: unknown): void => {
@@ -484,7 +498,11 @@
 
   const handleView = async (row: AppRouteRecord): Promise<void> => {
     try {
-      await menuDetailDrawerRef.value?.handleOpen(row, await loadCompleteMenuTree())
+      await menuDetailDrawerRef.value?.handleOpen(
+        row,
+        completeMenuTreeCache.value ?? [],
+        loadCompleteMenuTree
+      )
     } catch (error) {
       showMenuTreeLoadError(error)
     }
@@ -492,7 +510,10 @@
 
   const handleOpenSort = async (): Promise<void> => {
     try {
-      await menuSortDialogRef.value?.handleOpen(await loadCompleteMenuTree())
+      await menuSortDialogRef.value?.handleOpen(
+        completeMenuTreeCache.value ?? [],
+        loadCompleteMenuTree
+      )
     } catch (error) {
       showMenuTreeLoadError(error)
     }
@@ -507,7 +528,8 @@
         row: {},
         type,
         parent: row,
-        menuTree: await loadCompleteMenuTree()
+        menuTree: completeMenuTreeCache.value ?? [],
+        loadMenuTree: loadCompleteMenuTree
       })
     } catch (error) {
       showMenuTreeLoadError(error)
@@ -523,7 +545,8 @@
       await openMenuDialog({
         row,
         parent: row,
-        menuTree: await loadCompleteMenuTree()
+        menuTree: completeMenuTreeCache.value ?? [],
+        loadMenuTree: loadCompleteMenuTree
       })
     } catch (error) {
       showMenuTreeLoadError(error)

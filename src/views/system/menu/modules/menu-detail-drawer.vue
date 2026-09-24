@@ -1,6 +1,10 @@
 <template>
   <ArtDrawer ref="drawerRef" size="lg" :show-footer="false">
     <div v-if="menu" class="menu-detail">
+      <ElAlert v-if="loadError" type="error" :closable="false" show-icon>
+        <template #title>菜单层级加载失败，层级与统计暂不可用</template>
+        <ElButton link type="primary" @click="loadMenuTree">重新加载</ElButton>
+      </ElAlert>
       <section class="menu-detail__hero art-card-xs">
         <span class="menu-detail__hero-icon" aria-hidden="true">
           <ArtSvgIcon :icon="getMenuTypeIcon(menu)" />
@@ -95,6 +99,8 @@
   const menu = shallowRef<MenuRecord>()
   const hierarchy = shallowRef<MenuRecord[]>([])
   const descendantCount = ref(0)
+  const loadError = ref(false)
+  const menuTreeLoader = shallowRef<(() => Promise<AppRouteRecord[]>) | undefined>()
 
   const treeUtils = new TreeUtils({
     idKey: 'id',
@@ -253,10 +259,33 @@
     }
   ])
 
-  const handleOpen = async (row: MenuRecord, menuTree: MenuRecord[]): Promise<void> => {
-    menu.value = row
+  const updateHierarchy = (row: MenuRecord, menuTree: MenuRecord[]): void => {
     hierarchy.value = row.id ? treeUtils.getAncestors(menuTree, row.id) : [row]
     descendantCount.value = row.id ? treeUtils.getDescendants(menuTree, row.id).length : 0
+  }
+
+  const loadMenuTree = async (): Promise<void> => {
+    if (!menuTreeLoader.value || !menu.value) return
+    loadError.value = false
+    drawerRef.value?.setLoading(true)
+    try {
+      updateHierarchy(menu.value, await menuTreeLoader.value())
+    } catch {
+      loadError.value = true
+    } finally {
+      drawerRef.value?.setLoading(false)
+    }
+  }
+
+  const handleOpen = async (
+    row: MenuRecord,
+    menuTree: MenuRecord[],
+    loadTree?: () => Promise<AppRouteRecord[]>
+  ): Promise<void> => {
+    menu.value = row
+    loadError.value = false
+    menuTreeLoader.value = menuTree.length ? undefined : loadTree
+    updateHierarchy(row, menuTree.length ? menuTree : [row])
 
     await drawerRef.value?.handleOpen(row, {
       title: '菜单详情',
@@ -264,13 +293,18 @@
       contentHeight: 'calc(100vh - 126px)',
       scrollbarAlways: true,
       showFooter: false,
+      loading: Boolean(menuTreeLoader.value),
+      loadingText: '正在加载菜单层级…',
       drawerProps: {
         resizable: true
       },
+      onOpen: loadMenuTree,
       onReset: () => {
         menu.value = undefined
         hierarchy.value = []
         descendantCount.value = 0
+        loadError.value = false
+        menuTreeLoader.value = undefined
       }
     })
   }

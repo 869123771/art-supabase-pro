@@ -2377,7 +2377,51 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'WmsReceiptInbound',
-    buttons: [button('View', '查看'), button('Add', '下推生成'), button('Confirm', '确认入库')]
+    buttons: [
+      button('View', '查看'),
+      button('Add', '下推生成'),
+      button('AssignScope', '指定施工号'),
+      button('CaptureSN', '录入收料 SN'),
+      button('Confirm', '确认入库')
+    ]
+  },
+  {
+    menuName: 'WmsProjectSection',
+    buttons: [button('View', '查看'), button('Manage', '维护施工号')]
+  },
+  {
+    menuName: 'WmsStock',
+    buttons: [button('View', '查看'), button('TransferProject', '项目调拨')]
+  },
+  {
+    menuName: 'WmsStockOperation',
+    buttons: [
+      button('View', '查看'),
+      button('Receive', '办理入库'),
+      button('Issue', '办理出库'),
+      button('Transfer', '直接调拨')
+    ]
+  },
+  {
+    menuName: 'WmsTransfer',
+    buttons: [
+      button('View', '查看'),
+      button('Create', '申请调拨'),
+      button('Dispatch', '确认调出'),
+      button('Receive', '确认入库')
+    ]
+  },
+  {
+    menuName: 'WmsSerialTrace',
+    buttons: [button('View', '查看'), button('Reserve', '预留 SN'), button('Bind', '绑定装配 SN')]
+  },
+  {
+    menuName: 'WmsInventoryLedger',
+    buttons: [button('View', '查看')]
+  },
+  {
+    menuName: 'WmsProjectReport',
+    buttons: [button('View', '查看')]
   },
   {
     menuName: 'FinanceCommercialBill',
@@ -2658,7 +2702,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   { menuName: 'ScmPurchaseInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
-  { menuName: 'ScmPurchaseReturnRequest', buttons: [button('View', '查看'), button('Add', '新增')] },
+  {
+    menuName: 'ScmPurchaseReturnRequest',
+    buttons: [button('View', '查看'), button('Add', '新增')]
+  },
   { menuName: 'ScmOutsourceReceipt', buttons: [button('View', '查看'), button('Add', '新增')] },
   { menuName: 'ScmOutsourceInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
   {
