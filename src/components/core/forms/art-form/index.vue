@@ -63,9 +63,18 @@
                 <ArtTooltip
                   v-else-if="dialogFocus?.focusMode.value"
                   :content="item.label"
+                  :visible="activeLabelTooltipKey === item.key"
+                  :enterable="false"
                   placement="top"
+                  popper-class="art-form-item__label-tooltip"
                 >
-                  <span class="art-form-item__label-text">{{ item.label }}</span>
+                  <span
+                    class="art-form-item__label-text"
+                    @mouseenter="showOverflowLabelTooltip($event, item.key)"
+                    @mouseleave="hideOverflowLabelTooltip(item.key)"
+                  >
+                    {{ item.label }}
+                  </span>
                 </ArtTooltip>
                 <span v-else>{{ item.label }}</span>
                 <ArtTooltip v-if="item.help" placement="top" effect="dark">
@@ -569,6 +578,22 @@
     sanitizeOutput: () => ({})
   })
   const dialogFocus = inject(artDialogFocusKey, undefined)
+  const activeLabelTooltipKey = ref<string | null>(null)
+  const showOverflowLabelTooltip = (event: MouseEvent, key: string): void => {
+    const label = event.currentTarget
+    if (label instanceof HTMLElement && label.scrollWidth > label.clientWidth) {
+      activeLabelTooltipKey.value = key
+    }
+  }
+  const hideOverflowLabelTooltip = (key: string): void => {
+    if (activeLabelTooltipKey.value === key) activeLabelTooltipKey.value = null
+  }
+  watch(
+    () => dialogFocus?.focusMode.value,
+    (focused) => {
+      if (!focused) activeLabelTooltipKey.value = null
+    }
+  )
   const effectiveLabelPosition = computed(() =>
     dialogFocus?.focusMode.value && width.value >= 768 ? 'left' : props.labelPosition
   )

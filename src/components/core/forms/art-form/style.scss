@@ -154,3 +154,7 @@
     }
   }
 }
+
+:global(.art-form-item__label-tooltip) {
+  pointer-events: none;
+}
