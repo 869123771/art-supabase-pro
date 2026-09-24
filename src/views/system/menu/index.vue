@@ -232,6 +232,7 @@
       prop: 'meta.title',
       label: '菜单信息',
       minWidth: 230,
+      link: { permission: 'System:Menu:View', onClick: handleView },
       formatter: (row: AppRouteRecord) => {
         const permissionCount = getDirectPermissionCount({
           ...row,

@@ -271,6 +271,7 @@
       prop: 'organizationIdentity',
       label: '组织层级',
       minWidth: 340,
+      link: { permission: 'System:Organization:View', onClick: openOrganizationDetail },
       formatter: (row) => {
         const depth = getOrganizationDepth(row)
         const childCount = row.children?.length ?? 0

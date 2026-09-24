@@ -422,6 +422,9 @@
       prop: 'userInfo',
       label: '用户身份',
       minWidth: 240,
+      link: {
+        onClick: (row) => userDetailRef.value?.handleOpen(row)
+      },
       formatter: (row: UserListItem) => {
         return h('div', { class: 'user-info-cell' }, [
           h(

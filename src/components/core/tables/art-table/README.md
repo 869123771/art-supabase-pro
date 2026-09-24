@@ -2,6 +2,24 @@
 
 项目共用数据表格，承接列配置、字典展示、加载/空态、分页及 Element Plus 表格属性。查询、筛选和专注模式由上层 `ArtTableQuery` 组合。
 
+## 文本列查看入口
+
+在主内容列配置 `link`，即可把单元格渲染为主题色链接式按钮。`onClick` 应复用同行“查看”按钮的处理函数，确保打开同一详情。`permission` 与原查看操作保持一致；没有权限、禁用或值为空时，单元格显示普通内容。复合 `formatter` 可使用此属性，但内容不得再包含按钮或链接；带嵌套操作的单元格仍由业务组件明确放置链接。
+
+附件名称列使用 `link: attachmentTableLink`（从 `@/components/core/media/art-file-viewer/table-link` 导入），统一点击预览和无地址时的禁用状态。不要同时使用 `renderAttachmentLink` 一类会生成内层链接的 formatter。
+
+```ts
+{
+  prop: 'name',
+  label: '名称',
+  link: {
+    permission: 'Example:View',
+    onClick: (row) => openDetail(row),
+    title: (row) => `查看${row.name}详情`
+  }
+}
+```
+
 ## 编辑表格必填列
 
 编辑型表格通过列配置的 `required: true` 声明必填列。`ArtTable` 会在标题前统一渲染与表单一致的红色星号，并为辅助技术补充“必填”语义；不要在 `label` 中手写 `*`。

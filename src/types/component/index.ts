@@ -35,6 +35,14 @@ export interface DictColumnOption<T = ComponentRecord> {
   value?: (row: T) => string | number | null | undefined
 }
 
+/** 将表格的文本单元格作为查看入口；无权限或禁用时仍显示原始文本。 */
+export interface TableColumnLink<T = ComponentRecord> {
+  onClick: (row: T) => void | Promise<void>
+  permission?: string
+  disabled?: (row: T) => boolean
+  title?: (row: T) => string
+}
+
 /** 编辑表格列校验时提供给业务规则的上下文。 */
 export interface TableColumnValidationContext<T = ComponentRecord> {
   row: T
@@ -100,6 +108,8 @@ export interface ColumnOption<T = ComponentRecord> {
   formatter?: (row: T) => ComponentValue
   // 字典展示配置
   dict?: DictColumnOption<T>
+  // 文本列的链接式查看入口，与同行的查看操作复用同一个业务回调
+  link?: TableColumnLink<T>
   // 插槽相关配置
   // 是否使用插槽渲染内容
   useSlot?: boolean

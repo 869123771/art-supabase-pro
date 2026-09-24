@@ -46,6 +46,8 @@ onOpen: async (_data, api) => {
 - 默认启用 `destroy-on-close`
 - 默认启用 `draggable`
 - 默认显示全屏切换按钮；特殊弹窗可通过 `:show-fullscreen-button="false"` 显式关闭
+- `#header-actions` 可在全屏按钮左侧放置弹窗级操作，图标操作需提供无障碍名称
+- 弹窗内使用 `ArtForm` 时自动显示“专注填单”按钮；专注态全屏、隐藏副标题与 `ArtEntitySummary`、居中表单并采用紧凑的左侧标签，退出后恢复原全屏状态。业务辅助说明可标记 `data-art-dialog-focus-hide`，必填说明或风险提示应继续显示。
 - 默认宽度为 `50%`
 - 默认显示“取消”和“确定”按钮
 - 确认成功后默认自动关闭

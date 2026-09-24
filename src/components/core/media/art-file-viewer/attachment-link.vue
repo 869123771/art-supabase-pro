@@ -12,8 +12,9 @@
 </template>
 
 <script setup lang="ts">
-  import { ElLink, ElMessage } from 'element-plus'
-  import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
+  import { ElLink } from 'element-plus'
+  import type { FilePreviewTarget } from '@/hooks/core/useFilePreview'
+  import { previewAttachment } from './preview'
 
   defineOptions({ name: 'ArtAttachmentLink' })
 
@@ -24,9 +25,7 @@
   const displayName = computed(() => props.file.name?.trim() || '未命名附件')
 
   const handlePreview = (): void => {
-    const result = openFilePreview(props.file)
-    if (result === 'missing-url') ElMessage.warning('附件没有可用的预览地址')
-    if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
+    previewAttachment(props.file)
   }
 </script>
 

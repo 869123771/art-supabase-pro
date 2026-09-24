@@ -317,6 +317,10 @@
     return isDefaultRegisterRole(row) ? actions.filter((item) => item.key !== 'delete') : actions
   }
 
+  const showPermissionDialog = (row: RoleListItem) => {
+    void rolePermissionDialogRef.value?.handleOpen(row)
+  }
+
   const {
     columns,
     columnChecks,
@@ -342,6 +346,11 @@
           prop: 'roleIdentity',
           label: '角色身份',
           minWidth: 230,
+          link: {
+            permission: 'System:Role:AssignPermission',
+            disabled: (row) => isDefaultRegisterRole(row) && !isPlatformSuper.value,
+            onClick: showPermissionDialog
+          },
           formatter: (row: RoleListItem) =>
             h('div', { class: 'role-identity-cell' }, [
               h(
@@ -505,10 +514,6 @@
         handleDeleteRole(row)
         break
     }
-  }
-
-  const showPermissionDialog = (row: RoleListItem) => {
-    void rolePermissionDialogRef.value?.handleOpen(row)
   }
 
   const handleDeleteRole = async (row: RoleListItem): Promise<void> => {

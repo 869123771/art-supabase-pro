@@ -335,6 +335,7 @@
         label: '业务单据',
         minWidth: 250,
         fixed: 'left',
+        link: { onClick: (row) => openInstance(row.id) },
         formatter: createBusinessCell
       },
       {

@@ -89,6 +89,7 @@
                     :value="getDictColumnValue(child, slotScope.row)"
                     :display="child.dict.display"
                   />
+                  <component v-else-if="child.link" :is="renderColumnLink(child, slotScope.row)" />
                   <component
                     v-else-if="isComponentCellContent(getColumnCellContent(child, slotScope))"
                     :is="getColumnCellContent(child, slotScope)"
@@ -164,6 +165,7 @@
                   :value="getDictColumnValue(col, slotScope.row)"
                   :display="col.dict.display"
                 />
+                <component v-else-if="col.link" :is="renderColumnLink(col, slotScope.row)" />
                 <component
                   v-else-if="isComponentCellContent(getColumnCellContent(col, slotScope))"
                   :is="getColumnCellContent(col, slotScope)"
@@ -243,6 +245,7 @@
   import { useTableStore } from '@/store/modules/table'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useCommon } from '@/hooks/core/useCommon'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
   import { useElementSize, useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
@@ -312,6 +315,7 @@
   const tableStore = useTableStore()
   const { isBorder, isZebra, tableSize, isFullScreen, isHeaderBackground } = storeToRefs(tableStore)
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
+  const { hasAuth } = useAuth()
 
   interface RowDragPayload<T = ArtTableRow> {
     row?: T
@@ -574,6 +578,7 @@
     return (
       (col.useSlot && col.prop) ||
       !!col.dict ||
+      !!col.link ||
       isValidationColumn(col) ||
       col.draggable === true ||
       typeof col.draggable === 'function'
@@ -852,6 +857,50 @@
     if (col.formatter) return formatEmptyCellValue(col.formatter(slotScope.row))
     if (col.prop) return formatEmptyCellValue(getCellValue(slotScope.row, col.prop))
     return EMPTY_CELL_TEXT
+  }
+
+  const renderColumnLink = (col: ArtTableColumn, row: ArtTableRow) => {
+    const rawContent = col.formatter
+      ? col.formatter(row)
+      : col.prop
+        ? getCellValue(row, col.prop)
+        : null
+    const content = formatEmptyCellValue(rawContent)
+    const link = col.link
+    const authorized = !link?.permission || hasAuth(link.permission)
+    const enabled = authorized && !link?.disabled?.(row) && !isEmptyCellValue(rawContent)
+    const children = isVNode(content) ? [content] : String(content)
+
+    if (!link || !enabled) return h('span', null, children)
+
+    const title =
+      link.title?.(row) || `查看${isVNode(content) ? col.label || '详情' : String(rawContent)}详情`
+    const isCompositeContent = isVNode(content)
+    const activate = () => {
+      if ((!link.permission || hasAuth(link.permission)) && !link.disabled?.(row)) {
+        void link.onClick(row)
+      }
+    }
+    return h(
+      isCompositeContent ? 'div' : 'button',
+      {
+        ...(isCompositeContent ? { role: 'button', tabindex: 0 } : { type: 'button' }),
+        class: ['art-table__cell-link', { 'is-composite': isCompositeContent }],
+        title,
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          activate()
+        },
+        onKeydown: (event: KeyboardEvent) => {
+          if (isCompositeContent && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            event.stopPropagation()
+            activate()
+          }
+        }
+      },
+      children
+    )
   }
 
   const isComponentCellContent = (content: unknown) => {
@@ -1161,6 +1210,7 @@
     delete columnProps.dragDisabled
     delete columnProps.dragIcon
     delete columnProps.dict
+    delete columnProps.link
     delete columnProps.children
     delete columnProps.required
     delete columnProps.requiredMessage

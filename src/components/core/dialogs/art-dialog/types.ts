@@ -51,6 +51,8 @@ export interface ArtDialogExpose<TData = unknown> extends ArtOverlayExpose<
   scrollbarRef: Readonly<Ref<unknown>>
   /** 当前是否全屏 */
   fullscreen: Readonly<Ref<boolean>>
+  /** 当前是否为专注填单模式 */
+  focusMode: Readonly<Ref<boolean>>
   /** 打开弹窗并传入本次数据与覆盖配置 */
   handleOpen: (data?: TData, options?: ArtDialogOptions<TData>) => Promise<void>
   /** 获取底层 ElDialog 实例 */
@@ -59,6 +61,9 @@ export interface ArtDialogExpose<TData = unknown> extends ArtOverlayExpose<
   setFullscreen: (value: boolean) => void
   /** 切换全屏状态 */
   toggleFullscreen: () => void
+  /** 设置专注填单模式；退出时恢复进入前的全屏状态 */
+  setFocusMode: (value: boolean) => void
+  toggleFocusMode: () => void
   /** 控制内容滚动位置 */
   scrollTo: (options: ArtScrollOptions) => void
 }
@@ -80,6 +85,7 @@ export interface ArtDialogEmits<TData = unknown> {
   error: [error: unknown]
   /** 全屏状态切换完成 */
   'fullscreen-change': [value: boolean]
+  'focus-change': [value: boolean]
   'open-auto-focus': []
   'close-auto-focus': []
 }
@@ -94,6 +100,7 @@ export interface ArtDialogSlotProps<TData = unknown> {
 export interface ArtDialogSlots<TData = unknown> {
   default?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild
   header?: (props: ArtDialogSlotProps<TData>) => VNodeChild
+  'header-actions'?: (props: ArtDialogSlotProps<TData>) => VNodeChild
   subtitle?: (props: ArtDialogSlotProps<TData>) => VNodeChild
   footer?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild
   'footer-left'?: (props: ArtDialogSlotProps<TData> & { loading: boolean }) => VNodeChild

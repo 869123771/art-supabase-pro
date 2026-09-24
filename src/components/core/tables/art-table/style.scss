@@ -22,6 +22,36 @@
     white-space: nowrap;
   }
 
+  :deep(.art-table__cell-link) {
+    max-width: 100%;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font: inherit;
+    font-weight: 600;
+    color: var(--theme-color);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    background: none;
+    border: 0;
+
+    &.is-composite {
+      font-weight: inherit;
+    }
+
+    &:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-color);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+  }
+
   :deep(.art-table__header-label) {
     display: inline-flex;
     gap: 3px;

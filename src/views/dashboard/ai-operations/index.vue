@@ -685,7 +685,13 @@
       width: 82,
       dict: { code: 'aiRunStatus', display: 'auto' }
     },
-    { prop: 'model', label: '模型', minWidth: 134, showOverflowTooltip: true },
+    {
+      prop: 'model',
+      label: '模型',
+      minWidth: 134,
+      showOverflowTooltip: true,
+      link: { onClick: openDetail }
+    },
     {
       prop: 'latencyMs',
       label: '耗时',

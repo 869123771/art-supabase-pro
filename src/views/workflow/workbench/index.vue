@@ -375,7 +375,12 @@
         minWidth: 145,
         formatter: (row) => getWorkflowBusinessTypeLabel(row.instance?.businessType)
       },
-      { prop: 'nodeName', label: '当前节点', minWidth: 140 },
+      {
+        prop: 'nodeName',
+        label: '当前节点',
+        minWidth: 140,
+        link: { disabled: (row) => !row.instanceId, onClick: (row) => openInstance(row.instanceId) }
+      },
       {
         prop: 'assignmentSource',
         label: '任务来源',
@@ -561,7 +566,12 @@
         fixed: 'left',
         formatter: (row) => createBusinessCell(row.instance)
       },
-      { prop: 'nodeName', label: '审批节点', minWidth: 140 },
+      {
+        prop: 'nodeName',
+        label: '审批节点',
+        minWidth: 140,
+        link: { disabled: (row) => !row.instanceId, onClick: (row) => openInstance(row.instanceId) }
+      },
       {
         prop: 'status',
         label: '处理结果',
@@ -639,6 +649,7 @@
         prop: 'currentNodeName',
         label: '当前节点',
         minWidth: 145,
+        link: { onClick: (row) => openInstance(row.id) },
         formatter: (row) => row.currentNodeName || '流程已结束'
       },
       {

@@ -6,6 +6,7 @@
     :class="[
       'art-form px-4 pb-0 pt-4 md:px-4 md:pt-4',
       { 'art-form--custom-layout': customLayout },
+      { 'art-form--dialog-focus': dialogFocus?.focusMode.value },
       rootClass
     ]"
   >
@@ -14,7 +15,7 @@
       :class="formClass"
       :model="modelValue"
       :rules="props.rules"
-      :label-position="labelPosition"
+      :label-position="effectiveLabelPosition"
       :disabled="props.disabled"
       :validate-on-rule-change="props.validateOnRuleChange"
       v-bind="{ ...$attrs }"
@@ -22,7 +23,7 @@
       @submit.prevent="handleSubmit"
     >
       <slot v-if="customLayout" :model-value="modelValue" />
-      <ElRow v-else class="flex flex-wrap" :gutter="gutter">
+      <ElRow v-else class="flex flex-wrap" :gutter="effectiveGutter">
         <ElCol
           v-for="item in visibleFormItems"
           :key="item.key"
@@ -59,6 +60,13 @@
             <template #label v-if="item.label">
               <span class="art-form-item__label">
                 <component v-if="typeof item.label !== 'string'" :is="item.label" />
+                <ArtTooltip
+                  v-else-if="dialogFocus?.focusMode.value"
+                  :content="item.label"
+                  placement="top"
+                >
+                  <span class="art-form-item__label-text">{{ item.label }}</span>
+                </ArtTooltip>
                 <span v-else>{{ item.label }}</span>
                 <ArtTooltip v-if="item.help" placement="top" effect="dark">
                   <template #content>
@@ -221,7 +229,16 @@
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
   import { get, unset } from 'lodash-es'
-  import { onMounted, unref, watch, type Component, type Ref, type VNodeChild } from 'vue'
+  import {
+    inject,
+    onMounted,
+    onUnmounted,
+    unref,
+    watch,
+    type Component,
+    type Ref,
+    type VNodeChild
+  } from 'vue'
   import {
     ElCascader,
     ElAutocomplete,
@@ -258,6 +275,7 @@
   } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
+  import { artDialogFocusKey } from '@/components/core/dialogs/art-dialog/focus'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
@@ -550,6 +568,14 @@
     collapsibleSections: true,
     sanitizeOutput: () => ({})
   })
+  const dialogFocus = inject(artDialogFocusKey, undefined)
+  const effectiveLabelPosition = computed(() =>
+    dialogFocus?.focusMode.value && width.value >= 768 ? 'left' : props.labelPosition
+  )
+  const effectiveGutter = computed(() =>
+    dialogFocus?.focusMode.value ? Math.min(props.gutter, 16) : props.gutter
+  )
+  let unregisterDialogForm: (() => void) | undefined
 
   export interface ArtFormEmits {
     reset: []
@@ -986,7 +1012,10 @@
   }
 
   const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
-    return item.label ? item.labelWidth || labelWidth.value : undefined
+    if (!item.label) return undefined
+    return dialogFocus?.focusMode.value && width.value >= 768
+      ? 112
+      : item.labelWidth || labelWidth.value
   }
 
   const getComponentProps = (item: FormItem) => {
@@ -1208,9 +1237,12 @@
   }
 
   onMounted(() => {
+    unregisterDialogForm = dialogFocus?.registerForm()
     resetCollapsedSections()
     loadImmediateOptions()
   })
+
+  onUnmounted(() => unregisterDialogForm?.())
 
   watch(
     () =>
@@ -1272,7 +1304,7 @@
   })
 
   // 解构 props 以便在模板中直接使用
-  const { span, gutter, labelPosition, labelWidth } = toRefs(props)
+  const { span, labelWidth } = toRefs(props)
 </script>
 
 <style scoped lang="scss" src="./style.scss"></style>

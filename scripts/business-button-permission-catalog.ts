@@ -32,6 +32,15 @@ const crud = (
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
   {
+    menuName: 'MdmPurchaseSupplier',
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('ManageGroup', '管理供应商分组'),
+      button('ManageBank', '管理银行信息'),
+      button('ManageContact', '管理联系人')
+    ]
+  },
+  {
     menuName: 'MdmGovernance',
     buttons: [
       button('View', '查看治理中心'),
@@ -74,6 +83,36 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Disable', '禁用'),
       button('ManageGroup', '管理分组')
     ]
+  },
+  {
+    menuName: 'MdmWarehouseZone',
+    buttons: [...crud({ view: true }), button('Sort', '调整排序')]
+  },
+  {
+    menuName: 'MdmWarehouseBin',
+    buttons: [...crud({ view: true }), button('Generate', '生成货架')]
+  },
+  {
+    menuName: 'MdmInventoryBatch',
+    buttons: [
+      button('View', '查看'),
+      button('Receive', '入库'),
+      button('Issue', '出库'),
+      button('Transfer', '调拨'),
+      button('Configure', '配置呆滞天数')
+    ]
+  },
+  {
+    menuName: 'MdmInventoryReservation',
+    buttons: [button('View', '查看'), button('Add', '新增预留'), button('Release', '释放预留')]
+  },
+  {
+    menuName: 'MdmInventoryPackage',
+    buttons: [button('View', '查看'), button('Assign', '绑定库位'), button('Unassign', '解绑库位')]
+  },
+  {
+    menuName: 'MdmInventorySerial',
+    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
   },
   ...['MdmSupplyChainCodeRule', 'MdmOutboundRule'].map((menuName) => ({
     menuName,
@@ -2333,6 +2372,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'FinanceAssetPayable',
+    buttons: [button('View', '查看'), button('Add', '下推生成'), button('Approve', '审核应付')]
+  },
+  {
+    menuName: 'WmsReceiptInbound',
+    buttons: [button('View', '查看'), button('Add', '下推生成'), button('Confirm', '确认入库')]
+  },
+  {
     menuName: 'FinanceCommercialBill',
     buttons: [
       button('View', '查看'),
@@ -2587,13 +2634,22 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'ScmPurchaseRequest',
-    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+    buttons: [
+      ...crud({ view: true, export: true }),
+      button('Copy', '复制'),
+      button('Import', '导入'),
+      button('Push', '下推'),
+      button('Select', '选单')
+    ]
   },
   {
     menuName: 'ScmPurchaseOrder',
     buttons: [
       ...crud({ view: true, export: true }),
       button('Copy', '复制'),
+      button('Import', '导入'),
+      button('Push', '下推'),
+      button('Select', '选单'),
       button('Submit', '提交'),
       button('Withdraw', '撤回'),
       button('Approve', '审核'),
@@ -2601,6 +2657,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('RecentPrice', '获取最近采购价')
     ]
   },
+  { menuName: 'ScmPurchaseInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
+  { menuName: 'ScmPurchaseReturnRequest', buttons: [button('View', '查看'), button('Add', '新增')] },
+  { menuName: 'ScmOutsourceReceipt', buttons: [button('View', '查看'), button('Add', '新增')] },
+  { menuName: 'ScmOutsourceInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
   {
     menuName: 'ScmReceiptNotice',
     buttons: [
@@ -2611,7 +2671,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Complete', '确认收料'),
       button('GenerateBatch', '生成批号'),
       button('GenerateSerial', '生成序列号'),
-      button('RecentPrice', '获取最近采购价')
+      button('Import', '导入'),
+      button('Push', '下推'),
+      button('Select', '选单')
     ]
   }
 ]

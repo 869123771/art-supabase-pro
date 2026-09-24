@@ -18,18 +18,37 @@
     @close-auto-focus="emit('close-auto-focus')"
   >
     <template
-      v-if="$slots.header || hasSubtitle || options.showFullscreenButton"
+      v-if="
+        $slots.header ||
+        hasSubtitle ||
+        $slots['header-actions'] ||
+        formCount ||
+        options.showFullscreenButton
+      "
       #header="{ titleId, titleClass }"
     >
       <div class="art-dialog__header">
-        <div class="art-dialog__header-main">
+        <div
+          class="art-dialog__header-main"
+          :class="{ 'has-header-actions': $slots['header-actions'] || formCount }"
+        >
           <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
           <span v-else :id="titleId" :class="titleClass">{{ dialogTitle }}</span>
-          <div v-if="hasSubtitle" class="art-dialog__subtitle">
+          <div v-if="hasSubtitle && !isFocusMode" class="art-dialog__subtitle">
             <slot name="subtitle" :data="openData" :api="exposedApi">
               {{ dialogSubtitle }}
             </slot>
           </div>
+        </div>
+        <div v-if="$slots['header-actions'] || formCount" class="art-dialog__header-actions">
+          <slot name="header-actions" :data="openData" :api="exposedApi" />
+          <ArtIconButton
+            v-if="formCount"
+            :icon="isFocusMode ? 'ri:focus-2-line' : 'ri:focus-3-line'"
+            :label="isFocusMode ? '退出专注填单' : '进入专注填单'"
+            :aria-pressed="isFocusMode"
+            @click="toggleFocusMode"
+          />
         </div>
         <ArtIconButton
           v-if="options.showFullscreenButton"
@@ -133,6 +152,7 @@
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
+  import { artDialogFocusKey } from './focus'
 
   defineOptions({
     name: 'ArtDialog',
@@ -180,6 +200,19 @@
   const dialogRef = shallowRef<DialogInstance>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
   const contentRef = ref<HTMLElement>()
+  const formCount = ref(0)
+  const isFocusMode = ref(false)
+  const wasFullscreenBeforeFocus = ref(false)
+
+  provide(artDialogFocusKey, {
+    focusMode: readonly(isFocusMode),
+    registerForm: () => {
+      formCount.value += 1
+      return () => {
+        formCount.value = Math.max(0, formCount.value - 1)
+      }
+    }
+  })
 
   const getDefaultOptions = (): ArtDialogOptions<T> => ({
     title: props.title,
@@ -315,7 +348,8 @@
 
   const dialogClass = computed(() => [
     attrs.class,
-    (options.value.dialogProps as Record<string, unknown> | undefined)?.class
+    (options.value.dialogProps as Record<string, unknown> | undefined)?.class,
+    { 'is-focus-mode': isFocusMode.value }
   ])
 
   const dialogTitle = computed(() => String(options.value.title ?? attrs.title ?? ''))
@@ -339,6 +373,28 @@
   const toggleFullscreen = () => {
     setFullscreen(!isFullscreen.value)
   }
+
+  const setFocusMode = (value: boolean) => {
+    if (isFocusMode.value === value) return
+    if (value) {
+      wasFullscreenBeforeFocus.value = isFullscreen.value
+      isFocusMode.value = true
+      setFullscreen(true)
+    } else {
+      isFocusMode.value = false
+      setFullscreen(wasFullscreenBeforeFocus.value)
+    }
+    emit('focus-change', value)
+  }
+
+  const toggleFocusMode = () => setFocusMode(!isFocusMode.value)
+
+  watch(isFullscreen, (fullscreen) => {
+    if (!fullscreen && isFocusMode.value) {
+      isFocusMode.value = false
+      emit('focus-change', false)
+    }
+  })
 
   watch(
     () => props.loading,
@@ -406,6 +462,11 @@
   }
 
   const handleClosed = () => {
+    if (isFocusMode.value) {
+      isFocusMode.value = false
+      emit('focus-change', false)
+    }
+    wasFullscreenBeforeFocus.value = false
     overlay.handleClosed()
     emit('closed')
   }
@@ -416,6 +477,7 @@
     confirmLoading: readonly(confirmLoading),
     data: readonly(openData) as Readonly<Ref<T>>,
     fullscreen: readonly(isFullscreen),
+    focusMode: readonly(isFocusMode),
     options: readonly(options) as Readonly<Ref<ArtDialogOptions<T>>>,
     dialogRef: readonly(dialogRef),
     scrollbarRef: readonly(scrollbarRef),
@@ -427,6 +489,8 @@
     setConfirmLoading,
     setFullscreen,
     toggleFullscreen,
+    setFocusMode,
+    toggleFocusMode,
     setOptions,
     setData,
     updateData,
@@ -483,6 +547,21 @@
     overflow: auto;
   }
 
+  :global(.art-dialog.is-focus-mode .art-dialog__content) {
+    box-sizing: border-box;
+    width: min(100%, 1120px);
+    margin-inline: auto;
+  }
+
+  :global(.art-dialog.is-focus-mode .art-form .el-form-item) {
+    margin-bottom: 14px;
+  }
+
+  :global(.art-dialog.is-focus-mode .art-entity-summary),
+  :global(.art-dialog.is-focus-mode [data-art-dialog-focus-hide]) {
+    display: none;
+  }
+
   .art-dialog {
     &__header {
       display: flex;
@@ -494,6 +573,20 @@
     &__header-main {
       flex: 1;
       min-width: 0;
+
+      &.has-header-actions {
+        padding-right: 72px;
+      }
+    }
+
+    &__header-actions {
+      position: absolute;
+      top: 12px;
+      right: 92px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 32px;
     }
 
     &__fullscreen-button {

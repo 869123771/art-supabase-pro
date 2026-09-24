@@ -5,6 +5,7 @@
       'is-readonly': readonly,
       'is-disabled': disabled,
       'is-trigger-only': !showTip && !showFileList,
+      'is-inline': inline && !showTip && !showFileList,
       'has-hover-effect': hoverEffect && !readonly
     }"
   >
@@ -156,6 +157,7 @@
       showTip?: boolean
       showResourcePicker?: boolean
       hoverEffect?: boolean
+      inline?: boolean
       resourceTenantId?: string
       fileName?: string
     }>(),
@@ -173,6 +175,7 @@
       showTip: true,
       showResourcePicker: true,
       hoverEffect: true,
+      inline: false,
       resourceTenantId: '',
       fileName: ''
     }
@@ -375,6 +378,12 @@
       border-radius: var(--el-border-radius-base);
     }
 
+    &.is-inline:not(.is-readonly) {
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
     &:not(.is-readonly):focus-within {
       border-color: var(--theme-color);
     }
@@ -435,11 +444,13 @@
       gap: 7px;
       align-items: center;
       justify-content: center;
+      height: 34px;
       min-height: 34px;
       padding: 0 15px;
       font-family: inherit;
       font-size: 14px;
       color: var(--el-color-primary);
+      white-space: nowrap;
       cursor: pointer;
       background: color-mix(in srgb, var(--el-color-primary) 4%, var(--el-bg-color));
       border: 1px solid color-mix(in srgb, var(--el-color-primary) 62%, transparent);

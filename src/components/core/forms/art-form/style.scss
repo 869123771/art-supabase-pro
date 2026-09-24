@@ -14,6 +14,25 @@
     padding: 0 !important;
   }
 
+  &--dialog-focus {
+    :deep(.el-form-item__label) {
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .art-form-item__label {
+      max-width: 100%;
+      white-space: nowrap;
+    }
+
+    .art-form-item__label-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
   &.art-search-bar {
     padding: var(--art-space-4) var(--art-section-padding) 0;
 
