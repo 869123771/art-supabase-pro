@@ -574,6 +574,10 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.getByText(/呆滞物料 1 种/)).toBeVisible()
       await tile.dblclick()
       await expect(page.getByText('B-20260924-01', { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await tile.click()
+      await expect(page.getByText('一号垛位 · 快捷业务')).toBeVisible()
+      await expect(page.getByRole('button', { name: '采购入库' })).toBeVisible()
     }
   }
   expect(errors).toEqual([])
