@@ -21,6 +21,10 @@ const pages = [
 
 const meta = (title: string) => ({ title, roles: ['R_SUPER'], is_enable: true, is_hide: false })
 const dictionaryItems: Record<string, [string, string, string][]> = {
+  commonBoolean: [
+    ['false', '否', 'info'],
+    ['true', '是', 'success']
+  ],
   mdmWarehouseType: [
     ['raw_material', '原料仓', 'primary'],
     ['finished', '成品仓', 'success']
@@ -38,6 +42,14 @@ const dictionaryItems: Record<string, [string, string, string][]> = {
     ['available', '可存', 'success'],
     ['locked', '锁定', 'warning'],
     ['disabled', '停用', 'info']
+  ],
+  mdmInventoryMovementType: [
+    ['purchase_in', '采购入库', 'primary'],
+    ['production_in', '生产入库', 'success'],
+    ['other_in', '其他入库', 'info'],
+    ['sales_out', '销售出库', 'warning'],
+    ['other_out', '其他出库', 'warning'],
+    ['transfer', '库存调拨', 'primary']
   ],
   mdmInventoryReservationStatus: [
     ['active', '预留中', 'primary'],
@@ -119,7 +131,7 @@ const bin = {
   tenant_id: tenantId,
   warehouse_id: warehouseId,
   zone_id: zoneId,
-  parent_bin_id: null,
+  parent_id: null,
   bin_code: 'RAW-A-BOARD-01',
   bin_name: '一号垛位',
   bin_type: 'stack',
@@ -147,6 +159,18 @@ const binRows = [
     level_no: 1,
     column_no: 1,
     sort: 20
+  },
+  {
+    ...bin,
+    id: 'ed276e75-d9d4-4742-a667-d758731d15fd',
+    parent_id: 'ed276e75-d9d4-4742-a667-d758731d15f9',
+    bin_code: 'RAW-A-SH-1-1-A',
+    bin_name: '货架 1-1 子单元',
+    bin_type: 'floor',
+    shelf_code: null,
+    level_no: null,
+    column_no: null,
+    sort: 25
   },
   {
     ...bin,
@@ -387,13 +411,18 @@ async function installFixtures(page: Page): Promise<void> {
   await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => route.fulfill({ json: binRows }))
   await page.route('**/rest/v1/wms_inventory_batch?*', (route) =>
     route.fulfill({
+      status: 206,
       json: [batch],
-      headers: { 'content-range': '0-0/1' }
+      headers: {
+        'content-range': '0-0/1',
+        'access-control-allow-origin': '*',
+        'access-control-expose-headers': 'content-range'
+      }
     })
   )
   await page.route('**/rest/v1/wms_inventory_policy?*', (route) =>
     route.fulfill({
-      json: [{ tenant_id: tenantId, stale_days: 90, auto_reserve_on_release: false }]
+      json: [{ tenant_id: tenantId, stale_days: 90, auto_reserve_on_release: true }]
     })
   )
   await page.route('**/rest/v1/rpc/wms_storage_overview_secure', (route) =>
@@ -530,7 +559,7 @@ async function installFixtures(page: Page): Promise<void> {
 }
 
 test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
-  test.setTimeout(420_000)
+  test.setTimeout(540_000)
   const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
   mkdirSync(visualDir, { recursive: true })
   await installFixtures(page)
@@ -540,9 +569,33 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     ? pages.filter(([, path]) => path === process.env.WMS_E2E_PAGE)
     : pages
   for (const [, path, , title] of selectedPages) {
+    if (path === 'reservation') {
+      await page.route('**/rest/v1/rpc/wms_work_order_options_secure', (route) =>
+        route.fulfill({
+          json: [
+            {
+              id: 'c0767f00-0000-4000-8000-000000000001',
+              tenantId,
+              workOrderNo: '可领料测试工单',
+              materialId,
+              constructionNo: null,
+              allowedIssueWarehouseTypes: ['raw_material']
+            },
+            {
+              id: 'c0767f00-0000-4000-8000-000000000002',
+              tenantId,
+              workOrderNo: '仅成品仓测试工单',
+              materialId,
+              constructionNo: null,
+              allowedIssueWarehouseTypes: ['finished']
+            }
+          ]
+        })
+      )
+    }
     await page.goto(`/#/mdm/inventory-master/${path}`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({
-      timeout: 60_000
+      timeout: 120_000
     })
     await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 30_000 })
     const themeTipDismiss = page.getByText('知道了', { exact: true })
@@ -561,13 +614,63 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(
         page.locator('.business-workspace-header').getByText('专注模式', { exact: true })
       ).toBeVisible()
+      if (path === 'batch') {
+        await page.getByRole('switch', { name: '显示表格右侧工具栏' }).locator('..').click()
+        await expect(page.getByRole('button', { name: '进入专注模式' })).toHaveCount(0)
+      }
       await page.getByRole('switch', { name: '进入专注模式' }).locator('..').click()
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeHidden()
+      if (path === 'batch') {
+        await expect(page.getByRole('button', { name: '退出专注模式' })).toBeVisible()
+      }
       await page.screenshot({ path: join(visualDir, `mdm-${path}-focus.png`), fullPage: true })
       await page.keyboard.press('Escape')
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
     }
+    if (path === 'warehouse-definition') {
+      await page.getByRole('button', { name: '新增仓库', exact: true }).click()
+      const dialog = page.locator('.el-dialog:visible')
+      await expect(dialog.getByText('一位一品', { exact: true })).toHaveCount(0)
+      await dialog
+        .locator('.el-form-item')
+        .filter({ hasText: '启用仓位' })
+        .locator('.el-switch')
+        .click({ timeout: 15_000 })
+      const singleSkuField = dialog.locator('.el-form-item').filter({ hasText: '一位一品' })
+      await expect(singleSkuField.locator('.el-select')).toContainText('否')
+      await page.screenshot({ path: join(visualDir, 'mdm-warehouse-dialog.png'), fullPage: true })
+      await singleSkuField.locator('.el-select').click({ timeout: 15_000 })
+      await page.getByRole('option', { name: '是' }).click({ timeout: 15_000 })
+      await expect(singleSkuField.locator('.el-select')).toContainText('是')
+    }
+    if (path === 'batch') {
+      await page.getByRole('button', { name: '呆滞口径' }).click()
+      const policyDialog = page.locator('.el-dialog:visible')
+      await expect(policyDialog.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+      await policyDialog.getByRole('button', { name: '取消' }).click()
+    }
+    if (path === 'reservation') {
+      await page.getByRole('button', { name: '新增预留' }).click()
+      const dialog = page.locator('.el-dialog:visible')
+      await dialog.getByRole('combobox', { name: '工单' }).click()
+      await expect(page.getByRole('option', { name: '可领料测试工单' })).toBeVisible()
+      await expect(page.getByRole('option', { name: '仅成品仓测试工单' })).toHaveCount(0)
+      await page.screenshot({ path: join(visualDir, 'mdm-reservation-allowed-orders.png') })
+      await dialog.getByRole('button', { name: '取消' }).click()
+    }
     if (path === 'bin') {
+      await expect(page.getByText('子单元 1', { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^货架 1-1 子单元，/ })).toBeVisible()
+      await page.getByRole('button', { name: '编辑货架 1-1', exact: true }).click()
+      const editDialog = page.locator('.el-dialog:visible')
+      await editDialog
+        .locator('.el-form-item')
+        .filter({ hasText: '上级存储单元' })
+        .locator('.el-select')
+        .click()
+      await expect(page.getByRole('option', { name: /RAW-A-BOARD-01/ })).toBeVisible()
+      await expect(page.getByRole('option', { name: /RAW-A-SH-1-1-A/ })).toHaveCount(0)
+      await editDialog.getByRole('button', { name: '取消' }).click()
       const tile = page.getByRole('button', { name: /^一号垛位，/ })
       await tile.hover()
       await expect(page.getByText(/库存金额.*960/)).toBeVisible()
@@ -578,7 +681,164 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await tile.click()
       await expect(page.getByText('一号垛位 · 快捷业务')).toBeVisible()
       await expect(page.getByRole('button', { name: '采购入库' })).toBeVisible()
+      await page.route('**/rest/v1/mdm_material?*', (route) =>
+        route.fulfill({
+          status: 206,
+          headers: { 'content-range': '0-0/1' },
+          json: [
+            {
+              ...material,
+              material_code: 'FIN-001',
+              material_name: '演示成品板',
+              material_type: 'FERT',
+              inbound_warehouse_id: warehouseId
+            }
+          ]
+        })
+      )
+      await page.getByRole('button', { name: '生产入库' }).click()
+      const movementDialog = page
+        .locator('.el-dialog:visible')
+        .filter({ hasText: 'INVENTORY MOVEMENT' })
+      await expect(movementDialog.getByText('选择成品物料后自动确定入库仓库')).toBeVisible()
+      await movementDialog.getByPlaceholder('请选择物料').click()
+      await expect(page.getByText('演示成品板', { exact: true })).toBeVisible()
+      const materialDialog = page.locator('.el-dialog:visible').filter({ hasText: '选择入库物料' })
+      await materialDialog.getByRole('row', { name: /演示成品板/ }).click()
+      await materialDialog.getByRole('button', { name: '确定' }).click()
+      await expect(materialDialog).toBeHidden()
+      await expect(movementDialog.getByText('暂无可用于业务的成品仓')).toBeVisible()
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-finished-receipt.png'),
+        fullPage: true
+      })
     }
   }
   expect(errors).toEqual([])
+})
+
+test('生产工单类型显示可配置的领料仓库范围', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  const root = {
+    id: 'wms-document-root',
+    parentId: null,
+    name: 'MdmMasterData',
+    path: '/mdm',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('MDM主数据')
+  }
+  const folder = {
+    id: 'wms-operational-root',
+    parentId: root.id,
+    name: 'MdmOperationalMaster',
+    path: 'operational-master',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('运营主数据')
+  }
+  const menu = {
+    id: 'wms-document-menu',
+    parentId: folder.id,
+    name: 'MdmDocumentType',
+    path: 'document-type',
+    component: '/mdm/document-type',
+    type: 'menu',
+    sort: 1,
+    meta: meta('单据类型')
+  }
+  const buttons = ['View', 'Add', 'Copy', 'Edit', 'Delete', 'Export'].map((action) => ({
+    id: `wms-document-${action}`,
+    parentId: menu.id,
+    name: `MdmDocumentType:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action),
+    children: []
+  }))
+  const tree = {
+    ...root,
+    children: [{ ...folder, children: [{ ...menu, children: buttons }] }]
+  }
+  const flat = [root, folder, menu, ...buttons]
+  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
+    route.fulfill({ json: { flat, tree: [tree] } })
+  )
+  await page.route('**/rest/v1/sys_menu?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'wms-work-order-menu',
+          parent_id: null,
+          name: 'MesWorkOrder',
+          path: 'work-order',
+          component: '/mes/manufacturing',
+          type: 'menu',
+          app_code: 'mes',
+          sort: 1,
+          meta: meta('生产工单')
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_document_type?*', (route) =>
+    route.fulfill({
+      status: 206,
+      headers: { 'content-range': '0-0/1' },
+      json: [
+        {
+          id: 'wms-type-id',
+          tenant_id: tenantId,
+          menu_id: 'wms-work-order-menu',
+          document_type_code: 'PP13',
+          document_type_name: '演示成品装配',
+          is_default: false,
+          remark: '',
+          sort_order: 10,
+          text_color: '',
+          tag_style: 'primary',
+          enabled: true,
+          extension_fields: [],
+          allowed_issue_warehouse_types: ['raw_material'],
+          tenant: { tenant_code: 'DEMO', tenant_name: '示例工厂' }
+        }
+      ]
+    })
+  )
+  await page.goto('/#/mdm/operational-master/document-type', {
+    waitUntil: 'domcontentloaded'
+  })
+  await expect(page.getByRole('heading', { name: '单据类型', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
+  await expect(page.getByText('演示成品装配', { exact: true }).first()).toBeVisible()
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.locator('.el-dialog:visible')
+  const field = dialog.locator('.el-form-item').filter({ hasText: '允许领料的仓库类型' })
+  await expect(field).toBeVisible()
+  await expect(field).toContainText('原料仓')
+  await field.scrollIntoViewIfNeeded()
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({ path: join(visualDir, 'mdm-work-order-type-policy.png'), fullPage: true })
+  await field.locator('.el-select').click()
+  await page.getByRole('option', { name: '成品仓' }).click()
+  await expect(field).toContainText('成品仓')
+  await page.screenshot({
+    path: join(visualDir, 'mdm-work-order-type-policy-selected.png'),
+    fullPage: true
+  })
+  const saveRequest = page.waitForRequest(
+    (request) => request.method() === 'PATCH' && request.url().includes('/mdm_document_type?')
+  )
+  await dialog.getByRole('button', { name: '保存更改' }).click()
+  const payload = (await saveRequest).postDataJSON() as {
+    allowed_issue_warehouse_types: string[]
+  }
+  expect(payload.allowed_issue_warehouse_types).toEqual(['raw_material', 'finished'])
 })

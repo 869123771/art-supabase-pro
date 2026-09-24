@@ -100,7 +100,11 @@
         }"
         v-bind="mergedTableHeaderProps"
         :show-search-bar="effectiveShowTableToolbar && hasSearchBar ? showSearchBar : undefined"
-        :focus-mode="effectiveShowTableToolbar && focusable ? focusMode : undefined"
+        :focus-mode="
+          effectiveShowTableToolbar && focusable && (focusMode || !workspaceHeaderActionHostRef)
+            ? focusMode
+            : undefined
+        "
         @update:show-search-bar="handleShowSearchBarChange"
         @update:focus-mode="handleFocusModeChange"
         @refresh="handleRefresh"

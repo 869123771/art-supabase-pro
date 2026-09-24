@@ -67,6 +67,7 @@
     materialComposition?: string | null
     brand?: string | null
     materialType?: string | null
+    inboundWarehouseId?: string | null
     materialSource?: string | null
     specialPurchaseType?: string | null
     category?: { categoryName?: string | null } | null
