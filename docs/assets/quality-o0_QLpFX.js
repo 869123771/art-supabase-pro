@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./center-BChli2pE.js";var i=t({name:`MdmDataQuality`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`quality`}))}});export{i as default};

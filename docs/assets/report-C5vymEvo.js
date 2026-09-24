@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./task-workspace-BNt701d9.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`,mode:`report`}))}});export{i as default};
