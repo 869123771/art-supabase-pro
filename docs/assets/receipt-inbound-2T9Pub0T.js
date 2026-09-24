@@ -1,0 +1,1 @@
+import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./scm-receipt-target-workspace-CkjE2hu9.js";var i=t({name:`WmsReceiptInbound`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`inbound`,"view-permission":`WmsReceiptInbound:View`,"action-permission":`WmsReceiptInbound:Confirm`}))}});export{i as default};
