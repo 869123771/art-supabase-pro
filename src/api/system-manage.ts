@@ -264,6 +264,15 @@ export async function fetchGetEnableOrganizationTree(
   return { ...response, data }
 }
 
+/** Flat enabled organizations for business forms that select a stock owner. */
+export async function fetchGetEnableOrganizationOptionsList(tenantId?: string) {
+  const response = await fetchGetOrganizationOptionsTree({ tenantId, status: '1' })
+  return {
+    ...response,
+    data: organizationTreeUtils.treeToList(response.data ?? [])
+  }
+}
+
 export async function fetchGetUserOrganizationTree(params: { tenantId?: string } = {}) {
   let query = supabase
     .from('mdm_organization')

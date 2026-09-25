@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./order-target-workspace-1nI8A3dH.js";var i=t({name:`ScmPurchaseReturnRequest`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`return_request`}))}});export{i as default};

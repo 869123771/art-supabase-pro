@@ -1,1 +1,0 @@
-import{At as e,Bt as t,on as n}from"./framework-x7XoaZj-.js";import{t as r}from"./department-setting-workspace-avliUPL_.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`maintenance`}))}});export{i as default};

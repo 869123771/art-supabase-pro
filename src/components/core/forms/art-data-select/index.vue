@@ -853,6 +853,9 @@
   }
 
   const handleDialogClosed = () => {
+    // The close icon can complete without the early `close` callback reaching this wrapper.
+    // Always release the shared open guard after the dialog has fully closed.
+    invalidateLoad()
     keyword.value = ''
     filterValue.value = undefined
     navigationKeyword.value = ''

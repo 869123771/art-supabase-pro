@@ -55,7 +55,8 @@ const dictionaryItems: Record<string, [string, string, string][]> = {
     ['active', '预留中', 'primary'],
     ['released', '已释放', 'info']
   ],
-  mdmInventorySerialStatus: [['in_stock', '在库', 'success']]
+  mdmInventorySerialStatus: [['in_stock', '在库', 'success']],
+  mdmMaterialSource: [['purchase', '采购', 'primary']]
 }
 const dictionaryRows = Object.entries(dictionaryItems).flatMap(([type, values]) =>
   values.map(([value, label, tagType], index) => ({
@@ -594,6 +595,19 @@ async function installFixtures(page: Page): Promise<void> {
     route.fulfill({ json: [] })
   )
   await page.route('**/rest/v1/mdm_material?*', (route) => route.fulfill({ json: [material] }))
+  await page.route('**/rest/v1/mdm_material_type?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: '8bb1b1cc-51a2-4771-9a69-c4b9b1297d08',
+          tenant_id: tenantId,
+          type_code: 'ROH',
+          type_name: '原材料',
+          status: 'enabled'
+        }
+      ]
+    })
+  )
 }
 
 test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
@@ -662,6 +676,24 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.getByRole('button', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.getByRole('switch', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.locator('.art-section-card .el-scrollbar').first()).toBeVisible()
+      if (path === 'bin') {
+        await expect(page.locator('.art-workspace-splitter')).toHaveCount(2)
+        if ((page.viewportSize()?.width ?? 0) > 1200) {
+          await expect(page.locator('.art-workspace-splitter .el-splitter-bar')).toHaveCount(2)
+          const splitter = page.locator('.art-workspace-splitter').first()
+          const primaryPanel = splitter.locator('.el-splitter-panel').first()
+          const beforeWidth = (await primaryPanel.boundingBox())?.width ?? 0
+          const handle = await splitter.locator('.el-splitter-bar').first().boundingBox()
+          expect(handle).not.toBeNull()
+          await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2)
+          await page.mouse.down()
+          await page.mouse.move(handle!.x + handle!.width / 2 + 48, handle!.y + handle!.height / 2)
+          await page.mouse.up()
+          await expect
+            .poll(async () => (await primaryPanel.boundingBox())?.width ?? 0)
+            .toBeGreaterThan(beforeWidth + 20)
+        }
+      }
     } else {
       await expect(
         page.locator('.business-workspace-header:visible').getByText('专注模式', { exact: true })
@@ -683,17 +715,47 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await page.getByRole('button', { name: '新增仓库', exact: true }).click()
       const dialog = page.locator('.el-dialog:visible')
       await expect(dialog.getByText('一位一品', { exact: true })).toHaveCount(0)
+      const zoneSwitch = dialog
+        .locator('.el-form-item')
+        .filter({ hasText: '启用库区' })
+        .locator('.el-switch')
+      const binSwitch = dialog
+        .locator('.el-form-item')
+        .filter({ hasText: '启用库位' })
+        .locator('.el-switch')
+      await expect(zoneSwitch).not.toHaveClass(/is-checked/)
+      await expect(binSwitch).not.toHaveClass(/is-checked/)
       await dialog
         .locator('.el-form-item')
-        .filter({ hasText: '启用仓位' })
+        .filter({ hasText: '启用库位' })
         .locator('.el-switch')
         .click({ timeout: 15_000 })
+      await expect(zoneSwitch).not.toHaveClass(/is-checked/)
       const singleSkuField = dialog.locator('.el-form-item').filter({ hasText: '一位一品' })
       await expect(singleSkuField.locator('.el-select')).toContainText('否')
       await page.screenshot({ path: join(visualDir, 'mdm-warehouse-dialog.png'), fullPage: true })
       await singleSkuField.locator('.el-select').click({ timeout: 15_000 })
       await page.getByRole('option', { name: '是' }).click({ timeout: 15_000 })
       await expect(singleSkuField.locator('.el-select')).toContainText('是')
+    }
+    if (path === 'serial') {
+      await expect(page.getByText('采购', { exact: true }).first()).toBeVisible()
+      await expect(page.getByText('原材料', { exact: true }).first()).toBeVisible()
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
+      const dialog = page.locator('.el-dialog:visible')
+      await expect(dialog.locator('.el-form-item').filter({ hasText: '工单' })).toContainText(
+        'DEMO-WMS-001'
+      )
+      await expect(dialog.getByText('39b66f7c-3b4c-4b7d-b849-5ee7cb1d558a')).toHaveCount(0)
+      await expect(dialog.locator('.el-form-item').filter({ hasText: '库位' })).toContainText(
+        'RAW-A-BOARD-01'
+      )
+      await page.screenshot({
+        path: join(visualDir, 'mdm-serial-dialog.png'),
+        fullPage: true,
+        animations: 'disabled'
+      })
+      await dialog.getByRole('button', { name: '取消' }).click()
     }
     if (path === 'batch') {
       await page.getByRole('button', { name: '呆滞口径' }).click()
@@ -711,9 +773,85 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await dialog.getByRole('button', { name: '取消' }).click()
     }
     if (path === 'bin') {
+      for (const [label, token] of [
+        ['可存', '--el-color-success'],
+        ['有库存', '--el-color-primary'],
+        ['异常', '--el-color-danger'],
+        ['停用', '--el-color-info']
+      ] as const) {
+        const swatch = page.locator('.el-checkbox-group .el-checkbox').filter({ hasText: label })
+        const colors = await swatch.evaluate((element, colorToken) => {
+          const reference = document.createElement('span')
+          reference.style.color = `var(${colorToken})`
+          element.appendChild(reference)
+          const colors = {
+            actual: getComputedStyle(element.querySelector('.el-checkbox__inner')!).backgroundColor,
+            expected: getComputedStyle(reference).color
+          }
+          reference.remove()
+          return colors
+        }, token)
+        expect(colors.actual, `${label} 筛选色应与库位状态色一致`).toBe(colors.expected)
+      }
+      const originalAppearance = await page.evaluate(() => ({
+        dark: document.documentElement.classList.contains('dark'),
+        boxMode: document.documentElement.getAttribute('data-box-mode')
+      }))
+      await page.evaluate(() => {
+        document.documentElement.classList.add('dark')
+        document.documentElement.setAttribute('data-box-mode', 'border-mode')
+      })
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-dark-border.png'),
+        fullPage: true,
+        animations: 'disabled'
+      })
+      await page.evaluate(() => {
+        document.documentElement.setAttribute('data-box-mode', 'shadow-mode')
+      })
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-dark-shadow.png'),
+        fullPage: true,
+        animations: 'disabled'
+      })
+      await page.evaluate(({ dark, boxMode }) => {
+        document.documentElement.classList.toggle('dark', dark)
+        if (boxMode) document.documentElement.setAttribute('data-box-mode', boxMode)
+        else document.documentElement.removeAttribute('data-box-mode')
+      }, originalAppearance)
+      await expect(page.locator('.rack-facade')).toBeVisible()
+      await expect(page.locator('.rack-facade')).toHaveCSS('border-top-width', '12px')
+      await expect(page.locator('.rack-level')).toHaveCount(2)
+      const rackMore = page.getByRole('button', { name: '操作货架 1-1', exact: true })
+      await expect(rackMore.locator('svg')).toBeVisible()
+      const rackTile = page.getByRole('button', { name: /^货架 1-1，/ })
+      const rackActions = page
+        .locator('.rack-cell')
+        .filter({ has: rackMore })
+        .locator('.storage-card-actions')
+      if ((page.viewportSize()?.width ?? 0) > 1200) {
+        await expect(rackActions).toHaveCSS('opacity', '0')
+      }
+      await rackTile.hover()
+      await expect(rackActions).toHaveCSS('opacity', '1')
+      const rackTileBounds = await rackTile.boundingBox()
+      const rackMoreBounds = await rackMore.boundingBox()
+      expect(rackTileBounds).not.toBeNull()
+      expect(rackMoreBounds).not.toBeNull()
+      expect(rackMoreBounds!.x).toBeGreaterThan(rackTileBounds!.x + rackTileBounds!.width / 2)
+      expect(rackMoreBounds!.y + rackMoreBounds!.height).toBeLessThanOrEqual(
+        rackTileBounds!.y + rackTileBounds!.height
+      )
       await expect(page.getByText('子单元 1', { exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: /^货架 1-1 子单元，/ })).toBeVisible()
-      await page.getByRole('button', { name: '编辑货架 1-1', exact: true }).click()
+      await rackMore.click()
+      await expect(page.getByRole('menuitem', { name: '新增子单元' })).toBeVisible()
+      await expect(page.getByRole('menuitem', { name: '删除库位' })).toBeVisible()
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-more-actions.png'),
+        animations: 'disabled'
+      })
+      await page.getByRole('menuitem', { name: '编辑库位' }).click()
       const editDialog = page.locator('.el-dialog:visible')
       await editDialog
         .locator('.el-form-item')
@@ -724,6 +862,31 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.getByRole('option', { name: /RAW-A-SH-1-1-A/ })).toHaveCount(0)
       await editDialog.getByRole('button', { name: '取消' }).click()
       const tile = page.getByRole('button', { name: /^一号垛位，/ })
+      const blockMore = page.getByRole('button', { name: '操作一号垛位', exact: true })
+      const blockActions = page
+        .locator('.bin-node__tile')
+        .filter({ has: blockMore })
+        .locator('.storage-card-actions')
+      if ((page.viewportSize()?.width ?? 0) > 1200) {
+        await expect(blockActions).toHaveCSS('opacity', '0')
+      }
+      await tile.hover()
+      await expect(blockActions).toHaveCSS('opacity', '1')
+      const blockTileBounds = await tile.boundingBox()
+      const blockMoreBounds = await blockMore.boundingBox()
+      expect(blockTileBounds).not.toBeNull()
+      expect(blockMoreBounds).not.toBeNull()
+      expect(blockMoreBounds!.x).toBeGreaterThan(blockTileBounds!.x + blockTileBounds!.width / 2)
+      expect(blockMoreBounds!.y + blockMoreBounds!.height).toBeLessThanOrEqual(
+        blockTileBounds!.y + blockTileBounds!.height
+      )
+      await blockMore.click()
+      await expect(page.getByRole('menuitem', { name: '编辑库位' })).toBeVisible()
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-block-more-actions.png'),
+        animations: 'disabled'
+      })
+      await page.keyboard.press('Escape')
       await tile.hover()
       await expect(page.getByText(/库存金额.*960/)).toBeVisible()
       await expect(page.getByText(/呆滞物料 1 种/)).toBeVisible()
@@ -733,37 +896,13 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await tile.click()
       await expect(page.getByText('一号垛位 · 快捷业务')).toBeVisible()
       await expect(page.getByRole('button', { name: '采购入库' })).toBeVisible()
-      await page.route('**/rest/v1/mdm_material?*', (route) =>
-        route.fulfill({
-          status: 206,
-          headers: { 'content-range': '0-0/1' },
-          json: [
-            {
-              ...material,
-              material_code: 'FIN-001',
-              material_name: '演示成品板',
-              material_type: 'FERT',
-              inbound_warehouse_id: warehouseId
-            }
-          ]
-        })
-      )
-      await page.getByRole('button', { name: '生产入库' }).click()
-      const movementDialog = page
-        .locator('.el-dialog:visible')
-        .filter({ hasText: 'INVENTORY MOVEMENT' })
-      await expect(movementDialog.getByText('选择成品物料后自动确定入库仓库')).toBeVisible()
-      await movementDialog.getByPlaceholder('请选择物料').click()
-      await expect(page.getByText('演示成品板', { exact: true })).toBeVisible()
-      const materialDialog = page.locator('.el-dialog:visible').filter({ hasText: '选择入库物料' })
-      await materialDialog.getByRole('row', { name: /演示成品板/ }).click()
-      await materialDialog.getByRole('button', { name: '确定' }).click()
-      await expect(materialDialog).toBeHidden()
-      await expect(movementDialog.getByText('暂无可用于业务的成品仓')).toBeVisible()
       await page.screenshot({
-        path: join(visualDir, 'mdm-bin-finished-receipt.png'),
-        fullPage: true
+        path: join(visualDir, 'mdm-bin-action-dialog.png'),
+        fullPage: true,
+        animations: 'disabled'
       })
+      await page.getByRole('button', { name: '生产入库' }).click()
+      await expect(page).toHaveURL(/\/wms\/receipt-issue\/stock-operation/)
     }
   }
   expect(errors).toEqual([])
@@ -919,4 +1058,87 @@ test('库区新增弹窗先出现，再等待基础数据', async ({ page }) => 
     releaseCategories()
   }
   await expect(page.locator('.el-dialog:visible .art-overlay-loading.is-loading')).toHaveCount(0)
+})
+
+test('库区和库位筛选无结果时保留筛选与重置入口', async ({ page }) => {
+  await installFixtures(page)
+  await page.goto('/#/mdm/inventory-master/zone', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '库区管理', exact: true })).toBeVisible()
+  const zoneCard = page.locator('.zone-tile').first()
+  const zoneMore = zoneCard.getByRole('button', { name: /^操作/ })
+  if ((page.viewportSize()?.width ?? 0) > 1200) {
+    await expect(zoneCard.locator('.storage-card-actions')).toHaveCSS('opacity', '0')
+  }
+  await zoneCard.locator('.storage-tile').hover()
+  await expect(zoneCard.locator('.storage-card-actions')).toHaveCSS('opacity', '1')
+  await zoneMore.click()
+  await expect(page.getByRole('menuitem', { name: '编辑库区' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '删除库区' })).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const zoneFilters = page.locator('.el-checkbox-group:visible').last()
+  await expect(zoneFilters.locator('.el-checkbox')).toHaveCount(4)
+  for (const label of ['可存', '有库存', '异常', '停用']) {
+    await zoneFilters.getByText(label, { exact: true }).click()
+  }
+  await expect(page.getByText('暂无匹配库区', { exact: true })).toBeVisible()
+  await expect(page.locator('.el-checkbox-group .el-checkbox')).toHaveCount(4)
+  await page.getByRole('button', { name: '重置筛选' }).first().click()
+  await expect(page.locator('.zone-tile').first()).toBeVisible()
+
+  await page.goto('/#/mdm/inventory-master/bin', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '库位管理', exact: true })).toBeVisible()
+  const binFilters = page.locator('.el-checkbox-group:visible').last()
+  await expect(binFilters.locator('.el-checkbox')).toHaveCount(4)
+  for (const label of ['可存', '有库存', '异常', '停用']) {
+    await binFilters.getByText(label, { exact: true }).click()
+  }
+  await expect(page.getByText('暂无匹配库位', { exact: true })).toBeVisible()
+  await expect(page.locator('.el-checkbox-group .el-checkbox')).toHaveCount(4)
+  await page.getByRole('button', { name: '重置筛选' }).first().click()
+  await expect(page.locator('.rack-facade')).toBeVisible()
+})
+
+test('新增库区时可选分类为空会提交 null', async ({ page }) => {
+  await installFixtures(page)
+  await page.route('**/rest/v1/mdm_material_category*', (route) =>
+    route.fulfill({
+      json: [{ id: materialId, category_code: 'BOARD', category_name: '板材', status: 'enabled' }]
+    })
+  )
+  let submitted: Record<string, unknown> | undefined
+  await page.route('**/rest/v1/mdm_warehouse_zone?*', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    submitted = route.request().postDataJSON() as Record<string, unknown>
+    await route.fulfill({ status: 201, json: [{ id: zoneId }] })
+  })
+  await page.goto('/#/mdm/inventory-master/zone', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '新增库区' }).click()
+  const dialog = page.locator('.el-dialog:visible').filter({ hasText: '新增库区' })
+  await expect(dialog.locator('.art-overlay-loading.is-loading')).toHaveCount(0)
+  await dialog
+    .locator('.el-form-item')
+    .filter({ hasText: '库区编码' })
+    .locator('input')
+    .fill('C100201')
+  await dialog
+    .locator('.el-form-item')
+    .filter({ hasText: '库区名称' })
+    .locator('input')
+    .fill('货架区')
+  const categoryField = dialog.locator('.el-form-item').filter({ hasText: '存放物料分类' })
+  await categoryField.locator('.el-select').click()
+  await page.getByRole('option', { name: '板材 · BOARD' }).click()
+  await categoryField.locator('.el-select').hover()
+  await categoryField.locator('.el-select__clear').click()
+  await dialog.getByRole('button', { name: '确定' }).click()
+  await expect
+    .poll(() => submitted)
+    .toMatchObject({
+      zone_code: 'C100201',
+      zone_name: '货架区',
+      category_id: null,
+      purpose: null
+    })
+  await expect(dialog).toBeHidden()
 })

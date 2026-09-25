@@ -355,7 +355,10 @@ test('production master-data workspaces share the SMIS visual system', async ({
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  for (const [path, , , title] of pages) {
+  const selectedPages = process.env.MDM_E2E_PAGE
+    ? pages.filter(([path]) => path === process.env.MDM_E2E_PAGE)
+    : pages
+  for (const [path, , , title] of selectedPages) {
     await page.goto(`/#/mdm/production/${path}`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({
       timeout: 60_000

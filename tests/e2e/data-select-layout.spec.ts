@@ -94,6 +94,14 @@ test('table and tree selectors keep usable content and footer at low heights', a
     await dialog.screenshot({ path: testInfo.outputPath(`${label}-bounded.png`) })
     await dialog.getByRole('button', { name: '取消', exact: true }).click()
     await expect(dialog).toBeHidden()
+    await field.getByRole('textbox').click()
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: '关闭此对话框' }).click()
+    await expect(dialog).toBeHidden()
+    await field.getByRole('textbox').click()
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    await expect(dialog).toBeHidden()
   }
 })
 

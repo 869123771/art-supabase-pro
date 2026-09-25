@@ -1,1 +1,0 @@
-import{F as e}from"./common-utils-C_OpVGBL.js";import{mt as t}from"./dist-B2spOXjK.js";var n=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=t=>e(n,t);export{r as t};

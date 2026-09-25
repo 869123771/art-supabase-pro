@@ -46,6 +46,19 @@ test('redirects legacy business roots to their renamed modules', () => {
   assert.equal(VMS_ROOT_PATH, '/vms')
 })
 
+test('redirects WMS bookmarks into their business categories', () => {
+  assert.equal(resolveLegacyBusinessPath('/wms/adjustment'), '/wms/transfer-adjustment/adjustment')
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/stock-operation'),
+    '/wms/receipt-issue/stock-operation'
+  )
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/project-report'),
+    '/wms/project-warehouse/project-report'
+  )
+  assert.equal(resolveLegacyBusinessPath('/wms/transfer-adjustment/adjustment'), undefined)
+})
+
 test('ignores paths outside the legacy business namespaces', () => {
   assert.equal(resolveLegacyBusinessPath('/tms/order-list'), undefined)
   assert.equal(resolveLegacyBusinessPath('/dashboard'), undefined)

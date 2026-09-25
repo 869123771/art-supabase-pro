@@ -90,6 +90,19 @@ export function getExpenseReimbursementDetailPath(id: string): string {
  * module roots. Non-business paths are intentionally ignored.
  */
 export function resolveLegacyBusinessPath(path: string): string | undefined {
+  const wmsLeafMappings = [
+    ['receipt-inbound', 'receipt-issue/receipt-inbound'],
+    ['stock-operation', 'receipt-issue/stock-operation'],
+    ['sales-return', 'receipt-issue/sales-return'],
+    ['transfer', 'transfer-adjustment/transfer'],
+    ['count', 'transfer-adjustment/count'],
+    ['adjustment', 'transfer-adjustment/adjustment'],
+    ['stock', 'inventory-trace/stock'],
+    ['serial-trace', 'inventory-trace/serial-trace'],
+    ['inventory-ledger', 'inventory-trace/inventory-ledger'],
+    ['project-section', 'project-warehouse/project-section'],
+    ['project-report', 'project-warehouse/project-report']
+  ] as const
   const financeLeafMappings = [
     ['customer-settlement', financePaths.customerSettlement],
     ['carrier-settlement', financePaths.carrierSettlement],
@@ -123,6 +136,10 @@ export function resolveLegacyBusinessPath(path: string): string | undefined {
 
   const financeRoots = [FMS_ROOT_PATH, LEGACY_FMS_ROOT_PATH, LEGACY_TMS_FINANCE_ROOT_PATH]
   const mappings = [
+    ...wmsLeafMappings.map(([legacyLeaf, currentLeaf]) => ({
+      legacyRoot: `/wms/${legacyLeaf}`,
+      currentRoot: `/wms/${currentLeaf}`
+    })),
     ...financeRoots.flatMap((root) =>
       financeLeafMappings.map(([suffix, currentRoot]) => ({
         legacyRoot: `${root}/${suffix}`,

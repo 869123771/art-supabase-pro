@@ -223,7 +223,7 @@ async function handleRouteGuard(
     NProgress.start()
   }
 
-  // 旧财务书签在鉴权和动态路由注册前完成迁移，避免被误判为无权限路径。
+  // 旧业务书签在鉴权和动态路由注册前完成迁移，避免被误判为无权限路径。
   const legacyBusinessPath = resolveLegacyBusinessPath(to.path)
   if (legacyBusinessPath) {
     return {

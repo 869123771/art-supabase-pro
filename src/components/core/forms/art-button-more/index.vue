@@ -1,8 +1,10 @@
 <!-- 更多按钮 -->
 <template>
   <div class="art-button-more">
-    <ElDropdown v-if="hasAnyAuthItem">
-      <ArtIconButton icon="ri:more-2-fill" label="更多操作" class="art-button-more__trigger" />
+    <ElDropdown v-if="hasAnyAuthItem" :trigger="trigger">
+      <slot name="trigger">
+        <ArtIconButton icon="ri:more-2-fill" label="更多操作" class="art-button-more__trigger" />
+      </slot>
       <template #dropdown>
         <ElDropdownMenu>
           <template v-for="item in dropdownList" :key="item.key">
@@ -57,9 +59,11 @@
     list: ButtonMoreItem[] | (() => ButtonMoreItem[])
     /** 整体权限控制 */
     auth?: string
+    /** 展开方式，默认沿用现有悬停行为 */
+    trigger?: 'hover' | 'click'
   }
 
-  const props = withDefaults(defineProps<Props>(), {})
+  const props = withDefaults(defineProps<Props>(), { trigger: 'hover' })
 
   const dropdownList = computed(() =>
     typeof props.list === 'function' ? props?.list() : props.list

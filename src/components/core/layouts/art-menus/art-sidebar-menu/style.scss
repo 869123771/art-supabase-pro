@@ -300,6 +300,12 @@
   .layout-sidebar {
     width: 0;
 
+    .menu-left-close {
+      visibility: hidden;
+      width: 0;
+      pointer-events: none;
+    }
+
     .header {
       height: 50px;
       line-height: 50px;

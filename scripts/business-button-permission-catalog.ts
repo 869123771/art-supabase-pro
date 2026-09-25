@@ -2403,6 +2403,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'WmsSalesReturn',
+    buttons: [button('View', '查看'), button('Receive', '确认退货入库')]
+  },
+  {
+    menuName: 'WmsDirectTransfer',
+    buttons: [button('View', '查看')]
+  },
+  {
     menuName: 'WmsTransfer',
     buttons: [
       button('View', '查看'),
@@ -2410,6 +2418,23 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Dispatch', '确认调出'),
       button('Receive', '确认入库')
     ]
+  },
+  {
+    menuName: 'WmsCount',
+    buttons: [
+      button('View', '查看'),
+      button('Create', '生成盘点方案'),
+      button('Count', '录入实盘'),
+      button('Post', '确认盘盈盘亏')
+    ]
+  },
+  {
+    menuName: 'WmsAdjustment',
+    buttons: [button('View', '查看'), button('Post', '办理调整')]
+  },
+  {
+    menuName: 'WmsAssembly',
+    buttons: [button('View', '查看'), button('Post', '办理组装')]
   },
   {
     menuName: 'WmsSerialTrace',
