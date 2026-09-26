@@ -109,6 +109,7 @@
     sort: 1,
     color: '',
     tagType: '',
+    participatesInventoryAccounting: true,
     remark: ''
   }
   const elementPlusPresetColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
@@ -279,6 +280,17 @@
             type: 'tagStyleSelect',
             props: { clearable: true, placeholder: '请选择标签样式' }
           },
+          ...(form.value.data.dictTypeCode === 'wmsInitialStockType'
+            ? [
+                {
+                  label: '参与存货核算',
+                  key: 'participatesInventoryAccounting',
+                  type: 'switch',
+                  description: '此库存类型的业务是否计入存货核算。',
+                  span: 24
+                }
+              ]
+            : []),
           {
             label: '补充说明',
             key: 'descriptionSection',

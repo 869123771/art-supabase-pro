@@ -1,0 +1,1 @@
+import"./rolldown-runtime-DAXXjFlN.js";import{t as e}from"./message-D_WQGkJh.js";/* empty css                            */import{n as t}from"./useFilePreview-C-DzPgR4.js";var n=n=>{let r=t(n);r===`missing-url`&&e.warning(`附件没有可用的预览地址`),r===`blocked`&&e.warning(`浏览器阻止了新页签，请允许本站打开弹出式窗口`)};export{n as t};

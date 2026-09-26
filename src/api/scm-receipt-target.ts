@@ -33,7 +33,9 @@ export interface ScmReceiptTargetLine {
     stockQuantity?: number
     stockUnit?: string
     warehouse?: string
+    warehouseId?: string
     location?: string
+    binId?: string | null
     batchNo?: string
     gift?: boolean
   }
@@ -47,8 +49,32 @@ export interface ScmReceiptTargetQuery {
   keyword?: string
   status?: string
   tenantId?: string
+  projectId?: string
+  constructionNo?: string
   from?: number
   to?: number
+}
+
+export interface ScmReceiptProjectOption {
+  id: string
+  tenantId: string
+  projectCode: string
+  projectName: string
+}
+
+export interface ScmReceiptPlacementWarehouse {
+  id: string
+  warehouseCode: string
+  warehouseName: string
+  enableLocations: boolean
+}
+
+export interface ScmReceiptPlacementBin {
+  id: string
+  warehouseId: string
+  binCode: string
+  binName: string
+  supportsSerial: boolean
 }
 
 const { supabase, responseHandle } = useSupabase()
@@ -69,6 +95,8 @@ export async function fetchScmReceiptTargets(
   if (query.status) request = request.eq('status', query.status)
   if (query.id) request = request.eq('id', query.id)
   if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
+  if (query.projectId) request = request.eq('project_id', query.projectId)
+  if (query.constructionNo) request = request.eq('construction_no', query.constructionNo)
   if (query.keyword?.trim()) {
     request = request.ilike('document_no', `%${query.keyword.trim()}%`)
   }
@@ -124,6 +152,81 @@ export async function setScmReceiptLineSerials(lineId: string, serialNos: string
       showMessage: true,
       message: '收料 SN 已保存',
       errorMessage: 'SN 保存失败，请核对件数、重复编码与权限'
+    }
+  )
+}
+
+export async function fetchScmReceiptPlacementWarehouse(tenantId: string, warehouseId: string) {
+  const { data } = await responseHandle<ScmReceiptPlacementWarehouse>(
+    () =>
+      supabase
+        .from('mdm_warehouse')
+        .select('id,warehouse_code,warehouse_name,enable_locations')
+        .eq('tenant_id', tenantId)
+        .eq('id', warehouseId)
+        .single(),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '收料仓库加载失败，请重试' }
+  )
+  return data
+}
+
+export async function fetchScmReceiptPlacementBins(tenantId: string, warehouseId: string) {
+  const { data } = await responseHandle<ScmReceiptPlacementBin[]>(
+    () =>
+      supabase
+        .from('mdm_warehouse_bin')
+        .select('id,warehouse_id,bin_code,bin_name,supports_serial')
+        .eq('tenant_id', tenantId)
+        .eq('warehouse_id', warehouseId)
+        .eq('status', 'available')
+        .order('bin_code')
+        .range(0, 999),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '可用库位加载失败，请重试' }
+  )
+  return data ?? []
+}
+
+export async function fetchScmReceiptPlacementBin(tenantId: string, binId: string) {
+  const { data } = await responseHandle<ScmReceiptPlacementBin>(
+    () =>
+      supabase
+        .from('mdm_warehouse_bin')
+        .select('id,warehouse_id,bin_code,bin_name,supports_serial')
+        .eq('tenant_id', tenantId)
+        .eq('id', binId)
+        .eq('status', 'available')
+        .single(),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '库位加载失败，请重试' }
+  )
+  return data
+}
+
+export async function recommendScmReceiptPlacementBin(input: {
+  warehouseId: string
+  materialId: string
+  quantity: number
+}) {
+  const { data } = await responseHandle<string | null>(
+    () =>
+      supabase.rpc('wms_recommend_bin_secure', {
+        p_warehouse_id: input.warehouseId,
+        p_material_id: input.materialId,
+        p_quantity: input.quantity,
+        p_area_sqm: null
+      }),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '自动选位失败，请稍后重试' }
+  )
+  return data ?? null
+}
+
+export async function setScmReceiptLineBin(lineId: string, binId: string | null) {
+  await responseHandle(
+    () => supabase.rpc('wms_set_receipt_line_bin_secure', { p_line_id: lineId, p_bin_id: binId }),
+    {
+      breakReturn: true,
+      showMessage: true,
+      message: '入库库位已保存',
+      errorMessage: '库位保存失败，请核对仓库、物料、容量及权限'
     }
   )
 }
@@ -193,6 +296,18 @@ export async function fetchScmReceiptProjectSections(projectId: string) {
         .eq('project_id', projectId)
         .order('construction_no'),
     { breakReturn: true, showErrorMessage: true, errorMessage: '施工号加载失败，请重试' }
+  )
+  return data ?? []
+}
+
+export async function fetchScmReceiptProjectOptions(): Promise<ScmReceiptProjectOption[]> {
+  const { data } = await responseHandle<ScmReceiptProjectOption[]>(
+    () =>
+      supabase
+        .from('mdm_project')
+        .select('id,tenant_id,project_code,project_name')
+        .order('project_code'),
+    { breakReturn: true, showErrorMessage: true, errorMessage: '项目选项加载失败，请重试' }
   )
   return data ?? []
 }

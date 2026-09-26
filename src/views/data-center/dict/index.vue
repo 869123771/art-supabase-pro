@@ -260,6 +260,17 @@
         width: 90,
         dict: { code: 'status', display: 'auto' }
       },
+      ...(table.currentDictType?.code === 'wmsInitialStockType'
+        ? ([
+            {
+              prop: 'participatesInventoryAccounting',
+              label: '参与存货核算',
+              minWidth: 130,
+              formatter: (row: DictListItem) =>
+                row.participatesInventoryAccounting ? '参与' : '不参与'
+            }
+          ] as ColumnOption<DictListItem>[])
+        : []),
       {
         prop: 'appearance',
         label: '呈现方式',

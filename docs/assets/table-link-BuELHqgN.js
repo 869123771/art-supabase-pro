@@ -1,0 +1,1 @@
+import{t as e}from"./preview-CBMx_SAg.js";var t={onClick:e,disabled:e=>!e.url,title:e=>`预览${e.name?.trim()||`附件`}`};export{t};

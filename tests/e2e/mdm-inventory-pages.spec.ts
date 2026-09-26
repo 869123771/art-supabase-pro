@@ -8,11 +8,13 @@ const zoneId = '1b36951f-7564-4c4a-a88f-cc2d41645c5e'
 const binId = 'ed276e75-d9d4-4742-a667-d758731d15f8'
 const materialId = 'c08915d0-75c9-43b3-9c7d-359e0009f106'
 const pages = [
+  ['MdmStockMovementType', 'movement-type', 'movement-type', '出入库类型'],
   ['MdmWarehouseDefinition', 'warehouse-definition', 'warehouse', '仓库定义'],
   ['MdmSupplyChainCodeRule', 'supply-chain-code-rule', 'configuration', '供应链编码规则'],
   ['MdmOutboundRule', 'outbound-rule', 'configuration', '出库规则配置'],
   ['MdmWarehouseZone', 'zone', 'zone', '库区管理'],
   ['MdmWarehouseBin', 'bin', 'bin', '库位管理'],
+  ['MdmWarehouseBin3d', 'bin-3d', 'bin-3d', '立体库位'],
   ['MdmInventoryBatch', 'batch', 'batch', '库存批次'],
   ['MdmInventoryReservation', 'reservation', 'reservation', '库存预留'],
   ['MdmInventoryPackage', 'package', 'package', '垛包管理'],
@@ -21,6 +23,11 @@ const pages = [
 
 const meta = (title: string) => ({ title, roles: ['R_SUPER'], is_enable: true, is_hide: false })
 const dictionaryItems: Record<string, [string, string, string][]> = {
+  mdmStockMovementDirection: [
+    ['inbound', '入库', 'success'],
+    ['outbound', '出库', 'warning'],
+    ['transfer', '库存转移', 'primary']
+  ],
   commonBoolean: [
     ['false', '否', 'info'],
     ['true', '是', 'success']
@@ -288,8 +295,10 @@ function inventoryMenu() {
           children: [
             'View',
             'Add',
+            'Copy',
             'Edit',
             'Delete',
+            'Export',
             'Sort',
             'Generate',
             'Receive',
@@ -419,6 +428,60 @@ async function installFixtures(page: Page): Promise<void> {
     })
   )
   await page.route('**/rest/v1/mdm_warehouse?*', (route) => route.fulfill({ json: [warehouse] }))
+  await page.route('**/rest/v1/mdm_stock_movement_type?*', (route) => {
+    const select = new URL(route.request().url()).searchParams.get('select') ?? ''
+    if (select.includes('reverse_type:')) {
+      return route.fulfill({ status: 400, json: { code: 'PGRST200', message: '关系不存在' } })
+    }
+    const firstId = 'f765ef91-27e6-48e3-94e2-2dd8360b6dc0'
+    const secondId = 'f765ef91-27e6-48e3-94e2-2dd8360b6dc1'
+    const records = [
+      {
+        id: firstId,
+        tenant_id: tenantId,
+        movement_code: '101',
+        movement_name: '采购入库',
+        direction: 'inbound',
+        reverse_type_id: null,
+        reversal: false,
+        other_io: false,
+        status: 'enabled',
+        remark: '采购到货入库',
+        create_time: '2026-09-26T08:00:00Z',
+        update_time: '2026-09-26T08:00:00Z'
+      },
+      {
+        id: secondId,
+        tenant_id: tenantId,
+        movement_code: '102',
+        movement_name: '采购退货出库',
+        direction: 'outbound',
+        reverse_type_id: firstId,
+        reversal: true,
+        other_io: false,
+        status: 'enabled',
+        remark: '采购退货使用',
+        create_time: '2026-09-26T08:00:00Z',
+        update_time: '2026-09-26T08:00:00Z'
+      }
+    ]
+    return route.fulfill({
+      status: 206,
+      headers: {
+        'content-range': '0-1/2',
+        'access-control-allow-origin': '*',
+        'access-control-expose-headers': 'content-range'
+      },
+      json:
+        select === 'id,movement_code,movement_name'
+          ? records.map(({ id, movement_code, movement_name }) => ({
+              id,
+              movement_code,
+              movement_name
+            }))
+          : records
+    })
+  })
   await page.route('**/rest/v1/mdm_warehouse_zone?*', (route) => route.fulfill({ json: zoneRows }))
   await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => route.fulfill({ json: binRows }))
   await page.route('**/rest/v1/mdm_outbound_rule?*', (route) =>
@@ -686,7 +749,74 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       expect(secondary!.y).toBeGreaterThan(primary!.y)
     }
     await page.screenshot({ path: join(visualDir, `mdm-${path}.png`), fullPage: true })
-    if (path === 'zone' || path === 'bin') {
+    if (path === 'bin-3d') {
+      await expect(page.getByRole('navigation', { name: '货架库区导航' })).toBeVisible()
+      await expect(page.locator('canvas.rack-scene__canvas')).toBeVisible()
+      await expect(page.locator('.art-workspace-splitter')).toHaveCount(2)
+      for (const label of ['间距设置', '重置视角', '刷新库位'])
+        await expect(page.getByRole('button', { name: label }).locator('svg')).toBeVisible()
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        await page.locator('canvas.rack-scene__canvas').scrollIntoViewIfNeeded()
+        await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-mobile-scene.png') })
+      }
+      await page.getByRole('button', { name: '间距设置' }).click()
+      await page.locator('.el-slider__button-wrapper').first().press('ArrowRight')
+      await expect(page.getByText('24px')).toBeVisible()
+      await page.getByRole('button', { name: '间距设置' }).click()
+      await page.locator('.rack-scene__label').filter({ hasText: 'B02' }).click()
+      await expect(page.getByText('B02', { exact: true }).last()).toBeVisible()
+      await page.locator('.rack-scene__label').filter({ hasText: 'A01' }).click()
+      await page.getByRole('button', { name: /RAW-A-SH-1-1，空位/ }).click()
+      await expect(page.getByText('RAW-A-SH-1-1', { exact: true }).last()).toBeVisible()
+      await expect(page.getByRole('button', { name: '查看库存明细' })).toBeVisible()
+      if ((page.viewportSize()?.width ?? 0) >= 1200) {
+        await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-focused.png') })
+        const detailSplitter = page.locator('.art-workspace-splitter.three-d-workspace')
+        const detailPanel = detailSplitter.locator('.el-splitter-panel').last()
+        const beforeWidth = (await detailPanel.boundingBox())?.width ?? 0
+        const handle = await detailSplitter.locator('.el-splitter-bar').first().boundingBox()
+        expect(handle).not.toBeNull()
+        await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(handle!.x + handle!.width / 2 - 500, handle!.y + handle!.height / 2)
+        await page.mouse.up()
+        await expect
+          .poll(async () => (await detailPanel.boundingBox())?.width ?? 0)
+          .toBeGreaterThan(beforeWidth + 100)
+        await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-detail-expanded.png') })
+        const expandedHandle = await detailSplitter
+          .locator('.el-splitter-bar')
+          .first()
+          .boundingBox()
+        expect(expandedHandle).not.toBeNull()
+        await page.mouse.move(
+          expandedHandle!.x + expandedHandle!.width / 2,
+          expandedHandle!.y + expandedHandle!.height / 2
+        )
+        await page.mouse.down()
+        await page.mouse.move(
+          Math.min(
+            (page.viewportSize()?.width ?? 0) - 24,
+            expandedHandle!.x + expandedHandle!.width / 2 + 500
+          ),
+          expandedHandle!.y + expandedHandle!.height / 2
+        )
+        await page.mouse.up()
+        await expect
+          .poll(async () => (await detailPanel.boundingBox())?.width ?? 0)
+          .toBeLessThan(beforeWidth + 20)
+      }
+      await page.getByRole('button', { name: '俯视' }).click()
+      await expect(page.getByRole('button', { name: '俯视' })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+      if ((page.viewportSize()?.width ?? 0) >= 1120)
+        await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-top.png') })
+      await page.getByRole('button', { name: /彩卷区/ }).click()
+      await expect(page.getByText('当前库区暂无货架')).toBeVisible()
+    }
+    if (path === 'zone' || path === 'bin' || path === 'bin-3d') {
       await expect(page.getByRole('button', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.getByRole('switch', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.locator('.art-section-card .el-scrollbar').first()).toBeVisible()
@@ -755,6 +885,56 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await singleSkuField.locator('.el-select').click({ timeout: 15_000 })
       await page.getByRole('option', { name: '是' }).click({ timeout: 15_000 })
       await expect(singleSkuField.locator('.el-select')).toContainText('是')
+    }
+    if (path === 'movement-type') {
+      page.setDefaultTimeout(15_000)
+      await expect(page.getByText('采购入库', { exact: true }).first()).toBeVisible()
+      await expect(page.getByText('101 · 采购入库', { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: '新增类型' })).toBeEnabled()
+      await page.getByRole('button', { name: '新增类型' }).click()
+      const dialog = page.locator('.el-dialog:visible')
+      await expect(dialog.getByText('移动类型编码', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('移动类型名称', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('反向类型', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('冲销标志', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('其他出入库', { exact: true })).toBeVisible()
+      await expect(dialog.getByText('启用标志', { exact: true })).toBeVisible()
+      await page.screenshot({
+        path: join(visualDir, 'mdm-movement-type-dialog.png'),
+        animations: 'disabled'
+      })
+      const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+      expect(dialogOverflow, '出入库类型弹窗出现横向溢出').toBe(false)
+      await dialog.evaluate((el) => {
+        const scrollable = [...el.querySelectorAll('*')].find(
+          (item) => item.scrollHeight > item.clientHeight + 30 && item.clientHeight > 100
+        )
+        if (scrollable) scrollable.scrollTop = scrollable.scrollHeight
+      })
+      await expect(dialog.getByRole('switch')).toHaveCount(3)
+      await page.screenshot({
+        path: join(visualDir, 'mdm-movement-type-dialog-bottom.png'),
+        animations: 'disabled'
+      })
+      await dialog.getByRole('button', { name: '取消' }).click()
+      await page.getByRole('button', { name: '查看类型' }).first().click()
+      const drawer = page.locator('.el-drawer:visible')
+      await expect(drawer.getByText('采购入库', { exact: true }).first()).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(drawer).toHaveCount(0)
+      await page.getByRole('button', { name: '编辑类型' }).first().click()
+      const editDialog = page.locator('.el-dialog:visible')
+      await expect(editDialog.getByText('编辑出入库类型', { exact: true })).toBeVisible()
+      await expect(
+        editDialog.locator('.el-form-item').filter({ hasText: '移动类型编码' }).locator('input')
+      ).toHaveValue('101')
+      await editDialog.getByRole('button', { name: '取消' }).click()
+      await page.getByRole('button', { name: '更多操作' }).first().click()
+      await page.getByRole('menuitem', { name: '复制类型' }).click()
+      const copyDialog = page.locator('.el-dialog:visible')
+      await expect(copyDialog.getByText('复制出入库类型', { exact: true })).toBeVisible()
+      await copyDialog.getByRole('button', { name: '取消' }).click()
+      page.setDefaultTimeout(0)
     }
     if (path === 'serial') {
       await expect(page.getByText('采购', { exact: true }).first()).toBeVisible()
@@ -974,6 +1154,155 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     }
   }
   expect(errors).toEqual([])
+})
+
+test('立体库位加载失败后可重试', async ({ page }) => {
+  test.setTimeout(120_000)
+  await installFixtures(page)
+  let shouldFail = true
+  await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => {
+    if (shouldFail) {
+      return route.fulfill({ status: 400, json: { code: 'PGRST100', message: '暂时不可用' } })
+    }
+    return route.fallback()
+  })
+  await page.goto('/#/mdm/inventory-master/bin-3d', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '立体库位', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  await expect(page.getByText('货架空间加载失败，请重试。', { exact: true })).toBeVisible({
+    timeout: 30_000
+  })
+  shouldFail = false
+  await page.getByRole('button', { name: '重新加载' }).click()
+  await expect(page.locator('canvas.rack-scene__canvas')).toBeVisible()
+})
+
+test('立体库位多货架空间布局', async ({ page }, testInfo) => {
+  test.setTimeout(120_000)
+  await installFixtures(page)
+  const denseBins = Array.from({ length: 12 * 3 * 5 }, (_, index) => {
+    const rackNumber = Math.floor(index / 15) + 1
+    const column = Math.floor((index % 15) / 5) + 1
+    const level = (index % 5) + 1
+    return {
+      ...bin,
+      id: `ed276e75-d9d4-4742-a667-${String(index + 1).padStart(12, '0')}`,
+      bin_code: `RAW-A-R${rackNumber}-C${column}-L${level}`,
+      bin_name: `${rackNumber} 号货架 ${column} 列 ${level} 层`,
+      bin_type: 'shelf',
+      shelf_code: `A${String(rackNumber).padStart(2, '0')}`,
+      column_no: column,
+      level_no: level,
+      status: index % 17 === 0 ? 'locked' : 'available',
+      sort: index + 1
+    }
+  })
+  await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => route.fulfill({ json: denseBins }))
+  await page.goto('/#/mdm/inventory-master/bin-3d', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '立体库位', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  await expect(page.getByText('12 组货架 · 180 个层位')).toBeVisible()
+  await expect(page.locator('canvas.rack-scene__canvas')).toBeVisible()
+  const settingGuide = page.getByRole('button', { name: '知道了' })
+  if (await settingGuide.isVisible()) {
+    await settingGuide.click()
+    await expect(settingGuide).toBeHidden()
+  }
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-dense.png'), fullPage: true })
+  await page.getByRole('button', { name: /^RAW-A-R1-C1-L1，/ }).click()
+  await expect(page.getByText('RAW-A-R1-C1-L1', { exact: true }).last()).toBeVisible()
+  await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-dense-focused.png') })
+})
+
+test('出入库类型查询、保存、复制、删除与导出', async ({ page }) => {
+  test.setTimeout(120_000)
+  page.setDefaultTimeout(15_000)
+  await installFixtures(page)
+  const savePayloads: Record<string, unknown>[] = []
+  const deletePayloads: Record<string, unknown>[] = []
+  await page.route('**/rest/v1/rpc/mdm_save_stock_movement_type_secure', (route) => {
+    savePayloads.push(route.request().postDataJSON() as Record<string, unknown>)
+    return route.fulfill({ json: 'f765ef91-27e6-48e3-94e2-2dd8360b6dc2' })
+  })
+  await page.route('**/rest/v1/rpc/mdm_delete_stock_movement_types_secure', (route) => {
+    deletePayloads.push(route.request().postDataJSON() as Record<string, unknown>)
+    return route.fulfill({ json: 1 })
+  })
+  await page.goto('/#/mdm/inventory-master/movement-type', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '出入库类型', exact: true })).toBeVisible()
+  await expect(page.getByText('采购退货出库', { exact: true }).first()).toBeVisible()
+
+  const searchRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes('/mdm_stock_movement_type?') && request.url().includes('or=')
+  )
+  await page.getByPlaceholder('输入移动类型编码或名称').fill('102')
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  expect(new URL((await searchRequest).url()).searchParams.get('or')).toContain('102')
+  await page.getByRole('button', { name: '重置', exact: true }).click()
+
+  await page.getByRole('button', { name: '新增类型' }).click()
+  const addDialog = page.locator('.el-dialog:visible')
+  await addDialog
+    .locator('.el-form-item')
+    .filter({ hasText: '所属租户' })
+    .locator('.el-select')
+    .click()
+  await page.getByRole('option', { name: /示例工厂/ }).click()
+  await addDialog
+    .locator('.el-form-item')
+    .filter({ hasText: '移动类型编码' })
+    .locator('input')
+    .fill('103')
+  await addDialog
+    .locator('.el-form-item')
+    .filter({ hasText: '移动类型名称' })
+    .locator('input')
+    .fill('库存转移')
+  await addDialog.getByText('库存转移', { exact: true }).last().click()
+  await addDialog.getByRole('button', { name: '创建类型' }).click()
+  await expect(addDialog).toHaveCount(0)
+  expect(savePayloads[0]?.p_id).toBeNull()
+  expect(savePayloads[0]?.p_tenant_id).toBe(tenantId)
+  expect(savePayloads[0]?.p_payload).toMatchObject({ movement_code: '103', direction: 'transfer' })
+
+  await page.getByRole('button', { name: '编辑类型' }).first().click()
+  const editDialog = page.locator('.el-dialog:visible')
+  await editDialog
+    .locator('.el-form-item')
+    .filter({ hasText: '移动类型名称' })
+    .locator('input')
+    .fill('采购收货入库')
+  await editDialog.getByRole('button', { name: '保存更改' }).click()
+  await expect(editDialog).toHaveCount(0)
+  expect(savePayloads[1]?.p_id).toBe('f765ef91-27e6-48e3-94e2-2dd8360b6dc0')
+  expect(savePayloads[1]?.p_payload).toMatchObject({ movement_name: '采购收货入库' })
+
+  await page.getByRole('button', { name: '更多操作' }).nth(1).click()
+  await page.getByRole('menuitem', { name: '复制类型' }).click()
+  const copyDialog = page.locator('.el-dialog:visible')
+  await copyDialog
+    .locator('.el-form-item')
+    .filter({ hasText: '移动类型编码' })
+    .locator('input')
+    .fill('104')
+  await copyDialog.getByRole('button', { name: '创建类型' }).click()
+  await expect(copyDialog).toHaveCount(0)
+  expect(savePayloads[2]?.p_id).toBeNull()
+  expect(savePayloads[2]?.p_payload).toMatchObject({ movement_code: '104', direction: 'outbound' })
+
+  await page.getByRole('button', { name: '更多操作' }).nth(1).click()
+  await page.getByRole('menuitem', { name: '删除类型' }).click()
+  await page.getByRole('button', { name: '删除', exact: true }).click()
+  expect(deletePayloads[0]?.p_ids).toEqual(['f765ef91-27e6-48e3-94e2-2dd8360b6dc1'])
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出', exact: true }).click()
+  expect((await downloadPromise).suggestedFilename()).toMatch(/^出入库类型_.*\.xlsx$/)
 })
 
 test('生产工单类型显示可配置的领料仓库范围', async ({ page }, testInfo) => {

@@ -22,7 +22,12 @@
         :columns-factory="columnsFactory"
         :header-actions="headerActions"
         header-actions-placement="workspace"
-        :search-bar-props="{ span: 8, labelWidth: 82, showExpand: false }"
+        :search-bar-props="{
+          span: 8,
+          labelWidth: 82,
+          defaultExpanded: kind === 'inbound',
+          showExpand: kind === 'inbound'
+        }"
         :table-props="{
           rowKey: 'id',
           tableLayout: 'fixed',
@@ -31,7 +36,7 @@
         }"
         focusable
       />
-      <ArtDrawer ref="detailRef" :show-footer="false">
+      <ArtDrawer ref="detailRef" size="lg" :show-footer="false">
         <div v-if="activeDocument" class="receipt-target-detail">
           <div class="receipt-target-detail__summary">
             <div>
@@ -56,7 +61,12 @@
           >
             <label class="grid min-w-[220px] flex-1 gap-1 text-sm">
               <span class="text-[var(--el-text-color-secondary)]">项目施工号</span>
-              <ElSelect v-model="selectedConstructionNo" filterable placeholder="选择本项目施工号">
+              <ElSelect
+                v-model="selectedConstructionNo"
+                filterable
+                :disabled="!canAssignScope"
+                placeholder="选择本项目施工号"
+              >
                 <ElOption
                   v-for="section in projectSections"
                   :key="section.constructionNo"
@@ -76,6 +86,9 @@
               @click="saveScope"
               >保存施工号</ElButton
             >
+            <span v-if="!canAssignScope" class="text-xs text-[var(--el-text-color-secondary)]">
+              当前账号仅可查看施工号
+            </span>
           </div>
           <ArtTable
             :data="activeLines"
@@ -83,8 +96,7 @@
             :pagination="false"
             row-key="id"
             table-layout="fixed"
-            scrollbar-always-on
-            :max-height="480"
+            height="auto"
             empty-text="暂无明细"
           />
           <div v-if="kind === 'asset_payable'" class="receipt-target-detail__total">
@@ -93,6 +105,7 @@
         </div>
       </ArtDrawer>
       <ReceiptSerialDialog ref="serialDialogRef" @success="reloadActiveLines" />
+      <ReceiptBinDialog v-if="kind === 'inbound'" ref="binDialogRef" @success="reloadActiveLines" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -121,16 +134,19 @@
   import {
     fetchScmReceiptTargets,
     fetchScmReceiptTargetLines,
+    fetchScmReceiptProjectOptions,
     fetchScmReceiptProjectSections,
     setScmReceiptScope,
     transitionScmReceiptTarget,
     type ScmReceiptTargetDocument,
     type ScmReceiptTargetKind,
     type ScmReceiptTargetLine,
+    type ScmReceiptProjectOption,
     type ScmReceiptTargetQuery,
     type ScmReceiptTargetStatus
   } from '@/api/scm-receipt-target'
   import ReceiptSerialDialog from './modules/receipt-serial-dialog.vue'
+  import ReceiptBinDialog from './modules/receipt-bin-dialog.vue'
 
   defineOptions({ name: 'ScmReceiptTargetWorkspace' })
   const props = defineProps<{
@@ -139,6 +155,7 @@
     actionPermission: string
     scopePermission?: string
     serialPermission?: string
+    binPermission?: string
   }>()
   const title = computed(() => (props.kind === 'inbound' ? '收料入库' : '资产应付'))
   const description = computed(() =>
@@ -150,7 +167,11 @@
   const actionPermission = computed(() => props.actionPermission)
   const scopePermission = computed(() => props.scopePermission)
   const serialPermission = computed(() => props.serialPermission)
+  const binPermission = computed(() => props.binPermission)
   const { hasAuth } = useAuth()
+  const canAssignScope = computed(() =>
+    Boolean(props.scopePermission && hasAuth(props.scopePermission))
+  )
   const route = useRoute()
   const router = useRouter()
   const { confirmAction } = useArtFeedback()
@@ -159,12 +180,18 @@
   const tableRef = ref<ArtTableQueryExpose>()
   const detailRef = ref<ArtDrawerExpose<ScmReceiptTargetDocument>>()
   const serialDialogRef = ref<InstanceType<typeof ReceiptSerialDialog>>()
+  const binDialogRef = ref<InstanceType<typeof ReceiptBinDialog>>()
   const activeDocument = ref<ScmReceiptTargetDocument>()
   const activeLines = ref<ScmReceiptTargetLine[]>([])
   const projectSections = ref<
     Array<{ constructionNo: string; sectionName: string; status: 'active' | 'closed' }>
   >([])
   const selectedConstructionNo = ref('')
+  const projectOptions = ref<ScmReceiptProjectOption[]>([])
+  const filterSections = ref<
+    Array<{ constructionNo: string; sectionName: string; status: 'active' | 'closed' }>
+  >([])
+  const sectionsLoading = ref(false)
   const savingScope = ref(false)
   const search = ref<ScmReceiptTargetQuery>({ keyword: '' })
   const searchItems = computed<SearchFormItem[]>(() => [
@@ -177,6 +204,10 @@
             props: {
               clearable: true,
               filterable: true,
+              onChange: () => {
+                search.value.projectId = undefined
+                search.value.constructionNo = undefined
+              },
               options: tenantOptions.value.map((item) => ({
                 label: `${item.tenantName}（${item.tenantCode}）`,
                 value: item.id
@@ -205,8 +236,90 @@
           }
         ]
       }
-    }
+    },
+    ...(props.kind === 'inbound'
+      ? [
+          {
+            label: '项目名称',
+            key: 'projectId',
+            type: 'select' as const,
+            props: {
+              clearable: true,
+              filterable: true,
+              placeholder: '全部项目',
+              onChange: () => (search.value.constructionNo = undefined),
+              options: projectOptions.value
+                .filter(
+                  (row) => !effectiveTenantId.value || row.tenantId === effectiveTenantId.value
+                )
+                .filter((row) => !search.value.tenantId || row.tenantId === search.value.tenantId)
+                .map((row) => {
+                  const tenantName =
+                    isPlatformSuper.value && !effectiveTenantId.value && !search.value.tenantId
+                      ? tenantOptions.value.find((tenant) => tenant.id === row.tenantId)?.tenantName
+                      : undefined
+                  return {
+                    label: `${row.projectName} · ${row.projectCode}${tenantName ? ` · ${tenantName}` : ''}`,
+                    value: row.id
+                  }
+                })
+            }
+          },
+          {
+            label: '施工号',
+            key: 'constructionNo',
+            type: 'select' as const,
+            props: {
+              clearable: true,
+              filterable: true,
+              loading: sectionsLoading.value,
+              disabled: !search.value.projectId,
+              placeholder: search.value.projectId ? '全部施工号' : '请先选项目',
+              options: filterSections.value.map((row) => ({
+                label: `${row.constructionNo} · ${row.sectionName}`,
+                value: row.constructionNo
+              }))
+            }
+          }
+        ]
+      : [])
   ])
+  let sectionRequest = 0
+  watch(
+    () => search.value.projectId,
+    async (projectId) => {
+      const request = ++sectionRequest
+      filterSections.value = []
+      if (!projectId || props.kind !== 'inbound') return
+      sectionsLoading.value = true
+      try {
+        const sections = await fetchScmReceiptProjectSections(projectId)
+        if (request === sectionRequest) filterSections.value = sections
+      } catch {
+        // API 层已显示错误；保持空选项，允许重新选择项目后重试。
+      } finally {
+        if (request === sectionRequest) sectionsLoading.value = false
+      }
+    }
+  )
+  let projectRequest = 0
+  async function loadProjectOptions(): Promise<void> {
+    if (props.kind !== 'inbound') return
+    const request = ++projectRequest
+    try {
+      const options = await fetchScmReceiptProjectOptions()
+      if (request === projectRequest) projectOptions.value = options
+    } catch {
+      // API 层已提示加载失败，单号和状态查询仍可使用。
+    }
+  }
+  watch(effectiveTenantId, () => {
+    search.value.projectId = undefined
+    search.value.constructionNo = undefined
+    projectOptions.value = []
+    void loadProjectOptions()
+  })
+  onMounted(() => void loadProjectOptions())
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     {
       permission: viewPermission.value,
@@ -288,6 +401,14 @@
   function openSerialDialog(line: ScmReceiptTargetLine): void {
     if (!activeDocument.value || activeDocument.value.status !== 'draft') return
     void serialDialogRef.value?.handleOpen({ documentNo: activeDocument.value.documentNo, line })
+  }
+  function openBinDialog(line: ScmReceiptTargetLine): void {
+    if (!activeDocument.value || activeDocument.value.status !== 'draft') return
+    void binDialogRef.value?.handleOpen({
+      tenantId: activeDocument.value.tenantId,
+      documentNo: activeDocument.value.documentNo,
+      line
+    })
   }
   async function reloadActiveLines(): Promise<void> {
     if (!activeDocument.value) return
@@ -419,6 +540,34 @@
     ]
   }
   const lineColumns = computed<ColumnOption<ScmReceiptTargetLine>[]>(() => [
+    ...(props.kind === 'inbound'
+      ? [
+          {
+            prop: 'location',
+            label: '入库库位',
+            minWidth: 190,
+            fixed: 'left',
+            formatter: (row: ScmReceiptTargetLine) => (
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="min-w-0 truncate" title={row.lineSnapshot.location || '待核对'}>
+                  {row.lineSnapshot.location || '待核对'}
+                </span>
+                {activeDocument.value?.status === 'draft' &&
+                binPermission.value &&
+                hasAuth(binPermission.value) ? (
+                  <ArtButtonTable
+                    type="edit"
+                    icon="ri:map-pin-2-line"
+                    label="指定入库库位"
+                    permission={binPermission.value}
+                    onClick={() => openBinDialog(row)}
+                  />
+                ) : null}
+              </div>
+            )
+          } as ColumnOption<ScmReceiptTargetLine>
+        ]
+      : []),
     {
       prop: 'lineNo',
       label: '行号',

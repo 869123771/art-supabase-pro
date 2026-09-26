@@ -1,0 +1,1 @@
+import{In as e,Zt as t}from"./framework-CCD57Qi8.js";function n(n){let r=e();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await t()}}}export{n as t};

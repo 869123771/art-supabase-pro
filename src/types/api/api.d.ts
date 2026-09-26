@@ -704,6 +704,7 @@ declare namespace Api {
       remark?: string
       color?: string
       tagType?: Api.Common.TagType
+      participatesInventoryAccounting?: boolean
       sort?: number
       createBy?: string
       createTime?: string

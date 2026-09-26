@@ -1,1 +1,0 @@
-import{$t as e,E as t,Nn as n,tn as r}from"./framework-x7XoaZj-.js";function i(){let i=n(!1),a=e=>{i.value=e};return t(document,`keydown`,e=>{e.key===`Escape`&&i.value&&a(!1)}),r(()=>a(!1)),e(()=>a(!1)),{focusMode:i,setFocusMode:a}}export{i as t};

@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./calendar-workspace-BXPPB-35.js";var i=e({name:`PmisInspectionSheet`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`sheet`}))}});export{i as default};

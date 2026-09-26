@@ -1,1 +1,0 @@
-import{Q as e}from"./framework-x7XoaZj-.js";var t=()=>e&&/firefox/i.test(window.navigator.userAgent),n=()=>e&&/android/i.test(window.navigator.userAgent);export{t as n,n as t};

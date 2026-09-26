@@ -1,0 +1,1 @@
+import{F as e}from"./common-utils-GiR1PLcI.js";import{yt as t}from"./dist-CsJ0uY4E.js";var n=t({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=t=>e(n,t);export{r as t};

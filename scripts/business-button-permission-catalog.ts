@@ -85,12 +85,20 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'MdmStockMovementType',
+    buttons: [...crud({ view: true, export: true }), button('Copy', '复制')]
+  },
+  {
     menuName: 'MdmWarehouseZone',
     buttons: [...crud({ view: true }), button('Sort', '调整排序')]
   },
   {
     menuName: 'MdmWarehouseBin',
     buttons: [...crud({ view: true }), button('Generate', '生成货架')]
+  },
+  {
+    menuName: 'MdmWarehouseBin3d',
+    buttons: [button('View', '查看')]
   },
   {
     menuName: 'MdmInventoryBatch',
@@ -2376,11 +2384,93 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [button('View', '查看'), button('Add', '下推生成'), button('Approve', '审核应付')]
   },
   {
+    menuName: 'WmsInventoryEnable',
+    buttons: [button('View', '查看'), button('Enable', '启用'), button('Disable', '反启用')]
+  },
+  {
+    menuName: 'WmsInitialStock',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Export', '导出'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsInitialSalesOutbound',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsInitialSalesReturn',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsInitialPurchaseInbound',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsInitialPurchaseReturn',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsInitializationClose',
+    buttons: [button('View', '查看'), button('Close', '结束初始化'), button('Reopen', '反初始化')]
+  },
+  {
     menuName: 'WmsReceiptInbound',
     buttons: [
       button('View', '查看'),
       button('Add', '下推生成'),
       button('AssignScope', '指定施工号'),
+      button('AssignBin', '指定入库库位'),
       button('CaptureSN', '录入收料 SN'),
       button('Confirm', '确认入库')
     ]
@@ -2736,10 +2826,35 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('RecentPrice', '获取最近采购价')
     ]
   },
-  { menuName: 'ScmPurchaseInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
+  {
+    menuName: 'ScmPurchaseInbound',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
   {
     menuName: 'ScmPurchaseReturnRequest',
-    buttons: [button('View', '查看'), button('Add', '新增')]
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
   },
   { menuName: 'ScmOutsourceReceipt', buttons: [button('View', '查看'), button('Add', '新增')] },
   { menuName: 'ScmOutsourceInbound', buttons: [button('View', '查看'), button('Add', '新增')] },

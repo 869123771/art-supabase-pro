@@ -47,15 +47,18 @@
     </template>
 
     <ElScrollbar
-      v-if="normalizedContentHeight"
       ref="scrollbarRef"
       :always="options.scrollbarAlways"
       :native="options.nativeScrollbar"
       class="art-drawer__scrollbar"
-      :style="{
-        height: normalizedContentHeight,
-        maxHeight: normalizedContentHeight
-      }"
+      :style="
+        normalizedContentHeight
+          ? {
+              height: normalizedContentHeight,
+              maxHeight: normalizedContentHeight
+            }
+          : undefined
+      "
       @wheel.capture="handleWheelBoundary"
     >
       <div ref="contentRef" class="art-drawer__content">
@@ -76,24 +79,6 @@
         </ArtOverlayLoading>
       </div>
     </ElScrollbar>
-
-    <div v-else ref="contentRef" class="art-drawer__content">
-      <ArtOverlayLoading
-        :loading="contentLoading"
-        :text="options.loadingText"
-        :background="options.loadingBackground"
-        :custom-class="options.loadingCustomClass"
-      >
-        <component
-          :is="options.content"
-          v-if="options.content"
-          v-bind="options.contentProps"
-          :data="openData"
-          :drawer-api="exposedApi"
-        />
-        <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
-      </ArtOverlayLoading>
-    </div>
 
     <template v-if="options.showFooter" #footer>
       <slot name="footer" :data="openData" :loading="confirmLoading" :api="exposedApi">
@@ -495,6 +480,7 @@
   .art-drawer__scrollbar {
     flex: 1;
     width: 100%;
+    height: 100%;
     min-height: 0;
 
     :deep(.el-scrollbar__wrap) {

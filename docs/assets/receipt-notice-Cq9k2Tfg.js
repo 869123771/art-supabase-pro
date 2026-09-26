@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./purchase-workspace-DlpLjJtl.js";var i=e({name:`ScmReceiptNotice`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`receipt_notice`}))}});export{i as default};
