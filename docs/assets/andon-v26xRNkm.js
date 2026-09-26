@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./execution-event-workspace-Dl4Lkhjj.js";var i=e({name:`MesAndon`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`andon`}))}});export{i as default};

@@ -223,6 +223,10 @@
     }
 
     &--compact {
+      .business-workspace-header__aside {
+        max-width: min(64%, 900px);
+      }
+
       .business-workspace-header__hero {
         gap: 16px;
         padding: 14px 18px 13px;
@@ -469,6 +473,7 @@
 
       &--compact .business-workspace-header__aside {
         width: calc(100% - 54px);
+        max-width: none;
         margin-left: 54px;
       }
 
@@ -512,6 +517,7 @@
 
         .business-workspace-header__aside {
           width: calc(100% - 54px);
+          max-width: none;
           margin-left: 54px;
         }
 

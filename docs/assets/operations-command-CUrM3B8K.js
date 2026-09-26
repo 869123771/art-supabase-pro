@@ -1,1 +1,0 @@
-import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./enterprise-big-screen-DWqq8K67.js";var i=e({name:`OperationsCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`operations`}))}});export{i as default};

@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./production-workspace-BArpJX0L.js";var i=e({name:`MesOperationReport`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{entry:`report`}))}});export{i as default};

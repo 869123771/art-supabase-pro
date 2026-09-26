@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./purchase-workspace-DGp_C4dv.js";var i=e({name:`ScmPurchaseRequest`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`purchase_request`}))}});export{i as default};

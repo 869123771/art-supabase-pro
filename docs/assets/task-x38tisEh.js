@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./task-workspace-xCFlSYRV.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`maintenance`,mode:`task`}))}});export{i as default};

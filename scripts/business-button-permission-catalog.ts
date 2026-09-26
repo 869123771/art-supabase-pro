@@ -2460,6 +2460,60 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Approve', '审核')
     ]
   },
+  ...[
+    'WmsPurchaseInbound',
+    'WmsPurchaseReturn',
+    'WmsEntrustedProcessingInbound',
+    'WmsEntrustedProcessingReturn',
+    'WmsSalesOutbound',
+    'WmsSalesReturnDocument'
+  ].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  })),
+  {
+    menuName: 'WmsOtherInbound',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Select', '选单'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
+  {
+    menuName: 'WmsOtherOutbound',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Select', '选单'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  },
   {
     menuName: 'WmsInitializationClose',
     buttons: [button('View', '查看'), button('Close', '结束初始化'), button('Reopen', '反初始化')]
@@ -2496,10 +2550,18 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'WmsIssueRequest',
     buttons: [
       button('View', '查看'),
-      button('Create', '提交领料申请'),
-      button('Approve', '审核领料申请'),
-      button('Cancel', '取消领料申请'),
-      button('Issue', '按申请领料出库')
+      button('Create', '从工单新增'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Cancel', '取消'),
+      button('Issue', '按申请出库')
     ]
   },
   {
@@ -2515,10 +2577,32 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       button('View', '查看'),
       button('Create', '申请调拨'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
       button('Dispatch', '确认调出'),
       button('Receive', '确认入库')
     ]
   },
+  ...['WmsCountGain', 'WmsCountLoss'].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Submit', '提交'),
+      button('Approve', '审核')
+    ]
+  })),
   {
     menuName: 'WmsCount',
     buttons: [

@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./department-setting-workspace-D4elWtYb.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`repair`}))}});export{i as default};

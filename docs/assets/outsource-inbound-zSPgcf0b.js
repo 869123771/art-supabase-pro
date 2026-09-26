@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./order-target-workspace-BaO0uC_G.js";var i=e({name:`ScmOutsourceInbound`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`outsource_inbound`}))}});export{i as default};

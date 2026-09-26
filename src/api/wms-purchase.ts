@@ -8,6 +8,7 @@ import type {
   WmsPurchaseListRow,
   WmsPurchaseMaterial,
   WmsPurchaseOption,
+  WmsPurchaseOrderTarget,
   WmsPurchaseOrganization,
   WmsPurchasePayload,
   WmsPurchaseSourceBatch,
@@ -34,11 +35,148 @@ const writeOptions = {
 const documentSelect = `*,
  organization:mdm_organization!wms_purchase_document_organization_id_fkey(organization_name,organization_code),
  supplier:mdm_supplier!wms_purchase_document_supplier_id_fkey(supplier_name,supplier_code),
+ customer:mdm_customer!wms_purchase_document_customer_id_fkey(customer_name,customer_code),
  purchaser:mdm_employee!wms_purchase_document_purchaser_id_fkey(employee_name),
  keeper:mdm_employee!wms_purchase_document_keeper_id_fkey(employee_name),
  lines:wms_purchase_document_line(*,
  material:mdm_material!wms_purchase_document_line_material_id_fkey(id,tenant_id,code:material_code,name:material_name,description,specification_model,inventory_unit_id,base_unit_id,auxiliary_unit_id,auxiliary_unit_2_id,unit_conversions,serial_management_enabled),
  project:mdm_project!wms_purchase_document_line_project_id_fkey(id,tenant_id,code:project_code,name:project_name))`
+
+interface OrderTargetRecord {
+  id: string
+  tenantId: string
+  documentNo: string
+  projectId: string | null
+  supplierId: string
+  status: 'draft' | 'partial' | 'completed'
+  source: { documentNo: string } | null
+}
+
+interface OrderTargetLineRecord {
+  id: string
+  lineSnapshot: Record<string, unknown>
+}
+
+interface OrderTargetRemainingRecord {
+  targetLineId: string
+  orderedQuantity: number
+  receivedQuantity: number
+  remainingQuantity: number
+}
+
+export async function fetchWmsPurchaseOrderTargets(
+  tenantId?: string
+): Promise<OrderTargetRecord[]> {
+  let request = supabase
+    .from('scm_order_target_document')
+    .select(
+      'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no)'
+    )
+    .eq('target_kind', 'purchase_inbound')
+    .in('status', ['draft', 'partial'])
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (tenantId) request = request.eq('tenant_id', tenantId)
+  const { data } = await responseHandle<OrderTargetRecord[]>(() => request, readOptions)
+  return data ?? []
+}
+
+export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurchaseOrderTarget> {
+  const { data: target } = await responseHandle<OrderTargetRecord>(
+    () =>
+      supabase
+        .from('scm_order_target_document')
+        .select(
+          'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no)'
+        )
+        .eq('id', id)
+        .eq('target_kind', 'purchase_inbound')
+        .single(),
+    readOptions
+  )
+  if (!target) throw new Error('采购订单下推目标不存在或无权查看')
+  const [{ data: sourceLines }, { data: remainingRows }] = await Promise.all([
+    responseHandle<OrderTargetLineRecord[]>(
+      () =>
+        supabase
+          .from('scm_order_target_line')
+          .select('id,line_snapshot')
+          .eq('target_document_id', id)
+          .eq('tenant_id', target.tenantId)
+          .order('created_at'),
+      readOptions
+    ),
+    responseHandle<OrderTargetRemainingRecord[]>(
+      () => supabase.rpc('wms_purchase_order_target_remaining', { p_target_id: id }),
+      readOptions
+    )
+  ])
+  const rawLines = sourceLines ?? []
+  const remainingById = new Map((remainingRows ?? []).map((row) => [row.targetLineId, row]))
+  if (remainingById.size !== rawLines.length) throw new Error('采购订单剩余数量加载失败，请重试')
+  const materialIds: string[] = []
+  for (const line of rawLines) {
+    if (typeof line.lineSnapshot.materialId === 'string')
+      materialIds.push(line.lineSnapshot.materialId)
+  }
+  if (!rawLines.length || materialIds.length !== rawLines.length) {
+    throw new Error('采购订单下推明细缺少有效物料')
+  }
+  const { data: materials } = await responseHandle<WmsPurchaseMaterial[]>(
+    () =>
+      supabase
+        .from('mdm_material')
+        .select(
+          'id,tenant_id,code:material_code,name:material_name,description,specification_model,inventory_unit_id,base_unit_id,auxiliary_unit_id,auxiliary_unit_2_id,unit_conversions,serial_management_enabled'
+        )
+        .eq('tenant_id', target.tenantId)
+        .eq('status', 'enabled')
+        .in('id', materialIds),
+    readOptions
+  )
+  const materialById = new Map((materials ?? []).map((material) => [material.id, material]))
+  const lines = rawLines
+    .map((line, index) => {
+      const snapshot = line.lineSnapshot
+      const material = materialById.get(String(snapshot.materialId))
+      const remaining = remainingById.get(line.id)
+      const quantity = Number(remaining?.remainingQuantity)
+      const unitCode = snapshot.unit
+      if (!material || !Number.isFinite(quantity) || quantity < 0 || typeof unitCode !== 'string') {
+        throw new Error(`采购订单下推第 ${index + 1} 行物料、单位或数量无效`)
+      }
+      const ownerType: 'self' | 'supplier' | 'customer' =
+        snapshot.ownerType === 'supplier' || snapshot.ownerType === 'customer'
+          ? snapshot.ownerType
+          : 'self'
+      return {
+        id: line.id,
+        lineNo: Number(snapshot.lineNo) || (index + 1) * 10,
+        material,
+        orderedQuantity: Number(remaining?.orderedQuantity) || 0,
+        receivedQuantity: Number(remaining?.receivedQuantity) || 0,
+        quantity,
+        unitCode,
+        unitPrice: Number(snapshot.unitPrice) || 0,
+        taxRate: Number(snapshot.taxRate) || 0,
+        discountRate: Number(snapshot.discountRate) || 0,
+        gift: snapshot.gift === true,
+        ownerType,
+        ownerId: typeof snapshot.ownerId === 'string' ? snapshot.ownerId : null
+      }
+    })
+    .filter((line) => line.quantity > 0)
+  if (!lines.length) throw new Error('采购订单明细已全部入库')
+  return {
+    id: target.id,
+    tenantId: target.tenantId,
+    documentNo: target.documentNo,
+    sourceOrderNo: target.source?.documentNo || target.documentNo,
+    projectId: target.projectId,
+    supplierId: target.supplierId,
+    lines
+  }
+}
 
 export async function fetchWmsPurchasePage(query: {
   kind: WmsPurchaseKind
@@ -54,12 +192,19 @@ export async function fetchWmsPurchasePage(query: {
   let request = supabase
     .from('wms_purchase_document_list')
     .select('*', { count: 'exact' })
-    .eq('kind', query.kind)
     .order('create_time', { ascending: false })
     .order('line_no')
+  request =
+    query.kind === 'other_inbound'
+      ? request.in('kind', ['other_inbound', 'other_return'])
+      : request.eq('kind', query.kind)
   if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
   if (query.status) request = request.eq('status', query.status)
-  if (query.supplier?.trim()) request = request.ilike('supplier_name', `%${query.supplier.trim()}%`)
+  if (query.supplier?.trim())
+    request = request.ilike(
+      query.kind.startsWith('entrusted_processing_') ? 'customer_name' : 'supplier_name',
+      `%${query.supplier.trim()}%`
+    )
   if (query.projectName?.trim())
     request = request.ilike('project_name', `%${query.projectName.trim()}%`)
   if (query.materialDescription?.trim())

@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./task-workspace-xCFlSYRV.js";var i=e({name:`PmisInspectionReport`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`inspection`,mode:`report`}))}});export{i as default};

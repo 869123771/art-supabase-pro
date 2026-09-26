@@ -539,11 +539,13 @@
         captchaToken
       }
       const { data } = await login(params)
-      const { refreshToken, accessToken } = data?.session ?? {}
-      // 验证token
-      if (!accessToken) {
-        throw new Error('Login failed - no token received')
-      }
+      const responseSession = data?.session
+      const tokens = responseSession?.accessToken
+        ? {
+            accessToken: responseSession.accessToken,
+            refreshToken: responseSession.refreshToken
+          }
+        : await getCurrentAuthSession()
 
       if (formData.rememberPassword) {
         if (!writeRememberedIdentifier(identifier)) {
@@ -558,7 +560,7 @@
         writeRememberedIdentifier('')
       }
 
-      await completeAuthenticatedLogin({ accessToken, refreshToken })
+      await completeAuthenticatedLogin(tokens)
     } catch (error) {
       if (!(error instanceof HttpError)) {
         console.error('[Login] Unexpected error:', error)

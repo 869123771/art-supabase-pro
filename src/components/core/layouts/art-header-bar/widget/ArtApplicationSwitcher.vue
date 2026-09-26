@@ -7,7 +7,7 @@
   >
     <button class="application-switcher" type="button" aria-label="切换业务应用">
       <ArtSvgIcon icon="ri:apps-2-line" />
-      <span>{{ currentApplication.code.toUpperCase() }}</span>
+      <span>{{ activeApplicationCode.toUpperCase() }}</span>
       <ArtSvgIcon class="application-switcher__arrow" icon="ri:arrow-down-s-line" />
     </button>
 
@@ -17,7 +17,7 @@
           v-for="application in switcherEntries"
           :key="application.code"
           :command="application.code"
-          :disabled="application.code === currentApplication.code"
+          :disabled="application.code === activeApplicationCode"
         >
           <span class="application-switcher__item-icon">
             <ArtSvgIcon :icon="iconByApplication[application.code] ?? 'ri:apps-line'" />
@@ -27,7 +27,7 @@
             <small>{{ application.description || '独立业务应用' }}</small>
           </span>
           <ArtSvgIcon
-            v-if="application.code === currentApplication.code"
+            v-if="application.code === activeApplicationCode"
             icon="ri:check-line"
             class="application-switcher__check"
           />
@@ -45,10 +45,14 @@
   import {
     APPLICATION_PROFILES,
     currentApplication,
-    resolveApplicationBaseUrl,
+    resolveApplicationCode,
     type ApplicationCode
   } from '@/config/application'
+  import { useMenuStore } from '@/store/modules/menu'
+  import { getFirstMenuPath } from '@/utils/navigation/route'
+  import { navigateToApplication } from '@/utils/application-navigation'
   import { WEB_LINKS } from '@/utils/constants'
+  import { ElMessage } from 'element-plus'
 
   defineOptions({ name: 'ArtApplicationSwitcher' })
 
@@ -62,6 +66,13 @@
   }
 
   const applications = ref<AccessibleApplication[]>([])
+  const route = useRoute()
+  const menuStore = useMenuStore()
+  const activeApplicationCode = computed(() =>
+    currentApplication.code === 'platform'
+      ? resolveApplicationCode(route.path.split('/')[1])
+      : currentApplication.code
+  )
   const documentationEntry: SwitcherEntry = {
     code: 'docs',
     name: 'DOC官方文档',
@@ -105,19 +116,30 @@
     if (!error) applications.value = data ?? []
   })
 
-  function switchApplication(code: SwitcherEntryCode): void {
+  async function switchApplication(code: SwitcherEntryCode): Promise<void> {
     if (code === 'docs') {
       window.open(WEB_LINKS.DOCS, '_blank', 'noopener,noreferrer')
       return
     }
 
-    if (code === currentApplication.code) return
+    if (code === activeApplicationCode.value) return
 
     const target = applications.value.find((application) => application.code === code)
-    if (!target?.baseUrl) return
+    if (!target) {
+      ElMessage.error('暂时无法打开该业务应用，请刷新页面后重试')
+      return
+    }
 
-    const targetUrl = resolveApplicationBaseUrl(code, target.baseUrl, window.location)
-    window.location.assign(targetUrl.toString())
+    const menuRoot = menuStore.menuList.find((menu) => menu.path === `/${code}`)
+    const routePath = menuRoot
+      ? getFirstMenuPath([menuRoot]) || APPLICATION_PROFILES[code].defaultPath
+      : APPLICATION_PROFILES[code].defaultPath
+
+    try {
+      await navigateToApplication(code, routePath)
+    } catch {
+      ElMessage.error('业务应用切换失败，请稍后重试')
+    }
   }
 </script>
 

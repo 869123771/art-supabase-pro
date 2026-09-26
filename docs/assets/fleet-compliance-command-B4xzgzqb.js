@@ -1,1 +1,0 @@
-import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./domain-command-screen-DZI_dQck.js";var i=e({name:`FleetComplianceCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`fleet-compliance`}))}});export{i as default};

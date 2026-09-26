@@ -1,1 +1,0 @@
-import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./execution-analytics-DYyVxuDj.js";var i=e({name:`MesLaborEfficiency`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`person`}))}});export{i as default};

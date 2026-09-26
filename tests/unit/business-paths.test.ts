@@ -47,7 +47,7 @@ test('redirects legacy business roots to their renamed modules', () => {
 })
 
 test('redirects WMS bookmarks into their business categories', () => {
-  assert.equal(resolveLegacyBusinessPath('/wms/adjustment'), '/wms/transfer-adjustment/adjustment')
+  assert.equal(resolveLegacyBusinessPath('/wms/adjustment'), '/wms/adjustment-business/adjustment')
   assert.equal(
     resolveLegacyBusinessPath('/wms/stock-operation'),
     '/wms/receipt-issue/stock-operation'
@@ -56,7 +56,22 @@ test('redirects WMS bookmarks into their business categories', () => {
     resolveLegacyBusinessPath('/wms/project-report'),
     '/wms/project-warehouse/project-report'
   )
-  assert.equal(resolveLegacyBusinessPath('/wms/transfer-adjustment/adjustment'), undefined)
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/transfer-adjustment/adjustment'),
+    '/wms/adjustment-business/adjustment'
+  )
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/transfer-adjustment/count'),
+    '/wms/count-business/count'
+  )
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/transfer-adjustment/transfer'),
+    '/wms/transfer-business/step-transfer'
+  )
+  assert.equal(
+    resolveLegacyBusinessPath('/wms/receipt-issue/issue-request'),
+    '/wms/outbound-business/outbound-request'
+  )
 })
 
 test('ignores paths outside the legacy business namespaces', () => {

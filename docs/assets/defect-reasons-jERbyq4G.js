@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./defect-management-CKwyDArL.js";var i=e({name:`MesDefectReasons`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-tab":`reasons`}))}});export{i as default};

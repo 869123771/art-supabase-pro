@@ -1,5 +1,12 @@
 export type WmsPurchaseKind =
-  'initial_inbound' | 'initial_return' | 'purchase_inbound' | 'purchase_return'
+  | 'initial_inbound'
+  | 'initial_return'
+  | 'purchase_inbound'
+  | 'purchase_return'
+  | 'other_inbound'
+  | 'other_return'
+  | 'entrusted_processing_inbound'
+  | 'entrusted_processing_return'
 
 export type WmsPurchaseStatus = 'draft' | 'submitted' | 'approved'
 
@@ -90,6 +97,7 @@ export interface WmsPurchaseLine {
   totalAmount: number
   batchNo: string | null
   sourceBatchId: string | null
+  sourceOrderTargetLineId?: string | null
   movementId?: string | null
   warehouseId: string | null
   binId: string | null
@@ -109,6 +117,34 @@ export interface WmsPurchaseLine {
   sourceLineNo: string | null
   remark: string | null
   serialNos: string[]
+  receivedQuantity: number
+  unreceivedQuantity: number
+  returnedQuantity: number
+  unreturnedQuantity: number
+}
+
+export interface WmsPurchaseOrderTarget {
+  id: string
+  tenantId: string
+  documentNo: string
+  sourceOrderNo: string
+  projectId: string | null
+  supplierId: string
+  lines: Array<{
+    id: string
+    lineNo: number
+    material: WmsPurchaseMaterial
+    orderedQuantity: number
+    receivedQuantity: number
+    quantity: number
+    unitCode: string
+    unitPrice: number
+    taxRate: number
+    discountRate: number
+    gift: boolean
+    ownerType: 'self' | 'supplier' | 'customer'
+    ownerId: string | null
+  }>
 }
 
 export interface WmsPurchaseDocument {
@@ -117,6 +153,7 @@ export interface WmsPurchaseDocument {
   organizationId: string
   organization?: { organizationName: string; organizationCode: string } | null
   supplier?: { supplierName: string; supplierCode: string } | null
+  customer?: { customerName: string; customerCode: string } | null
   purchaser?: { employeeName: string } | null
   keeper?: { employeeName: string } | null
   kind: WmsPurchaseKind
@@ -125,7 +162,8 @@ export interface WmsPurchaseDocument {
   businessTypeId: string
   businessDate: string
   accountingDate: string
-  supplierId: string
+  supplierId: string | null
+  customerId: string | null
   purchaserId: string | null
   purchaseDepartmentId: string | null
   keeperId: string | null
@@ -147,9 +185,12 @@ export interface WmsPurchaseListRow {
   documentNo: string
   businessDate: string
   accountingDate: string
-  supplierId: string
-  supplierCode: string
-  supplierName: string
+  supplierId: string | null
+  supplierCode: string | null
+  supplierName: string | null
+  customerId: string | null
+  customerCode: string | null
+  customerName: string | null
   status: WmsPurchaseStatus
   lineId: string
   lineNo: number
@@ -176,6 +217,10 @@ export interface WmsPurchaseListRow {
   totalAmount: number
   gift: boolean
   documentRemark: string | null
+  receivedQuantity: number
+  unreceivedQuantity: number
+  returnedQuantity: number
+  unreturnedQuantity: number
 }
 
 export interface WmsPurchasePayload extends Omit<
@@ -189,6 +234,7 @@ export interface WmsPurchasePayload extends Omit<
   | 'approvedAt'
   | 'organization'
   | 'supplier'
+  | 'customer'
   | 'purchaser'
   | 'keeper'
 > {

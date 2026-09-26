@@ -893,7 +893,7 @@
   const getOptions = (item: FormItem): FormRecord[] => {
     if (asyncOptionsMap.value[item.key]) return asyncOptionsMap.value[item.key]
     const options = item.options ?? getProps(item).options
-    return Array.isArray(options) ? options : []
+    return Array.isArray(options) ? normalizeOptions(options, item) : []
   }
 
   const getPlainTextLabel = (item: FormItem): string => {

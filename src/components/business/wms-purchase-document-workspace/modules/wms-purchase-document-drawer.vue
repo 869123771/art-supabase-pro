@@ -30,12 +30,20 @@
           isInitial ? '业务日期不得晚于库存组织启用日期。' : ''
         }}物料价格、税额、折扣与辅助数量由系统核算；退货以负数入账。
       </ElAlert>
+      <ElAlert v-if="orderTarget" type="success" :closable="false" show-icon>
+        承接采购订单 {{ orderTarget.sourceOrderNo }}（下推单
+        {{
+          orderTarget.documentNo
+        }}）。物料数量已按未入库余量预填；可按批次调整本次数量，审核时校验累计入库量。
+      </ElAlert>
       <ElAlert v-if="importIntent" type="success" :closable="false" show-icon>
-        先选择库存组织及供应商，再在“物料明细”中点击“导入明细”；导入后请核对仓储和价格信息。
+        先选择库存组织及{{
+          isEntrustedProcessing ? '客户' : '供应商'
+        }}，再在“物料明细”中点击“导入明细”；导入后请核对仓储和价格信息。
       </ElAlert>
       <ArtSectionCard
         title="单据表头"
-        subtitle="供应商、业务日期和库存组织是必填信息；记账日期由系统记录。"
+        :subtitle="`${isEntrustedProcessing ? '客户' : '供应商'}、业务日期和库存组织是必填信息；记账日期由系统记录。`"
       >
         <ArtDescriptions v-if="mode === 'view'" :data="viewData" :items="viewItems" :columns="3" />
         <ArtForm
@@ -61,9 +69,25 @@
               description-key="code"
               title="选择供应商"
               placeholder="从采购主数据选择"
-              :disabled="!form.tenantId"
+              :disabled="!form.tenantId || Boolean(orderTarget)"
               @update:model-value="form.supplierId = String($event || '')"
               @update:selected-data="onSupplierSelected"
+            />
+          </template>
+          <template #customerId>
+            <ArtTableSingleSelect
+              :model-value="form.customerId || undefined"
+              :selected-data="selectedHeaderCustomer"
+              :data="customers"
+              :columns="partyColumns"
+              row-key="id"
+              label-key="name"
+              description-key="code"
+              title="选择客户"
+              placeholder="从销售主数据选择"
+              :disabled="!form.tenantId"
+              @update:model-value="form.customerId = String($event || '')"
+              @update:selected-data="onCustomerSelected"
             />
           </template>
           <template #purchaserId>
@@ -144,6 +168,7 @@
             :data="lines"
             :columns="lineColumns"
             :pagination="false"
+            :cell-class-name="purchaseLineCellClassName"
             row-key="lineNo"
             table-layout="fixed"
           >
@@ -407,6 +432,7 @@
     fetchWmsPurchaseOptions,
     fetchWmsPurchaseSourceBatches,
     fetchWmsPurchaseDocument,
+    fetchWmsPurchaseOrderTarget,
     fetchWmsPurchaseOrganizations,
     fetchWmsPurchaseUnits,
     fetchWmsPurchaseWarehouses,
@@ -418,6 +444,7 @@
     type WmsPurchaseLine,
     type WmsPurchaseOption,
     type WmsPurchaseOrganization,
+    type WmsPurchaseOrderTarget,
     type WmsPurchaseUnit,
     type WmsPurchaseWarehouse
   } from '@/api/wms-purchase'
@@ -428,8 +455,13 @@
     document?: WmsPurchaseDocument
     documentId?: string
     importIntent?: boolean
+    orderTargetId?: string
   }
-  const props = defineProps<{ kind: WmsPurchaseKind; importPermission: string }>()
+  const props = defineProps<{
+    kind: WmsPurchaseKind
+    permissionPrefix: string
+    importPermission: string
+  }>()
   const emit = defineEmits<{ success: [] }>()
   const userStore = useUserStore()
   const drawerRef = ref<ArtDrawerExpose<OpenData>>()
@@ -441,6 +473,7 @@
   const mode = ref<OpenMode>('create')
   const importIntent = ref(false)
   const currentDocument = shallowRef<WmsPurchaseDocument | null>(null)
+  const orderTarget = shallowRef<WmsPurchaseOrderTarget | null>(null)
   const optionError = ref(false)
   const organizations = ref<WmsPurchaseOrganization[]>([])
   const warehouses = ref<WmsPurchaseWarehouse[]>([])
@@ -452,15 +485,7 @@
   const projects = ref<WmsPurchaseOption[]>([])
   const bins = ref<WmsPurchaseBin[]>([])
   const lines = ref<WmsPurchaseLine[]>([])
-  const permissionPrefix = computed(
-    () =>
-      ({
-        initial_inbound: 'WmsInitialPurchaseInbound',
-        initial_return: 'WmsInitialPurchaseReturn',
-        purchase_inbound: 'ScmPurchaseInbound',
-        purchase_return: 'ScmPurchaseReturnRequest'
-      })[props.kind]
-  )
+  const permissionPrefix = computed(() => props.permissionPrefix)
   const viewPermission = computed(() => `${permissionPrefix.value}:View`)
   const lineEditPermission = computed(
     () =>
@@ -487,6 +512,38 @@
     { prop: 'projectId', label: '项目名称', minWidth: 150, useSlot: true },
     { prop: 'quantity', label: '数量', width: 122, align: 'right', useSlot: true },
     { prop: 'inventoryUnitId', label: '库存单位', width: 110, useSlot: true },
+    ...(isEntrustedProcessing.value
+      ? [
+          {
+            prop: 'receivedQuantity',
+            label: '已收料',
+            width: 100,
+            align: 'right' as const,
+            formatter: (row: WmsPurchaseLine) => processingQuantities(row).received.toFixed(4)
+          },
+          {
+            prop: 'unreceivedQuantity',
+            label: '未收料',
+            width: 100,
+            align: 'right' as const,
+            formatter: (row: WmsPurchaseLine) => processingQuantities(row).unreceived.toFixed(4)
+          },
+          {
+            prop: 'returnedQuantity',
+            label: '已退库',
+            width: 100,
+            align: 'right' as const,
+            formatter: (row: WmsPurchaseLine) => processingQuantities(row).returned.toFixed(4)
+          },
+          {
+            prop: 'unreturnedQuantity',
+            label: '未退库',
+            width: 100,
+            align: 'right' as const,
+            formatter: (row: WmsPurchaseLine) => processingQuantities(row).unreturned.toFixed(4)
+          }
+        ]
+      : []),
     { prop: 'taxInclusiveUnitPrice', label: '含税单价', width: 118, align: 'right', useSlot: true },
     { prop: 'taxRate', label: '税率', width: 80, align: 'right', useSlot: true },
     { prop: 'totalAmount', label: '价税合计', width: 124, align: 'right', useSlot: true },
@@ -496,6 +553,7 @@
   const materialPickerIds = ref<string[]>([])
   const materialPickerRows = ref<DataSelectRecord[]>([])
   const selectedSupplier = ref<DataSelectRecord[]>([])
+  const selectedHeaderCustomer = ref<DataSelectRecord[]>([])
   const selectedPurchaser = ref<EmployeeIntegrationItem[]>([])
   const selectedKeeper = ref<EmployeeIntegrationItem[]>([])
   const selectedLineKeeper = ref<EmployeeIntegrationItem[]>([])
@@ -526,6 +584,8 @@
     accountingDate: dayjs().format('YYYY-MM-DD'),
     supplierId: '',
     supplierCode: '',
+    customerId: '',
+    customerCode: '',
     purchaserId: null as string | null,
     purchaseDepartmentId: null as string | null,
     keeperId: null as string | null,
@@ -541,15 +601,24 @@
   const stockStatuses = computed(() => userStore.getDictMap['wmsInitialStockCondition'] ?? [])
   const ownerTypes = computed(() => userStore.getDictMap['mdmBusinessOwnerType'] ?? [])
   const taxRates = [0, 1, 3, 6, 9, 13]
-  const isReturn = computed(() => ['initial_return', 'purchase_return'].includes(props.kind))
+  const isReturn = computed(() =>
+    ['initial_return', 'purchase_return', 'other_return', 'entrusted_processing_return'].includes(
+      props.kind
+    )
+  )
   const isInitial = computed(() => props.kind.startsWith('initial_'))
+  const isEntrustedProcessing = computed(() => props.kind.startsWith('entrusted_processing_'))
   const title = computed(
     () =>
       ({
         initial_inbound: '期初采购入库单',
         initial_return: '期初采购退料单',
         purchase_inbound: '采购入库单',
-        purchase_return: '采购退货单'
+        purchase_return: '采购退货单',
+        other_inbound: '其他入库单',
+        other_return: '其他入库退回单',
+        entrusted_processing_inbound: '受托加工材料入库单',
+        entrusted_processing_return: '受托加工材料退料单'
       })[props.kind]
   )
   const statusLabel = computed(
@@ -561,7 +630,11 @@
         initial_inbound: 'WMS_INITIAL_PURCHASE_INBOUND',
         initial_return: 'WMS_INITIAL_PURCHASE_RETURN',
         purchase_inbound: 'WMS_PURCHASE_INBOUND',
-        purchase_return: 'WMS_PURCHASE_RETURN'
+        purchase_return: 'WMS_PURCHASE_RETURN',
+        other_inbound: 'WMS_OTHER_INBOUND',
+        other_return: 'WMS_OTHER_RETURN',
+        entrusted_processing_inbound: 'WMS_ENTRUSTED_PROCESSING_INBOUND',
+        entrusted_processing_return: 'WMS_ENTRUSTED_PROCESSING_RETURN'
       })[props.kind]
   )
   const selectedOrganization = computed(() =>
@@ -587,6 +660,11 @@
       suppliers.value.find((item) => item.id === form.supplierId)?.name ||
       '—',
     supplierCode: suppliers.value.find((item) => item.id === form.supplierId)?.code || '—',
+    customer:
+      currentDocument.value?.customer?.customerName ||
+      customers.value.find((item) => item.id === form.customerId)?.name ||
+      '—',
+    customerCode: customers.value.find((item) => item.id === form.customerId)?.code || '—',
     purchaseDepartment:
       organizations.value.find((item) => item.id === form.purchaseDepartmentId)?.organizationName ||
       '—',
@@ -605,10 +683,21 @@
     { key: 'businessType', label: '业务类型', field: 'businessType' },
     { key: 'businessDate', label: '业务日期', field: 'businessDate' },
     { key: 'accountingDate', label: '记账日期', field: 'accountingDate' },
-    { key: 'supplier', label: '供应商', field: 'supplier' },
-    { key: 'supplierCode', label: '供应商编码', field: 'supplierCode' },
-    { key: 'purchaseDepartment', label: '采购部门', field: 'purchaseDepartment' },
-    { key: 'purchaser', label: '采购员', field: 'purchaser' },
+    ...(isEntrustedProcessing.value
+      ? [
+          { key: 'customer', label: '客户全称', field: 'customer' as const },
+          { key: 'customerCode', label: '客户编码', field: 'customerCode' as const }
+        ]
+      : [
+          { key: 'supplier', label: '供应商', field: 'supplier' as const },
+          { key: 'supplierCode', label: '供应商编码', field: 'supplierCode' as const },
+          {
+            key: 'purchaseDepartment',
+            label: '采购部门',
+            field: 'purchaseDepartment' as const
+          },
+          { key: 'purchaser', label: '采购员', field: 'purchaser' as const }
+        ]),
     { key: 'keeper', label: '仓管员', field: 'keeper' },
     { key: 'warehouse', label: '仓库', field: 'warehouse' },
     { key: 'initialization', label: '初始化单据', field: 'initialization' },
@@ -624,7 +713,10 @@
   )
   const availableOrganizations = computed(() =>
     organizations.value.filter(
-      (item) => item.enabledOn && (!isInitial.value || !item.initializationClosedAt)
+      (item) =>
+        item.enabledOn &&
+        (!isInitial.value || !item.initializationClosedAt) &&
+        (!orderTarget.value || item.tenantId === orderTarget.value.tenantId)
     )
   )
   const quantityTotal = computed(() =>
@@ -633,6 +725,9 @@
   const totalAmount = computed(() =>
     lines.value.reduce((sum, item) => sum + lineFinancial(item).total, 0)
   )
+  function purchaseLineCellClassName({ column }: { column: { property?: string } }): string {
+    return isReturn.value && column.property === 'quantity' ? 'purchase-return-quantity-cell' : ''
+  }
   const purchaseUnitOptions = computed(() =>
     units.value.map((item) => ({ label: `${item.unitName} · ${item.unitCode}`, value: item.id }))
   )
@@ -696,7 +791,35 @@
       label: '基本数量',
       type: 'text',
       props: { formatter: () => (editLine.value ? baseQuantity(editLine.value) : '—') }
-    }
+    },
+    ...(isEntrustedProcessing.value
+      ? [
+          {
+            key: 'receivedQuantity',
+            label: '已收料数量',
+            type: 'text' as const,
+            props: { formatter: () => processingQuantities(editLine.value).received }
+          },
+          {
+            key: 'unreceivedQuantity',
+            label: '未收料数量',
+            type: 'text' as const,
+            props: { formatter: () => processingQuantities(editLine.value).unreceived }
+          },
+          {
+            key: 'returnedQuantity',
+            label: '已退库数量',
+            type: 'text' as const,
+            props: { formatter: () => processingQuantities(editLine.value).returned }
+          },
+          {
+            key: 'unreturnedQuantity',
+            label: '未退库数量',
+            type: 'text' as const,
+            props: { formatter: () => processingQuantities(editLine.value).unreturned }
+          }
+        ]
+      : [])
   ])
   const lineMaterialRules = {
     inventoryUnitId: [{ required: true, message: '请选择库存单位', trigger: 'change' }],
@@ -911,7 +1034,7 @@
       props: { type: 'textarea', rows: 2, maxlength: 500 }
     }
   ])
-  const lineMaterialViewItems: ArtDescriptionItem<WmsPurchaseLine>[] = [
+  const lineMaterialViewItems = computed<ArtDescriptionItem<WmsPurchaseLine>[]>(() => [
     {
       key: 'materialName',
       label: '物料描述',
@@ -954,8 +1077,32 @@
       key: 'baseQuantity',
       label: '基本数量',
       value: (line: WmsPurchaseLine) => String(baseQuantity(line))
-    }
-  ]
+    },
+    ...(isEntrustedProcessing.value
+      ? [
+          {
+            key: 'receivedQuantity',
+            label: '已收料数量',
+            value: (line: WmsPurchaseLine) => String(processingQuantities(line).received)
+          },
+          {
+            key: 'unreceivedQuantity',
+            label: '未收料数量',
+            value: (line: WmsPurchaseLine) => String(processingQuantities(line).unreceived)
+          },
+          {
+            key: 'returnedQuantity',
+            label: '已退库数量',
+            value: (line: WmsPurchaseLine) => String(processingQuantities(line).returned)
+          },
+          {
+            key: 'unreturnedQuantity',
+            label: '未退库数量',
+            value: (line: WmsPurchaseLine) => String(processingQuantities(line).unreturned)
+          }
+        ]
+      : [])
+  ])
   const linePriceViewItems: ArtDescriptionItem<WmsPurchaseLine>[] = [
     { key: 'unitPrice', label: '单价(元)', field: 'unitPrice' },
     { key: 'taxInclusiveUnitPrice', label: '含税单价(元)', field: 'taxInclusiveUnitPrice' },
@@ -1125,33 +1272,50 @@
       type: 'date',
       props: { valueFormat: 'YYYY-MM-DD', disabled: true, class: 'w-full!' }
     },
-    {
-      key: 'supplierId',
-      label: '供应商',
-      type: 'input',
-      props: { disabled: mode.value === 'view' }
-    },
-    {
-      key: 'supplierCode',
-      label: '供应商编码',
-      type: 'input',
-      props: { readonly: true, placeholder: '选择供应商后自动带入' }
-    },
-    {
-      key: 'purchaserId',
-      label: '采购员',
-      type: 'input',
-      props: { disabled: mode.value === 'view' }
-    },
-    {
-      key: 'purchaseDepartmentId',
-      label: '采购部门',
-      type: 'select',
-      options: organizations.value
-        .filter((item) => item.tenantId === form.tenantId)
-        .map((item) => ({ label: item.organizationName, value: item.id })),
-      props: { filterable: true, clearable: true, disabled: mode.value === 'view' }
-    },
+    ...(isEntrustedProcessing.value
+      ? [
+          {
+            key: 'customerId',
+            label: '客户全称',
+            type: 'input' as const,
+            props: { disabled: mode.value === 'view' }
+          },
+          {
+            key: 'customerCode',
+            label: '客户编码',
+            type: 'input' as const,
+            props: { readonly: true, placeholder: '选择客户后自动带入' }
+          }
+        ]
+      : [
+          {
+            key: 'supplierId',
+            label: '供应商',
+            type: 'input' as const,
+            props: { disabled: mode.value === 'view' }
+          },
+          {
+            key: 'supplierCode',
+            label: '供应商编码',
+            type: 'input' as const,
+            props: { readonly: true, placeholder: '选择供应商后自动带入' }
+          },
+          {
+            key: 'purchaserId',
+            label: '采购员',
+            type: 'input' as const,
+            props: { disabled: mode.value === 'view' }
+          },
+          {
+            key: 'purchaseDepartmentId',
+            label: '采购部门',
+            type: 'select' as const,
+            options: organizations.value
+              .filter((item) => item.tenantId === form.tenantId)
+              .map((item) => ({ label: item.organizationName, value: item.id })),
+            props: { filterable: true, clearable: true, disabled: mode.value === 'view' }
+          }
+        ]),
     { key: 'keeperId', label: '仓管员', type: 'input', props: { disabled: mode.value === 'view' } },
     {
       key: 'warehouseId',
@@ -1174,7 +1338,16 @@
       ],
       props: { disabled: true }
     },
-    { key: 'isInitialization', label: '初始化单据', type: 'switch', props: { disabled: true } },
+    ...(isInitial.value || props.kind === 'other_return'
+      ? [
+          {
+            key: 'isInitialization',
+            label: '初始化单据',
+            type: 'switch' as const,
+            props: { disabled: true }
+          }
+        ]
+      : []),
     {
       key: 'remark',
       label: '备注',
@@ -1189,13 +1362,15 @@
       }
     }
   ])
-  const headerRules = {
+  const headerRules = computed(() => ({
     organizationId: [{ required: true, message: '请选择已启用的库存组织', trigger: 'change' }],
     documentTypeId: [{ required: true, message: '请选择单据类型', trigger: 'change' }],
     businessTypeId: [{ required: true, message: '请选择业务类型', trigger: 'change' }],
     businessDate: [{ required: true, message: '请选择业务日期', trigger: 'change' }],
-    supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }]
-  }
+    ...(isEntrustedProcessing.value
+      ? { customerId: [{ required: true, message: '请选择客户', trigger: 'change' }] }
+      : { supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }] })
+  }))
   const materialColumns = [
     { prop: 'code', label: '物料编码', width: 165 },
     { prop: 'name', label: '物料描述', minWidth: 220 },
@@ -1216,6 +1391,21 @@
   }
   function displayQuantity(value: number): number {
     return isReturn.value ? -Math.abs(Number(value || 0)) : Math.abs(Number(value || 0))
+  }
+  function processingQuantities(line?: WmsPurchaseLine): {
+    received: number
+    unreceived: number
+    returned: number
+    unreturned: number
+  } {
+    if (!line) return { received: 0, unreceived: 0, returned: 0, unreturned: 0 }
+    const quantity = Math.abs(Number(line.quantity || 0))
+    return {
+      received: isEntrustedProcessing.value && !isReturn.value ? quantity : 0,
+      unreceived: Number(line.unreceivedQuantity || 0),
+      returned: isEntrustedProcessing.value && isReturn.value ? quantity : 0,
+      unreturned: Number(line.unreturnedQuantity || 0)
+    }
   }
   function unitName(id: string | null): string {
     return units.value.find((item) => item.id === id)?.unitName || '—'
@@ -1312,11 +1502,12 @@
       totalAmount: 0,
       batchNo: null,
       sourceBatchId: null,
+      sourceOrderTargetLineId: null,
       warehouseId: form.warehouseId,
       binId: null,
-      stockType: 'normal',
-      ownerType: 'self',
-      ownerId: null,
+      stockType: isEntrustedProcessing.value ? 'entrusted_processing' : 'normal',
+      ownerType: isEntrustedProcessing.value ? 'customer' : 'self',
+      ownerId: isEntrustedProcessing.value ? form.customerId || null : null,
       stockStatus: 'available',
       keeperId: form.keeperId,
       auxiliaryUnitId: material.auxiliaryUnitId,
@@ -1329,7 +1520,11 @@
       sourceDocument: null,
       sourceLineNo: null,
       remark: null,
-      serialNos: []
+      serialNos: [],
+      receivedQuantity: 0,
+      unreceivedQuantity: 0,
+      returnedQuantity: 0,
+      unreturnedQuantity: 0
     }
   }
   function renumber(): void {
@@ -1372,6 +1567,17 @@
   function onSupplierSelected(rows: DataSelectRecord[]): void {
     selectedSupplier.value = rows
     form.supplierCode = String(rows[0]?.code || '')
+  }
+  function onCustomerSelected(rows: DataSelectRecord[]): void {
+    const previousCustomerId = form.customerId
+    selectedHeaderCustomer.value = rows
+    form.customerCode = String(rows[0]?.code || '')
+    const customerId = String(rows[0]?.id || '')
+    for (const line of lines.value) {
+      if (line.ownerType === 'customer' && (!line.ownerId || line.ownerId === previousCustomerId)) {
+        line.ownerId = customerId || null
+      }
+    }
   }
   async function onWarehouseChange(): Promise<void> {
     if (!editLine.value) return
@@ -1510,6 +1716,11 @@
         line.amount = money.amount
         line.taxAmount = money.tax
         line.totalAmount = money.total
+        const processing = processingQuantities(line)
+        line.receivedQuantity = processing.received
+        line.unreceivedQuantity = processing.unreceived
+        line.returnedQuantity = processing.returned
+        line.unreturnedQuantity = processing.unreturned
         lines.value[editingIndex.value] = cloneDeep(line)
         return true
       }
@@ -1561,13 +1772,25 @@
       : dayjs().format('YYYY-MM-DD')
     form.documentTypeId = ''
     form.businessTypeId = ''
-    form.supplierId = ''
-    form.supplierCode = ''
+    if (!orderTarget.value) {
+      form.supplierId = ''
+      form.supplierCode = ''
+      form.customerId = ''
+      form.customerCode = ''
+    }
     form.purchaserId = null
     form.purchaseDepartmentId = null
     form.warehouseId = null
-    lines.value = []
-    selectedSupplier.value = []
+    if (orderTarget.value) {
+      lines.value.forEach((line) => {
+        line.warehouseId = null
+        line.binId = null
+      })
+    } else {
+      lines.value = []
+      selectedSupplier.value = []
+      selectedHeaderCustomer.value = []
+    }
     selectedPurchaser.value = []
     if (form.tenantId) await loadTenantOptions(form.tenantId)
   }
@@ -1654,6 +1877,7 @@
         businessTypeId: form.businessTypeId,
         businessDate: form.businessDate,
         supplierId: form.supplierId,
+        customerId: form.customerId,
         purchaserId: form.purchaserId,
         purchaseDepartmentId: form.purchaseDepartmentId,
         keeperId: form.keeperId,
@@ -1670,6 +1894,7 @@
   }
   async function handleOpen(data: OpenData): Promise<void> {
     mode.value = data.mode
+    orderTarget.value = null
     importIntent.value = Boolean(data.importIntent)
     await drawerRef.value?.handleOpen(data, {
       loading: true,
@@ -1703,6 +1928,8 @@
         accountingDate: source?.accountingDate || dayjs().format('YYYY-MM-DD'),
         supplierId: source?.supplierId || '',
         supplierCode: source?.supplier?.supplierCode || '',
+        customerId: source?.customerId || '',
+        customerCode: source?.customer?.customerCode || '',
         purchaserId: source?.purchaserId || null,
         purchaseDepartmentId: source?.purchaseDepartmentId || null,
         keeperId: source?.keeperId || null,
@@ -1711,11 +1938,59 @@
         isInitialization: isInitial.value,
         remark: source?.remark || ''
       })
+      if (data.mode === 'copy' && source?.kind !== props.kind) {
+        form.documentTypeId = ''
+        form.businessTypeId = ''
+      }
       lines.value = source ? cloneDeep(source.lines) : []
       selectedSupplier.value = []
+      selectedHeaderCustomer.value = []
       selectedPurchaser.value = []
       selectedKeeper.value = []
+      if (
+        data.mode === 'create' &&
+        data.orderTargetId &&
+        ['purchase_inbound', 'other_inbound'].includes(props.kind)
+      ) {
+        orderTarget.value = await fetchWmsPurchaseOrderTarget(data.orderTargetId)
+        form.tenantId = orderTarget.value.tenantId
+        form.supplierId = orderTarget.value.supplierId
+      }
       await loadOptions()
+      if (form.supplierId) {
+        const supplier = suppliers.value.find((item) => item.id === form.supplierId)
+        selectedSupplier.value = supplier ? [supplier] : []
+      }
+      if (form.customerId) {
+        const customer = customers.value.find((item) => item.id === form.customerId)
+        selectedHeaderCustomer.value = customer ? [customer] : []
+      }
+      if (orderTarget.value) {
+        const target = orderTarget.value
+        form.supplierCode =
+          suppliers.value.find((item) => item.id === target.supplierId)?.code || ''
+        lines.value = target.lines.map((sourceLine) => {
+          const unit = units.value.find((item) => item.unitCode === sourceLine.unitCode)
+          if (!unit) throw new Error(`采购订单第 ${sourceLine.lineNo} 行单位未配置到 WMS`)
+          const line = makeLine(sourceLine.material)
+          line.projectId = target.projectId
+          line.gift = sourceLine.gift
+          line.inventoryUnitId = unit.id
+          line.quantity = sourceLine.quantity
+          line.unitPrice = sourceLine.unitPrice
+          line.taxRate = sourceLine.taxRate
+          line.taxInclusiveUnitPrice = round(sourceLine.unitPrice * (1 + sourceLine.taxRate / 100))
+          line.discountMethod = sourceLine.discountRate > 0 ? 'rate' : 'none'
+          line.unitDiscountRate = sourceLine.discountRate / 100
+          line.stockType = sourceLine.gift ? 'gift' : 'normal'
+          line.ownerType = sourceLine.ownerType
+          line.ownerId = sourceLine.ownerId
+          line.sourceDocument = target.sourceOrderNo
+          line.sourceLineNo = String(sourceLine.lineNo)
+          line.sourceOrderTargetLineId = sourceLine.id
+          return line
+        })
+      }
       drawerRef.value?.setOptions({ subtitle: source?.documentNo || '月度三位流水号自动生成' })
     } finally {
       drawerRef.value?.setLoading(false)
@@ -1732,11 +2007,12 @@
   }
 
   .purchase-return-quantity {
-    padding: 4px 7px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: var(--el-color-danger);
-    background: var(--el-color-warning-light-9);
-    border-radius: 5px;
+  }
+
+  :deep(td.el-table__cell.purchase-return-quantity-cell) {
+    background-color: var(--el-color-warning-light-9) !important;
   }
 </style>
