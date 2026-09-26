@@ -43,6 +43,7 @@ export interface ScmReceiptTargetLine {
 }
 
 export interface ScmReceiptTargetQuery {
+  id?: string
   keyword?: string
   status?: string
   tenantId?: string
@@ -66,6 +67,7 @@ export async function fetchScmReceiptTargets(
     .order('created_at', { ascending: false })
     .range(query.from ?? 0, query.to ?? 999)
   if (query.status) request = request.eq('status', query.status)
+  if (query.id) request = request.eq('id', query.id)
   if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
   if (query.keyword?.trim()) {
     request = request.ilike('document_no', `%${query.keyword.trim()}%`)

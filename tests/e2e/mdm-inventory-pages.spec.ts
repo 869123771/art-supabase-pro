@@ -208,6 +208,17 @@ const binRows = [
     column_no: 2,
     status: 'disabled',
     sort: 50
+  },
+  {
+    ...bin,
+    id: 'ed276e75-d9d4-4742-a667-d758731d15fe',
+    bin_code: 'RAW-A-SH-3-1',
+    bin_name: '另一货架 1-1',
+    bin_type: 'shelf',
+    shelf_code: 'B02',
+    level_no: 1,
+    column_no: 1,
+    sort: 60
   }
 ]
 const material = {
@@ -612,6 +623,9 @@ async function installFixtures(page: Page): Promise<void> {
 
 test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
   test.setTimeout(540_000)
+  if (process.env.WMS_E2E_VIEWPORT === '2048') {
+    await page.setViewportSize({ width: 2048, height: 1088 })
+  }
   const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
   mkdirSync(visualDir, { recursive: true })
   await installFixtures(page)
@@ -676,6 +690,10 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.getByRole('button', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.getByRole('switch', { name: '进入专注模式' })).toHaveCount(0)
       await expect(page.locator('.art-section-card .el-scrollbar').first()).toBeVisible()
+      if (path === 'zone' && (page.viewportSize()?.width ?? 0) > 1200) {
+        const zoneWidth = (await page.locator('.zone-tile').first().boundingBox())?.width ?? 0
+        expect(zoneWidth, '库区卡片应保持紧凑宽度').toBeLessThanOrEqual(241)
+      }
       if (path === 'bin') {
         await expect(page.locator('.art-workspace-splitter')).toHaveCount(2)
         if ((page.viewportSize()?.width ?? 0) > 1200) {
@@ -822,6 +840,46 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await expect(page.locator('.rack-facade')).toBeVisible()
       await expect(page.locator('.rack-facade')).toHaveCSS('border-top-width', '12px')
       await expect(page.locator('.rack-level')).toHaveCount(2)
+      const firstRack = page.locator('section[aria-label="A01货架"]')
+      const secondRack = page.locator('section[aria-label="B02货架"]')
+      await expect(firstRack.locator('.rack-facade')).toBeVisible()
+      await expect(secondRack.locator('.rack-facade')).toHaveCount(0)
+      const editShelfButton = firstRack.getByRole('button', { name: '编辑货架' })
+      await expect(editShelfButton.locator('svg')).toBeVisible()
+      await editShelfButton.click()
+      const shelfDialog = page.locator('.el-dialog:visible')
+      await expect(shelfDialog.getByText('编辑货架 · A01')).toBeVisible()
+      await expect(shelfDialog.locator('.el-form-item').filter({ hasText: '层数' })).toBeVisible()
+      await page.screenshot({
+        path: join(visualDir, 'mdm-bin-shelf-editor.png'),
+        animations: 'disabled'
+      })
+      let shelfUpdate: Record<string, unknown> | undefined
+      await page.route('**/rest/v1/rpc/mdm_update_warehouse_shelf_secure', (route) => {
+        shelfUpdate = route.request().postDataJSON() as Record<string, unknown>
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: 'null'
+        })
+      })
+      await shelfDialog
+        .locator('.el-form-item')
+        .filter({ hasText: '层数' })
+        .locator('input')
+        .fill('3')
+      await shelfDialog.getByRole('button', { name: '保存货架' }).click()
+      await expect(shelfDialog).toBeHidden()
+      expect(shelfUpdate?.p_shelf_code).toBe('A01')
+      expect(shelfUpdate?.p_levels).toBe(3)
+      expect(shelfUpdate?.p_expected_bin_ids).toHaveLength(4)
+      await page.unroute('**/rest/v1/rpc/mdm_update_warehouse_shelf_secure')
+      await firstRack.getByRole('button', { name: /A01 货架/ }).click()
+      await expect(firstRack.locator('.rack-facade')).toHaveCount(0)
+      await secondRack.getByRole('button', { name: /B02 货架/ }).click()
+      await expect(secondRack.locator('.rack-facade')).toBeVisible()
+      await firstRack.getByRole('button', { name: /A01 货架/ }).click()
+      await expect(firstRack.locator('.rack-facade')).toBeVisible()
       const rackMore = page.getByRole('button', { name: '操作货架 1-1', exact: true })
       await expect(rackMore.locator('svg')).toBeVisible()
       const rackTile = page.getByRole('button', { name: /^货架 1-1，/ })
@@ -844,6 +902,16 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       )
       await expect(page.getByText('子单元 1', { exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: /^货架 1-1 子单元，/ })).toBeVisible()
+      if ((page.viewportSize()?.width ?? 0) > 1200) {
+        const childWidth = (
+          await page.getByRole('button', { name: /^货架 1-1 子单元，/ }).boundingBox()
+        )?.width
+        const blockWidth = (await page.getByRole('button', { name: /^一号垛位，/ }).boundingBox())
+          ?.width
+        expect(childWidth).toBeDefined()
+        expect(blockWidth).toBeDefined()
+        expect(Math.abs(childWidth! - blockWidth!), '子单元与平面库位卡片应等宽').toBeLessThan(2)
+      }
       await rackMore.click()
       await expect(page.getByRole('menuitem', { name: '新增子单元' })).toBeVisible()
       await expect(page.getByRole('menuitem', { name: '删除库位' })).toBeVisible()

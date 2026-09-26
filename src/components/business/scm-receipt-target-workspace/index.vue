@@ -99,6 +99,7 @@
 
 <script setup lang="tsx">
   import { ElTag } from 'element-plus'
+  import { useRoute, useRouter } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
@@ -150,6 +151,8 @@
   const scopePermission = computed(() => props.scopePermission)
   const serialPermission = computed(() => props.serialPermission)
   const { hasAuth } = useAuth()
+  const route = useRoute()
+  const router = useRouter()
   const { confirmAction } = useArtFeedback()
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
@@ -259,6 +262,29 @@
     selectedConstructionNo.value = row.constructionNo ?? ''
     await detailRef.value?.handleOpen(row, { title: row.documentNo })
   }
+  onMounted(async () => {
+    const targetId = route.query.targetId
+    if (
+      typeof targetId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId) ||
+      !hasAuth(viewPermission.value)
+    )
+      return
+    try {
+      const { data } = await fetchScmReceiptTargets(props.kind, {
+        id: targetId,
+        tenantId: effectiveTenantId.value || undefined,
+        from: 0,
+        to: 0
+      })
+      const document = data?.[0]
+      if (!document) return
+      await openDetail(document)
+      await router.replace({ path: route.path, query: { ...route.query, targetId: undefined } })
+    } catch {
+      // API provider 已提示加载错误；保留目标 ID 以便刷新后重试。
+    }
+  })
   function openSerialDialog(line: ScmReceiptTargetLine): void {
     if (!activeDocument.value || activeDocument.value.status !== 'draft') return
     void serialDialogRef.value?.handleOpen({ documentNo: activeDocument.value.documentNo, line })

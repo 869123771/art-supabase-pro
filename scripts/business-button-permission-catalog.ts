@@ -2403,6 +2403,16 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     ]
   },
   {
+    menuName: 'WmsIssueRequest',
+    buttons: [
+      button('View', '查看'),
+      button('Create', '提交领料申请'),
+      button('Approve', '审核领料申请'),
+      button('Cancel', '取消领料申请'),
+      button('Issue', '按申请领料出库')
+    ]
+  },
+  {
     menuName: 'WmsSalesReturn',
     buttons: [button('View', '查看'), button('Receive', '确认退货入库')]
   },

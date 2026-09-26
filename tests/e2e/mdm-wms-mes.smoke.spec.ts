@@ -327,7 +327,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await page.getByRole('switch', { name: '进入专注模式' }).locator('..').click()
     await expect(overview).toBeHidden()
     await expect(query).toHaveClass(/is-focus-mode/)
-    await expect(page.getByText('资料质量度', { exact: true })).toBeVisible()
+    await expect(page.getByText('资料质量', { exact: true })).toBeVisible()
     await expect
       .poll(async () => (await query.boundingBox())!.height)
       .toBeGreaterThan(initialHeight)
@@ -356,14 +356,15 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
   test('opens the WMS workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
     await openWorkspace(page, '/#/wms/workbench', '仓储运营工作台')
-    await expect(page.getByText('建设准备中', { exact: true })).toBeVisible()
+    await expect(page.getByText('暂无可用作业入口', { exact: true })).toBeVisible()
+    await expect(page.getByText('SCM 采购与收料', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('wms-workbench.png'), fullPage: true })
   })
 
   test('opens the MES workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
     await openWorkspace(page, '/#/mes/workbench', '制造执行工作台')
-    await expect(page.getByText('建设准备中', { exact: true })).toBeVisible()
+    await expect(page.getByText('上线准备', { exact: true })).toBeVisible()
     for (const tag of await page.locator('.readiness-list .el-tag').all()) {
       expect((await tag.boundingBox())!.width).toBeGreaterThanOrEqual(60)
     }
