@@ -298,7 +298,8 @@ export const useUserStore = defineStore(
       const loadVersion = dictCacheVersion
       const request = (async () => {
         const { fetchGetDictList } = await import('@/api/data-center')
-        const { data } = await fetchGetDictList()
+        const { data, error } = await fetchGetDictList()
+        if (error) throw error
         if (!data || loadVersion !== dictCacheVersion) return
 
         const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
@@ -351,6 +352,11 @@ export const useUserStore = defineStore(
       const code = String(dictCode)
       // 空字典也是已加载结果；不能按数组长度判断，否则每次渲染都会重新请求。
       if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
+      if (dictListRequest) {
+        // 全量请求在途时复用其结果；若其失败，当前字典仍可按类型单独补取。
+        await dictListRequest.catch(() => undefined)
+        if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
+      }
       await fetchDictByCode(code)
     }
 
@@ -366,7 +372,7 @@ export const useUserStore = defineStore(
       const code = String(dictCode)
       // 查询过但不存在的值也遵循 TTL，避免表格中每个相同缺失值重复触发请求。
       if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
-      await fetchDictByCode(code)
+      await ensureDictLoaded(code)
     }
 
     return {

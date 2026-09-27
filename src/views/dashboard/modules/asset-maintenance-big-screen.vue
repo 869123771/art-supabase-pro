@@ -315,6 +315,7 @@
 </template>
 
 <script setup lang="ts">
+  import './enterprise-big-screen.scss'
   import dayjs from 'dayjs'
   import { formatScreenDate } from './screen-format'
   import AssetMaintenanceWindowChart from './asset-maintenance-window-chart.vue'
@@ -607,5 +608,4 @@
   }
 </script>
 
-<style scoped lang="scss" src="./enterprise-big-screen.scss"></style>
 <style scoped lang="scss" src="./asset-maintenance-big-screen.scss"></style>

@@ -1,4 +1,5 @@
 import { expect, test, type ConsoleMessage, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 interface TestMenuNode {
   id: string
@@ -151,20 +152,10 @@ async function installApplicationMenuMocks(page: Page): Promise<void> {
     })
   })
 
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', async (route) => {
-    const payload = route.request().postDataJSON() as { p_app_code?: string }
-    const code = payload.p_app_code as keyof typeof testMenus
-    const menu = testMenus[code]
-    if (payload.p_app_code === 'platform') {
-      // The host aggregates the separately requested application menus below.
-      await route.fulfill({ json: { flat: [], tree: [] } })
-      return
-    }
-    if (!menu) {
-      await route.continue()
-      return
-    }
-    await route.fulfill({ json: { flat: flattenMenu(menu), tree: [menu] } })
+  await mockApplicationMenus(page, {
+    mdm: flattenMenu(testMenus.mdm),
+    wms: flattenMenu(testMenus.wms),
+    mes: flattenMenu(testMenus.mes)
   })
 }
 

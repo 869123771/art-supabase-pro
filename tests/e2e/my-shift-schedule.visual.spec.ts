@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 interface StoredBrowserState {
   origins?: Array<{
@@ -56,8 +57,6 @@ async function installFixtures(page: Page): Promise<void> {
     sort: 5,
     meta: menuMeta('我的排班', 'ri:calendar-check-line')
   }
-  const tree = [{ ...root, children: [{ ...production, children: [pageMenu] }] }]
-
   await page.route('**/auth/v1/user', (route) => route.fulfill({ json: authUser }))
   await page.route('**/rest/v1/sys_param?*', (route) => route.fulfill({ json: [] }))
   await page.route('**/rest/v1/sys_user?*', (route) =>
@@ -77,9 +76,7 @@ async function installFixtures(page: Page): Promise<void> {
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [root, production, pageMenu], tree } })
-  )
+  await mockApplicationMenus(page, { platform: [root, production, pageMenu] })
   await page.route('**/rest/v1/rpc/mdm_get_my_shift_schedule_secure', (route) =>
     route.fulfill({
       json: {

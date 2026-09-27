@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 const menuId = (index: number) => `permission-fixture-${index}`
 const menus = [
@@ -88,11 +89,9 @@ async function prepare(page: Page, initialMenuIds: string[] = [menuId(0)]) {
     meta: { title: '系统管理', is_enable: true },
     children: [roleMenu]
   }
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({
-      json: { flat: [{ ...systemMenu, children: undefined }, roleMenu], tree: [systemMenu] }
-    })
-  )
+  await mockApplicationMenus(page, {
+    platform: [{ ...systemMenu, children: undefined }, roleMenu]
+  })
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({
       json: [{ code: 'platform', name: '测试平台', baseUrl: '/', sort: 1 }]

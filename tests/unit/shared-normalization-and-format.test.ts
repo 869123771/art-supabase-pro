@@ -10,6 +10,7 @@ import { formatTenantLabel } from '../../src/utils/tenant-display'
 import {
   createDateTimeFormatter,
   formatCnyCurrencyValue,
+  formatDateTimeValue,
   formatPercentValue
 } from '../../src/utils/ui/format'
 
@@ -29,6 +30,9 @@ test('shared UI formatters keep repeated display policies consistent', () => {
   assert.equal(formatCnyCurrencyValue(null), '¥0.00')
   assert.equal(formatPercentValue(null), '--')
   assert.equal(formatPercentValue(12.34), '12.3%')
+  assert.equal(formatDateTimeValue(null), '--')
+  assert.equal(formatDateTimeValue(''), '--')
+  assert.equal(formatDateTimeValue('2026-09-13 08:30:00'), '2026-09-13 08:30:00')
 
   const formatMinute = createDateTimeFormatter({
     format: 'YYYY-MM-DD HH:mm',
@@ -38,6 +42,7 @@ test('shared UI formatters keep repeated display policies consistent', () => {
   assert.equal(formatMinute(null), '—')
   assert.equal(formatMinute('invalid'), '—')
   assert.equal(formatMinute('2026-09-13T08:30:00Z').length, 16)
+  assert.equal(createDateTimeFormatter({ format: 'YYYY-MM-DD' })('2026-09-13'), '2026-09-13')
 })
 
 test('tenant labels share one fallback and composition rule', () => {

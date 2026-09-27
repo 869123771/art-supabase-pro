@@ -5,17 +5,47 @@ import type { AppRouteRecord } from '@/types/router'
 
 const { supabase, responseHandle } = useSupabase()
 
-/** 获取当前用户在指定应用内可访问的菜单。 */
-export async function fetchCurrentUserMenu(applicationCode: ApplicationCode, signal?: AbortSignal) {
-  const query = supabase.rpc('get_menus_for_current_application', {
-    p_app_code: applicationCode
+type AuthorizedMenuRow = Omit<AppRouteRecord, 'path'> & { path: string | null }
+
+function isAuthorizedMenuRow(value: unknown): value is AuthorizedMenuRow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  return (
+    typeof row.id === 'string' &&
+    typeof row.name === 'string' &&
+    (row.path === null || typeof row.path === 'string') &&
+    (row.parentId === null || row.parentId === undefined || typeof row.parentId === 'string') &&
+    row.meta !== null &&
+    typeof row.meta === 'object' &&
+    !Array.isArray(row.meta)
+  )
+}
+
+/** 一次获取当前用户在已挂载应用内的授权菜单，服务端仍逐应用校验角色。 */
+export async function fetchCurrentUserMenus(
+  applicationCodes: ApplicationCode[],
+  signal?: AbortSignal
+) {
+  const query = supabase.rpc('get_menus_for_current_applications', {
+    p_app_codes: applicationCodes
   })
-  return await responseHandle<{ flat: AppRouteRecord[]; tree: AppRouteRecord[] }>(
+  const result = await responseHandle<Record<string, unknown>>(
     () => (signal ? query.abortSignal(signal) : query),
     {
       showMessage: false
     }
   )
+  if (result.error) return { ...result, data: null }
+
+  const data: Record<string, AppRouteRecord[]> = {}
+  for (const code of applicationCodes) {
+    const rows = result.data?.[code]
+    if (!Array.isArray(rows) || !rows.every(isAuthorizedMenuRow)) {
+      throw new Error('菜单服务返回的数据无效')
+    }
+    data[code] = rows.map((row) => ({ ...row, path: row.path ?? '' }))
+  }
+  return { ...result, data }
 }
 
 export interface AccessibleApplication {

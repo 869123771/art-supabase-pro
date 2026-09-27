@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 const tenantId = '00000000-0000-4000-8000-000000000001'
 const departmentId = '00000000-0000-4000-8000-000000000101'
@@ -57,14 +58,7 @@ async function installFixtures(page: Page) {
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({
-      json: {
-        flat: [root, equipment, ...buttons],
-        tree: [{ ...root, children: [{ ...equipment, children: [] }] }]
-      }
-    })
-  )
+  await mockApplicationMenus(page, { platform: [root, equipment, ...buttons] })
   await page.route('**/rest/v1/rpc/mdm_list_production_equipment_v2_secure', (route) =>
     route.fulfill({
       json: {

@@ -1,5 +1,5 @@
-import fs from 'node:fs'
 import { expect, test, type Page, type Request } from '@playwright/test'
+import { readDemoCredentials } from './support/demo-credentials'
 
 interface RequestTiming {
   method: string
@@ -7,19 +7,6 @@ interface RequestTiming {
   startedAt: number
   finishedAt?: number
   failure?: string | null
-}
-
-function readDemoCredentials(): { email: string; password: string } {
-  const loginSource = fs.readFileSync('src/views/auth/login/index.vue', 'utf8')
-  const email =
-    process.env.E2E_EMAIL ||
-    loginSource.match(/identifier:\s*rememberedIdentifier \|\| '([^']+)'/)?.[1]
-  const password = process.env.E2E_PASSWORD || loginSource.match(/password:\s*'([^']+)'/)?.[1]
-
-  if (!email || !password) {
-    throw new Error('请通过 E2E_EMAIL 和 E2E_PASSWORD 提供首次登录回归账号')
-  }
-  return { email, password }
 }
 
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'no-preference' })
@@ -153,7 +140,8 @@ test('无痕首次访问多个业务模块的菜单时地址、标签和页面�
       parents: ['WMS仓储管理'],
       leaf: '仓储工作台',
       application: 'wms',
-      view: '.wms-workbench'
+      view: '.business-workspace-page',
+      heading: '仓储运营工作台'
     },
     {
       parents: ['MES制造执行'],
@@ -178,6 +166,9 @@ test('无痕首次访问多个业务模块的菜单时地址、标签和页面�
 
     await expect(page).toHaveURL(new RegExp(`#/${target.application}/`), { timeout: 90_000 })
     await expect(page.locator(target.view)).toBeVisible({ timeout: 90_000 })
+    if ('heading' in target) {
+      await expect(page.getByRole('heading', { name: target.heading, exact: true })).toBeVisible()
+    }
     await expect(page.getByRole('heading', { name: '今日运营概览' })).toBeHidden()
     await expect(page.getByRole('tab', { name: target.leaf })).toHaveAttribute(
       'aria-selected',

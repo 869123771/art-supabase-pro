@@ -89,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useMediaQuery } from '@vueuse/core'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
@@ -712,7 +713,7 @@
         await deactivateUser(row, { showMessage: false })
         successCount += 1
       } catch (error) {
-        const reason = error instanceof Error ? error.message : '注销失败'
+        const reason = getFriendlySupabaseErrorMessage(error, '注销失败')
         failures.push(`${row.nickName || row.userName}：${reason}`)
       }
     }

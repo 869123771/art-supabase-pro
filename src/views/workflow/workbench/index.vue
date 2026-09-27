@@ -155,7 +155,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { formatWithDayjs } from '@/utils/time'
+  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
@@ -286,7 +286,6 @@
     props: { placeholder: '搜索业务单据', clearable: true }
   }
 
-  const formatDate = (value?: string | null) => (value ? formatWithDayjs(value) : '--')
   async function openInstance(instanceId?: string): Promise<void> {
     if (!instanceId) return
     await loadInstanceDrawer()
@@ -336,7 +335,7 @@
     event.stopPropagation()
     if (routePath.startsWith('/vms/')) {
       void navigateToApplication('vms', routePath).catch((error) =>
-        ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, 'VMS 应用跳转失败'))
       )
       return
     }

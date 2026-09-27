@@ -106,7 +106,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
+  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
 
   defineOptions({ name: 'WorkflowTaskBoard' })
 
@@ -248,10 +248,6 @@
   function assignmentLabel(task: Api.Workflow.WorkflowTaskRecord): string {
     const original = task.originalAssigneeNameSnapshot || '原审批人'
     return task.assignmentSource === 'delegation' ? `受 ${original} 委托` : `由 ${original} 转交`
-  }
-
-  function formatDate(value: string): string {
-    return String(formatWithDayjs(value) ?? '--')
   }
 
   function getEmptyComment(status: Api.Workflow.TaskStatus): string {

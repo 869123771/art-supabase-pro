@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 type MockMenu = {
   id: string
@@ -244,13 +245,7 @@ const corsHeaders = {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      headers: corsHeaders,
-      body: JSON.stringify({ flat: flatMenus, tree: [rootMenu] })
-    })
-  )
+  await mockApplicationMenus(page, { smis: flatMenus })
   await page.route('**/rest/v1/rpc/smis_list_document_categories_secure', (route) =>
     route.fulfill({
       contentType: 'application/json',

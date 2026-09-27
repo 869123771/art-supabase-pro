@@ -179,6 +179,22 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
     addFinding(match.index, 'layout/use-intrinsic-section-header-actions')
   }
 
+  if (
+    path.extname(file) === '.vue' &&
+    (relativeFile.startsWith('src/views/') || /^modules\/[^/]+\/src\/views\//.test(relativeFile))
+  ) {
+    const rawErrorPatterns = [
+      /\bString\(\s*(?:error|err)\s*\)/g,
+      /\bJSON\.stringify\(\s*(?:error|err)\b[^)]*\)/g,
+      /\berror\s+instanceof\s+Error\s*\?\s*error\.message\b/g
+    ]
+    rawErrorPatterns.forEach((pattern) => {
+      for (const match of content.matchAll(pattern)) {
+        if (match.index != null) addFinding(match.index, 'quality/no-raw-error-render')
+      }
+    })
+  }
+
   if (tooltipOnly) return findings
 
   const rules = [
@@ -293,16 +309,6 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       for (const match of content.matchAll(/console\.(?:log|debug)\s*\(/g)) {
         if (match.index != null) addFinding(match.index, 'quality/no-view-debug-log')
       }
-
-      const rawErrorPatterns = [
-        /\bString\(\s*(?:error|err)\s*\)/g,
-        /\bJSON\.stringify\(\s*(?:error|err)\b[^)]*\)/g
-      ]
-      rawErrorPatterns.forEach((pattern) => {
-        for (const match of content.matchAll(pattern)) {
-          if (match.index != null) addFinding(match.index, 'quality/no-raw-error-render')
-        }
-      })
     }
   }
 

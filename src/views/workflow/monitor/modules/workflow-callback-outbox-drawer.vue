@@ -121,7 +121,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { formatWithDayjs } from '@/utils/time'
+  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { fetchWorkflowCallbackOutbox, retryWorkflowBusinessCallback } from '@/api/workflow'
 
   defineOptions({ name: 'WorkflowCallbackOutboxDrawer' })
@@ -206,7 +206,6 @@
     }
   ])
 
-  const formatDate = (value?: string | null) => (value ? formatWithDayjs(value) : '--')
   const canRetry = (row: CallbackRow) =>
     isPlatformSuper.value && (row.status === 'retry_wait' || row.status === 'dead_letter')
 

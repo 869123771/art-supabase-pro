@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 import { createClient } from '@supabase/supabase-js'
 import { loadEnv } from 'vite'
 import { buildOrIlikeFilter } from '../../src/utils/supabase/search'
@@ -90,9 +91,7 @@ test('parameter search uses the shared filter and preserves punctuation in the U
     meta: { title: '系统管理', is_enable: true, is_hide: false },
     children: [menu]
   }
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [{ ...parent, children: undefined }, menu], tree: [parent] } })
-  )
+  await mockApplicationMenus(page, { platform: [{ ...parent, children: undefined }, menu] })
   await page.route('**/rest/v1/sys_param?*', async (route) => {
     expect(route.request().method()).toBe('GET')
     await route.fulfill({

@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { EditPen, Van } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -313,7 +314,7 @@
   function navigateTo(path: string): void {
     if (path.startsWith('/vms/')) {
       void navigateToApplication('vms', path).catch((error) =>
-        ElMessage.error(error instanceof Error ? error.message : 'VMS 应用跳转失败')
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, 'VMS 应用跳转失败'))
       )
       return
     }

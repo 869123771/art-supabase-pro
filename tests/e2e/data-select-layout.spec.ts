@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 async function openDemo(page: Page) {
   // Generic UI tests isolate identity latency; this does not grant real permissions.
@@ -42,9 +43,7 @@ async function openDemo(page: Page) {
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [menu], tree: [menu] } })
-  )
+  await mockApplicationMenus(page, { platform: [menu] })
   await page.goto('/#/widgets/data-select', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('表格多选', { exact: true })).toBeVisible({ timeout: 60_000 })
   const guide = page.getByRole('button', { name: '知道了', exact: true })
@@ -113,24 +112,29 @@ test('remote selector ignores obsolete requests and recovers errors without losi
   page.on('pageerror', (error) => pageErrors.push(error.message))
   // Replace only the demo loader at the Vite boundary. The real selector and dialog
   // run unchanged; controlled responses below never touch a business table.
-  await page.route('**/src/views/widgets/data-select/index.vue', async (route) => {
-    const response = await route.fetch()
-    const body = await response.text()
-    const signature = 'const fetchCompanies = async (params) => {'
-    expect(body).toContain(signature)
-    await route.fulfill({
-      response,
-      body: body.replace(
-        signature,
-        `${signature}
+  await page.route(
+    (url) =>
+      url.pathname.endsWith('/src/views/widgets/data-select/index.vue') &&
+      !url.searchParams.has('vue'),
+    async (route) => {
+      const response = await route.fetch()
+      const body = await response.text()
+      const signature = 'const fetchCompanies = async (params) => {'
+      expect(body).toContain(signature)
+      await route.fulfill({
+        response,
+        body: body.replace(
+          signature,
+          `${signature}
       return fetch('/__test/data-select?keyword=' + encodeURIComponent(params.keyword)).then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error('TEST_PROVIDER_INTERNAL_DETAILS');
         return result;
       });`
-      )
-    })
-  })
+        )
+      })
+    }
+  )
   const pending = new Map<string, Route[]>()
   await page.route('**/__test/data-select?*', (route) => {
     const keyword = new URL(route.request().url()).searchParams.get('keyword') ?? ''

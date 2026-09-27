@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 async function openProbe(page: Page): Promise<void> {
   test.setTimeout(90_000)
@@ -25,9 +26,7 @@ async function openProbe(page: Page): Promise<void> {
     meta: { title: '测试字典', is_enable: true, is_hide: false },
     children: []
   }
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [menu], tree: [menu] } })
-  )
+  await mockApplicationMenus(page, { platform: [menu] })
   await page.goto('/#/500?redirect=/', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '服务暂时开小差' })).toBeVisible({
     timeout: 45_000

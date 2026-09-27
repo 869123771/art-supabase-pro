@@ -64,6 +64,16 @@ interface OrderTargetRemainingRecord {
   remainingQuantity: number
 }
 
+type WmsPurchaseOrganizationRecord = Omit<
+  WmsPurchaseOrganization,
+  'enabledOn' | 'initializationClosedAt'
+>
+
+type WmsPurchaseInitializationRecord = Pick<
+  WmsPurchaseOrganization,
+  'enabledOn' | 'initializationClosedAt'
+> & { organizationId: string }
+
 export async function fetchWmsPurchaseOrderTargets(
   tenantId?: string
 ): Promise<OrderTargetRecord[]> {
@@ -271,15 +281,15 @@ export async function fetchWmsPurchaseOrganizations(
     initQuery = initQuery.eq('tenant_id', tenantId)
   }
   const [{ data: organizations }, { data: initialization }] = await Promise.all([
-    responseHandle<Record<string, string>[]>(() => orgQuery.limit(2000), readOptions),
-    responseHandle<Record<string, string | null>[]>(() => initQuery.limit(2000), readOptions)
+    responseHandle<WmsPurchaseOrganizationRecord[]>(() => orgQuery.limit(2000), readOptions),
+    responseHandle<WmsPurchaseInitializationRecord[]>(() => initQuery.limit(2000), readOptions)
   ])
   const initMap = new Map((initialization ?? []).map((row) => [row.organizationId, row]))
-  return (organizations ?? []).map((row) => ({
+  return (organizations ?? []).map((row): WmsPurchaseOrganization => ({
     ...row,
     enabledOn: initMap.get(row.id)?.enabledOn ?? null,
     initializationClosedAt: initMap.get(row.id)?.initializationClosedAt ?? null
-  })) as unknown as WmsPurchaseOrganization[]
+  }))
 }
 
 export async function fetchWmsInitializationStatusPage(query: {
@@ -289,10 +299,12 @@ export async function fetchWmsInitializationStatusPage(query: {
   current: number
   size: number
 }): Promise<{ data: WmsInitializationStatusRow[]; total: number }> {
-  const rows = (await fetchWmsPurchaseOrganizations(query.tenantId)).map((row) => ({
-    ...row,
-    initializationStatus: row.initializationClosedAt ? 'initialized' : 'not_initialized'
-  })) as WmsInitializationStatusRow[]
+  const rows = (await fetchWmsPurchaseOrganizations(query.tenantId)).map(
+    (row): WmsInitializationStatusRow => ({
+      ...row,
+      initializationStatus: row.initializationClosedAt ? 'initialized' : 'not_initialized'
+    })
+  )
   const keyword = query.keyword?.trim().toLowerCase()
   const filtered = rows.filter(
     (row) =>

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { AppRouteRecord } from '../../src/types/router'
-import { flattenStandaloneApplicationMenu } from '../../src/router/core/applicationMenu'
+import {
+  buildApplicationMenuTree,
+  flattenStandaloneApplicationMenu
+} from '../../src/router/core/applicationMenu'
 
 const vmsMenu: AppRouteRecord[] = [
   {
@@ -45,4 +48,36 @@ test('promotes application children without changing stable route paths in stand
   assert.equal(flattened[0]?.path, '/vms/vehicle-query')
   assert.equal(flattened[1]?.meta.title, '基础信息管理')
   assert.equal(flattened[1]?.component, '/index/index')
+})
+
+test('rebuilds authorized menu trees in sorted order without adding ungranted siblings', () => {
+  const flat: AppRouteRecord[] = [
+    { id: 'root', parentId: null, name: 'Root', path: '/mdm', meta: { title: 'MDM' } },
+    { id: 'other', parentId: null, name: 'Other', path: '/other', meta: { title: 'Other' } },
+    { id: 'child', parentId: 'root', name: 'Child', path: 'child', meta: { title: 'Child' } },
+    { id: 'button', parentId: 'child', name: 'Child:View', path: '', meta: { title: 'View' } },
+    {
+      id: 'orphan',
+      parentId: 'not-granted',
+      name: 'Orphan',
+      path: 'orphan',
+      meta: { title: 'Orphan' }
+    }
+  ]
+
+  const tree = buildApplicationMenuTree(flat)
+  assert.deepEqual(
+    tree.map((item) => item.id),
+    ['root', 'other', 'orphan']
+  )
+  assert.deepEqual(
+    tree[0]?.children?.map((item) => item.id),
+    ['child']
+  )
+  assert.deepEqual(
+    tree[0]?.children?.[0]?.children?.map((item) => item.id),
+    ['button']
+  )
+  assert.deepEqual(tree[1]?.children, [])
+  assert.equal('children' in flat[0], false)
 })

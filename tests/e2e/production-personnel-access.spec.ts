@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 test('department workspace remains an organization table and never reads personnel', async ({
   page
@@ -38,9 +39,7 @@ test('department workspace remains an organization table and never reads personn
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [root, child, ...buttons], tree: [root] } })
-  )
+  await mockApplicationMenus(page, { platform: [root, child, ...buttons] })
   const department = {
     id: '00000000-0000-4000-8000-000000000321',
     parent_id: null,

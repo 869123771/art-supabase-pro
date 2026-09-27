@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 const tenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
 
@@ -94,14 +95,7 @@ async function installFixtures(page: import('@playwright/test').Page): Promise<v
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'mes', name: 'MES制造执行', baseUrl: '/mes/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({
-      json:
-        (route.request().postDataJSON() as { p_app_code?: string }).p_app_code === 'mes'
-          ? { flat, tree: [menu] }
-          : { flat: [], tree: [] }
-    })
-  )
+  await mockApplicationMenus(page, { mes: flat })
   await page.route('**/rest/v1/rpc/mes_work_order_material_options', (route) =>
     route.fulfill({
       json: {

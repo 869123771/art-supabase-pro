@@ -13,13 +13,17 @@ import { useMenuStore } from '@/store/modules/menu'
 import { useAppMode } from '@/hooks/core/useAppMode'
 import {
   fetchAccessibleApplications,
-  fetchCurrentUserMenu
+  fetchCurrentUserMenus
 } from '@/api/system-manage/application-access'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils/router'
-import { currentApplication, resolveHostedApplicationCodes } from '@/config/application'
-import { flattenStandaloneApplicationMenu } from './applicationMenu'
+import {
+  APPLICATION_CODES,
+  currentApplication,
+  resolveHostedApplicationCodes
+} from '@/config/application'
+import { buildApplicationMenuTree, flattenStandaloneApplicationMenu } from './applicationMenu'
 
 export class MenuProcessor {
   /**
@@ -64,8 +68,11 @@ export class MenuProcessor {
    * 处理后端控制模式的菜单
    */
   private async processBackendMenu(signal?: AbortSignal): Promise<AppRouteRecord[]> {
-    const accessibleApplicationsResult =
-      currentApplication.code === 'platform' ? await fetchAccessibleApplications(signal) : null
+    const isPlatform = currentApplication.code === 'platform'
+    const [accessibleApplicationsResult, menuResponse] = await Promise.all([
+      isPlatform ? fetchAccessibleApplications(signal) : Promise.resolve(null),
+      fetchCurrentUserMenus(isPlatform ? [...APPLICATION_CODES] : [currentApplication.code], signal)
+    ])
     if (accessibleApplicationsResult?.error) {
       throw new Error('可访问应用范围加载失败', {
         cause: accessibleApplicationsResult.error
@@ -76,16 +83,14 @@ export class MenuProcessor {
       currentApplication.code,
       accessibleApplicationsResult?.data ?? []
     )
-    const menuResponses = await Promise.all(
-      applicationCodes.map((applicationCode) => fetchCurrentUserMenu(applicationCode, signal))
-    )
-    const menuError = menuResponses.find((response) => response.error)?.error
-    if (menuError) {
-      throw new Error('菜单权限加载失败', { cause: menuError })
+    if (menuResponse.error) {
+      throw new Error('菜单权限加载失败', { cause: menuResponse.error })
     }
 
-    const flat = menuResponses.flatMap(({ data }) => data?.flat ?? [])
-    const tree = menuResponses.flatMap(({ data }) => data?.tree ?? [])
+    const flat = applicationCodes.flatMap((code) => menuResponse.data?.[code] ?? [])
+    const tree = applicationCodes.flatMap((code) =>
+      buildApplicationMenuTree(menuResponse.data?.[code] ?? [])
+    )
 
     // 保存按钮数据到 store
     const menuStore = useMenuStore()

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { expect, test as setup } from '@playwright/test'
 import { loadEnv } from 'vite'
+import { readDemoCredentials } from './support/demo-credentials'
 
 const authFile = path.join(process.cwd(), 'playwright', '.auth', 'user.json')
 const packageVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version as string
@@ -18,19 +19,6 @@ function keysToCamelDeep(value: unknown): unknown {
       keysToCamelDeep(entry)
     ])
   )
-}
-
-function readDemoCredentials(): { email: string; password: string } {
-  const loginSource = fs.readFileSync('src/views/auth/login/index.vue', 'utf8')
-  const email =
-    process.env.E2E_EMAIL ||
-    loginSource.match(/identifier:\s*rememberedIdentifier \|\| '([^']+)'/)?.[1]
-  const password = process.env.E2E_PASSWORD || loginSource.match(/password:\s*'([^']+)'/)?.[1]
-
-  if (!email || !password) {
-    throw new Error('请通过 E2E_EMAIL 和 E2E_PASSWORD 提供视觉回归账号')
-  }
-  return { email, password }
 }
 
 setup('登录并保存视觉回归会话', async ({ page }) => {

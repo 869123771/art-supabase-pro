@@ -43,7 +43,7 @@
     "ui:audit": "tsx scripts/ui-audit.ts",
     "serve": "tsx scripts/serve-built-app.ts",
     "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"tests/**/*.{js,mjs,cjs,ts,tsx}\" \"*.{js,mjs,cjs,ts}\"",
-    "typecheck": "vue-tsc --noEmit --pretty false",
+    "typecheck": "node --max-old-space-size=8192 node_modules/vue-tsc/bin/vue-tsc.js --noEmit --pretty false",
     "test:unit": "tsx --test --test-concurrency=4 tests/unit/*.test.ts",
     "test:coverage": "node -e \"require('node:fs').mkdirSync('.artifacts/coverage',{recursive:true})\" && tsx --test --test-concurrency=4 --experimental-test-coverage --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=.artifacts/coverage/lcov.info \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
     "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",

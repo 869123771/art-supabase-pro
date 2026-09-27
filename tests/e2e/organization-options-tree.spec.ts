@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 test('HR organization navigation loads only the fields needed for its tree', async ({
   page
@@ -64,18 +65,13 @@ test('HR organization navigation loads only the fields needed for its tree', asy
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/', sort: 1 }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({
-      json: {
-        flat: [
-          { ...rootMenu, children: undefined },
-          { ...personnelMenu, children: undefined },
-          pageMenu
-        ],
-        tree: [rootMenu]
-      }
-    })
-  )
+  await mockApplicationMenus(page, {
+    platform: [
+      { ...rootMenu, children: undefined },
+      { ...personnelMenu, children: undefined },
+      pageMenu
+    ]
+  })
   await page.route('**/rest/v1/mdm_organization?*', async (route) => {
     organizationRequests.push(route.request().url())
     await route.fulfill({

@@ -12,7 +12,7 @@ test('菜单服务故障后，会话有效时重试进入系统主页', async ({
   test.setTimeout(120_000)
   let shouldFailMenuRequest = true
 
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', async (route) => {
+  await page.route('**/rest/v1/rpc/get_menus_for_current_applications', async (route) => {
     if (!shouldFailMenuRequest) {
       await route.continue()
       return

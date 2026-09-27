@@ -97,7 +97,7 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useIntervalFn } from '@vueuse/core'
+  import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
   import { useRouter, type LocationQueryRaw } from 'vue-router'
   import { formatWithDayjs } from '@/utils/time'
   import { fetchHeaderNotificationCenter, markHeaderNotificationsRead } from '@/api/notification'
@@ -133,7 +133,11 @@
   const barActiveIndex = ref(0)
   let animationTimer: ReturnType<typeof setTimeout> | undefined
   let warmupTimer: ReturnType<typeof setTimeout> | undefined
+  let centerRequest: Promise<void> | undefined
+  let lastLoadedAt = 0
   const NOTIFICATION_WARMUP_DELAY_MS = 30_000
+  const NOTIFICATION_REFRESH_INTERVAL_MS = 60_000
+  const documentVisibility = useDocumentVisibility()
 
   const createEmptyCenter = (): Api.Notification.HeaderNotificationCenter => ({
     notices: [],
@@ -216,10 +220,23 @@
 
   async function loadNotificationCenter(showLoading = false): Promise<void> {
     if (showLoading) state.loading = true
+    if (centerRequest) return centerRequest
+
+    const request = requestNotificationCenter()
+    centerRequest = request
+    try {
+      await request
+    } finally {
+      if (centerRequest === request) centerRequest = undefined
+    }
+  }
+
+  async function requestNotificationCenter(): Promise<void> {
     try {
       const response = await fetchHeaderNotificationCenter()
       Object.assign(state.data, response.data ?? createEmptyCenter())
       state.error = ''
+      lastLoadedAt = Date.now()
       emit('unread-change', state.data.totalUnreadCount)
     } catch (error) {
       state.error = getFriendlySupabaseErrorMessage(error, '通知服务暂时不可用')
@@ -232,6 +249,7 @@
     if (activeCategory.value === 'todo' || activeUnreadCount.value === 0) return
     state.marking = true
     try {
+      if (centerRequest) await centerRequest
       await markHeaderNotificationsRead({ category: activeCategory.value })
       await loadNotificationCenter()
     } finally {
@@ -249,6 +267,7 @@
 
   async function handleItemClick(item: NotificationItem): Promise<void> {
     if (!item.isRead && item.category !== 'todo') {
+      if (centerRequest) await centerRequest
       await markHeaderNotificationsRead({ notificationIds: [item.id] })
       await loadNotificationCenter()
     }
@@ -289,6 +308,7 @@
 
   function scheduleNotificationWarmup(): void {
     if (warmupTimer) clearTimeout(warmupTimer)
+    if (documentVisibility.value !== 'visible') return
     warmupTimer = setTimeout(() => {
       warmupTimer = undefined
       void loadNotificationCenter()
@@ -296,11 +316,34 @@
   }
 
   watch(() => props.value, showPanel)
-  watch(() => router.currentRoute.value.fullPath, scheduleNotificationWarmup)
-  useIntervalFn(() => void loadNotificationCenter(), 60_000)
+  const { pause, resume } = useIntervalFn(
+    () => void loadNotificationCenter(),
+    NOTIFICATION_REFRESH_INTERVAL_MS,
+    { immediate: false }
+  )
+  watch(documentVisibility, (visibility) => {
+    if (visibility === 'hidden') {
+      pause()
+      if (warmupTimer) clearTimeout(warmupTimer)
+      warmupTimer = undefined
+      return
+    }
 
-  onMounted(scheduleNotificationWarmup)
+    resume()
+    if (!lastLoadedAt) scheduleNotificationWarmup()
+    else if (Date.now() - lastLoadedAt >= NOTIFICATION_REFRESH_INTERVAL_MS) {
+      void loadNotificationCenter()
+    }
+  })
+
+  onMounted(() => {
+    if (documentVisibility.value === 'visible') {
+      resume()
+      scheduleNotificationWarmup()
+    }
+  })
   onUnmounted(() => {
+    pause()
     if (animationTimer) clearTimeout(animationTimer)
     if (warmupTimer) clearTimeout(warmupTimer)
   })

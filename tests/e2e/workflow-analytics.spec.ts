@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 const meta = (title: string) => ({ title, is_enable: true, is_hide: false, keep_alive: true })
 
@@ -28,9 +29,7 @@ async function installMenus(page: Page): Promise<void> {
     meta: meta('流程审批中心'),
     children
   }
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [{ ...root, children: undefined }, ...children], tree: [root] } })
-  )
+  await mockApplicationMenus(page, { platform: [{ ...root, children: undefined }, ...children] })
 }
 
 function analyticsResponse(route: Route, days: number, empty = false): object {

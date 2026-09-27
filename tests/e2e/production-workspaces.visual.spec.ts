@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 const meta = (title: string, icon = 'ri:dashboard-3-line') => ({
   title,
@@ -56,14 +57,11 @@ async function installFixtures(page: Page) {
     sort: index + 1,
     meta: meta(title)
   }))
-  const tree = [{ ...root, children: [{ ...production, children }] }]
   await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: true }))
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [root, production, ...children], tree } })
-  )
+  await mockApplicationMenus(page, { platform: [root, production, ...children] })
 
   const department = {
     id: '00000000-0000-4000-8000-000000000101',

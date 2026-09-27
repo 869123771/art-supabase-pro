@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mockApplicationMenus } from './support/menu-rpc'
 
 async function openWorkCenter(page: Page) {
   // Browser-only route/permission fixtures; never grant privileges in the database.
@@ -35,9 +36,8 @@ async function openWorkCenter(page: Page) {
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
-  await page.route('**/rest/v1/rpc/get_menus_for_current_application', (route) =>
-    route.fulfill({ json: { flat: [root, child, ...buttons], tree: [root] } })
-  )
+  const flat = [root, child, ...buttons]
+  await mockApplicationMenus(page, { platform: flat, mdm: flat })
   await page.goto('/#/mdm/production/work-center', { waitUntil: 'domcontentloaded' })
 }
 
@@ -59,11 +59,9 @@ test('work-center people use the minimal RPC and preserve arbitrary range offset
     const modulePath = '/modules/art-supabase-mdm/src/api/modules/workspaces.ts'
     const api = await import(/* @vite-ignore */ modulePath)
     const menuPath = '/src/api/system-manage.ts'
-    const { fetchCurrentUserMenu } = await import(/* @vite-ignore */ menuPath)
-    const menu = await fetchCurrentUserMenu('mdm')
-    const granted = menu.data.flat.some(
-      (row: { name: string }) => row.name === 'MdmWorkCenter:View'
-    )
+    const { fetchCurrentUserMenus } = await import(/* @vite-ignore */ menuPath)
+    const menu = await fetchCurrentUserMenus(['mdm'])
+    const granted = menu.data.mdm.some((row: { name: string }) => row.name === 'MdmWorkCenter:View')
     try {
       const result = await api.fetchProductionPersonSelector({ from: 5, to: 8 })
       // Do not print or persist actual personnel data.

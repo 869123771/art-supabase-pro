@@ -121,7 +121,7 @@
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
   import WorkflowTaskBoard from '../../modules/workflow-task-board.vue'
   import { getWorkflowBusinessTypeLabel } from '../../modules/workflow-business-contracts'
-  import { formatWithDayjs } from '@/utils/time'
+  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { createWorkflowActionTimelineItems } from '@/utils/workflow-display'
   import { fetchWorkflowBusinessSnapshot, fetchWorkflowInstanceDetail } from '@/api/workflow'
 
@@ -166,8 +166,6 @@
   )
   const businessTypeLabel = computed(() => getWorkflowBusinessTypeLabel(state.detail?.businessType))
 
-  const formatDate = (value?: string | null): string =>
-    value ? String(formatWithDayjs(value) ?? '--') : '--'
   const descriptionItems = computed<ArtDescriptionItem<Api.Workflow.WorkflowInstanceRecord>[]>(
     () => [
       { key: 'initiator', label: '发起人', field: 'initiatorNameSnapshot' },

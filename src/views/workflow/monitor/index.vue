@@ -144,7 +144,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
-  import { formatWithDayjs } from '@/utils/time'
+  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import {
     fetchWorkflowCallbackOutbox,
     fetchWorkflowMonitorList,
@@ -229,7 +229,6 @@
     data: { pending: 0, processing: 0, retryWait: 0, succeeded: 0, deadLetter: 0 }
   })
 
-  const formatDate = (value?: string | null) => (value ? formatWithDayjs(value) : '--')
   const formatDuration = (hours: number) => {
     if (hours < 1) return `${Math.max(Math.round(hours * 60), 1)} 分钟`
     if (hours < 24) return `${hours.toFixed(1)} 小时`

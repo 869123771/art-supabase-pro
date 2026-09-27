@@ -14,27 +14,17 @@
       </div>
     </div>
 
-    <RouterView v-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
-      <!-- 缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" appear>
-        <KeepAlive :max="10" :exclude="keepAliveExclude">
+    <RouterView v-if="isRefresh" v-slot="{ Component, route }">
+      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in">
+        <KeepAlive :max="10" :exclude="routeViewExclude">
           <component
-            class="art-page-view"
-            :is="Component"
+            :is="resolveRouteView(route)"
+            v-if="Component"
             :key="route.path"
-            v-if="route.meta.keepAlive"
+            :route-component="Component"
+            :style="contentStyle"
           />
         </KeepAlive>
-      </Transition>
-
-      <!-- 非缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" appear>
-        <component
-          class="art-page-view"
-          :is="Component"
-          :key="route.path"
-          v-if="!route.meta.keepAlive"
-        />
       </Transition>
     </RouterView>
 
@@ -48,8 +38,16 @@
   </div>
 </template>
 <script setup lang="ts">
-  import type { CSSProperties } from 'vue'
-  import { useRoute } from 'vue-router'
+  import {
+    cloneVNode,
+    defineComponent,
+    h,
+    type Component,
+    type CSSProperties,
+    type PropType,
+    type VNode
+  } from 'vue'
+  import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
   import { useAutoLayoutHeight } from '@/hooks/core/useLayoutHeight'
   import { useSettingStore } from '@/store/modules/setting'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
@@ -62,6 +60,38 @@
   const { pageTransition, containerWidth, refresh } = storeToRefs(useSettingStore())
   const { revision: tenantScopeRevision } = storeToRefs(useTenantScopeStore())
   const { keepAliveExclude } = storeToRefs(useWorktabStore())
+
+  const uncachedRouteViewName = 'ArtUncachedRouteView'
+  const routeViewHosts = new Map<string, Component>()
+  const routeViewExclude = computed(() => [...keepAliveExclude.value, uncachedRouteViewName])
+
+  // KeepAlive 按组件名称决定是否缓存；为每条缓存路由创建稳定的视图宿主，
+  // 非缓存路由共用被排除的宿主，避免两个并列 Transition 留下旧页面。
+  const createRouteViewHost = (name: string): Component =>
+    defineComponent({
+      name,
+      inheritAttrs: false,
+      props: {
+        routeComponent: { type: Object as PropType<VNode>, required: true }
+      },
+      setup(props, { attrs }) {
+        return () =>
+          h('div', { ...attrs, class: 'art-page-view' }, [cloneVNode(props.routeComponent)])
+      }
+    })
+
+  const uncachedRouteView = createRouteViewHost(uncachedRouteViewName)
+  const resolveRouteView = (targetRoute: RouteLocationNormalizedLoaded): Component => {
+    if (!targetRoute.meta.keepAlive) return uncachedRouteView
+
+    const name = String(targetRoute.name ?? targetRoute.path)
+    let host = routeViewHosts.get(name)
+    if (!host) {
+      host = createRouteViewHost(name)
+      routeViewHosts.set(name, host)
+    }
+    return host
+  }
 
   const isRefresh = shallowRef(true)
   const isOpenRouteInfo = import.meta.env.VITE_OPEN_ROUTE_INFO

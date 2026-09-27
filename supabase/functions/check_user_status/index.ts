@@ -74,11 +74,25 @@ Deno.serve(async (request: Request) => {
       return json({ allowed: false, code: 'user_banned', error: '账号已被停用，请联系管理员' }, 403)
     }
 
-    const { data: tenant, error: tenantError } = await admin
-      .from('sys_tenant')
-      .select('status,service_start_date,service_end_date')
-      .eq('id', user.tenant_id)
-      .maybeSingle()
+    const roleCodes = Array.isArray(user.user_roles)
+      ? user.user_roles.filter((role): role is string => typeof role === 'string' && role.length > 0)
+      : []
+    const [tenantResult, rolesResult] = await Promise.all([
+      admin
+        .from('sys_tenant')
+        .select('status,service_start_date,service_end_date')
+        .eq('id', user.tenant_id)
+        .maybeSingle(),
+      roleCodes.length
+        ? admin
+            .from('sys_role')
+            .select('role_code,enabled')
+            .eq('tenant_id', user.tenant_id)
+            .eq('enabled', true)
+            .in('role_code', roleCodes)
+        : Promise.resolve({ data: [], error: null })
+    ])
+    const { data: tenant, error: tenantError } = tenantResult
     if (tenantError) return json({ code: 'access_check_failed', error: '租户准入检查失败' }, 500)
     if (!tenant || tenant.status !== '1') {
       return json({ allowed: false, code: 'tenant_disabled', error: '所属租户已停用' }, 403)
@@ -111,9 +125,6 @@ Deno.serve(async (request: Request) => {
       )
     }
 
-    const roleCodes = Array.isArray(user.user_roles)
-      ? user.user_roles.filter((role): role is string => typeof role === 'string' && role.length > 0)
-      : []
     if (!roleCodes.length) {
       return json(
         { allowed: false, code: 'role_not_assigned', error: '当前账号尚未分配角色，请联系管理员' },
@@ -121,12 +132,7 @@ Deno.serve(async (request: Request) => {
       )
     }
 
-    const { data: roles, error: roleError } = await admin
-      .from('sys_role')
-      .select('role_code,enabled')
-      .eq('tenant_id', user.tenant_id)
-      .eq('enabled', true)
-      .in('role_code', roleCodes)
+    const { data: roles, error: roleError } = rolesResult
     if (roleError) return json({ code: 'access_check_failed', error: '角色准入检查失败' }, 500)
 
     const hasActiveRole = Boolean(roles?.length)

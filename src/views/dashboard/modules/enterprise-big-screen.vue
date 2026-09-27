@@ -81,11 +81,7 @@
           </header>
 
           <main class="screen-content">
-            <section
-              class="metric-rail"
-              :style="{ gridTemplateColumns: `repeat(${primaryMetrics.length}, minmax(0, 1fr))` }"
-              aria-label="核心经营指标"
-            >
+            <section class="metric-rail" aria-label="核心经营指标">
               <article v-for="metric in primaryMetrics" :key="metric.label" class="hero-metric">
                 <div class="hero-metric__icon" :class="`is-${metric.tone}`">
                   <ArtSvgIcon :icon="metric.icon" />
@@ -344,6 +340,7 @@
 </template>
 
 <script setup lang="ts">
+  import './enterprise-big-screen.scss'
   import dayjs from 'dayjs'
   import { formatScreenDate } from './screen-format'
   import EnterpriseCommandCore from './enterprise-command-core.vue'
@@ -867,5 +864,3 @@
     void router.push('/dashboard/console')
   }
 </script>
-
-<style scoped lang="scss" src="./enterprise-big-screen.scss"></style>
