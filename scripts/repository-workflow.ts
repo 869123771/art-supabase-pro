@@ -296,6 +296,8 @@ function publish(message: string): void {
 
   for (const repository of changedModules) buildDocs(repository)
   buildDocs(rootRepository)
+  console.log('\n[snapshot] 更新主仓 AI 项目快照')
+  runPnpm(rootRepository, ['run', 'snapshot:ai'])
 
   // 子仓必须先形成新提交，主仓随后才能记录正确的 gitlink。
   for (const repository of changedModules) commit(repository, message)
