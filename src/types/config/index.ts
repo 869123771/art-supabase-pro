@@ -21,7 +21,6 @@
  * - 配置数据验证
  *
  * @module types/config/index
- * @author Art Design Pro Team
  */
 
 import { MenuTypeEnum, SystemThemeEnum } from '@/enums/appEnum'

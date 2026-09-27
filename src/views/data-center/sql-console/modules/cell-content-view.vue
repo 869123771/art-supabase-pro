@@ -96,10 +96,15 @@
       overflow: hidden;
     }
 
+    .el-scrollbar__view {
+      height: 100%;
+      min-height: 0;
+    }
+
     .art-drawer__content {
       display: flex;
       flex: 1;
-      height: auto;
+      height: 100%;
       min-height: 0;
       overflow: hidden;
     }

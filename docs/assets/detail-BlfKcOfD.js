@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./calendar-workspace-55pTX8iA.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`maintenance`,mode:`detail`}))}});export{i as default};

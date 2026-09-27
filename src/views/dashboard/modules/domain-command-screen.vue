@@ -236,12 +236,14 @@
                       <b>{{ alert.value }}</b>
                     </div>
                   </div>
-                  <div v-else class="domain-empty">
-                    <div class="domain-empty__radar" aria-hidden="true"><i /><i /><b /></div>
-                    <ArtSvgIcon icon="ri:shield-check-line" />
-                    <strong>当前没有高优先级事项</strong>
-                    <span>风险事件进入业务系统后将在此处实时汇聚</span>
-                  </div>
+                  <ArtEmptyState
+                    v-else
+                    class="screen-empty-state"
+                    title="当前没有高优先级事项"
+                    description="风险事件进入业务系统后将在此处实时汇聚。"
+                    size="compact"
+                    :visual-size="72"
+                  />
                 </article>
 
                 <article class="domain-panel domain-stage-panel">
@@ -270,6 +272,7 @@
 
 <script setup lang="ts">
   import dayjs from 'dayjs'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import {
     createEmptyDomainCommandData,
     domainCommandDefinitions,

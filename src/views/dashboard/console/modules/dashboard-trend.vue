@@ -1,19 +1,28 @@
 <template>
-  <article class="dashboard-trend art-card-xs">
-    <header>
-      <div><p>经营态势</p><h2>订单趋势</h2></div>
-      <ElRadioGroup
-        :model-value="period"
-        size="small"
-        aria-label="趋势统计周期"
-        @update:model-value="emit('update:period', $event as DashboardTrendPeriod)"
-      >
-        <ElRadioButton value="today">当天</ElRadioButton>
-        <ElRadioButton value="week">本周</ElRadioButton>
-        <ElRadioButton value="month">本月</ElRadioButton>
-        <ElRadioButton value="year">本年</ElRadioButton>
-      </ElRadioGroup>
-    </header>
+  <ArtSectionCard
+    class="dashboard-trend"
+    :loading="loading"
+    :empty="data.orderCount === 0"
+    empty-title="暂无订单趋势数据"
+    :min-height="300"
+    preserve-content-structure
+  >
+    <template #header>
+      <header>
+        <div><p>经营态势</p><h2>订单趋势</h2></div>
+        <ElRadioGroup
+          :model-value="period"
+          size="small"
+          aria-label="趋势统计周期"
+          @update:model-value="emit('update:period', $event as DashboardTrendPeriod)"
+        >
+          <ElRadioButton value="today">当天</ElRadioButton>
+          <ElRadioButton value="week">本周</ElRadioButton>
+          <ElRadioButton value="month">本月</ElRadioButton>
+          <ElRadioButton value="year">本年</ElRadioButton>
+        </ElRadioGroup>
+      </header>
+    </template>
     <div class="dashboard-trend__summary">
       <div
         ><span>期间订单</span><strong>{{ data.orderCount }} <em>单</em></strong></div
@@ -32,10 +41,11 @@
       :show-legend="false"
       :loading="loading"
     />
-  </article>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { DashboardTrendPeriod } from '@/api/dashboard'
   import { formatCurrencyValue } from '@/utils/ui'
   import type { DashboardTrendData } from './types'
@@ -49,7 +59,7 @@
 </script>
 
 <style scoped lang="scss">
-  .dashboard-trend {
+  .dashboard-trend.art-section-card {
     position: relative;
     min-width: 0;
     padding: 24px 26px 17px;

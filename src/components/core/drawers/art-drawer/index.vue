@@ -8,7 +8,8 @@
       drawerClass,
       {
         'is-fullscreen': isFullscreen,
-        'is-fullscreen-toggle-enabled': options.showFullscreenButton
+        'is-fullscreen-toggle-enabled': options.showFullscreenButton,
+        'is-focus-mode': isFocusMode
       }
     ]"
     @update:model-value="handleModelValueChange"
@@ -23,19 +24,26 @@
     @resize-end="handleResizeEnd"
   >
     <template
-      v-if="$slots.header || hasSubtitle || options.showFullscreenButton"
+      v-if="$slots.header || hasSubtitle || formCount || options.showFullscreenButton"
       #header="{ titleId, titleClass }"
     >
       <div class="art-drawer__header">
         <div class="art-drawer__header-main">
           <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
           <span v-else :id="titleId" :class="titleClass">{{ drawerTitle }}</span>
-          <div v-if="hasSubtitle" class="art-drawer__subtitle">
+          <div v-if="hasSubtitle && !isFocusMode" class="art-drawer__subtitle">
             <slot name="subtitle" :data="openData" :api="exposedApi">
               {{ drawerSubtitle }}
             </slot>
           </div>
         </div>
+        <ArtIconButton
+          v-if="formCount"
+          :icon="isFocusMode ? 'ri:focus-2-line' : 'ri:focus-3-line'"
+          :label="isFocusMode ? '退出专注填单' : '进入专注填单'"
+          :aria-pressed="isFocusMode"
+          @click="toggleFocusMode"
+        />
         <ArtIconButton
           v-if="options.showFullscreenButton"
           class="art-drawer__fullscreen-button"
@@ -46,27 +54,27 @@
       </div>
     </template>
 
-    <ElScrollbar
-      ref="scrollbarRef"
-      :always="options.scrollbarAlways"
-      :native="options.nativeScrollbar"
-      class="art-drawer__scrollbar"
-      :style="
-        normalizedContentHeight
-          ? {
-              height: normalizedContentHeight,
-              maxHeight: normalizedContentHeight
-            }
-          : undefined
-      "
-      @wheel.capture="handleWheelBoundary"
-    >
-      <div ref="contentRef" class="art-drawer__content">
-        <ArtOverlayLoading
-          :loading="contentLoading"
-          :text="options.loadingText"
-          :background="options.loadingBackground"
-          :custom-class="options.loadingCustomClass"
+    <div class="art-drawer__viewport" :aria-busy="contentLoading">
+      <ElScrollbar
+        ref="scrollbarRef"
+        :always="options.scrollbarAlways"
+        :native="options.nativeScrollbar"
+        class="art-drawer__scrollbar"
+        :style="
+          normalizedContentHeight
+            ? {
+                height: normalizedContentHeight,
+                maxHeight: normalizedContentHeight
+              }
+            : undefined
+        "
+        @wheel.capture="handleWheelBoundary"
+      >
+        <div
+          ref="contentRef"
+          class="art-drawer__content"
+          :inert="contentLoading"
+          :aria-hidden="contentLoading"
         >
           <component
             :is="options.content"
@@ -76,9 +84,17 @@
             :drawer-api="exposedApi"
           />
           <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
-        </ArtOverlayLoading>
-      </div>
-    </ElScrollbar>
+        </div>
+      </ElScrollbar>
+      <ArtOverlayLoading
+        v-if="contentLoading"
+        :loading="true"
+        :overlay="true"
+        :text="options.loadingText"
+        :background="options.loadingBackground"
+        :custom-class="options.loadingCustomClass"
+      />
+    </div>
 
     <template v-if="options.showFooter" #footer>
       <slot name="footer" :data="openData" :loading="confirmLoading" :api="exposedApi">
@@ -120,6 +136,7 @@
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
+  import { artFormFocusKey } from '@/components/core/forms/art-form/focus'
 
   defineOptions({
     name: 'ArtDrawer',
@@ -131,7 +148,7 @@
     subtitle: '',
     size: '40%',
     fullscreen: false,
-    showFullscreenButton: false,
+    showFullscreenButton: true,
     fullscreenText: '全屏',
     exitFullscreenText: '退出全屏',
     direction: 'rtl',
@@ -164,6 +181,19 @@
   const drawerRef = shallowRef<unknown>()
   const scrollbarRef = shallowRef<ScrollbarInstance>()
   const contentRef = ref<HTMLElement>()
+  const formCount = ref(0)
+  const isFocusMode = ref(false)
+  const wasFullscreenBeforeFocus = ref(false)
+
+  provide(artFormFocusKey, {
+    focusMode: readonly(isFocusMode),
+    registerForm: () => {
+      formCount.value += 1
+      return () => {
+        formCount.value = Math.max(0, formCount.value - 1)
+      }
+    }
+  })
 
   const getDefaultOptions = (): ArtDrawerOptions<T> => ({
     title: props.title,
@@ -292,11 +322,33 @@
   )
 
   const setFullscreen = (value: boolean) => {
+    if (isFullscreen.value === value) return
     setOptions({ fullscreen: value } as Partial<ArtDrawerOptions<T>>)
+    emit('fullscreen-change', value)
     void nextTick(() => window.dispatchEvent(new Event('resize')))
   }
 
   const toggleFullscreen = () => setFullscreen(!isFullscreen.value)
+  const setFocusMode = (value: boolean) => {
+    if (isFocusMode.value === value) return
+    if (value) {
+      wasFullscreenBeforeFocus.value = isFullscreen.value
+      isFocusMode.value = true
+      setFullscreen(true)
+    } else {
+      isFocusMode.value = false
+      setFullscreen(wasFullscreenBeforeFocus.value)
+    }
+    emit('focus-change', value)
+  }
+  const toggleFocusMode = () => setFocusMode(!isFocusMode.value)
+
+  watch(isFullscreen, (fullscreen) => {
+    if (!fullscreen && isFocusMode.value) {
+      isFocusMode.value = false
+      emit('focus-change', false)
+    }
+  })
 
   watch(
     () => props.loading,
@@ -352,6 +404,11 @@
   }
 
   const handleClosed = () => {
+    if (isFocusMode.value) {
+      isFocusMode.value = false
+      emit('focus-change', false)
+    }
+    wasFullscreenBeforeFocus.value = false
     overlay.handleClosed()
     emit('closed')
   }
@@ -365,6 +422,7 @@
     drawerRef: readonly(drawerRef),
     scrollbarRef: readonly(scrollbarRef),
     fullscreen: readonly(isFullscreen),
+    focusMode: readonly(isFocusMode),
     handleOpen,
     handleClose,
     handleConfirm,
@@ -378,6 +436,8 @@
     getDrawerInstance,
     setFullscreen,
     toggleFullscreen,
+    setFocusMode,
+    toggleFocusMode,
     scrollTo
   }
 
@@ -389,9 +449,30 @@
     max-width: 100vw;
   }
 
+  @media (width <= 640px) {
+    :global(.art-drawer) {
+      width: calc(100vw - 12px) !important;
+      max-width: calc(100vw - 12px);
+    }
+  }
+
   :global(.art-drawer.is-fullscreen) {
     width: calc(100vw - 12px) !important;
     max-width: calc(100vw - 12px);
+  }
+
+  :global(.art-drawer.is-focus-mode .art-drawer__content) {
+    width: min(100%, 1120px);
+    margin-inline: auto;
+  }
+
+  :global(.art-drawer.is-focus-mode .art-form .el-form-item) {
+    margin-bottom: 14px;
+  }
+
+  :global(.art-drawer.is-focus-mode .art-entity-summary),
+  :global(.art-drawer.is-focus-mode [data-art-overlay-focus-hide]) {
+    display: none;
   }
 
   :global(.art-drawer .el-drawer__body) {
@@ -475,6 +556,12 @@
     box-sizing: border-box;
     min-height: 100%;
     padding: var(--art-drawer-content-padding, var(--el-drawer-padding-primary));
+  }
+
+  .art-drawer__viewport {
+    position: relative;
+    flex: 1;
+    min-height: 0;
   }
 
   .art-drawer__scrollbar {

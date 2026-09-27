@@ -7,6 +7,7 @@ const baseURL =
   process.env.E2E_BASE_URL || (useDevServer ? 'http://127.0.0.1:41738' : 'http://127.0.0.1:41737')
 const browserChannel = (process.env.E2E_BROWSER_CHANNEL ||
   (!process.env.CI ? 'chrome' : undefined)) as 'chrome' | 'msedge' | undefined
+const proxyServer = process.env.E2E_PROXY_URL
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -31,6 +32,7 @@ export default defineConfig({
   use: {
     baseURL,
     channel: browserChannel,
+    proxy: proxyServer ? { server: proxyServer, bypass: '127.0.0.1,localhost' } : undefined,
     locale: 'zh-CN',
     timezoneId: 'Asia/Shanghai',
     colorScheme: 'light',

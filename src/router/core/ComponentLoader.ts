@@ -4,7 +4,6 @@
  * 负责动态加载 Vue 组件
  *
  * @module router/core/ComponentLoader
- * @author Art Design Pro Team
  */
 
 import { defineComponent, h, type Component } from 'vue'

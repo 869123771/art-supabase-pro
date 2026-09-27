@@ -32,7 +32,6 @@
  * 6. 更新本地版本号
  *
  * @module utils/sys/upgrade
- * @author Art Design Pro Team
  */
 import type { UpgradeLog } from '@/mock/upgrade/changeLog'
 import { ElNotification } from 'element-plus'

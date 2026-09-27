@@ -46,15 +46,15 @@
  * ```
  *
  * @module useChart
- * @author Art Design Pro Team
  */
 
 import { echarts, type EChartsOption } from '@/plugins/echarts'
+import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 import { storeToRefs } from 'pinia'
 import { useSettingStore } from '@/store/modules/setting'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
-import type { WatchSource } from 'vue'
+import { h, render, type WatchSource } from 'vue'
 
 // 图表主题配置
 export const useChartOps = (): ChartThemeConfig => {
@@ -206,9 +206,6 @@ export function useChart(options: UseChartOptions = {}) {
   const setupThemeWatcher = () => {
     if (autoTheme) {
       themeStopHandle = watch(isDark, () => {
-        // 更新空状态样式
-        emptyStateManager.updateStyle()
-
         if (chart && !isDestroyed) {
           // 使用 requestAnimationFrame 优化主题更新
           scheduleFrame(() => {
@@ -494,28 +491,18 @@ export function useChart(options: UseChartOptions = {}) {
     }
   }
 
-  // 空状态管理器
+  // 图表空数据也使用统一的反馈组件
   const emptyStateManager = {
     create: () => {
       if (!chartRef.value || emptyStateDiv) return
 
       emptyStateDiv = document.createElement('div')
-      emptyStateDiv.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        color: ${isDark.value ? '#555555' : '#B3B2B2'};
-        background: transparent;
-        z-index: 10;
-      `
-      emptyStateDiv.innerHTML = `<span>暂无数据</span>`
+      emptyStateDiv.style.cssText =
+        'position: absolute; inset: 0; display: grid; place-items: center; z-index: 10; pointer-events: none;'
+      render(
+        h(ArtEmptyState, { title: '暂无数据', size: 'compact', visualSize: 56 }),
+        emptyStateDiv
+      )
 
       // 确保父容器有相对定位
       if (
@@ -529,16 +516,10 @@ export function useChart(options: UseChartOptions = {}) {
     },
 
     remove: () => {
-      if (emptyStateDiv && chartRef.value) {
-        chartRef.value.removeChild(emptyStateDiv)
-        emptyStateDiv = null
-      }
-    },
-
-    updateStyle: () => {
-      if (emptyStateDiv) {
-        emptyStateDiv.style.color = isDark.value ? '#666' : '#999'
-      }
+      if (!emptyStateDiv) return
+      render(null, emptyStateDiv)
+      emptyStateDiv.remove()
+      emptyStateDiv = null
     }
   }
 
@@ -750,7 +731,6 @@ export function useChartComponent<T extends BaseChartProps>(options: UseChartCom
 
     // 监听主题变化
     const themeStopHandle = watch(isDark, () => {
-      emptyStateManager.updateStyle()
       updateChart()
     })
     stopHandles.push(themeStopHandle)

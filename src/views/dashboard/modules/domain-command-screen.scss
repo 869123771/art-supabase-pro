@@ -1,3 +1,5 @@
+@use './screen-empty-state';
+
 .domain-command-screen {
   --screen-bg: #06101d;
   --screen-surface: rgb(7 25 43 / 91%);
@@ -594,10 +596,6 @@
       grid-row-end: 13;
     }
   }
-
-  .domain-distribution-panel .domain-empty__radar {
-    display: none;
-  }
 }
 
 .is-layout-fleet {
@@ -928,89 +926,6 @@
   }
 }
 
-.domain-empty {
-  position: relative;
-  display: grid;
-  place-items: center;
-  margin: auto;
-  text-align: center;
-
-  &__radar {
-    position: relative;
-    width: 190px;
-    height: 190px;
-    margin-bottom: -96px;
-    background: repeating-radial-gradient(
-      circle,
-      transparent 0 24px,
-      color-mix(in srgb, var(--screen-accent) 18%, transparent) 25px,
-      transparent 26px 49px
-    );
-    border: 1px solid color-mix(in srgb, var(--screen-accent) 18%, transparent);
-    border-radius: 50%;
-    mask-image: radial-gradient(circle, #000 0 59%, transparent 76%);
-
-    &::before {
-      position: absolute;
-      inset: 50% auto auto 50%;
-      width: 48%;
-      height: 48%;
-      content: '';
-      background: conic-gradient(
-        from 270deg,
-        color-mix(in srgb, var(--screen-accent) 34%, transparent),
-        transparent 68%
-      );
-      transform-origin: left top;
-      animation: domainRadarSweep 4s linear infinite;
-    }
-  }
-
-  > svg {
-    position: relative;
-    z-index: 1;
-    margin-bottom: 10px;
-    font-size: 31px;
-    color: var(--screen-success);
-  }
-
-  strong {
-    position: relative;
-    z-index: 1;
-    font-size: 11px;
-    font-weight: 600;
-    color: #c5d7e6;
-  }
-
-  span {
-    position: relative;
-    z-index: 1;
-    max-width: 240px;
-    margin-top: 4px;
-    font-size: 9px;
-    line-height: 1.5;
-    color: var(--screen-text-muted);
-  }
-
-  &--compact {
-    .domain-empty__radar {
-      width: 150px;
-      height: 150px;
-      margin-bottom: -76px;
-    }
-
-    > svg {
-      font-size: 26px;
-    }
-  }
-
-  &--compact &__radar {
-    width: 156px;
-    height: 156px;
-    margin-bottom: -78px;
-  }
-}
-
 .is-spinning {
   animation: domainSpin 1s linear infinite;
 }
@@ -1213,7 +1128,6 @@
   .domain-command-screen::after,
   .domain-live-status i,
   .domain-status-pill i,
-  .domain-empty__radar::before,
   .is-spinning {
     animation: none;
   }
@@ -1226,12 +1140,6 @@
 
   to {
     transform: scale(1.055) translate3d(0.5%, 0.3%, 0);
-  }
-}
-
-@keyframes domainRadarSweep {
-  to {
-    transform: rotate(360deg);
   }
 }
 

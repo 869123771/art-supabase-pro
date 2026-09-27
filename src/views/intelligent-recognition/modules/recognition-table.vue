@@ -56,6 +56,7 @@
   import { formatWithDayjs } from '@/utils/time'
   import { fetchRecognitionArtifactList } from '@/api/intelligent-recognition'
   import { useUserStore } from '@/store/modules/user'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import {
     confidencePercent,
     featureLabels,
@@ -82,6 +83,7 @@
     review: []
   }>()
   const userStore = useUserStore()
+  const confidenceOptions = useDictionaryOptions('aiRecognitionConfidenceLevel')
   const { getDictMap } = storeToRefs(userStore)
   const getDictItemByValue = userStore.getDictItemByValue
   const tableRef = ref<ArtTableQueryExpose>()
@@ -163,11 +165,7 @@
       key: 'confidenceLevel',
       type: 'select',
       props: {
-        options: [
-          { label: '高（≥85%）', value: 'high' },
-          { label: '中（65%–84%）', value: 'medium' },
-          { label: '低（<65%）', value: 'low' }
-        ],
+        options: confidenceOptions,
         placeholder: '全部区间',
         clearable: true
       }

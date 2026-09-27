@@ -16,7 +16,6 @@
  * - 普通密码：6-20位，必须包含字母和数字
  *
  * @module utils/validation/formValidator
- * @author Art Design Pro Team
  */
 
 import type { FormItemRule } from 'element-plus'

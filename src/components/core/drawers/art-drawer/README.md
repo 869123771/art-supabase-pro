@@ -2,7 +2,7 @@
 
 ## Content Loading
 
-`loading` controls the drawer content mask and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
+`loading` covers the drawer's visible content viewport, centers the loading state there, and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
 
 ```vue
 <ArtDrawer
@@ -45,6 +45,8 @@ onOpen: async (_data, api) => {
 - 默认尺寸为 `40%`
 - 默认启用 `append-to-body`，避免抽屉被专注模式、祖先层叠上下文或裁剪容器遮挡
 - 默认启用 `destroy-on-close`
+- 默认显示全屏切换按钮，可通过 `showFullscreenButton="false"` 关闭
+- 内容包含 `ArtForm` 时显示“专注填单”按钮；进入后全屏并收拢辅助信息，退出时恢复先前的全屏状态
 - 默认显示“取消”和“确定”按钮
 - 确认成功后默认自动关闭
 - 支持异步确认、关闭拦截和 Loading

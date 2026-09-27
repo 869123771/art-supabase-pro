@@ -96,11 +96,7 @@
       </ElOption>
 
       <template #empty>
-        <div class="ai-model-selector__empty-list">
-          <ArtSvgIcon icon="ri:search-line" />
-          <strong>没有匹配的目录模型</strong>
-          <span>可直接回车使用当前输入的模型 ID</span>
-        </div>
+        <ArtPickerEmpty title="没有匹配的目录模型" description="可直接回车使用当前输入的模型 ID" />
       </template>
     </ElSelect>
 
@@ -177,10 +173,13 @@
           <span>{{ selectedBenchmarkError }}</span>
         </div>
       </div>
-      <div v-else class="ai-model-selector__empty-metric">
-        <ArtSvgIcon icon="ri:timer-line" />
-        <span>尚未测速，点击“测试当前模型”获取当前线路的真实响应数据。</span>
-      </div>
+      <ArtEmptyState
+        v-else
+        title="尚未测速"
+        description="点击“测试当前模型”获取当前线路的真实响应数据。"
+        size="compact"
+        :visual-size="60"
+      />
 
       <small>
         能力说明基于模型命名和远端目录推断；测速会真实调用一次 /chat/completions，并消耗少量额度。
@@ -192,6 +191,8 @@
 <script setup lang="ts">
   import type { TagProps } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import type { AiModelBenchmark, AiProviderModel } from '@/api/ai-configuration'
 
   interface Props {
@@ -455,30 +456,6 @@
       }
     }
 
-    &__empty-list {
-      display: grid;
-      gap: 5px;
-      place-items: center;
-      padding: 22px 16px;
-      text-align: center;
-
-      svg {
-        margin-bottom: 2px;
-        font-size: 22px;
-        color: var(--el-text-color-placeholder);
-      }
-
-      strong {
-        font-size: 12px;
-        color: var(--el-text-color-primary);
-      }
-
-      span {
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
     &__insight {
       display: grid;
       gap: 10px;
@@ -566,7 +543,6 @@
       }
     }
 
-    &__empty-metric,
     &__benchmark-error {
       display: flex;
       gap: 7px;

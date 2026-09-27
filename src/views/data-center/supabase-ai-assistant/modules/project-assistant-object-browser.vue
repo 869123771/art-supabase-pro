@@ -41,23 +41,39 @@
       <div class="project-assistant-object-browser__selects">
         <ElSelect
           :model-value="filters.schema"
+          aria-label="选择数据库 Schema"
           @update:model-value="emit('update:schema', String($event))"
           @change="emit('filter')"
         >
-          <ElOption label="全部 Schema" value="all" />
-          <ElOption v-for="schema in schemas" :key="schema" :label="schema" :value="schema" />
+          <template #prefix><ArtSvgIcon icon="ri:stack-line" /></template>
+          <ElOption label="全部 Schema" value="all">
+            <span class="project-assistant-object-browser__option">
+              <ArtSvgIcon icon="ri:database-2-line" />全部 Schema
+            </span>
+          </ElOption>
+          <ElOption v-for="schema in schemas" :key="schema" :label="schema" :value="schema">
+            <span class="project-assistant-object-browser__option">
+              <ArtSvgIcon icon="ri:stack-line" />{{ schema }}
+            </span>
+          </ElOption>
         </ElSelect>
         <ElSelect
           :model-value="filters.objectType"
+          aria-label="选择对象类型"
           @update:model-value="emit('update:object-type', $event as ProjectObjectType)"
           @change="emit('filter')"
         >
+          <template #prefix><ArtSvgIcon :icon="getObjectIcon(filters.objectType)" /></template>
           <ElOption
             v-for="option in objectTypeOptions"
             :key="option.value"
             :label="option.label"
             :value="option.value"
-          />
+          >
+            <span class="project-assistant-object-browser__option">
+              <ArtSvgIcon :icon="getObjectIcon(option.value)" />{{ option.label }}
+            </span>
+          </ElOption>
         </ElSelect>
       </div>
     </div>
@@ -219,6 +235,21 @@
       .el-select {
         width: 100%;
         min-width: 0;
+      }
+
+      :deep(.el-select__prefix) {
+        color: var(--el-color-primary);
+      }
+    }
+
+    &__option {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+
+      .art-svg-icon {
+        flex: 0 0 auto;
+        color: var(--el-color-primary);
       }
     }
 

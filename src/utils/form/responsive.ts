@@ -31,7 +31,6 @@
  * - createResponsiveSpanCalculator: 创建 span 计算器（柯里化）
  *
  * @module utils/form/responsive
- * @author Art Design Pro Team
  */
 
 /**

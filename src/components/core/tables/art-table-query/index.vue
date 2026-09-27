@@ -426,6 +426,8 @@
    * data、columns、loading、pagination 由 ArtTableQuery 接管，不建议在 tableProps 里传。
    */
   export interface ArtTableQueryTableProps extends ElementTablePassThroughProps {
+    /** 有现有行时也显示表格加载遮罩。 */
+    loadingOverlay?: boolean
     /** 行数据 key，默认 id */
     rowKey?: string | BivariantSyncHandler<TableQueryRecord, string>
     /** 表格布局，默认 fixed */

@@ -99,6 +99,17 @@ test('preserves an existing Chinese business error', () => {
   )
 })
 
+test('shows a safe business reason for a Postgres check violation', () => {
+  assert.equal(
+    getFriendlySupabaseErrorMessage({ code: '23514', message: '第 2 行单位换算关系不完整' }),
+    '第 2 行单位换算关系不完整'
+  )
+  assert.equal(
+    getFriendlySupabaseErrorMessage({ code: '23514', message: 'check constraint violation' }),
+    '提交内容不符合业务规则，请检查后重试'
+  )
+})
+
 test('hides unknown English implementation details behind the caller fallback', () => {
   assert.equal(
     getFriendlySupabaseErrorMessage(

@@ -159,10 +159,13 @@
                     value-label="设备"
                     risk-label="故障"
                   />
-                  <div v-else class="asset-compact-empty">
-                    <ArtSvgIcon icon="ri:building-4-line" />
-                    <span>暂无已归属车间的设备</span>
-                  </div>
+                  <ArtEmptyState
+                    v-else
+                    class="screen-empty-state"
+                    title="暂无已归属车间的设备"
+                    size="compact"
+                    :visual-size="64"
+                  />
                 </article>
               </div>
 
@@ -252,10 +255,13 @@
                       </div>
                     </div>
                   </div>
-                  <div v-else class="asset-compact-empty is-success">
-                    <ArtSvgIcon icon="ri:shield-check-line" />
-                    <span>当前没有未闭环故障工单</span>
-                  </div>
+                  <ArtEmptyState
+                    v-else
+                    class="screen-empty-state"
+                    title="当前没有未闭环故障工单"
+                    size="compact"
+                    :visual-size="64"
+                  />
                 </article>
 
                 <article class="screen-panel upcoming-task-panel">
@@ -300,10 +306,13 @@
                       </div>
                     </div>
                   </template>
-                  <div v-else class="asset-compact-empty">
-                    <ArtSvgIcon icon="ri:calendar-check-line" />
-                    <span>暂无待执行保养任务</span>
-                  </div>
+                  <ArtEmptyState
+                    v-else
+                    class="screen-empty-state"
+                    title="暂无待执行保养任务"
+                    size="compact"
+                    :visual-size="64"
+                  />
                 </article>
               </div>
             </section>
@@ -316,6 +325,7 @@
 
 <script setup lang="ts">
   import './enterprise-big-screen.scss'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import dayjs from 'dayjs'
   import { formatScreenDate } from './screen-format'
   import AssetMaintenanceWindowChart from './asset-maintenance-window-chart.vue'

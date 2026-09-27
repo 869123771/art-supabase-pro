@@ -129,6 +129,7 @@
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useUserStore } from '@/store/modules/user'
   import {
@@ -158,6 +159,11 @@
     binPermission?: string
   }>()
   const title = computed(() => (props.kind === 'inbound' ? '收料入库' : '资产应付'))
+  const inboundStatusOptions = useDictionaryOptions('scmReceiptInboundStatus')
+  const payableStatusOptions = useDictionaryOptions('scmAssetPayableStatus')
+  const statusOptions = computed(() =>
+    props.kind === 'inbound' ? inboundStatusOptions : payableStatusOptions
+  )
   const description = computed(() =>
     props.kind === 'inbound'
       ? '核对收料明细的仓库、批号与库存数量，确认后写入库存台账和流水。'
@@ -228,13 +234,7 @@
       type: 'select',
       props: {
         clearable: true,
-        options: [
-          { label: '草稿', value: 'draft' },
-          {
-            label: props.kind === 'inbound' ? '已入库' : '已审核',
-            value: props.kind === 'inbound' ? 'confirmed' : 'approved'
-          }
-        ]
+        options: statusOptions.value
       }
     },
     ...(props.kind === 'inbound'
@@ -354,7 +354,10 @@
     }
   ])
   function statusLabel(status: ScmReceiptTargetStatus) {
-    return status === 'draft' ? '草稿' : status === 'confirmed' ? '已入库' : '已审核'
+    return (
+      statusOptions.value.find((item) => item.value === status)?.label ??
+      (status === 'draft' ? '草稿' : status === 'confirmed' ? '已入库' : '已审核')
+    )
   }
   function fetchPage(query: ScmReceiptTargetQuery) {
     return fetchScmReceiptTargets(props.kind, {

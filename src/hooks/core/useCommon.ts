@@ -12,7 +12,6 @@
  * 4. 平滑滚动 - 支持平滑滚动动画效果
  *
  * @module useCommon
- * @author Art Design Pro Team
  */
 
 import { computed } from 'vue'

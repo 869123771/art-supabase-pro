@@ -11,7 +11,6 @@
  * - 菜单宽度枚举（收起宽度）
  *
  * @module enums/appEnum
- * @author Art Design Pro Team
  */
 
 /**

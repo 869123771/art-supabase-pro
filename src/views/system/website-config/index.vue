@@ -413,6 +413,7 @@
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
   import { useWebsiteConfig } from '@/hooks'
   import { getPageScrollContainer } from '@/hooks/core/useCommon'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
@@ -541,31 +542,14 @@
     }
   ]
 
-  const languageOptions = [
-    { label: '简体中文', value: 'zh' },
-    { label: 'English', value: 'en' }
-  ]
-
-  const watermarkOptions = [
-    { label: '当前用户名', value: 'username' },
-    { label: '用户名 + 时间', value: 'username_time' },
-    { label: '站点名称', value: 'site_name' },
-    { label: '自定义文本', value: 'custom' }
-  ]
-
-  const captchaOptions = [{ label: 'Turnstile', value: 'turnstile' }]
-
-  const turnstileSizeOptions = [
-    { label: '默认', value: 'normal' },
-    { label: '紧凑', value: 'compact' },
-    { label: '隐藏', value: 'hidden' }
-  ]
-
-  const turnstileThemeOptions = [
-    { label: '浅色', value: 'light' },
-    { label: '深色', value: 'dark' },
-    { label: '跟随系统', value: 'auto' }
-  ]
+  const languageOptions = useDictionaryOptions('sysWebsiteLanguage')
+  const watermarkOptions = useDictionaryOptions('sysWatermarkContentType')
+  const captchaDictionaryOptions = useDictionaryOptions('sysCaptchaProvider')
+  const captchaOptions = computed(() =>
+    captchaDictionaryOptions.filter((item) => item.value === 'turnstile')
+  )
+  const turnstileSizeOptions = useDictionaryOptions('sysTurnstileSize')
+  const turnstileThemeOptions = useDictionaryOptions('sysTurnstileTheme')
 
   const rules: FormRules<WebsiteConfig> = {
     siteName: [{ required: true, message: '请输入系统名称', trigger: 'blur' }],
@@ -624,7 +608,7 @@
   )
 
   const captchaLabel = computed(
-    () => captchaOptions.find((item) => item.value === form.captchaType)?.label || '-'
+    () => captchaOptions.value.find((item) => item.value === form.captchaType)?.label || '-'
   )
 
   const summaryCards = computed(() => [

@@ -4,7 +4,6 @@
  * 负责管理 iframe 类型的路由
  *
  * @module router/core/IframeRouteManager
- * @author Art Design Pro Team
  */
 
 import type { AppRouteRecord } from '@/types/router'

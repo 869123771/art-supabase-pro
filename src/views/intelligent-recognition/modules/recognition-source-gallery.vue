@@ -35,24 +35,24 @@
       <span v-if="compact" class="recognition-source-gallery__count">{{ urls.length }} 张</span>
     </template>
 
-    <div v-else class="recognition-source-gallery__empty">
-      <ArtSvgIcon icon="ri:image-off-line" />
-      <div>
-        <strong>{{ compact ? '未留存' : '暂无原始票据' }}</strong>
-        <span v-if="!compact">
-          {{
-            expectedCount
-              ? `该任务记录了 ${expectedCount} 张票据，但创建时尚未留存原图地址。`
-              : '该识别任务没有可供预览的原图。'
-          }}
-        </span>
-      </div>
-    </div>
+    <span v-else-if="compact" class="recognition-source-gallery__missing">未留存</span>
+    <ArtEmptyState
+      v-else
+      title="暂无原始票据"
+      :description="
+        expectedCount
+          ? `该任务记录了 ${expectedCount} 张票据，但创建时尚未留存原图地址。`
+          : '该识别任务没有可供预览的原图。'
+      "
+      size="compact"
+      :visual-size="64"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 
   defineOptions({ name: 'RecognitionSourceGallery' })
 
@@ -129,40 +129,6 @@
       }
     }
 
-    &__empty {
-      display: flex;
-      gap: 11px;
-      align-items: center;
-      min-height: 82px;
-      padding: 13px 15px;
-      color: var(--art-text-gray-400);
-      background: var(--art-gray-50);
-      border: 1px dashed var(--art-card-border);
-      border-radius: var(--el-border-radius-base);
-
-      > .art-svg-icon {
-        flex: 0 0 auto;
-        font-size: 25px;
-      }
-
-      strong,
-      span {
-        display: block;
-      }
-
-      strong {
-        font-size: 12px;
-        color: var(--art-text-gray-700);
-      }
-
-      span {
-        margin-top: 3px;
-        font-size: 11px;
-        line-height: 1.55;
-        color: var(--art-text-gray-500);
-      }
-    }
-
     &.is-compact {
       display: flex;
       gap: 7px;
@@ -194,23 +160,9 @@
         color: var(--art-text-gray-500);
       }
 
-      .recognition-source-gallery__empty {
-        gap: 5px;
-        min-height: 0;
-        padding: 0;
+      .recognition-source-gallery__missing {
         font-size: 11px;
-        background: transparent;
-        border: 0;
-
-        > .art-svg-icon {
-          font-size: 16px;
-        }
-
-        strong {
-          font-size: 11px;
-          font-weight: 500;
-          color: var(--art-text-gray-400);
-        }
+        color: var(--art-text-gray-400);
       }
     }
   }

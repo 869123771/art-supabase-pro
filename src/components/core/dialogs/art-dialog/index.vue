@@ -152,7 +152,7 @@
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
-  import { artDialogFocusKey } from './focus'
+  import { artFormFocusKey } from '@/components/core/forms/art-form/focus'
 
   defineOptions({
     name: 'ArtDialog',
@@ -204,7 +204,7 @@
   const isFocusMode = ref(false)
   const wasFullscreenBeforeFocus = ref(false)
 
-  provide(artDialogFocusKey, {
+  provide(artFormFocusKey, {
     focusMode: readonly(isFocusMode),
     registerForm: () => {
       formCount.value += 1

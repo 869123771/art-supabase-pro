@@ -139,6 +139,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElMessage, ElTag } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -173,6 +174,8 @@
   } from '@/api/wms-purchase'
   import WmsPurchaseDocumentDrawer from './modules/wms-purchase-document-drawer.vue'
 
+  const commonDocumentReviewStatusOptions = useDictionaryOptions('commonDocumentReviewStatus')
+
   type PurchaseAction =
     | 'View'
     | 'Add'
@@ -206,7 +209,7 @@
   const orderTargets = ref<Awaited<ReturnType<typeof fetchWmsPurchaseOrderTargets>>>([])
   const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
-  const selectedRows = ref<WmsPurchaseListRow[]>([])
+  const selectedRows = ref<Array<{ documentId: string; kind: unknown; status: unknown }>>([])
   const returnKinds: WmsPurchaseKind[] = [
     'initial_return',
     'purchase_return',
@@ -258,11 +261,7 @@
       props: {
         clearable: true,
         placeholder: '全部状态',
-        options: [
-          { label: '暂存', value: 'draft' },
-          { label: '已提交', value: 'submitted' },
-          { label: '已审核', value: 'approved' }
-        ]
+        options: commonDocumentReviewStatusOptions
       }
     },
     {
@@ -318,12 +317,14 @@
     row: Record<string, unknown>
     column: { property?: string }
   }): string {
-    return column.property === 'quantity' && returnKinds.includes(row.kind as WmsPurchaseKind)
+    return column.property === 'quantity' && returnKinds.some((kind) => kind === row.kind)
       ? 'wms-purchase-negative-cell'
       : ''
   }
   function onSelectionChange(rows: Record<string, unknown>[]): void {
-    selectedRows.value = rows as unknown as WmsPurchaseListRow[]
+    selectedRows.value = rows.flatMap(({ documentId, kind, status }) =>
+      typeof documentId === 'string' ? [{ documentId, kind, status }] : []
+    )
   }
   async function openDocument(mode: 'view' | 'edit' | 'copy', documentId: string): Promise<void> {
     try {

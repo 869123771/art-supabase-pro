@@ -327,6 +327,12 @@ export function getFriendlySupabaseErrorMessage(
     return STATUS_MESSAGES[401]
   }
 
+  // 业务 RPC 用 23514 报告校验失败；保留其安全的中文原因，避免只显示泛化提示。
+  if (details.codes.includes('23514')) {
+    const businessMessage = details.messages.find(isSafeBusinessMessage)
+    if (businessMessage) return businessMessage
+  }
+
   for (const code of details.codes) {
     const message = ERROR_CODE_MESSAGES[code] ?? ERROR_CODE_MESSAGES[code.toUpperCase()]
     if (message) return message

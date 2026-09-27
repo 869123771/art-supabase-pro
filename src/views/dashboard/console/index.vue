@@ -60,6 +60,7 @@
         :total="statusTotal"
         :in-transit-count="overview.data.inTransitCount"
         :status-items="statusItems"
+        :loading="overview.loading"
         @view-orders="navigateTo('/tms/order-list')"
       />
     </section>

@@ -12,7 +12,6 @@
  * 4. 响应式状态 - 提供响应式的模式判断，方便在组件中使用
  *
  * @module useAppMode
- * @author Art Design Pro Team
  */
 
 import { computed } from 'vue'

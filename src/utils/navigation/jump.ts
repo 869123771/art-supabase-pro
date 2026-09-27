@@ -12,7 +12,6 @@
  * - 智能判断跳转目标类型（外部链接/内部路由）
  *
  * @module utils/navigation/jump
- * @author Art Design Pro Team
  */
 import { AppRouteRecord } from '@/types/router'
 import { router } from '@/router'

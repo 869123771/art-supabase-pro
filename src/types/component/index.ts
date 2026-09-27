@@ -15,7 +15,6 @@
  * - 组件事件参数类型
  *
  * @module types/component/index
- * @author Art Design Pro Team
  */
 
 export type DictDisplayMode = 'auto' | 'tag' | 'badge' | 'text'

@@ -3,7 +3,6 @@
  * 提供全局类型定义的统一导出入口
  *
  * @module types/index
- * @author Art Design Pro Team
  */
 
 /** 通用类型定义（基础类型、工具类型等） */

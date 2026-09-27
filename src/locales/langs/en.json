@@ -223,15 +223,29 @@
     }
   },
   "lockScreen": {
-    "pwdError": "Password error",
+    "accountFallback": "Current user",
+    "currentAccount": "Current account",
+    "passwordRequired": "Enter your lock password",
+    "pwdError": "Incorrect password. Please try again.",
+    "warning": {
+      "title": "Workspace temporarily unavailable",
+      "description": "Developer tools are open. Close them to continue."
+    },
     "lock": {
-      "inputPlaceholder": "Please input lock screen password",
-      "btnText": "Lock"
+      "title": "Lock workspace",
+      "description": "Set a password to protect your current work.",
+      "passwordLabel": "Lock password",
+      "inputPlaceholder": "Enter a lock password",
+      "btnText": "Lock workspace",
+      "cancelBtnText": "Cancel"
     },
     "unlock": {
-      "inputPlaceholder": "Please input unlock password",
-      "btnText": "Unlock",
-      "backBtnText": "Back to login"
+      "title": "Workspace locked",
+      "description": "Enter your lock password to continue your work.",
+      "passwordLabel": "Lock password",
+      "inputPlaceholder": "Enter your lock password",
+      "btnText": "Unlock workspace",
+      "backBtnText": "Sign out and return to login"
     }
   },
   "greeting": {

@@ -122,28 +122,28 @@ async function installApplicationMenuMocks(page: Page): Promise<void> {
       json: [
         {
           code: 'platform',
-          name: 'Art Supabase Pro',
+          name: '亿企工场',
           description: '企业数字化平台',
           baseUrl: '/',
           sort: 1
         },
         {
           code: 'mdm',
-          name: 'Art Supabase MDM',
+          name: '亿企工场 MDM',
           description: '主数据治理',
           baseUrl: '/mdm/',
           sort: 15
         },
         {
           code: 'wms',
-          name: 'Art Supabase WMS',
+          name: '亿企工场 WMS',
           description: '仓储管理',
           baseUrl: '/wms/',
           sort: 55
         },
         {
           code: 'mes',
-          name: 'Art Supabase MES',
+          name: '亿企工场 MES',
           description: '制造执行',
           baseUrl: '/mes/',
           sort: 60

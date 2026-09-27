@@ -16,9 +16,13 @@
       >
     </div>
     <div class="fleet-risk__reminders">
-      <div v-if="reminders.length === 0" class="fleet-risk__empty">
-        <ArtSvgIcon icon="ri:shield-check-line" /> 当前无风险提醒
-      </div>
+      <ArtEmptyState
+        v-if="reminders.length === 0"
+        class="fleet-risk__empty"
+        title="当前无风险提醒"
+        size="compact"
+        :visual-size="64"
+      />
       <button
         v-for="item in reminders"
         :key="item.key"
@@ -38,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { DashboardReminder } from './types'
 
   defineProps<{
@@ -229,14 +234,8 @@
     }
 
     &__empty {
-      display: flex;
       grid-column: 1 / -1;
-      gap: 8px;
-      align-items: center;
-      justify-content: center;
-      min-height: 88px;
-      font-size: 12px;
-      color: var(--el-color-success);
+      min-height: 150px;
     }
 
     @container (width <= 420px) {

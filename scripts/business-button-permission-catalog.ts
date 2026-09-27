@@ -2561,6 +2561,42 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Issue', '按申请出库')
     ]
   },
+  ...['WmsProductionIssue', 'WmsProductionReturn'].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Select', '选单'),
+      button('Push', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Close', '关闭'),
+      button('Void', '作废')
+    ]
+  })),
+  ...['WmsFinishedInbound', 'WmsFinishedReturn'].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      ...(menuName === 'WmsFinishedInbound' ? [button('Import', '导入')] : []),
+      button('Export', '导出'),
+      button('Select', '选单'),
+      button('Push', '过账'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Close', '关闭'),
+      button('Void', '作废')
+    ]
+  })),
   {
     menuName: 'WmsSalesReturn',
     buttons: [button('View', '查看'), button('Receive', '确认退货入库')]
@@ -2623,6 +2659,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'WmsInventoryLedger',
+    buttons: [button('View', '查看')]
+  },
+  {
+    menuName: 'WmsStockLedger',
+    buttons: [button('View', '查看')]
+  },
+  {
+    menuName: 'WmsMaterialReceiptIssue',
     buttons: [button('View', '查看')]
   },
   {

@@ -223,15 +223,29 @@
     }
   },
   "lockScreen": {
-    "pwdError": "密码错误",
+    "accountFallback": "当前用户",
+    "currentAccount": "当前账号",
+    "passwordRequired": "请输入锁屏密码",
+    "pwdError": "密码不正确，请重新输入",
+    "warning": {
+      "title": "工作台暂不可用",
+      "description": "检测到开发者工具已打开。请关闭开发者工具后继续使用。"
+    },
     "lock": {
+      "title": "锁定工作台",
+      "description": "设置锁屏密码，保护当前工作内容。",
+      "passwordLabel": "锁屏密码",
       "inputPlaceholder": "请输入锁屏密码",
-      "btnText": "锁定"
+      "btnText": "锁定工作台",
+      "cancelBtnText": "取消"
     },
     "unlock": {
-      "inputPlaceholder": "请输入解锁密码",
-      "btnText": "解锁",
-      "backBtnText": "返回登录"
+      "title": "工作台已锁定",
+      "description": "输入锁屏密码，继续刚才的工作。",
+      "passwordLabel": "锁屏密码",
+      "inputPlaceholder": "请输入锁屏密码",
+      "btnText": "解锁工作台",
+      "backBtnText": "退出并返回登录"
     }
   },
   "greeting": {

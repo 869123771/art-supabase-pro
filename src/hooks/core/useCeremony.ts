@@ -37,7 +37,6 @@
  * ```
  *
  * @module useCeremony
- * @author Art Design Pro Team
  */
 
 import { useTimeoutFn, useIntervalFn, useDateFormat } from '@vueuse/core'

@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./production-material-workspace-DH0RNKDW.js";var i=e({name:`WmsFinishedInbound`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`finished_inbound`}))}});export{i as default};

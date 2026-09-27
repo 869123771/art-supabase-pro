@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="./src/assets/images/common/logo.webp" width="96" alt="Art Supabase Pro Logo" />
-  <h1>Art Supabase Pro</h1>
+  <img src="./src/assets/images/common/logo.webp" width="96" alt="Yiqi Workshop Logo" />
+  <h1>Yiqi Workshop · 亿企工场</h1>
   <p><strong>A modular enterprise business platform powered by Vue 3 and Supabase</strong></p>
   <p>One shared platform for transportation, fleet, finance, HR, safety, driver operations, workflows, and governed AI.</p>
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-Art Supabase Pro goes beyond a UI-only admin template. It uses Supabase Auth, PostgreSQL, RLS, Storage, Realtime, RPC, and Edge Functions as its backend foundation. A shared platform runtime and independently maintained domain repositories combine into one reproducible application.
+Yiqi Workshop goes beyond a UI-only admin template. It uses Supabase Auth, PostgreSQL, RLS, Storage, Realtime, RPC, and Edge Functions as its backend foundation. A shared platform runtime and independently maintained domain repositories combine into one reproducible application.
 
 The project currently includes:
 
@@ -156,6 +156,6 @@ pnpm build
 
 ## License and Credits
 
-Art Supabase Pro is released under the [Mulan Permissive Software License, Version 2 (MulanPSL-2.0)](LICENSE).
+Yiqi Workshop is released under the [Mulan Permissive Software License, Version 2 (MulanPSL-2.0)](LICENSE).
 
-The project continues to evolve from the excellent [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) project. Thanks to its maintainers and community.
+Thanks to the open-source community for its contributions to the interface foundations.

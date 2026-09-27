@@ -120,6 +120,7 @@ export default [
       'supabase/**',
       '.vscode/**',
       'src/assets/**',
+      'src/vendor/**',
       'src/utils/console.ts'
     ]
   },

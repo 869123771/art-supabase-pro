@@ -48,6 +48,11 @@
     >
       <ElTabs v-model="detailTab" class="project-assistant__detail-tabs">
         <ElTabPane label="智能概览" name="insights">
+          <template #label>
+            <span class="project-assistant__tab-label">
+              <ArtSvgIcon icon="ri:sparkling-2-line" />智能概览
+            </span>
+          </template>
           <ElScrollbar class="project-assistant__insights-scroll" always>
             <div class="project-assistant__insights">
               <section>
@@ -106,6 +111,11 @@
         </ElTabPane>
 
         <ElTabPane label="对象定义" name="ddl">
+          <template #label>
+            <span class="project-assistant__tab-label">
+              <ArtSvgIcon icon="ri:code-s-slash-line" />对象定义
+            </span>
+          </template>
           <ArtAsyncState
             :empty="!detail?.ddl"
             empty-text="当前对象没有可显示的定义"
@@ -122,6 +132,9 @@
         </ElTabPane>
 
         <ElTabPane v-if="detail?.columns?.length" label="字段" name="columns">
+          <template #label>
+            <span class="project-assistant__tab-label"> <ArtSvgIcon icon="ri:table-2" />字段 </span>
+          </template>
           <div class="project-assistant__fields-panel">
             <div class="project-assistant__fields-toolbar">
               <ElInput v-model="fieldKeyword" clearable placeholder="搜索字段、类型或说明">
@@ -142,6 +155,11 @@
         </ElTabPane>
 
         <ElTabPane v-if="selectedObject.objectType === 'table'" label="外键关系" name="relations">
+          <template #label>
+            <span class="project-assistant__tab-label">
+              <ArtSvgIcon icon="ri:git-branch-line" />外键关系
+            </span>
+          </template>
           <ArtAsyncState
             :loading="loading.relationships"
             :loading-mode="relationships.length ? 'mask' : 'skeleton'"
@@ -167,17 +185,17 @@
       </ElTabs>
     </ArtAsyncState>
 
-    <div v-else class="project-assistant__detail-empty">
-      <div class="project-assistant__empty-icon">
-        <ArtSvgIcon icon="ri:code-box-line" />
-      </div>
-      <h3>选择对象查看定义</h3>
-      <p>支持表、视图、函数、触发器、RLS 策略和索引。</p>
-    </div>
+    <ArtEmptyState
+      v-else
+      class="project-assistant__detail-empty"
+      title="选择对象查看定义"
+      description="支持表、视图、函数、触发器、RLS 策略和索引。"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type {
     ProjectAssistantSafetyMode,
     ProjectDatabaseObject,
@@ -300,6 +318,12 @@
 
     &__detail-tabs :deep(.el-tabs__header) {
       flex: none;
+    }
+
+    &__tab-label {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
     }
 
     &__detail-tabs :deep(.el-tabs__content) {
@@ -612,34 +636,7 @@
     }
 
     &__detail-empty {
-      display: flex;
       flex: 1;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: var(--el-text-color-secondary);
-      text-align: center;
-    }
-
-    &__empty-icon {
-      display: grid;
-      place-items: center;
-      width: 72px;
-      height: 72px;
-      font-size: 34px;
-      color: var(--el-color-primary-light-3);
-      background: linear-gradient(145deg, var(--el-color-primary-light-9), transparent);
-      border: 1px solid var(--el-color-primary-light-8);
-      border-radius: 50%;
-    }
-
-    &__detail-empty h3 {
-      margin: 14px 0 4px;
-      color: var(--el-text-color-primary);
-    }
-
-    &__detail-empty p {
-      margin: 0;
     }
 
     &__relation-list article {

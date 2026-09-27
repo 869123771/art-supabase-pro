@@ -3,7 +3,6 @@
  * 集中管理便于维护和更新链接地址
  *
  * @module utils/constants/links
- * @author Art Design Pro Team
  */
 export const WEB_LINKS = {
   // Github 主页
@@ -15,24 +14,12 @@ export const WEB_LINKS = {
   // 项目 Gitee 主页
   GITEE: 'https://gitee.com/wangyanghub/art-supabase-pro',
 
-  // 个人博客
-  BLOG: 'https://www.artd.pro',
-
   // 项目文档
   DOCS: 'https://869123771.github.io/art-supabase-doc/',
-
-  // 精简版本
-  LiteVersion: 'https://www.artd.pro/docs/zh/guide/lite-version.html',
-
-  // v2.6.1版本
-  OldVersion: 'https://www.artd.pro/v2/',
 
   // 项目社区
   COMMUNITY: 'https://869123771.github.io/art-supabase-doc/',
 
   // 哔哩哔哩
-  BILIBILI: 'https://www.bilibili.com/',
-
-  // 项目介绍
-  INTRODUCE: 'https://www.artd.pro/docs/zh/guide/introduce.html'
+  BILIBILI: 'https://www.bilibili.com/'
 }

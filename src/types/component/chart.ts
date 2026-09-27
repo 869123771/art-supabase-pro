@@ -25,7 +25,6 @@
  * - 图表事件处理
  *
  * @module types/component/chart
- * @author Art Design Pro Team
  */
 import type { EChartsOption, LineSeriesOption } from '@/plugins/echarts'
 

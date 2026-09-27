@@ -6,7 +6,7 @@
     :class="[
       'art-form px-4 pb-0 pt-4 md:px-4 md:pt-4',
       { 'art-form--custom-layout': customLayout },
-      { 'art-form--dialog-focus': dialogFocus?.focusMode.value },
+      { 'art-form--overlay-focus': overlayFocus?.focusMode.value },
       rootClass
     ]"
   >
@@ -61,7 +61,7 @@
               <span class="art-form-item__label">
                 <component v-if="typeof item.label !== 'string'" :is="item.label" />
                 <ArtTooltip
-                  v-else-if="dialogFocus?.focusMode.value"
+                  v-else-if="overlayFocus?.focusMode.value"
                   :content="item.label"
                   :visible="activeLabelTooltipKey === item.key"
                   :enterable="false"
@@ -284,7 +284,7 @@
   } from '@element-plus/icons-vue'
   import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
   import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
-  import { artDialogFocusKey } from '@/components/core/dialogs/art-dialog/focus'
+  import { artFormFocusKey } from './focus'
   import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
   import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
@@ -577,7 +577,7 @@
     collapsibleSections: true,
     sanitizeOutput: () => ({})
   })
-  const dialogFocus = inject(artDialogFocusKey, undefined)
+  const overlayFocus = inject(artFormFocusKey, undefined)
   const activeLabelTooltipKey = ref<string | null>(null)
   const showOverflowLabelTooltip = (event: MouseEvent, key: string): void => {
     const label = event.currentTarget
@@ -589,18 +589,18 @@
     if (activeLabelTooltipKey.value === key) activeLabelTooltipKey.value = null
   }
   watch(
-    () => dialogFocus?.focusMode.value,
+    () => overlayFocus?.focusMode.value,
     (focused) => {
       if (!focused) activeLabelTooltipKey.value = null
     }
   )
   const effectiveLabelPosition = computed(() =>
-    dialogFocus?.focusMode.value && width.value >= 768 ? 'left' : props.labelPosition
+    overlayFocus?.focusMode.value && width.value >= 768 ? 'left' : props.labelPosition
   )
   const effectiveGutter = computed(() =>
-    dialogFocus?.focusMode.value ? Math.min(props.gutter, 16) : props.gutter
+    overlayFocus?.focusMode.value ? Math.min(props.gutter, 16) : props.gutter
   )
-  let unregisterDialogForm: (() => void) | undefined
+  let unregisterOverlayForm: (() => void) | undefined
 
   export interface ArtFormEmits {
     reset: []
@@ -1038,7 +1038,7 @@
 
   const getFormItemLabelWidth = (item: FormItem): string | number | undefined => {
     if (!item.label) return undefined
-    return dialogFocus?.focusMode.value && width.value >= 768
+    return overlayFocus?.focusMode.value && width.value >= 768
       ? 112
       : item.labelWidth || labelWidth.value
   }
@@ -1262,12 +1262,12 @@
   }
 
   onMounted(() => {
-    unregisterDialogForm = dialogFocus?.registerForm()
+    unregisterOverlayForm = overlayFocus?.registerForm()
     resetCollapsedSections()
     loadImmediateOptions()
   })
 
-  onUnmounted(() => unregisterDialogForm?.())
+  onUnmounted(() => unregisterOverlayForm?.())
 
   watch(
     () =>

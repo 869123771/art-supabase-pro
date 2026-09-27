@@ -30,7 +30,6 @@
  * - KEEP_ALL: 不清除缓存（适用于只读操作）
  *
  * @module utils/table/tableCache
- * @author Art Design Pro Team
  */
 import { hash } from 'ohash'
 

@@ -29,7 +29,6 @@
  * ```
  *
  * @module types/api/api
- * @author Art Design Pro Team
  */
 
 declare namespace Api {

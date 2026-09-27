@@ -255,12 +255,14 @@
                       </div>
                     </div>
                   </div>
-                  <div v-else class="screen-empty">
-                    <div class="screen-empty__radar" aria-hidden="true"> <i /><i /><i /><b /> </div>
-                    <ArtSvgIcon icon="ri:route-line" />
-                    <strong>暂无在途任务</strong>
-                    <span>新任务进入运输状态后将自动出现在队列中</span>
-                  </div>
+                  <ArtEmptyState
+                    v-else
+                    class="screen-empty-state"
+                    title="暂无在途任务"
+                    description="新任务进入运输状态后将自动出现在队列中。"
+                    size="compact"
+                    :visual-size="72"
+                  />
                 </article>
 
                 <article class="screen-panel network-panel">
@@ -341,6 +343,7 @@
 
 <script setup lang="ts">
   import './enterprise-big-screen.scss'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import dayjs from 'dayjs'
   import { formatScreenDate } from './screen-format'
   import EnterpriseCommandCore from './enterprise-command-core.vue'

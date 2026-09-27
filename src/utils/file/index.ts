@@ -1,4 +1,4 @@
-import type { ColInfo } from 'xlsx'
+import type { ColInfo } from '@/vendor/sheetjs/xlsx.mjs'
 import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
 
 export type ExcelCellValue = string | number | boolean | null | undefined | Date
@@ -121,7 +121,10 @@ export const exportExcel = async <TRecord extends object>(
   }
 
   onProgress?.(10)
-  const [{ default: FileSaver }, XLSX] = await Promise.all([import('file-saver'), import('xlsx')])
+  const [{ default: FileSaver }, XLSX] = await Promise.all([
+    import('file-saver'),
+    import('@/vendor/sheetjs/xlsx.mjs')
+  ])
   const rows = buildExcelRows(data, columns, { autoIndex, indexColumnTitle })
   onProgress?.(30)
   const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -132,7 +135,7 @@ export const exportExcel = async <TRecord extends object>(
   workbook.Props = {
     Title: filename,
     Subject: '数据导出',
-    Author: workbookProperties.creator || 'Art Design Pro',
+    Author: workbookProperties.creator || '亿企工场',
     Manager: workbookProperties.lastModifiedBy || '',
     Company: '系统导出',
     Category: '数据',
@@ -160,7 +163,7 @@ export const exportExcel = async <TRecord extends object>(
 }
 
 export async function importExcelFile(file: File): Promise<Array<Record<string, unknown>>> {
-  const XLSX = await import('xlsx')
+  const XLSX = await import('@/vendor/sheetjs/xlsx.mjs')
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 

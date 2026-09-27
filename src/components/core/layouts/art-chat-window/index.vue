@@ -2,6 +2,7 @@
   <ArtDrawer
     ref="drawerRef"
     :show-footer="false"
+    :show-fullscreen-button="false"
     :drawer-props="drawerProps"
     @opened="scrollToBottom"
   >
@@ -823,6 +824,12 @@
   }
 
   :global(.art-ai-assistant-drawer .art-drawer__content) {
+    height: 100%;
+  }
+
+  :global(
+    .art-ai-assistant-drawer .art-drawer__scrollbar > .el-scrollbar__wrap > .el-scrollbar__view
+  ) {
     height: 100%;
   }
 

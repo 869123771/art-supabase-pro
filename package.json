@@ -44,8 +44,8 @@
     "serve": "tsx scripts/serve-built-app.ts",
     "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"tests/**/*.{js,mjs,cjs,ts,tsx}\" \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "node --max-old-space-size=8192 node_modules/vue-tsc/bin/vue-tsc.js --noEmit --pretty false",
-    "test:unit": "tsx --test --test-concurrency=4 tests/unit/*.test.ts",
-    "test:coverage": "node -e \"require('node:fs').mkdirSync('.artifacts/coverage',{recursive:true})\" && tsx --test --test-concurrency=4 --experimental-test-coverage --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=.artifacts/coverage/lcov.info \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
+    "test:unit": "tsx --test --test-concurrency=1 tests/unit/*.test.ts",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('.artifacts/coverage',{recursive:true})\" && tsx --test --test-concurrency=1 --experimental-test-coverage --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=.artifacts/coverage/lcov.info \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
     "test:db": "supabase db query --linked --file supabase/tests/workflow_engine_test.sql",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test tests/e2e/auth-pages.accessibility.spec.ts --project=public-desktop-1440 --project=public-mobile-390",
@@ -99,8 +99,8 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "@file-viewer/preset-all": "2.1.28",
-    "@file-viewer/vue3": "2.1.28",
+    "@file-viewer/preset-all": "3.1.2",
+    "@file-viewer/vue3": "3.1.2",
     "@guolao/vue-monaco-editor": "^1.6.0",
     "@iconify/vue": "^5.0.1",
     "@supabase/supabase-js": "^2.108.2",
@@ -126,7 +126,7 @@
     "axios": "^1.18.1",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.21",
-    "dompurify": "3.4.12",
+    "dompurify": "3.4.16",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.2",
     "exceljs": "4.4.0",
@@ -139,7 +139,7 @@
     "node-sql-parser": "^5.4.0",
     "nprogress": "^0.2.0",
     "ohash": "^2.0.11",
-    "pinia": "^3.0.3",
+    "pinia": "3.0.3",
     "pinia-plugin-persistedstate": "^4.3.0",
     "qrcode.vue": "^3.10.0",
     "sql-formatter": "^15.8.2",
@@ -149,14 +149,13 @@
     "vue-draggable-plus": "^0.6.0",
     "vue-i18n": "^11.4.6",
     "vue-router": "^5.1.0",
-    "xgplayer": "^3.0.24",
-    "xlsx": "^0.18.5"
+    "xgplayer": "^3.0.24"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.1.0",
     "@commitlint/config-conventional": "^21.1.0",
     "@eslint/js": "^10.0.1",
-    "@file-viewer/vite-plugin": "2.1.28",
+    "@file-viewer/vite-plugin": "3.1.2",
     "@playwright/test": "^1.62.1",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26.0.1",
@@ -200,7 +199,7 @@
     "vue-img-cutter": "^3.1.1",
     "vue-tsc": "~3.3.5"
   },
-  "description": "Art Supabase Pro 是一个基于 Vue 3、TypeScript、Element Plus、Supabase 和 AI SQL 助手的企业级中后台应用模板，内置 RBAC 权限、SQL 工作台、AI 写 SQL、车辆管理系统、TMS 运输管理系统和司机端相关能力。",
+  "description": "亿企工场是一个基于 Vue 3、TypeScript、Element Plus、Supabase 和 AI SQL 助手的企业级中后台应用平台，内置 RBAC 权限、SQL 工作台、AI 写 SQL、车辆管理系统、TMS 运输管理系统和司机端相关能力。",
   "main": "index.js",
   "directories": {
     "doc": "docs"

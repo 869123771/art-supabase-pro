@@ -9,6 +9,9 @@ interface RequestTiming {
   failure?: string | null
 }
 
+const roleComponentAssetPattern =
+  /(?:\/src\/views\/system\/role\/index\.vue|\/assets\/role-[^/]+\.js)(?:\?.*)?$/
+
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: 'no-preference' })
 
 async function logInFromNewBrowser(
@@ -43,7 +46,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('request', (request) => {
     const pathname = new URL(request.url()).pathname
-    if (/\/src\/views\/system\/role\/index\.vue$/.test(pathname)) {
+    if (roleComponentAssetPattern.test(request.url())) {
       roleComponentRequests.push(request.url())
     }
     if (/bootstrapHostedApplications(?:-|\.ts)/.test(pathname)) {
@@ -196,7 +199,7 @@ test('首次打开角色管理时组件请求失败会自动重试并落到正�
       recoveryDocumentRequests += 1
     }
   })
-  await page.route('**/src/views/system/role/index.vue*', async (route) => {
+  await page.route(roleComponentAssetPattern, async (route) => {
     if (!failedFirstRequest) {
       failedFirstRequest = true
       await route.abort('failed')

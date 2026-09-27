@@ -29,7 +29,6 @@
  * - 登出时自动清理
  *
  * @module store/modules/user
- * @author Art Design Pro Team
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'

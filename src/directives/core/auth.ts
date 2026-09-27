@@ -29,7 +29,6 @@
  * - 权限判断与编程式 `hasAuth` 调用保持一致
  *
  * @module directives/auth
- * @author Art Design Pro Team
  */
 
 import { App, Directive, DirectiveBinding } from 'vue'

@@ -3,3 +3,4 @@
 /docs/*
 /supabase/**
 /src/main.ts
+/src/vendor/**

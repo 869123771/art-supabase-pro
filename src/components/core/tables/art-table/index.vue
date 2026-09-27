@@ -195,7 +195,7 @@
     </ElTable>
 
     <ArtOverlayLoading
-      v-if="loading && isEmpty"
+      v-if="loading && (isEmpty || loadingOverlay)"
       loading
       overlay
       size="compact"
@@ -359,6 +359,8 @@
     data?: ArtTableRow[]
     /** 加载状态 */
     loading?: boolean
+    /** 有现有行时也显示表格加载遮罩；默认仅空表显示。 */
+    loadingOverlay?: boolean
     /** 列渲染配置 */
     columns?: ArtTableColumn[]
     /** 分页状态 */
@@ -535,6 +537,7 @@
     } as Record<string, unknown>
     delete tableProps.selectedRowKeys
     delete tableProps.fixedColumnMinWidth
+    delete tableProps.loadingOverlay
 
     return {
       ...tableProps,

@@ -1,11 +1,20 @@
 <template>
-  <article class="order-flow art-card-xs">
-    <header>
-      <div><p>运输执行</p><h2>订单流转</h2></div>
-      <button type="button" class="order-flow__link" @click="emit('view-orders')">
-        订单列表 <ArtSvgIcon icon="ri:arrow-right-line" />
-      </button>
-    </header>
+  <ArtSectionCard
+    class="order-flow"
+    :loading="loading"
+    :empty="total === 0"
+    empty-title="暂无订单流转数据"
+    :min-height="300"
+    preserve-content-structure
+  >
+    <template #header>
+      <header>
+        <div><p>运输执行</p><h2>订单流转</h2></div>
+        <button type="button" class="order-flow__link" @click="emit('view-orders')">
+          订单列表 <ArtSvgIcon icon="ri:arrow-right-line" />
+        </button>
+      </header>
+    </template>
 
     <div class="order-flow__summary">
       <div
@@ -47,10 +56,11 @@
         </button>
       </div>
     </div>
-  </article>
+  </ArtSectionCard>
 </template>
 
 <script setup lang="ts">
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { PieDataItem } from '@/types/component/chart'
   import { useChartOps } from '@/hooks/core/useChart'
   import type { DashboardStatusItem } from './types'
@@ -60,6 +70,7 @@
     total: number
     inTransitCount: number
     statusItems: DashboardStatusItem[]
+    loading: boolean
   }>()
   const emit = defineEmits<{ 'view-orders': [] }>()
 
@@ -81,7 +92,7 @@
 </script>
 
 <style scoped lang="scss">
-  .order-flow {
+  .order-flow.art-section-card {
     position: relative;
     min-width: 0;
     padding: 24px 25px;

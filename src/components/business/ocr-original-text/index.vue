@@ -17,23 +17,28 @@
     </header>
 
     <ElInput
+      v-if="normalizedText"
       :model-value="normalizedText"
       type="textarea"
       readonly
       resize="none"
       :rows="rows"
-      :placeholder="emptyText"
       aria-label="识别结果原文"
     />
-    <p v-if="!normalizedText" class="ocr-original-text__empty">
-      <ArtSvgIcon icon="ri:information-line" />{{ emptyText }}
-    </p>
+    <ArtEmptyState
+      v-else
+      title="暂无识别原文"
+      :description="emptyText"
+      size="compact"
+      :visual-size="64"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
   import { ElMessage } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 
   defineOptions({ name: 'OcrOriginalText' })
 
@@ -133,15 +138,6 @@
         color: var(--art-text-gray-400);
         white-space: nowrap;
       }
-    }
-
-    &__empty {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      margin: -2px 0 0;
-      font-size: 11px;
-      color: var(--art-text-gray-500);
     }
 
     :deep(.el-textarea__inner) {

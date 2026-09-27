@@ -26,9 +26,9 @@
  * - 提供便捷的显示/隐藏方法
  *
  * @module utils/ui/loading
- * @author Art Design Pro Team
  */
 import { brandLoaderSvg } from '@/assets/svg/loading'
+import AppConfig from '@/config'
 
 /**
  * 获取当前主题对应的loading背景色
@@ -39,7 +39,7 @@ const getLoadingBackground = (): string => {
   return isDark ? 'rgba(7, 8, 18, 0.97)' : 'rgba(247, 249, 255, 0.98)'
 }
 
-const getLoadingTitle = (): string => document.title.trim() || 'Art Supabase Pro'
+const getLoadingTitle = (): string => document.title.trim() || AppConfig.systemInfo.name
 
 const DEFAULT_LOADING_CONFIG = {
   lock: true,

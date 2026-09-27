@@ -27,7 +27,6 @@
  * ```
  *
  * @module useAuth
- * @author Art Design Pro Team
  */
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/store/modules/user'

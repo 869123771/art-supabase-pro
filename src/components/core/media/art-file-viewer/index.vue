@@ -27,6 +27,7 @@
   import '@file-viewer/vue3/dist/file-viewer3.css'
   import { getFileExtension } from '@/utils/file'
   import { getFilePreviewTarget, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineOptions({ name: 'ArtFileViewerPage' })
 
@@ -37,6 +38,7 @@
   }
 
   const route = useRoute()
+  const { brandName } = useWebsiteConfig()
   const queryKey = Array.isArray(route.query.key) ? route.query.key[0] : route.query.key
   const key = typeof queryKey === 'string' ? queryKey : undefined
   const file = getFilePreviewTarget(key)
@@ -56,7 +58,7 @@
     }
   }
 
-  useTitle(computed(() => `${preview.file?.name || '文件预览'} - Art Supabase Pro`))
+  useTitle(computed(() => `${preview.file?.name || '文件预览'} - ${brandName.value}`))
 </script>
 
 <style scoped lang="scss">

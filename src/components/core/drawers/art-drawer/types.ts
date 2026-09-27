@@ -45,6 +45,8 @@ export interface ArtDrawerExpose<TData = unknown> extends ArtOverlayExpose<
   scrollbarRef: Readonly<Ref<unknown>>
   /** 当前是否全屏 */
   fullscreen: Readonly<Ref<boolean>>
+  /** 当前是否为专注填单模式 */
+  focusMode: Readonly<Ref<boolean>>
   /** 打开抽屉并传入本次数据与覆盖配置 */
   handleOpen: (data?: TData, options?: ArtDrawerOptions<TData>) => Promise<void>
   /** 获取底层 ElDrawer 实例 */
@@ -53,6 +55,9 @@ export interface ArtDrawerExpose<TData = unknown> extends ArtOverlayExpose<
   setFullscreen: (value: boolean) => void
   /** 切换全屏状态 */
   toggleFullscreen: () => void
+  /** 设置专注填单模式；退出时恢复进入前的全屏状态 */
+  setFocusMode: (value: boolean) => void
+  toggleFocusMode: () => void
   /** 控制内容滚动位置 */
   scrollTo: (options: ArtScrollOptions) => void
 }
@@ -77,6 +82,8 @@ export interface ArtDrawerEmits<TData = unknown> {
   'resize-start': [event: MouseEvent, size: number]
   resize: [event: MouseEvent, size: number]
   'resize-end': [event: MouseEvent, size: number]
+  'fullscreen-change': [value: boolean]
+  'focus-change': [value: boolean]
 }
 
 export interface ArtDrawerSlotProps<TData = unknown> {

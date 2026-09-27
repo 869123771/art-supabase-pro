@@ -205,7 +205,7 @@
                 支持脱敏
               </span>
               <span class="field-permission-page__field-default">
-                默认 {{ accessMeta[field.defaultAccess].label }}
+                默认 {{ accessLabel(field.defaultAccess) }}
               </span>
             </div>
 
@@ -218,7 +218,7 @@
               >
                 <ElOption
                   v-if="subjectType === 'user'"
-                  :label="`继承角色（${accessMeta[field.inheritedAccess].label}）`"
+                  :label="`继承角色（${accessLabel(field.inheritedAccess)}）`"
                   value="inherit"
                 />
                 <ElOption
@@ -234,7 +234,7 @@
               >
                 <span>当前生效</span>
                 <b :class="`is-${effectiveAccess(field)}`">
-                  {{ accessMeta[effectiveAccess(field)].label }}
+                  {{ accessLabel(effectiveAccess(field)) }}
                 </b>
               </span>
             </div>
@@ -351,6 +351,7 @@
   } from '@/api/field-permission'
   import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
@@ -418,12 +419,13 @@
     { label: '按人员例外', value: 'user' }
   ]
 
-  const accessOptions: Array<{ label: string; value: AccessLevel }> = [
-    { label: '完全不可见', value: 'hidden' },
-    { label: '脱敏查看', value: 'masked' },
-    { label: '仅查看', value: 'read' },
-    { label: '可编辑', value: 'edit' }
-  ]
+  const dictionaryAccessOptions = useDictionaryOptions('sysFieldAccessLevel')
+  const allowedAccessValues = new Set<AccessLevel>(['hidden', 'masked', 'read', 'edit'])
+  const accessOptions = computed(() =>
+    dictionaryAccessOptions.filter((option): option is { label: string; value: AccessLevel } =>
+      allowedAccessValues.has(option.value as AccessLevel)
+    )
+  )
 
   const accessMeta: Record<AccessLevel, AccessMeta> = {
     hidden: {
@@ -447,6 +449,8 @@
       icon: 'ri:edit-line'
     }
   }
+  const accessLabel = (value: AccessLevel): string =>
+    accessOptions.value.find((option) => option.value === value)?.label ?? accessMeta[value].label
 
   const subjectOptions = computed(() =>
     subjectType.value === 'role' ? roleOptions.value : userOptions.value
@@ -555,7 +559,7 @@
     Boolean(field.maskStrategy && field.maskStrategy !== 'none')
 
   const auditAccessLabel = (access: AccessLevel | null): string =>
-    access ? accessMeta[access].label : subjectType.value === 'user' ? '继承角色' : '默认权限'
+    access ? accessLabel(access) : subjectType.value === 'user' ? '继承角色' : '默认权限'
 
   const auditActorLabel = (auditLog: AuditLog): string => {
     if (auditLog.actorEmail && auditLog.actorEmail !== auditLog.actorName) {

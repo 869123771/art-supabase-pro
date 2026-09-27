@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="./src/assets/images/common/logo.webp" width="96" alt="Art Supabase Pro Logo" />
-  <h1>Art Supabase Pro</h1>
+  <img src="./src/assets/images/common/logo.webp" width="96" alt="亿企工场 Logo" />
+  <h1>亿企工场</h1>
   <p><strong>Vue 3 + Supabase 驱动的模块化企业业务平台</strong></p>
   <p>统一平台底座，组合运输、车辆、财务、人力、安全生产、司机协同与可治理 AI。</p>
 
@@ -27,7 +27,7 @@
 
 ## 项目定位
 
-Art Supabase Pro 不是只展示表格、表单和图表的 UI 模板。它以 **Supabase Auth、PostgreSQL、RLS、Storage、Realtime、RPC 与 Edge Functions** 为后端基础，以主平台统一公共运行时、业务子仓独立演进的方式，提供可以继续落地和二次开发的企业业务能力。
+亿企工场不是只展示表格、表单和图表的 UI 模板。它以 **Supabase Auth、PostgreSQL、RLS、Storage、Realtime、RPC 与 Edge Functions** 为后端基础，以主平台统一公共运行时、业务子仓独立演进的方式，提供可以继续落地和二次开发的企业业务能力。
 
 项目当前已经覆盖：
 
@@ -337,4 +337,4 @@ art-supabase-pro/
 
 项目采用 [木兰宽松许可证第 2 版（MulanPSL-2.0）](LICENSE) 开源。欢迎提交 Issue、Pull Request，也欢迎分享你的 Supabase、TMS、车辆管理和 AI 业务实践。
 
-本项目基于优秀的 [Art Design Pro](https://gitee.com/lingchen163/art-design-pro) 继续演进，感谢原项目及其社区。
+感谢开源社区对基础界面能力的贡献。

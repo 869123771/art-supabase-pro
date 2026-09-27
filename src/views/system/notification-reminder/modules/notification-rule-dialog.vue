@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { uniq } from 'lodash-es'
   import type { FormItemRule, FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -33,6 +34,9 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { saveNotificationRule } from '@/api/notification-reminder'
   import { fetchGetEnableRoleList } from '@/api/system-manage'
+
+  const notificationRecipientsModeOptions = useDictionaryOptions('notificationRecipientsMode')
+  const notificationRepeatModeOptions = useDictionaryOptions('notificationRepeatMode')
 
   interface Props {
     tenantId: string
@@ -151,13 +155,7 @@
     channels: [{ required: true, type: 'array', min: 1, message: '请至少选择一个渠道' }]
   }
 
-  const channelOptions = [
-    { label: '站内通知', value: 'in_app' },
-    { label: '邮件', value: 'email' },
-    { label: '短信', value: 'sms' },
-    { label: '钉钉', value: 'dingtalk' },
-    { label: '企业微信', value: 'wecom' }
-  ]
+  const channelOptions = useDictionaryOptions('notificationChannel')
 
   const items = computed<FormItem[]>(() => [
     { label: '触发条件', key: 'triggerSection', type: 'divider', span: 24 },
@@ -202,10 +200,7 @@
       type: 'segment',
       span: 24,
       props: {
-        options: [
-          { label: '仅提醒一次', value: 'once' },
-          { label: '按间隔重复', value: 'repeat' }
-        ]
+        options: notificationRepeatModeOptions
       }
     },
     {
@@ -223,10 +218,7 @@
       type: 'radioGroup',
       span: 24,
       props: {
-        options: [
-          { label: '业务负责人优先，并通知指定角色', value: 'owner_then_roles' },
-          { label: '仅通知指定角色', value: 'tenant_admins' }
-        ]
+        options: notificationRecipientsModeOptions
       }
     },
     {

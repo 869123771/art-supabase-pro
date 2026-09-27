@@ -40,4 +40,13 @@ $env:E2E_BROWSER_CHANNEL='chrome'
 pnpm.cmd test:e2e
 ```
 
+如果本机访问 Supabase 项目域名时连接被重置，而通过代理可以访问，需同时为 Node 登录准备阶段和浏览器请求配置代理。`E2E_PROXY_URL` 会自动绕过本地预览地址：
+
+```powershell
+$env:HTTPS_PROXY='http://127.0.0.1:PORT'
+$env:NODE_USE_ENV_PROXY='1'
+$env:E2E_PROXY_URL=$env:HTTPS_PROXY
+pnpm.cmd test:e2e
+```
+
 失败时使用 `pnpm.cmd test:e2e:report` 查看截图差异与 Trace。认证状态只保存在被 Git 忽略的 `playwright/.auth/`。

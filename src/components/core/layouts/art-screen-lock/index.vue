@@ -2,149 +2,159 @@
 <template>
   <div class="layout-lock-screen">
     <!-- 开发者工具警告覆盖层 -->
-    <div
-      v-if="showDevToolsWarning"
-      class="fixed top-0 left-0 z-[999999] flex-cc w-full h-full text-white bg-gradient-to-br from-[#1e1e1e] to-black animate-fade-in"
-    >
-      <div class="p-5 text-center select-none">
-        <div class="mb-7.5 text-5xl">🔒</div>
-        <h1 class="m-0 mb-5 text-3xl font-semibold text-danger">系统已锁定</h1>
-        <p class="max-w-125 m-0 text-lg leading-relaxed text-white">
-          检测到开发者工具已打开<br />
-          为了系统安全，请关闭开发者工具后继续使用
-        </p>
-        <div class="mt-7.5 text-sm text-gray-400">Security Lock Activated</div>
+    <div v-if="showDevToolsWarning" class="lock-warning" role="alert">
+      <div class="lock-warning__panel">
+        <span class="lock-warning__symbol" aria-hidden="true">
+          <ElIcon><WarningFilled /></ElIcon>
+        </span>
+        <h1>{{ $t('lockScreen.warning.title') }}</h1>
+        <p>{{ $t('lockScreen.warning.description') }}</p>
       </div>
     </div>
 
     <!-- 锁屏弹窗 -->
-    <div v-if="!isLock">
-      <ElDialog v-model="visible" :width="370" :show-close="false" @open="handleDialogOpen">
-        <div class="flex-c flex-col">
-          <img
-            class="w-16 h-16 rounded-full"
-            src="@imgs/user/avatar.webp"
-            width="64"
-            height="64"
-            alt="用户头像"
-          />
-          <div class="mt-7.5 mb-3.5 text-base font-medium">{{ userInfo.userName }}</div>
-          <ArtForm
-            custom-layout
-            :show-reset="false"
-            :show-submit="false"
-            ref="formRef"
-            v-model="formData"
-            :rules="rules"
-            form-class="w-[90%]"
-            @submit="handleLock"
-          >
-            <ElFormItem prop="password">
-              <ElInput
-                v-model="formData.password"
-                type="password"
-                :placeholder="$t('lockScreen.lock.inputPlaceholder')"
-                :show-password="true"
-                autocomplete="new-password"
-                ref="lockInputRef"
-                class="w-full mt-9"
-                @keyup.enter="handleLock"
-              >
-                <template #suffix>
-                  <button
-                    type="button"
-                    class="lock-action"
-                    aria-label="锁定系统"
-                    title="锁定系统"
-                    @click="handleLock"
-                  >
-                    <ElIcon><Lock /></ElIcon>
-                  </button>
-                </template>
-              </ElInput>
-            </ElFormItem>
-            <ElButton type="primary" class="w-full mt-0.5" @click="handleLock" v-ripple>
-              {{ $t('lockScreen.lock.btnText') }}
-            </ElButton>
-          </ArtForm>
+    <ElDialog
+      v-if="!isLock"
+      v-model="visible"
+      width="440px"
+      class="lock-dialog"
+      align-center
+      :aria-label="$t('lockScreen.lock.title')"
+      @open="handleDialogOpen"
+      @closed="handleDialogClosed"
+    >
+      <template #header>
+        <div class="lock-dialog__header">
+          <span class="lock-symbol" aria-hidden="true">
+            <ElIcon><Lock /></ElIcon>
+          </span>
+          <div class="lock-dialog__heading">
+            <h2>{{ $t('lockScreen.lock.title') }}</h2>
+            <p>{{ $t('lockScreen.lock.description') }}</p>
+          </div>
         </div>
-      </ElDialog>
-    </div>
+      </template>
+
+      <div class="lock-identity">
+        <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
+        <div class="lock-identity__text">
+          <span>{{ $t('lockScreen.currentAccount') }}</span>
+          <strong :title="displayName">{{ displayName }}</strong>
+        </div>
+      </div>
+
+      <ArtForm
+        ref="formRef"
+        v-model="formData"
+        custom-layout
+        root-class="lock-screen-form"
+        :show-reset="false"
+        :show-submit="false"
+        :rules="rules"
+        @submit="handleLock"
+      >
+        <ElFormItem
+          prop="password"
+          for="lock-screen-password"
+          :label="$t('lockScreen.lock.passwordLabel')"
+          class="lock-field"
+        >
+          <ElInput
+            id="lock-screen-password"
+            ref="lockInputRef"
+            v-model="formData.password"
+            class="lock-input"
+            type="password"
+            name="lock-screen-password"
+            autocomplete="new-password"
+            show-password
+            :placeholder="$t('lockScreen.lock.inputPlaceholder')"
+          />
+        </ElFormItem>
+        <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
+          {{ $t('lockScreen.lock.btnText') }}
+        </ElButton>
+        <ElButton text class="lock-secondary" @click="visible = false">
+          {{ $t('lockScreen.lock.cancelBtnText') }}
+        </ElButton>
+      </ArtForm>
+    </ElDialog>
 
     <!-- 解锁界面 -->
-    <div v-else class="unlock-content">
-      <div class="flex-c flex-col w-80">
-        <img
-          class="w-16 h-16 mt-5 rounded-full"
-          src="@imgs/user/avatar.webp"
-          width="64"
-          height="64"
-          alt="用户头像"
-        />
-        <div class="mt-3 mb-3.5 text-base font-medium">
-          {{ userInfo.userName }}
+    <main v-else class="unlock-content">
+      <div class="unlock-content__brand">
+        <ArtLogo :size="32" />
+        <span>{{ brandName }}</span>
+      </div>
+
+      <section class="unlock-panel" aria-labelledby="unlock-title">
+        <span class="lock-symbol lock-symbol--large" aria-hidden="true">
+          <ElIcon><Lock /></ElIcon>
+        </span>
+        <h1 id="unlock-title">{{ $t('lockScreen.unlock.title') }}</h1>
+        <p class="unlock-panel__description">{{ $t('lockScreen.unlock.description') }}</p>
+
+        <div class="lock-identity">
+          <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
+          <div class="lock-identity__text">
+            <span>{{ $t('lockScreen.currentAccount') }}</span>
+            <strong :title="displayName">{{ displayName }}</strong>
+          </div>
         </div>
+
         <ArtForm
-          custom-layout
-          :show-reset="false"
-          :show-submit="false"
           ref="unlockFormRef"
           v-model="unlockForm"
+          custom-layout
+          root-class="lock-screen-form"
+          :show-reset="false"
+          :show-submit="false"
           :rules="rules"
-          form-class="w-full !px-2.5"
           @submit="handleUnlock"
         >
-          <ElFormItem prop="password">
+          <ElFormItem
+            prop="password"
+            for="unlock-screen-password"
+            :label="$t('lockScreen.unlock.passwordLabel')"
+            class="lock-field"
+          >
             <ElInput
-              v-model="unlockForm.password"
-              type="password"
-              :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
-              :show-password="true"
-              autocomplete="new-password"
+              id="unlock-screen-password"
               ref="unlockInputRef"
-              class="mt-5"
-            >
-              <template #suffix>
-                <button
-                  type="button"
-                  class="lock-action"
-                  aria-label="解锁系统"
-                  title="解锁系统"
-                  @click="handleUnlock"
-                >
-                  <ElIcon><Unlock /></ElIcon>
-                </button>
-              </template>
-            </ElInput>
+              v-model="unlockForm.password"
+              class="lock-input"
+              type="password"
+              name="unlock-screen-password"
+              autocomplete="new-password"
+              show-password
+              :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
+              @input="unlockError = ''"
+            />
           </ElFormItem>
-
-          <ElButton type="primary" class="w-full mt-2" @click="handleUnlock" v-ripple>
+          <p v-if="unlockError" class="unlock-error" role="alert">{{ unlockError }}</p>
+          <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
             {{ $t('lockScreen.unlock.btnText') }}
           </ElButton>
-          <div class="w-full text-center">
-            <ElButton
-              text
-              class="mt-2.5 !text-g-600 hover:!text-theme hover:!bg-transparent"
-              @click="toLogin"
-            >
-              {{ $t('lockScreen.unlock.backBtnText') }}
-            </ElButton>
-          </div>
+          <ElButton text class="lock-secondary" @click="toLogin">
+            {{ $t('lockScreen.unlock.backBtnText') }}
+          </ElButton>
         </ArtForm>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
   import ArtForm from '@/components/core/forms/art-form/index.vue'
-  import { Lock, Unlock } from '@element-plus/icons-vue'
+  import { Lock, WarningFilled } from '@element-plus/icons-vue'
   import { useScrollLock } from '@vueuse/core'
   import { ElInput, type FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import CryptoJS from 'crypto-js'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
   import { useUserStore } from '@/store/modules/user'
   import { mittBus } from '@/utils/sys'
+  import defaultAvatar from '@imgs/user/avatar.webp'
 
   // 国际化
   const { t } = useI18n()
@@ -155,6 +165,14 @@
   // Store
   const userStore = useUserStore()
   const { info: userInfo, lockPassword, isLock } = storeToRefs(userStore)
+  const { brandName } = useWebsiteConfig()
+  const displayName = computed(
+    () =>
+      userInfo.value.nickName ||
+      userInfo.value.userName ||
+      userInfo.value.email ||
+      t('lockScreen.accountFallback')
+  )
   const isBodyScrollLocked = useScrollLock(document.body)
 
   // 响应式数据
@@ -162,6 +180,7 @@
   const lockInputRef = ref<InstanceType<typeof ElInput>>()
   const unlockInputRef = ref<InstanceType<typeof ElInput>>()
   const showDevToolsWarning = ref<boolean>(false)
+  const unlockError = ref('')
 
   // 表单相关
   const formRef = ref<InstanceType<typeof ArtForm>>()
@@ -180,7 +199,7 @@
     password: [
       {
         required: true,
-        message: t('lockScreen.lock.inputPlaceholder'),
+        message: t('lockScreen.passwordRequired'),
         trigger: 'blur'
       }
     ]
@@ -381,18 +400,21 @@
     }, 100)
   }
 
+  const handleDialogClosed = () => {
+    formData.password = ''
+    formRef.value?.clearValidate()
+  }
+
   const handleLock = async () => {
     if (!formRef.value) return
 
-    await formRef.value.validate((valid, fields) => {
+    await formRef.value.validate((valid) => {
       if (valid) {
         const encryptedPassword = CryptoJS.AES.encrypt(formData.password, ENCRYPT_KEY).toString()
         userStore.setLockStatus(true)
         userStore.setLockPassword(encryptedPassword)
         visible.value = false
         formData.password = ''
-      } else {
-        console.error('表单验证失败:', fields)
       }
     })
   }
@@ -400,7 +422,7 @@
   const handleUnlock = async () => {
     if (!unlockFormRef.value) return
 
-    await unlockFormRef.value.validate((valid, fields) => {
+    await unlockFormRef.value.validate((valid) => {
       if (valid) {
         const isValid = verifyPassword(unlockForm.password, lockPassword.value)
 
@@ -409,25 +431,17 @@
             userStore.setLockStatus(false)
             userStore.setLockPassword('')
             unlockForm.password = ''
+            unlockError.value = ''
             visible.value = false
             showDevToolsWarning.value = false
           } catch (error) {
             console.error('更新store失败:', error)
           }
         } else {
-          // 触发抖动动画
-          const inputElement = unlockInputRef.value?.$el
-          if (inputElement) {
-            inputElement.classList.add('shake-animation')
-            setTimeout(() => {
-              inputElement.classList.remove('shake-animation')
-            }, 300)
-          }
-          ElMessage.error(t('lockScreen.pwdError'))
+          unlockError.value = t('lockScreen.pwdError')
           unlockForm.password = ''
+          unlockInputRef.value?.input?.focus()
         }
-      } else {
-        console.error('表单验证失败:', fields)
       }
     })
   }
@@ -450,6 +464,7 @@
     } else {
       isBodyScrollLocked.value = false
       showDevToolsWarning.value = false
+      unlockError.value = ''
     }
   })
 
@@ -462,7 +477,7 @@
     document.addEventListener('keydown', handleKeydown)
 
     if (isLock.value) {
-      visible.value = true
+      isBodyScrollLocked.value = true
       setTimeout(() => {
         unlockInputRef.value?.input?.focus()
       }, 100)
@@ -485,32 +500,209 @@
 </script>
 
 <style lang="scss" scoped>
-  .layout-lock-screen :deep(.el-dialog) {
-    border-radius: 10px;
+  .lock-warning {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: var(--el-bg-color-page);
   }
 
-  .lock-action {
+  .lock-warning__panel {
+    width: min(100%, 440px);
+    padding: 36px;
+    text-align: center;
+    background: var(--default-box-color);
+    border: 1px solid var(--art-modal-surface-border);
+    border-radius: var(--art-feature-radius, 18px);
+    box-shadow: var(--art-modal-surface-shadow);
+
+    h1 {
+      margin: 18px 0 8px;
+      font-size: 22px;
+      font-weight: 650;
+      line-height: 30px;
+      color: var(--el-text-color-primary);
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 22px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  .lock-warning__symbol {
     display: inline-grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: 56px;
+    height: 56px;
+    font-size: 26px;
+    color: var(--el-color-danger);
+    background: color-mix(in srgb, var(--el-color-danger) 10%, var(--default-box-color));
+    border-radius: 16px;
+  }
+
+  :global(.el-dialog.lock-dialog) {
+    max-width: calc(100vw - 32px);
+    border: 1px solid var(--art-modal-surface-border);
+    border-radius: var(--art-feature-radius, 18px) !important;
+    box-shadow: var(--art-modal-surface-shadow);
+  }
+
+  :global(.lock-dialog .el-dialog__header) {
+    padding: 30px 30px 0;
+    margin: 0;
+  }
+
+  :global(.lock-dialog .el-dialog__headerbtn) {
+    top: 18px;
+    right: 18px;
+    width: 36px;
+    height: 36px;
+  }
+
+  :global(.lock-dialog .el-dialog__body) {
+    padding: 24px 30px 28px;
+  }
+
+  :global(.lock-screen-form.art-form) {
     padding: 0;
+  }
+
+  .lock-dialog__header {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding-right: 28px;
+  }
+
+  .lock-dialog__heading {
+    min-width: 0;
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+      line-height: 28px;
+      color: var(--el-text-color-primary);
+    }
+
+    p {
+      margin: 5px 0 0;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  .lock-symbol {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--theme-color) 10%, var(--default-box-color));
+    border-radius: var(--art-control-radius, 10px);
+
+    &--large {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto;
+      font-size: 26px;
+      border-radius: 16px;
+    }
+  }
+
+  .lock-identity {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+    padding: 12px 14px;
+    background: var(--art-gray-100);
+    border: 1px solid var(--art-card-border);
+    border-radius: var(--art-control-radius, 10px);
+
+    img {
+      flex: none;
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+  }
+
+  .lock-identity__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+
+    span {
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--el-text-color-secondary);
+    }
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 20px;
+      color: var(--el-text-color-primary);
+      white-space: nowrap;
+    }
+  }
+
+  .lock-field {
+    margin: 24px 0 20px;
+  }
+
+  .lock-field :deep(.el-form-item__label) {
+    height: auto;
+    padding: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--el-text-color-primary);
+  }
+
+  .lock-input {
+    width: 100%;
+  }
+
+  .lock-input :deep(.el-input__wrapper) {
+    min-height: 46px;
+    padding: 0 12px;
+    border-radius: var(--art-control-radius, 10px);
+  }
+
+  .lock-submit {
+    width: 100%;
+    height: 46px;
+    font-weight: 600;
+    border-radius: var(--art-control-radius, 10px);
+  }
+
+  .lock-secondary {
+    display: flex;
+    width: 100%;
+    height: 40px;
+    margin: 10px 0 0 !important;
     color: var(--el-text-color-secondary);
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-    border-radius: var(--el-border-radius-base);
+  }
 
-    &:hover,
-    &:focus-visible {
-      color: var(--theme-color);
-      background: color-mix(in srgb, var(--theme-color) 8%, transparent);
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: var(--art-themed-action-focus-shadow);
-    }
+  .lock-secondary:focus-visible {
+    outline: 2px solid var(--theme-color);
+    outline-offset: 2px;
   }
 
   .unlock-content {
@@ -520,58 +712,85 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    background-color: #fff;
-    background-image: url('@imgs/lock/bg_light.webp');
-    background-size: cover;
-    transition: transform 0.3s ease-in-out;
+    padding: 80px 20px 32px;
+    overflow-y: auto;
+    background: color-mix(in srgb, var(--theme-color) 3%, var(--el-bg-color-page));
   }
 
-  .dark {
-    .unlock-content {
-      background-image: url('@imgs/lock/bg_dark.webp');
-    }
-  }
+  .unlock-content__brand {
+    position: absolute;
+    top: 28px;
+    left: 32px;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    max-width: calc(100% - 64px);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--el-text-color-primary);
 
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-in-out;
-  }
-
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-
-    10%,
-    30%,
-    50%,
-    70%,
-    90% {
-      transform: translateX(-10px);
-    }
-
-    20%,
-    40%,
-    60%,
-    80% {
-      transform: translateX(10px);
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
-  .shake-animation {
-    animation: shake 0.5s ease-in-out;
+  .unlock-panel {
+    width: min(100%, 440px);
+    padding: 36px;
+    margin: auto;
+    text-align: center;
+    background: var(--default-box-color);
+    border: 1px solid var(--art-modal-surface-border);
+    border-radius: var(--art-feature-radius, 18px);
+    box-shadow: var(--art-modal-surface-shadow);
+
+    h1 {
+      margin: 20px 0 0;
+      font-size: 24px;
+      font-weight: 650;
+      line-height: 32px;
+      color: var(--el-text-color-primary);
+    }
+
+    .lock-identity {
+      margin-top: 28px;
+    }
+  }
+
+  .unlock-panel__description {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .unlock-error {
+    margin: -8px 0 14px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--el-color-danger);
+    text-align: left;
+  }
+
+  @media (width <= 480px) {
+    :global(.lock-dialog .el-dialog__header) {
+      padding: 24px 22px 0;
+    }
+
+    :global(.lock-dialog .el-dialog__body) {
+      padding: 22px 22px 24px;
+    }
+
+    .unlock-content__brand {
+      top: 20px;
+      left: 20px;
+      max-width: calc(100% - 40px);
+    }
+
+    .unlock-panel {
+      padding: 30px 24px;
+    }
   }
 </style>

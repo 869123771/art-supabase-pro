@@ -29,7 +29,6 @@
  * ```
  *
  * @module useTableColumns
- * @author Art Design Pro Team
  */
 
 import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
