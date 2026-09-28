@@ -1,1 +1,0 @@
-import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./domain-command-screen-B7TO5Yt3.js";var i=e({name:`AiSafetyCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`ai-safety`}))}});export{i as default};

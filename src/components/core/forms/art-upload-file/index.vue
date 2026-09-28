@@ -360,6 +360,11 @@
     uploading.value = false
     ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件上传失败，请重试'))
   }
+
+  defineExpose({
+    hasPendingUpload: () =>
+      uploading.value || fileList.value.some((file) => !file.url && file.status !== 'fail')
+  })
 </script>
 
 <style scoped lang="scss">

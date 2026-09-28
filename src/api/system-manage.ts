@@ -18,7 +18,7 @@ const organizationTreeUtils = new TreeUtils({
 const ORGANIZATION_DETAIL_SELECT = `
   *,
   tenant:sys_tenant!sys_organization_tenant_id_fkey(tenant_code, tenant_name),
-  leader:sys_user!sys_organization_leader_user_id_fkey(
+  leader:sys_user!sys_organization_leader_user_tenant_fkey(
     id, avatar, user_name, nick_name, user_email
   ),
   members:sys_user!sys_user_organization_id_fkey(

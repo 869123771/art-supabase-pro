@@ -428,6 +428,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       button('View', '查看'),
       button('Dispatch', '配载调度'),
+      button('Merge', '合单配载'),
+      button('Split', '拆单配载'),
       button('Cancel', '取消订单'),
       button('Export', '导出')
     ]
@@ -481,10 +483,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   { menuName: 'Supplier', buttons: crud({ import: true, export: true }) },
   {
     menuName: 'VehicleArchiveManage',
-    buttons: crud({ view: true }).map((item) => ({
-      ...item,
-      code: `VehicleArchive:${item.action}`
-    }))
+    buttons: [
+      ...crud({ view: true }).map((item) => ({
+        ...item,
+        code: `VehicleArchive:${item.action}`
+      })),
+      button('TypeAdd', '新增车型规格', 'VehicleArchive:TypeAdd'),
+      button('TypeEdit', '编辑车型规格', 'VehicleArchive:TypeEdit'),
+      button('TypeDelete', '删除车型规格', 'VehicleArchive:TypeDelete')
+    ]
   },
   {
     menuName: 'VehicleAccident',
