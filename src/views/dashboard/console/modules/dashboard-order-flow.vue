@@ -92,10 +92,9 @@
 </script>
 
 <style scoped lang="scss">
-  .order-flow.art-section-card {
+  .order-flow {
     position: relative;
     min-width: 0;
-    padding: 24px 25px;
     overflow: hidden;
     background:
       radial-gradient(
@@ -104,6 +103,10 @@
         transparent 38%
       ),
       var(--default-box-color);
+
+    &.art-section-card {
+      padding: 24px 25px;
+    }
 
     header {
       display: flex;
@@ -191,7 +194,7 @@
 
     &__distribution {
       display: grid;
-      grid-template-columns: minmax(145px, 0.78fr) minmax(178px, 1fr);
+      grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr);
       gap: 18px;
       align-items: center;
       min-height: 220px;
@@ -294,7 +297,9 @@
     }
 
     @media screen and (width <= 560px) {
-      padding: 21px 18px;
+      &.art-section-card {
+        padding: 21px 18px;
+      }
 
       &__distribution {
         grid-template-columns: 1fr;

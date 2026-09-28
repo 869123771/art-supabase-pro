@@ -123,14 +123,15 @@
   const slots = useSlots()
   const hasHeader = computed(() => Boolean(props.title || props.subtitle || slots.actions))
   const hasCardHeader = computed(() => Boolean(slots.header || hasHeader.value))
-  const stateMinHeight = computed(() =>
-    props.loading || props.error || props.empty ? props.minHeight : 0
-  )
+  const hasScrollBody = computed(() => props.showScrollbar && !props.preserveContentStructure)
+  const stateMinHeight = computed(() => {
+    if (props.loading || props.error || props.empty) return props.minHeight
+    return hasScrollBody.value ? 'auto' : 0
+  })
   const hasActiveState = computed(() => Boolean(props.loading || props.error || props.empty))
   const hasReplacementState = computed(
     () => (props.loading && props.loadingMode === 'skeleton') || Boolean(props.error || props.empty)
   )
-  const hasScrollBody = computed(() => props.showScrollbar && !props.preserveContentStructure)
   const asyncStateProps = computed(() => ({
     loading: props.loading,
     loadingMode: props.loadingMode,
@@ -201,6 +202,7 @@
       :deep(> .el-scrollbar__wrap > .el-scrollbar__view) {
         display: flex;
         flex-direction: column;
+        height: 100%;
         min-height: 100%;
       }
     }

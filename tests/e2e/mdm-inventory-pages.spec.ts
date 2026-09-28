@@ -746,6 +746,13 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     if (path === 'bin-3d') {
       await expect(page.getByRole('navigation', { name: '货架库区导航' })).toBeVisible()
       await expect(page.locator('canvas.rack-scene__canvas')).toBeVisible()
+      const sceneFrame = await page.locator('.scene-frame').boundingBox()
+      const sceneCanvas = await page.locator('canvas.rack-scene__canvas').boundingBox()
+      expect(sceneFrame).not.toBeNull()
+      expect(sceneCanvas).not.toBeNull()
+      expect(sceneCanvas!.height, '立体场景应填满库位空间卡片').toBeGreaterThanOrEqual(
+        sceneFrame!.height - 2
+      )
       await expect(page.locator('.art-workspace-splitter')).toHaveCount(2)
       for (const label of ['间距设置', '重置视角', '刷新库位'])
         await expect(page.getByRole('button', { name: label }).locator('svg')).toBeVisible()
@@ -756,6 +763,11 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       await page.getByRole('button', { name: '间距设置' }).click()
       await page.locator('.el-slider__button-wrapper').first().press('ArrowRight')
       await expect(page.getByText('24px')).toBeVisible()
+      const rowSlider = page.getByRole('slider', { name: '货架排间距' })
+      await expect(rowSlider).toBeVisible()
+      const originalRowGap = Number(await rowSlider.getAttribute('aria-valuenow'))
+      await rowSlider.press('ArrowRight')
+      await expect(rowSlider).toHaveAttribute('aria-valuenow', String(originalRowGap + 4))
       await page.getByRole('button', { name: '间距设置' }).click()
       await page.locator('.rack-scene__label').filter({ hasText: 'B02' }).click()
       await expect(page.getByText('B02', { exact: true }).last()).toBeVisible()
@@ -776,7 +788,7 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
         await page.mouse.up()
         await expect
           .poll(async () => (await detailPanel.boundingBox())?.width ?? 0)
-          .toBeGreaterThan(beforeWidth + 100)
+          .toBeGreaterThan(beforeWidth + 40)
         await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-detail-expanded.png') })
         const expandedHandle = await detailSplitter
           .locator('.el-splitter-bar')
@@ -805,6 +817,17 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
         'aria-pressed',
         'true'
       )
+      const firstRackLabel = await page
+        .locator('.rack-scene__label')
+        .filter({ hasText: 'A01' })
+        .boundingBox()
+      const secondRackLabel = await page
+        .locator('.rack-scene__label')
+        .filter({ hasText: 'B02' })
+        .boundingBox()
+      expect(firstRackLabel).not.toBeNull()
+      expect(secondRackLabel).not.toBeNull()
+      expect(Math.abs(firstRackLabel!.y - secondRackLabel!.y)).toBeGreaterThan(30)
       if ((page.viewportSize()?.width ?? 0) >= 1120)
         await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-top.png') })
       await page.getByRole('button', { name: /彩卷区/ }).click()

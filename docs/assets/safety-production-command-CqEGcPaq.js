@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./domain-command-screen-CC5K8tCc.js";var i=e({name:`SafetyProductionCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`safety-production`}))}});export{i as default};

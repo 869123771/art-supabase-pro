@@ -477,7 +477,8 @@
 
   const dialogProps = {
     appendToBody: true,
-    closeOnClickModal: false
+    closeOnClickModal: false,
+    class: 'art-data-select-dialog'
   }
 
   const confirmedKeys = computed(() => confirmedRows.value.map((row) => getRowKey(row)))
@@ -1015,6 +1016,10 @@
 </script>
 
 <style scoped lang="scss">
+  :global(.art-dialog.art-data-select-dialog) {
+    --art-dialog-content-padding: var(--art-space-4) var(--art-space-5);
+  }
+
   .art-data-select {
     width: 100%;
   }

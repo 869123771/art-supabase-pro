@@ -59,11 +59,14 @@
 </script>
 
 <style scoped lang="scss">
-  .dashboard-trend.art-section-card {
+  .dashboard-trend {
     position: relative;
     min-width: 0;
-    padding: 24px 26px 17px;
     overflow: hidden;
+
+    &.art-section-card {
+      padding: 24px 26px 17px;
+    }
 
     &::before {
       position: absolute;
@@ -161,7 +164,9 @@
     }
 
     @media screen and (width <= 560px) {
-      padding: 21px 18px 13px;
+      &.art-section-card {
+        padding: 21px 18px 13px;
+      }
 
       header {
         align-items: flex-start;
