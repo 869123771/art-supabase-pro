@@ -1,1 +1,0 @@
-import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./center-6uX0j4m3.js";var i=e({name:`MdmGoldenRecord`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-view":`matches`}))}});export{i as default};

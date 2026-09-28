@@ -1,0 +1,1 @@
+import{Et as e}from"./common-utils-CcCeQvW5.js";import"./validator-D0Aan7AA.js";function t(t,n,r){let i=String(e(t,n)??``),a=String(e(t,r)??``);return a?`${i}（${a}）`:i}export{t};

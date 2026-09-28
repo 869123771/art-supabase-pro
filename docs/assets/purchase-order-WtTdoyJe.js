@@ -1,0 +1,1 @@
+import{Vt as e,jt as t,sn as n}from"./framework-CCD57Qi8.js";import{t as r}from"./purchase-workspace-B3SMZ2zr.js";var i=e({name:`ScmPurchaseOrder`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`purchase_order`}))}});export{i as default};

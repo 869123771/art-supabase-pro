@@ -197,6 +197,12 @@
       flex: 1 1 auto;
       width: 100%;
       min-height: 0;
+
+      :deep(> .el-scrollbar__wrap > .el-scrollbar__view) {
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
     }
 
     &.is-scrollable {
@@ -208,6 +214,7 @@
 
       .art-section-card__body {
         box-sizing: border-box;
+        flex: 1 1 auto;
         min-height: 100%;
         padding: 0 var(--art-section-padding) var(--art-section-padding);
       }
