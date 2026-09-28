@@ -151,7 +151,10 @@
           min-height="420px"
         >
           <template #actions>
-            <ElButton text type="primary" @click="eventLogs = []">清空</ElButton>
+            <ElButton text type="primary" @click="eventLogs = []">
+              <template #icon><ArtSvgIcon icon="ri:delete-bin-line" /></template>
+              清空
+            </ElButton>
           </template>
 
           <ElScrollbar height="420px">

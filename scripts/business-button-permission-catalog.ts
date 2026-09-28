@@ -64,6 +64,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看配件加工清单'),
       button('Recognize', '识别清单'),
       button('SaveDraft', '保存草稿'),
+      button('GenerateMaterial', '生成物料编码'),
+      button('GenerateBom', '生成项目 BOM'),
+      button('GenerateWorkOrder', '生成生产工单'),
       button('Generate', '生成加工单据')
     ]
   },
@@ -428,6 +431,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Delete', '删除'),
       button('Cancel', '取消订单'),
       button('EditFreight', '修改运费'),
+      button('Quote', '报价'),
       button('AddExpense', '新增费用'),
       button('Export', '导出')
     ]
