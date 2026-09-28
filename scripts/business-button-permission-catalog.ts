@@ -58,6 +58,15 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('ReplayEvent', '重放失败事件')
     ]
   },
+  {
+    menuName: 'MdmAccessoryProcessing',
+    buttons: [
+      button('View', '查看配件加工清单'),
+      button('Recognize', '识别清单'),
+      button('SaveDraft', '保存草稿'),
+      button('Generate', '生成加工单据')
+    ]
+  },
   ...[
     'MdmUnitOfMeasure',
     'MdmMaterialType',

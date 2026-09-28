@@ -1,6 +1,9 @@
 <template>
   <div
     class="art-upload-file"
+    role="group"
+    :aria-label="canPaste ? '附件上传区，按 Ctrl+V 或 ⌘V 粘贴文件' : undefined"
+    :tabindex="canPaste ? 0 : undefined"
     :class="{
       'is-readonly': readonly,
       'is-disabled': disabled,
@@ -8,6 +11,7 @@
       'is-inline': inline && !showTip && !showFileList,
       'has-hover-effect': hoverEffect && !readonly
     }"
+    @paste="handlePasteFiles"
   >
     <div
       v-if="!readonly"
@@ -16,6 +20,7 @@
     >
       <ElUpload
         v-if="!resourceMode"
+        ref="uploadRef"
         v-model:file-list="fileList"
         :http-request="handleUpload"
         :before-upload="beforeUpload"
@@ -65,6 +70,9 @@
     </div>
     <div v-if="!readonly && showTip" class="art-upload-file__tip">
       <slot name="tip">{{ resolvedTip }}</slot>
+      <span v-if="canPaste" class="art-upload-file__paste-tip">
+        点击上传区域后按 <kbd>Ctrl+V</kbd>（Mac 为 <kbd>⌘V</kbd>）粘贴文件
+      </span>
     </div>
 
     <ul v-if="showFileList && fileList.length" class="art-upload-file__list">
@@ -123,8 +131,13 @@
 
 <script setup lang="ts">
   import { uniqBy } from 'lodash-es'
-  import type { UploadFile, UploadRequestOptions, UploadUserFile } from 'element-plus'
-  import { ElMessage } from 'element-plus'
+  import type {
+    UploadFile,
+    UploadInstance,
+    UploadRequestOptions,
+    UploadUserFile
+  } from 'element-plus'
+  import { ElMessage, genFileId } from 'element-plus'
   import { uploadAttachment } from '@/api/common'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
@@ -138,6 +151,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { isAcceptedFileType } from '@/utils/file/accept'
+  import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   defineOptions({ name: 'ArtUploadFile', inheritAttrs: false })
@@ -160,6 +174,7 @@
       inline?: boolean
       resourceTenantId?: string
       fileName?: string
+      uploadRequest?: (file: File) => Promise<Api.DataCenter.Resources.ResourceListItem[]>
     }>(),
     {
       modelValue: null,
@@ -193,9 +208,12 @@
 
   const fileList = ref<UploadUserFile[]>([])
   const lastSyncedModelUrls = ref<string[]>([])
-  const uploading = ref(false)
+  const uploadRef = ref<UploadInstance>()
+  const activeUploads = ref(0)
+  const uploading = computed(() => activeUploads.value > 0)
   const resourcePickerVisible = ref(false)
   const resourceMode = ref(false)
+  const canPaste = computed(() => !props.readonly && !props.disabled && !resourceMode.value)
   const pickerAtLimit = computed(() => props.multiple && fileList.value.length >= props.limit)
   const sourceTooltip = computed(() =>
     resourceMode.value ? '取消勾选后上传本地文件' : '勾选后从资源管理器选择已有文件'
@@ -247,12 +265,43 @@
   }
 
   const handleUpload = async (options: UploadRequestOptions): Promise<unknown> => {
-    uploading.value = true
+    activeUploads.value += 1
     try {
-      return await uploadAttachment(options.file)
+      return await (props.uploadRequest?.(options.file) ?? uploadAttachment(options.file))
     } finally {
-      uploading.value = false
+      activeUploads.value -= 1
     }
+  }
+
+  const handlePasteFiles = async (event: ClipboardEvent): Promise<void> => {
+    if (!canPaste.value) return
+    const sourceFiles = getClipboardFiles(event.clipboardData)
+    if (!sourceFiles.length) return
+
+    event.preventDefault()
+    if (uploading.value) {
+      ElMessage.warning('文件正在上传，请稍后再粘贴')
+      return
+    }
+    if (props.limit && fileList.value.length + sourceFiles.length > props.limit) {
+      handleExceed()
+      return
+    }
+
+    const files = props.multiple ? sourceFiles : sourceFiles.slice(0, 1)
+    files.forEach((file, index) => {
+      const namedFile = createNamedClipboardFile(file, index, files.length)
+      uploadRef.value?.handleStart(Object.assign(namedFile, { uid: genFileId() }))
+    })
+    await nextTick()
+    uploadRef.value?.submit()
+  }
+
+  const clearEventOnlyUploadsIfSettled = (): void => {
+    if (props.showFileList || props.modelValue != null) return
+    if (fileList.value.some((file) => file.status === 'ready' || file.status === 'uploading'))
+      return
+    fileList.value = []
   }
 
   const handleSuccess = (response: unknown, uploadFile: UploadFile): void => {
@@ -274,7 +323,7 @@
     emit('resource-change', [resource])
     emit('upload-success', resource, uploadFile)
 
-    if (!props.showFileList && props.modelValue == null) fileList.value = []
+    clearEventOnlyUploadsIfSettled()
   }
 
   const handleResourceConfirm = (selected: Resource[]): void => {
@@ -321,7 +370,7 @@
     fileList.value = nextFiles
     updateModelValue()
     emit('resource-change', resources)
-    if (!props.showFileList && props.modelValue == null) fileList.value = []
+    clearEventOnlyUploadsIfSettled()
   }
 
   const getFileTarget = (file: UploadUserFile) => ({
@@ -357,7 +406,7 @@
   }
 
   const handleError = (error?: unknown): void => {
-    uploading.value = false
+    clearEventOnlyUploadsIfSettled()
     ElMessage.error(getFriendlySupabaseErrorMessage(error, '附件上传失败，请重试'))
   }
 
@@ -370,6 +419,11 @@
 <style scoped lang="scss">
   .art-upload-file {
     width: 100%;
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--theme-color) 36%, transparent);
+      outline-offset: 2px;
+    }
 
     &.is-trigger-only {
       width: fit-content;
@@ -495,6 +549,17 @@
       font-size: 12px;
       line-height: 1.55;
       color: var(--el-text-color-secondary);
+    }
+
+    &__paste-tip {
+      display: inline-block;
+      margin-left: var(--art-space-2);
+
+      kbd {
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
     }
 
     &__spinner {

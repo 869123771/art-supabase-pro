@@ -36,7 +36,7 @@
       </div>
     </template>
 
-    <div ref="treeViewportRef" class="dict-type-tree__viewport" :aria-busy="tree.loading">
+    <div class="dict-type-tree__viewport" :aria-busy="tree.loading">
       <ArtOverlayLoading
         v-if="tree.loading"
         loading
@@ -51,85 +51,92 @@
         error-title="字典目录加载失败"
         @retry="handleGetDictTypeList"
       />
-      <ElTreeV2
-        v-else-if="tree.data.length"
-        ref="treeRef"
-        class="dict-type-tree__virtual-tree"
-        :data="tree.data"
-        :height="treeHeight"
-        :item-size="TREE_ROW_HEIGHT"
-        :props="tree.props"
-        :filter-method="filterNode"
-        :default-expanded-keys="tree.expandedKeys"
-        :inert="tree.loading"
-        highlight-current
-        @node-click="handleNodeClick"
-        @node-expand="handleNodeExpand"
-        @node-collapse="handleNodeCollapse"
-      >
-        <template #default="{ data }">
-          <div
-            class="dict-type-tree__node"
-            :class="{
-              'is-multi-selected': isNodeSelected(data),
-              'is-selectable-leaf': isSelectableLeaf(data),
-              'is-dragging': isDraggingNode(data),
-              'is-drop-before': isDropTarget(data, 'before'),
-              'is-drop-inner': isDropTarget(data, 'inner'),
-              'is-drop-after': isDropTarget(data, 'after')
-            }"
-            :draggable="!tree.keyword.trim()"
-            @dragstart.stop="handleNodeDragStart(data, $event)"
-            @dragover.stop.prevent="handleNodeDragOver(data, $event)"
-            @dragleave.stop="handleNodeDragLeave($event)"
-            @drop.stop.prevent="handleNodeDrop(data, $event)"
-            @dragend.stop="handleNodeDragEnd"
+      <ElAutoResizer v-else-if="tree.data.length">
+        <template #default="{ height }">
+          <ElTreeV2
+            ref="treeRef"
+            class="dict-type-tree__virtual-tree"
+            :data="tree.data"
+            :height="height"
+            :item-size="TREE_ROW_HEIGHT"
+            :props="tree.props"
+            :filter-method="filterNode"
+            :default-expanded-keys="tree.expandedKeys"
+            :inert="tree.loading"
+            highlight-current
+            @node-click="handleNodeClick"
+            @node-expand="handleNodeExpand"
+            @node-collapse="handleNodeCollapse"
           >
-            <div class="dict-type-tree__label">
-              <ArtSvgIcon
-                class="dict-type-tree__node-icon"
-                :icon="data.nodeType === 'directory' ? 'ri:folder-3-line' : 'ri:book-2-line'"
-              />
-              <span class="dict-type-tree__name">{{ data.name }}</span>
-              <code
-                v-if="data.nodeType === 'dictionary'"
-                class="dict-type-tree__code"
-                :title="data.code"
+            <template #default="{ data }">
+              <div
+                class="dict-type-tree__node"
+                :class="{
+                  'is-multi-selected': isNodeSelected(data),
+                  'is-selectable-leaf': isSelectableLeaf(data),
+                  'is-dragging': isDraggingNode(data),
+                  'is-drop-before': isDropTarget(data, 'before'),
+                  'is-drop-inner': isDropTarget(data, 'inner'),
+                  'is-drop-after': isDropTarget(data, 'after')
+                }"
+                :draggable="!tree.keyword.trim()"
+                @dragstart.stop="handleNodeDragStart(data, $event)"
+                @dragover.stop.prevent="handleNodeDragOver(data, $event)"
+                @dragleave.stop="handleNodeDragLeave($event)"
+                @drop.stop.prevent="handleNodeDrop(data, $event)"
+                @dragend.stop="handleNodeDragEnd"
               >
-                {{ data.code }}
-              </code>
-            </div>
+                <div class="dict-type-tree__label">
+                  <ArtSvgIcon
+                    class="dict-type-tree__node-icon"
+                    :icon="data.nodeType === 'directory' ? 'ri:folder-3-line' : 'ri:book-2-line'"
+                  />
+                  <span class="dict-type-tree__name">{{ data.name }}</span>
+                  <code
+                    v-if="data.nodeType === 'dictionary'"
+                    class="dict-type-tree__code"
+                    :title="data.code"
+                  >
+                    {{ data.code }}
+                  </code>
+                </div>
 
-            <div class="dict-type-tree__actions" @click.stop>
-              <ArtTooltip v-if="data.nodeType === 'directory'" content="新增下级" placement="top">
-                <ArtIconButton
-                  class="size-6.5! text-base!"
-                  icon="ri:add-line"
-                  :label="`在${data.name}下新增`"
-                  @click="handleAdd(data)"
-                />
-              </ArtTooltip>
-              <ArtTooltip content="编辑" placement="top">
-                <ArtIconButton
-                  class="size-6.5! text-base!"
-                  icon="ri:pencil-line"
-                  :label="`编辑${data.name}`"
-                  @click="handleEdit(data)"
-                />
-              </ArtTooltip>
-              <ArtTooltip content="删除" placement="top">
-                <ArtIconButton
-                  class="size-6.5! text-base!"
-                  icon="ri:delete-bin-5-line"
-                  tone="danger"
-                  :label="`删除${data.name}`"
-                  @click="handleDelete(data)"
-                />
-              </ArtTooltip>
-            </div>
-          </div>
+                <div class="dict-type-tree__actions" @click.stop>
+                  <ArtTooltip
+                    v-if="data.nodeType === 'directory'"
+                    content="新增下级"
+                    placement="top"
+                  >
+                    <ArtIconButton
+                      class="size-6.5! text-base!"
+                      icon="ri:add-line"
+                      :label="`在${data.name}下新增`"
+                      @click="handleAdd(data)"
+                    />
+                  </ArtTooltip>
+                  <ArtTooltip content="编辑" placement="top">
+                    <ArtIconButton
+                      class="size-6.5! text-base!"
+                      icon="ri:pencil-line"
+                      :label="`编辑${data.name}`"
+                      @click="handleEdit(data)"
+                    />
+                  </ArtTooltip>
+                  <ArtTooltip content="删除" placement="top">
+                    <ArtIconButton
+                      class="size-6.5! text-base!"
+                      icon="ri:delete-bin-5-line"
+                      tone="danger"
+                      :label="`删除${data.name}`"
+                      @click="handleDelete(data)"
+                    />
+                  </ArtTooltip>
+                </div>
+              </div>
+            </template>
+          </ElTreeV2>
         </template>
-      </ElTreeV2>
+      </ElAutoResizer>
 
       <ArtEmptyState
         v-else-if="!tree.loading"
@@ -185,8 +192,8 @@
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { ElMessage, ElTreeV2, type NodeDropType, type TreeV2Instance } from 'element-plus'
+  import { ElAutoResizer } from 'element-plus/es/components/table-v2/index.mjs'
   import { cloneDeep, uniq } from 'lodash-es'
-  import { useElementSize } from '@vueuse/core'
   import TreeUtils, { TreeDataError } from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -264,11 +271,8 @@
 
   const treeRef = ref<TreeV2Instance>()
   let loadSequence = 0
-  const treeViewportRef = ref<HTMLElement>()
   const dictTypeDialogRef = ref<DictTypeDialogExpose>()
   const TREE_ROW_HEIGHT = 40
-  const { height: viewportHeight } = useElementSize(treeViewportRef)
-  const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
   const tree = reactive<TreeState>({
     keyword: '',
     loading: false,
@@ -972,10 +976,6 @@
       position: relative;
       flex: 1;
       min-height: 0;
-    }
-
-    &__virtual-tree {
-      height: 100%;
     }
 
     &__header {

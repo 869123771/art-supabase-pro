@@ -25,13 +25,13 @@ For `art-supabase-pro`, apply this invariant to every table, view, RPC, Edge Fun
 
 ### Project database delivery policy
 
-For `art-supabase-pro`, do not create, fetch, reconstruct, retain, or publish migration SQL files under `supabase/migrations` (or another directory). This project intentionally uses reviewed direct database execution instead of repository-managed migration artifacts.
+For `art-supabase-pro`, do not create, fetch, reconstruct, retain, or publish per-version migration SQL files under `supabase/migrations` (or another directory). This project intentionally uses reviewed direct database execution instead of repository-managed migration artifacts. A consolidated migration-history dump inside a Git-ignored project-transfer backup is allowed for restoring another Supabase project.
 
 - Do not run `supabase migration new`, `supabase migration fetch`, `supabase db pull`, `supabase db push`, or MCP `apply_migration`.
 - Apply approved schema, RLS, function, trigger, grant, comment, seed, and scheduler changes directly with MCP `execute_sql`; use `supabase db query --linked` only as the documented fallback when MCP is unavailable.
 - Before a production mutation, take and verify a recoverable backup, run the SQL inside `BEGIN`/`ROLLBACK` against the target when the operation supports transactional validation, and inspect dependencies and cross-tenant violations. Then execute the reviewed statement directly and immediately run post-change assertions, lint/advisors, and the relevant application tests.
 - Keep durable audit evidence in architecture/runbook documentation and ordinary automated tests, not in migration SQL. Never repopulate `supabase/migrations` merely to align local and remote migration history.
-- Existing remote migration-history rows are operational history only; do not materialize their SQL in the workspace.
+- Existing remote migration-history rows are operational history only; do not materialize them as individual SQL files in the workspace.
 
 **1. Supabase changes frequently — verify against changelog and current docs before implementing.**
 Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.

@@ -85,6 +85,7 @@
       </div>
     </template>
     <ArtResourcePicker
+      v-if="showResourcePicker"
       v-model:visible="isOpenResource"
       :multiple="multiple"
       :limit="limit"
@@ -120,7 +121,9 @@
     fileType = 'image/*',
     limit = 5,
     multiple = false,
-    readonly = false
+    readonly = false,
+    showResourcePicker = true,
+    uploadRequest
   } = defineProps<{
     modelValue?: string | string[] | null
     title?: string
@@ -133,6 +136,8 @@
     limit?: number
     multiple?: boolean
     readonly?: boolean
+    showResourcePicker?: boolean
+    uploadRequest?: (file: File) => Promise<Api.DataCenter.Resources.ResourceListItem[]>
   }>()
 
   const emit = defineEmits<{
@@ -159,20 +164,22 @@
   function btnRender() {
     return (
       <div class="upload-container" style={getSize.value}>
-        <ArtTooltip content="打开资源选择器">
-          <button
-            type="button"
-            class="resource-btn"
-            aria-label="从资源库选择图片"
-            onClick={(event: MouseEvent) => {
-              event.preventDefault()
-              event.stopPropagation()
-              isOpenResource.value = true
-            }}
-          >
-            <ArtSvgIcon icon="ri-folder-open-line" />
-          </button>
-        </ArtTooltip>
+        {showResourcePicker && (
+          <ArtTooltip content="打开资源选择器">
+            <button
+              type="button"
+              class="resource-btn"
+              aria-label="从资源库选择图片"
+              onClick={(event: MouseEvent) => {
+                event.preventDefault()
+                event.stopPropagation()
+                isOpenResource.value = true
+              }}
+            >
+              <ArtSvgIcon icon="ri-folder-open-line" />
+            </button>
+          </ArtTooltip>
+        )}
         <div class="upload-prompt">
           <span class="upload-prompt__icon" aria-hidden="true">
             <ArtSvgIcon icon="ri-add-line" />
@@ -304,7 +311,7 @@
   }
 
   const handleUpload = async (options: UploadRequestOptions): Promise<unknown> => {
-    return await uploadAttachment(options.file)
+    return await (uploadRequest?.(options.file) ?? uploadAttachment(options.file))
   }
 </script>
 

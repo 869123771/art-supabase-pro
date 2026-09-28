@@ -11,10 +11,9 @@ const internalHelperMigrationName = 'restrict_internal_security_definer_helpers'
 const explicitExecutionBoundaryVersion = '20260823112749'
 const explicitExecutionBoundaryName = 'make_public_function_execution_explicit'
 const privilegedBatchBoundaryName = 'bound_privileged_batch_rpc_inputs'
-// `supabase migration fetch --linked` restores immutable production history,
-// including older function definitions whose ACLs were tightened by a later
-// migration. Apply per-file ACL rules to every pending/future migration while
-// retaining the historical boundary assertions above for the fetched history.
+// Local migration SQL is intentionally absent. These historical version
+// boundaries remain for the legacy per-file checks below if files are ever
+// inspected during a database security review.
 const synchronizedRemoteHistoryVersion = '20260901071314'
 const pendingVersionsBeforeRemoteHistory = new Set(['20260827123340'])
 const migrationPattern = /^(\d{14})_([a-z0-9_]+)\.sql$/
@@ -104,16 +103,20 @@ for (const [functionName, argumentTypes] of internalOnlyFunctions) {
   )
 }
 
-const moduleDirectories = readdirSync(join(projectRoot, 'modules')).map((entry) =>
-  join(projectRoot, 'modules', entry)
-)
+const moduleDirectories = readdirSync(join(projectRoot, 'modules'))
+  .map((entry) => join(projectRoot, 'modules', entry))
+  .filter((directory) => statSync(directory).isDirectory())
+for (const moduleDirectory of moduleDirectories) {
+  assert.equal(
+    existsSync(join(moduleDirectory, 'supabase')),
+    false,
+    `子仓不能保留 Supabase 目录：${moduleDirectory}`
+  )
+}
 const rpcSourceRoots = [
   join(projectRoot, 'src'),
   join(projectRoot, 'supabase/functions'),
-  ...moduleDirectories.flatMap((moduleDirectory) => [
-    join(moduleDirectory, 'src'),
-    join(moduleDirectory, 'supabase/functions')
-  ])
+  ...moduleDirectories.map((moduleDirectory) => join(moduleDirectory, 'src'))
 ]
 const rpcSource = rpcSourceRoots
   .flatMap((directory) => walkSourceFiles(directory))

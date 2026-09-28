@@ -156,6 +156,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { useUserStore } from '@/store/modules/user'
+  import { getClipboardFiles } from '@/utils/file/clipboard'
   import { StorageConfig } from '@/utils/storage/storage-config'
 
   defineOptions({ name: 'PageDesignReference' })
@@ -379,11 +380,7 @@
   }
 
   function handlePaste(event: ClipboardEvent): void {
-    const itemFiles = Array.from(event.clipboardData?.items ?? [])
-      .filter((item) => item.kind === 'file')
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => file !== null)
-    const sourceFiles = itemFiles.length ? itemFiles : Array.from(event.clipboardData?.files ?? [])
+    const sourceFiles = getClipboardFiles(event.clipboardData)
     const imageFiles = sourceFiles.filter((file) => file.type.startsWith('image/'))
     if (!imageFiles.length) return
     event.preventDefault()

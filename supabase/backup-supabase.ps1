@@ -1,12 +1,13 @@
 [CmdletBinding()]
 param(
-  [string]$ProjectRef = 'ckbftoopuyophiebamwy',
+  [ValidatePattern('^[a-z0-9]{20}$')][string]$ProjectRef = 'ckbftoopuyophiebamwy',
   [securestring]$DbPassword,
   [string]$BackupRoot,
   [string]$DbUrl
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'transfer-common.ps1')
 
 function Invoke-Supabase {
   param([Parameter(Mandatory = $true)][string[]]$Arguments)
@@ -62,7 +63,8 @@ function Get-LinkedDatabaseConnection {
   $port = [regex]::Match($text, 'export PGPORT="([^"]+)"').Groups[1].Value
   $user = [regex]::Match($text, 'export PGUSER="([^"]+)"').Groups[1].Value
   $database = [regex]::Match($text, 'export PGDATABASE="([^"]+)"').Groups[1].Value
-  if ([string]::IsNullOrWhiteSpace($dbHost) -or [string]::IsNullOrWhiteSpace($user)) {
+  if ([string]::IsNullOrWhiteSpace($dbHost) -or $port -notmatch '^\d+$' -or
+      [string]::IsNullOrWhiteSpace($user) -or [string]::IsNullOrWhiteSpace($database)) {
     throw 'Unable to parse the database connection returned by the Supabase CLI.'
   }
   return @{ Host = $dbHost; Port = $port; User = $user; Database = $database }
@@ -156,139 +158,6 @@ function Invoke-SupabaseJsonWithRetry {
   }
 
   throw "Supabase API request failed after $Attempts attempts: $lastError"
-}
-
-function Invoke-SupabaseQuiet {
-  param([Parameter(Mandatory = $true)][string[]]$Arguments)
-
-  $errorPath = Join-Path ([IO.Path]::GetTempPath()) ("supabase-cli-$([guid]::NewGuid()).stderr.tmp")
-  $previousPreference = $ErrorActionPreference
-  try {
-    $ErrorActionPreference = 'Continue'
-    $stdout = & supabase @Arguments 2> $errorPath
-    $exitCode = $LASTEXITCODE
-  }
-  finally {
-    $ErrorActionPreference = $previousPreference
-  }
-
-  $stderr = if (Test-Path $errorPath) { (Get-Content -Raw $errorPath).Trim() } else { '' }
-  Remove-Item -LiteralPath $errorPath -Force -ErrorAction SilentlyContinue
-
-  return [pscustomobject]@{
-    Succeeded = ($exitCode -eq 0)
-    ExitCode = $exitCode
-    Output = (($stdout | Out-String).Trim())
-    Error = $stderr
-  }
-}
-
-function Invoke-SupabaseQuietWithRetry {
-  param(
-    [Parameter(Mandatory = $true)][string[]]$Arguments,
-    [int]$Attempts = 3
-  )
-
-  $lastResult = $null
-  for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
-    $lastResult = Invoke-SupabaseQuiet $Arguments
-    if ($lastResult.Succeeded) { return $lastResult }
-
-    if ($attempt -lt $Attempts) {
-      Write-Warning "Supabase CLI request failed (attempt $attempt/$Attempts). Retrying..."
-      Start-Sleep -Seconds (3 * $attempt)
-    }
-  }
-
-  return $lastResult
-}
-
-function Get-SupabaseApiKeyValue {
-  param(
-    [Parameter(Mandatory = $true)]$KeyRecord,
-    [Parameter(Mandatory = $true)][string[]]$Names
-  )
-
-  foreach ($name in $Names) {
-    $property = $KeyRecord.PSObject.Properties[$name]
-    if ($property -and $property.Value -isnot [System.Array] -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
-      return [string]$property.Value
-    }
-  }
-
-  return $null
-}
-
-function Expand-SupabaseApiKeyRecords {
-  param($Value)
-
-  if ($null -eq $Value) { return @() }
-
-  if ($Value -is [System.Array]) {
-    $items = @()
-    foreach ($item in $Value) {
-      $items += @(Expand-SupabaseApiKeyRecords $item)
-    }
-    return $items
-  }
-
-  # Windows PowerShell can preserve a JSON top-level array as one object whose
-  # properties are arrays. Rebuild normal row objects before searching by name.
-  $apiKeyProperty = $Value.PSObject.Properties['api_key']
-  $nameProperty = $Value.PSObject.Properties['name']
-  if ($apiKeyProperty -and $apiKeyProperty.Value -is [System.Array]) {
-    $apiKeys = @($apiKeyProperty.Value)
-    $names = if ($nameProperty) { @($nameProperty.Value) } else { @() }
-    $ids = if ($Value.PSObject.Properties['id']) { @($Value.PSObject.Properties['id'].Value) } else { @() }
-    $types = if ($Value.PSObject.Properties['type']) { @($Value.PSObject.Properties['type'].Value) } else { @() }
-
-    $rows = @()
-    for ($i = 0; $i -lt $apiKeys.Count; $i++) {
-      $rows += [pscustomobject]@{
-        api_key = $apiKeys[$i]
-        name = if ($i -lt $names.Count) { $names[$i] } else { $null }
-        id = if ($i -lt $ids.Count) { $ids[$i] } else { $null }
-        type = if ($i -lt $types.Count) { $types[$i] } else { $null }
-      }
-    }
-    return $rows
-  }
-
-  return @($Value)
-}
-
-function Get-SupabaseServiceRoleKey {
-  param([Parameter(Mandatory = $true)][string]$ProjectRef)
-
-  $result = Invoke-SupabaseQuietWithRetry `
-    -Arguments @('projects', 'api-keys', '--project-ref', $ProjectRef, '--output', 'json') `
-    -Attempts 3
-  if (-not $result.Succeeded) {
-    throw "Unable to read Supabase API keys for Storage download fallback. $($result.Error)"
-  }
-
-  try {
-    $records = @(Expand-SupabaseApiKeyRecords ($result.Output | ConvertFrom-Json))
-  }
-  catch {
-    throw 'Unable to parse the Supabase API key list returned by the CLI.'
-  }
-
-  foreach ($record in $records) {
-    $name = Get-SupabaseApiKeyValue -KeyRecord $record -Names @('name', 'key_name', 'label', 'id')
-    if ($name -and $name -match 'service[_ -]?role') {
-      $value = Get-SupabaseApiKeyValue -KeyRecord $record -Names @('api_key', 'key', 'value')
-      if ($value) { return $value }
-    }
-  }
-
-  throw 'No service_role API key was found. Storage bucket files cannot be fully backed up without a key that can read private buckets.'
-}
-
-function ConvertTo-StorageApiPath {
-  param([Parameter(Mandatory = $true)][string]$Path)
-
-  return (($Path -split '/') | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
 }
 
 function Get-StorageLocalPath {
@@ -518,10 +387,12 @@ Enable-SystemProxyForSupabaseCli
 
 $supabaseRoot = $PSScriptRoot
 if (-not $BackupRoot) { $BackupRoot = Join-Path $supabaseRoot 'backups' }
+$BackupRoot = [IO.Path]::GetFullPath($BackupRoot)
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $backupPath = Join-Path $BackupRoot $timestamp
 $plainPassword = Get-PlainText $DbPassword
 
+Push-Location (Split-Path -Parent $supabaseRoot)
 try {
   New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
   $databasePath = Join-Path $backupPath 'database'
@@ -553,8 +424,9 @@ try {
   Write-Host 'Exporting database roles, schema, and data...'
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--role-only', '--file', (Join-Path $databasePath 'roles.sql')))
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--keep-comments', '--file', (Join-Path $databasePath 'schema.sql')))
-  # Do not exclude any application schema or Storage metadata: this is a full logical backup.
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '--file', (Join-Path $databasePath 'data.sql')))
+  # Match Supabase's logical restore guide: vector Storage tables may not exist
+  # on a newly created target project.
+  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '-x', 'storage.buckets_vectors', '-x', 'storage.vector_indexes', '--file', (Join-Path $databasePath 'data.sql')))
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql')))
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql')))
   # Standard schema dumps omit managed auth/storage schemas. Capture their complete
@@ -564,8 +436,31 @@ try {
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'auth,storage', '--keep-comments', '--file', (Join-Path $databasePath 'managed-schema-snapshot.sql')))
 
   Write-Host 'Capturing deployed Edge Function source and metadata...'
-  Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
-  Copy-Item -Path (Join-Path $supabaseRoot 'functions') -Destination $functionsPath -Recurse -Force
+  # Download into this backup's own Supabase workdir so remote source never
+  # overwrites reviewed or uncommitted files in the main repository.
+  $downloadProjectRoot = Join-Path $backupPath 'supabase'
+  New-Item -ItemType Directory -Path $downloadProjectRoot -Force | Out-Null
+  Copy-Item -LiteralPath (Join-Path $supabaseRoot 'config.toml') -Destination (Join-Path $downloadProjectRoot 'config.toml') -Force
+  Push-Location $backupPath
+  try {
+    Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
+  }
+  finally {
+    Pop-Location
+  }
+  $downloadedFunctions = Join-Path $downloadProjectRoot 'functions'
+  if (-not (Test-Path -LiteralPath $downloadedFunctions -PathType Container)) {
+    throw 'The Supabase CLI did not download Edge Functions into the backup workdir.'
+  }
+  $backupPrefix = [IO.Path]::GetFullPath($backupPath).TrimEnd([char[]]'\\/') + [IO.Path]::DirectorySeparatorChar
+  if (-not [IO.Path]::GetFullPath($downloadedFunctions).StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'The Edge Function download path is outside the backup directory.'
+  }
+  if (-not [IO.Path]::GetFullPath($downloadProjectRoot).StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'The temporary Supabase project is outside the backup directory.'
+  }
+  Move-Item -LiteralPath $downloadedFunctions -Destination $functionsPath
+  Remove-Item -LiteralPath $downloadProjectRoot -Recurse -Force
   Invoke-SupabaseJsonWithRetry `
     -Arguments @('functions', 'list', '--project-ref', $ProjectRef, '--output', 'json') `
     -OutputPath (Join-Path $metadataPath 'functions.json') | Out-Null
@@ -634,7 +529,7 @@ try {
     project_ref = $ProjectRef
     supabase_cli = (& supabase --version)
     includes = @('database roles', 'database schema', 'database data', 'migration history', 'managed auth/storage schema snapshot', 'RLS policies/grants/functions/triggers', 'Realtime publication tables', 'Storage bucket files', 'Storage bucket metadata', 'Edge Function source and JWT settings')
-    limitations = @('The auth/storage schema snapshot is a recovery reference, not an automatic restore script. Review and extract only project-specific policies and triggers because Supabase owns the managed base schemas.', 'Edge Function secret values cannot be read back from Supabase; only their names are recorded. Re-enter their values before deploying functions.', 'Dashboard-only settings such as OAuth providers, SMTP, custom domains, and Auth URL configuration must be recreated separately.')
+    limitations = @('The auth/storage schema snapshot is a recovery reference, not an automatic restore script. Review and extract only project-specific policies and triggers because Supabase owns the managed base schemas.', 'Edge Function secret values cannot be read back from Supabase; only their names are recorded. Re-enter their values on the target project.', 'Dashboard-only settings such as OAuth providers, SMTP, custom domains, and Auth URL configuration must be recreated separately.', 'If the source uses Vault or encrypted columns, transfer the encryption root key through the supported Supabase procedure before restoring data.', 'Custom LOGIN role passwords and Edge Function import maps or deno.json files must be restored separately.')
     files = $files
   } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $backupPath 'manifest.json') -Encoding utf8
 
@@ -647,11 +542,12 @@ Restore to a new, empty Supabase project with:
 .\supabase\restore-supabase.ps1 -BackupPath '$backupPath' -TargetProjectRef '<new-project-ref>'
 ```
 
-The restore script prompts for the target database password. This backup contains application data and Storage files, so keep it outside Git and in encrypted storage.
+The restore script prompts for the target database password. This backup contains application data and Storage files, so keep it outside Git and in encrypted storage. Review the limitations in manifest.json and supabase/README.md before importing.
 "@ | Set-Content -Path (Join-Path $backupPath 'README.md') -Encoding utf8
 
   Write-Host "Backup completed: $backupPath" -ForegroundColor Green
 }
 finally {
+  Pop-Location
   $plainPassword = $null
 }

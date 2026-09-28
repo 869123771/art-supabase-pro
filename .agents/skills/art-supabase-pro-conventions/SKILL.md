@@ -272,6 +272,17 @@ Apply the same ownership model to `ArtDrawer`.
 - Titled business card sections must use `ArtSectionCard`; do not place `art-card-xs` directly on a page-local titled section. Untitled compact surfaces and sticky footer action bars may use the global `art-card-xs` class, for example `<div class="feature__summary art-card-xs">` and `<div class="feature__footer art-card-xs">`. Do not recreate card backgrounds, borders, radius, or shadows in page-local SCSS. Page-local styles may only add feature layout details such as spacing, sticky positioning, or internal grid alignment.
 - Business-local rounded corners must use global radius variables, global classes, or project components instead of hardcoded `px` / `rem` values. Prefer `var(--el-border-radius-base)`, `var(--el-border-radius-small)`, `var(--custom-radius)`, `art-card-xs`, or an existing shared style for badges, chips, panels, buttons, upload boxes, and similar business UI. Use fixed values only for true circles or pills such as `50%` / `999px`, or when extending an established global/core component style.
 - Use Element Plus `ElScrollbar` for page, card, panel, drawer, and dialog-section scroll containers instead of native `overflow-y: auto` scrollbars. Give the scrollbar container a stable height or flex-bounded parent (`height`, `max-height`, or `flex: 1; min-height: 0`) so the scrollbar is owned by the intended content area.
+- For Element Plus virtualized components that require numeric viewport dimensions, such as `ElTreeV2` and `ElTableV2`, use `ElAutoResizer` and pass its slot `height`/`width` to the component. Give its parent a real, bounded height (`height` or a flex child with `flex: 1; min-height: 0`); give naturally stacked layouts a bounded height too. Keep the virtualized component's built-in scrollbar as the sole scroll region. Do not measure that viewport with `useElementSize`, `ResizeObserver`, or manual DOM math, and do not wrap the virtualized component in a second `ElScrollbar`. This rule concerns numeric dimensions required by virtualized children; layout measurements for other purposes remain separate. In this repository, import `ElAutoResizer` from `element-plus/es/components/table-v2/index.mjs`: the current on-demand style plugin generates a nonexistent `auto-resizer/style/index` import when it is imported from the package root.
+
+  ```vue
+  <div class="tree-viewport" style="height: 400px">
+    <ElAutoResizer>
+      <template #default="{ height }">
+        <ElTreeV2 :data="nodes" :height="height" />
+      </template>
+    </ElAutoResizer>
+  </div>
+  ```
 
 ## Async And Error Semantics
 

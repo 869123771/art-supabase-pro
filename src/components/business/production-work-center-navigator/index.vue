@@ -1,5 +1,6 @@
 <template>
   <ArtSectionCard
+    :show-scrollbar="false"
     class="production-work-center-navigator"
     title="生产范围"
     subtitle="先选车间，再定位工作中心"

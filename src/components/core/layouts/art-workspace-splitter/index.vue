@@ -114,21 +114,6 @@
       cursor: col-resize;
     }
 
-    :deep(.el-splitter-bar::before) {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 50%;
-      width: 1px;
-      content: '';
-      background: var(--el-border-color);
-      opacity: 0;
-      transform: translateX(-50%);
-      transition:
-        opacity 0.18s ease,
-        background-color 0.18s ease;
-    }
-
     :deep(.el-splitter-bar__dragger) {
       width: 16px;
       height: 56px;
@@ -145,12 +130,6 @@
       height: 32px;
       background: var(--el-color-primary);
       border-radius: 999px;
-    }
-
-    :deep(.el-splitter-bar:hover::before),
-    :deep(.el-splitter-bar:has(.el-splitter-bar__dragger-active)::before) {
-      background: var(--el-color-primary-light-7);
-      opacity: 1;
     }
 
     :deep(.el-splitter-bar:hover .el-splitter-bar__dragger),

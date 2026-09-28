@@ -1,15 +1,13 @@
 # Supabase source of truth
 
-This directory contains the deployable Supabase project assets for `ckbftoopuyophiebamwy`.
+This is the only Supabase directory for project `ckbftoopuyophiebamwy`. Business subrepositories do not keep separate Supabase assets.
 
-- `functions/` contains the source downloaded from the deployed project. Deploy a reviewed change with `supabase functions deploy <name> --project-ref ckbftoopuyophiebamwy --use-api`.
-- `migrations/` is reserved for the baseline schema and every future database change. Do not edit production schema manually after the baseline is committed.
+- `functions/` contains the reviewed, deployable Edge Function source. Deploy a reviewed change with `supabase functions deploy <name> --project-ref ckbftoopuyophiebamwy --use-api`.
+- `migrations/` has no local migration SQL. Reviewed production SQL is applied directly through the project-scoped Supabase MCP after backup and validation.
+- `tests/` contains database regression SQL shared by the whole workspace.
+- `backup-supabase.ps1` exports the remote project into one timestamped, Git-ignored backup directory. `restore-supabase.ps1` imports that backup into a new project.
 
-## Baseline migration
-
-The initial migration must be generated from the currently linked remote project with `supabase db pull <baseline-name> --linked`. The Supabase CLI requires the remote database password for that operation, so this repository intentionally does not contain a guessed schema snapshot.
-
-After the baseline exists, validate every database change with a local reset and add the matching RLS coverage before deployment.
+Database structure, data, and migration history are kept together inside the backup directory. Export does not create one SQL file per migration in the repository.
 
 ## AI project planner
 
@@ -39,11 +37,9 @@ validity. The function reads business data through the caller's JWT and RLS poli
 dispatch state. A dispatcher must explicitly adopt a recommendation and submit the existing dispatch
 form.
 
-Apply the matching dictionary migration and deploy the function before enabling the UI in a shared
-environment:
+Apply reviewed database SQL through the project-scoped Supabase MCP, then deploy the function before enabling the UI in a shared environment:
 
 ```powershell
-supabase db push
 supabase functions deploy ai-dispatch-advisor --project-ref ckbftoopuyophiebamwy --use-api
 ```
 
@@ -58,23 +54,21 @@ The advisor is read-only: it does not update orders, waybills, schedules, or rem
 the current project has no continuous GPS telemetry source, it explicitly does not claim real route
 deviation or physical vehicle stoppage.
 
-Apply the dictionary migration and deploy the reviewed function before enabling the UI in a shared
-environment:
+Apply reviewed database SQL through the project-scoped Supabase MCP, then deploy the reviewed function before enabling the UI in a shared environment:
 
 ```powershell
-supabase db push
 supabase functions deploy ai-transport-anomaly-advisor --project-ref ckbftoopuyophiebamwy --use-api
 ```
 
-## Complete backup and restore
+## Export and import a Supabase project
 
-From the repository root, run:
+Install and sign in to the Supabase CLI, then start Docker Desktop. From the repository root, export the linked source project:
 
 ```powershell
 .\supabase\backup-supabase.ps1
 ```
 
-It prompts for the database password and writes a timestamped backup beneath `supabase/backups/`. The backup folder is ignored by Git because it contains database data and uploaded files. Docker Desktop must be installed and running: the Supabase CLI runs `pg_dump` in a Docker container.
+The script prompts for the source database password. Its result is `supabase/backups/<timestamp>/manifest.json` plus database dumps, Storage files, deployed Edge Functions, and project metadata. Keep this ignored directory in encrypted storage because it contains live data. It does not overwrite the repository's reviewed Function source.
 
 To restore into a **new, empty** Supabase project:
 
@@ -82,4 +76,8 @@ To restore into a **new, empty** Supabase project:
 .\supabase\restore-supabase.ps1 -BackupPath '.\supabase\backups\YYYYMMDD-HHMMSS' -TargetProjectRef '<new-project-ref>'
 ```
 
-The restore script asks for the target database password, requires an explicit confirmation, and refuses a non-empty public schema by default. Database roles, schema (including views, functions, triggers, RLS, policies, and grants), data, Storage files, and Edge Function source/JWT settings are restored. Secret values and dashboard-only settings cannot be exported by Supabase and must be entered again after restore.
+The restore script verifies the manifest and file hashes, asks for the target database password and project ref confirmation, and refuses a project that already has application tables. It restores the database (including Auth users and migration history), Storage objects, Realtime publication membership, and deployed Edge Functions. The source repository's project link is not changed.
+
+To check a backup without connecting to either project, add `-VerifyBackupOnly` to the restore command.
+
+Supabase cannot export Edge Function secret **values** or dashboard-only Auth/OAuth, SMTP, domain, and similar settings; configure those on the new project. Changes made to managed `auth` and `storage` schemas require manual review of `database/managed-schema-snapshot.sql` before the target is equivalent. If the source uses Vault or encrypted columns, transfer its encryption root key through Supabase's supported procedure before restoring. Custom `LOGIN` role passwords, Function import maps, and `deno.json` must be supplied separately. See the [Supabase backup and restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore) for those limits.

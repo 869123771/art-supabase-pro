@@ -39,48 +39,52 @@
 
       <div
         v-if="menuList.length"
-        ref="treeViewportRef"
         class="role-permission-dialog__tree-viewport"
         :aria-busy="loadState.loading"
         :inert="permissionSaving || loadState.loading"
       >
-        <ElTreeV2
-          v-show="!hasNoSearchMatches"
-          ref="treeRef"
-          class="role-permission-dialog__tree"
-          :data="menuList"
-          :height="treeHeight"
-          :item-size="TREE_ROW_HEIGHT"
-          :default-expanded-keys="initialExpandedKeys"
-          show-checkbox
-          check-strictly
-          :filter-method="filterMenuNode"
-          :props="treeProps"
-          @check-change="handleTreeCheckChange"
-          @node-expand="handleNodeExpand"
-          @node-collapse="handleNodeCollapse"
-        >
-          <template #default="{ data }">
-            <div
-              class="role-permission-dialog__node"
-              :title="
-                data.type === 'button' ? `${data.displayLabel} · ${data.name}` : data.displayLabel
-              "
+        <ElAutoResizer v-show="!hasNoSearchMatches">
+          <template #default="{ height }">
+            <ElTreeV2
+              ref="treeRef"
+              class="role-permission-dialog__tree"
+              :data="menuList"
+              :height="height"
+              :item-size="TREE_ROW_HEIGHT"
+              :default-expanded-keys="initialExpandedKeys"
+              show-checkbox
+              check-strictly
+              :filter-method="filterMenuNode"
+              :props="treeProps"
+              @check-change="handleTreeCheckChange"
+              @node-expand="handleNodeExpand"
+              @node-collapse="handleNodeCollapse"
             >
-              <ArtSvgIcon
-                class="role-permission-dialog__node-icon"
-                :icon="getNodeIcon(data.type)"
-              />
-              <span>{{ data.displayLabel }}</span>
-              <ElTag v-if="data.type === 'button'" size="small" type="info" effect="plain">
-                按钮
-              </ElTag>
-              <span v-if="data.type === 'button'" class="role-permission-dialog__node-code">
-                {{ data.name }}
-              </span>
-            </div>
+              <template #default="{ data }">
+                <div
+                  class="role-permission-dialog__node"
+                  :title="
+                    data.type === 'button'
+                      ? `${data.displayLabel} · ${data.name}`
+                      : data.displayLabel
+                  "
+                >
+                  <ArtSvgIcon
+                    class="role-permission-dialog__node-icon"
+                    :icon="getNodeIcon(data.type)"
+                  />
+                  <span>{{ data.displayLabel }}</span>
+                  <ElTag v-if="data.type === 'button'" size="small" type="info" effect="plain">
+                    按钮
+                  </ElTag>
+                  <span v-if="data.type === 'button'" class="role-permission-dialog__node-code">
+                    {{ data.name }}
+                  </span>
+                </div>
+              </template>
+            </ElTreeV2>
           </template>
-        </ElTreeV2>
+        </ElAutoResizer>
         <ArtAsyncState
           v-if="hasNoSearchMatches"
           empty
@@ -149,10 +153,11 @@
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { ElTreeV2, type TreeV2Instance } from 'element-plus'
+  import { ElAutoResizer } from 'element-plus/es/components/table-v2/index.mjs'
   import { formatMenuTitle } from '@/utils/router'
   import TreeUtils from '@utils/tree'
   import { omit, uniq } from 'lodash-es'
-  import { useDebounceFn, useElementSize } from '@vueuse/core'
+  import { useDebounceFn } from '@vueuse/core'
   import type { AppRouteRecord } from '@/types'
   import {
     fetchGetEnableMenuList,
@@ -182,7 +187,6 @@
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<RoleListItem>>()
   const treeRef = ref<TreeV2Instance>()
-  const treeViewportRef = ref<HTMLElement>()
   const roleData = shallowRef<RoleListItem>()
   const menuList = ref<PermissionTreeNode[]>([])
   const loadState = reactive<PermissionLoadState>({ loading: false, error: false, ready: false })
@@ -198,8 +202,6 @@
   const initialExpandedKeys = ref<TreeKey[]>([])
   const manualExpandedKeys = new Set<TreeKey>()
   const TREE_ROW_HEIGHT = 40
-  const { height: viewportHeight } = useElementSize(treeViewportRef)
-  const treeHeight = computed(() => Math.max(Math.floor(viewportHeight.value), 1))
 
   const treeUtils = new TreeUtils({
     idKey: 'id',

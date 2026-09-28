@@ -142,6 +142,7 @@
         </ArtSectionCard>
 
         <ArtSectionCard
+          :show-scrollbar="false"
           class="table-query-widget__section table-query-widget__log"
           title="事件日志"
           subtitle="展示 search、reset、refresh、分页、header action、缓存命中和行拖拽等回调。"

@@ -38,12 +38,25 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
   entityTable: string
   envPrefix: string
   requiredPermission?: string | ((body: Record<string, unknown>) => string | null)
+  authorizeImageUrls?: (context: {
+    admin: SupabaseClient
+    appUser: { tenant_id: string; user_email: string }
+    userId: string
+    imageUrls: string[]
+  }) => Promise<boolean>
   defaultPrompt: string
   expectedShape: Record<string, unknown>
   defaultMaxTokens?: number
+  modelRequestOptions?: (endpoint: AiProviderEndpoint, model: string) => {
+    reasoning_effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'max'
+    chat_template_kwargs?: { enable_thinking?: boolean }
+  }
   parseInput: (body: Record<string, unknown>) => TInput
   inputMetadata: (input: TInput) => Record<string, unknown>
   validate: (payload: unknown) => { valid: boolean; errors: string[] }
+  classifyInvalidResponse?: (
+    errors: string[]
+  ) => { code: string; message: string; status: number } | null
   normalize: (payload: Record<string, unknown>) => TResult
   proposedPayload: (result: TResult) => Record<string, unknown>
   compare: (
@@ -274,6 +287,12 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       if (!imageUrls.length) {
         return json({ code: 'invalid_input', message: config.labels.invalidImages }, 400)
       }
+      if (
+        config.authorizeImageUrls &&
+        !(await config.authorizeImageUrls({ admin, appUser, userId: user.id, imageUrls }))
+      ) {
+        return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
+      }
       const input = config.parseInput(body)
 
       const sharedModel = Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL') || 'gpt-4.1-mini'
@@ -308,6 +327,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
       const endpoints = resolveAiProviderEndpoints(
         {
+          provider: runtimeConfig.provider,
           model: runtimeConfig.visionModel || runtimeConfig.model,
           fallbackModel: runtimeConfig.fallbackModel
         },
@@ -433,6 +453,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const requestConfiguredModel = async (endpoint: AiProviderEndpoint, targetModel: string) => {
         resolvedModel = targetModel
         requestBody.model = targetModel
+        delete requestBody.reasoning_effort
+        delete requestBody.chat_template_kwargs
+        Object.assign(requestBody, config.modelRequestOptions?.(endpoint, targetModel))
         let response = await requestProvider(endpoint)
         let errorText = ''
         for (let attempt = 0; !response.ok; attempt += 1) {
@@ -519,8 +542,15 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       }
       if (!parsed || !validation.valid) {
         const message = validation.errors.join('; ').slice(0, 2000) || 'Invalid JSON response'
-        await finishRun('failed', usage, 'invalid_ai_response', message)
-        return json({ code: 'invalid_ai_response', message: config.labels.invalidResponse }, 502)
+        const classified = config.classifyInvalidResponse?.(validation.errors)
+        await finishRun('failed', usage, classified?.code ?? 'invalid_ai_response', message)
+        return json(
+          {
+            code: classified?.code ?? 'invalid_ai_response',
+            message: classified?.message ?? config.labels.invalidResponse
+          },
+          classified?.status ?? 502
+        )
       }
 
       const result = config.normalize(parsed)

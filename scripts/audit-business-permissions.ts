@@ -280,6 +280,10 @@ const platformSuperAllowlist = new Map<string, string>([
     'cross-tenant succession assignment'
   ],
   [
+    'modules/art-supabase-mdm/src/views/engineering/accessory-processing/index.vue',
+    'cross-tenant target selection and platform-super-only draft and document generation'
+  ],
+  [
     'modules/art-supabase-smis/src/views/basic-data/inspection-category/index.vue',
     'cross-tenant inspection-category context and tenant columns'
   ],

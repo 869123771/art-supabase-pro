@@ -1,9 +1,7 @@
 # Database migrations
 
-This directory is synchronized from the linked remote project.
+No migration SQL is kept here. The database delivery policy uses reviewed direct SQL execution.
 
-- `20260716093927_baseline.sql` is the real remote baseline, including schemas, tables, RLS policies, RPC functions, triggers, and grants.
-- The following timestamped files are the remote migration history fetched with `supabase migration fetch --linked`.
-- New changes must be additive migration files created with `supabase migration new <name>` and reviewed together with their RLS policies and tests.
+To export the remote project's current schema, data, and migration history, run `supabase/backup-supabase.ps1` from the repository root. Its timestamped backup is ignored by Git and can be imported into a new project with `supabase/restore-supabase.ps1`.
 
-Do not replace the baseline with a partial schema inferred from frontend API calls. Before pushing, use `supabase migration list --linked` to confirm that only reviewed local migrations are pending.
+Do not fetch historical migrations or create a baseline in this directory.

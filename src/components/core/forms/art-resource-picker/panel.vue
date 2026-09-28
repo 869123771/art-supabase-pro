@@ -232,9 +232,9 @@
   import { openFilePreview } from '@/hooks/core/useFilePreview'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatSize } from '@/utils/file'
+  import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useTimeoutFn } from '@vueuse/core'
-  import dayjs from 'dayjs'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -1024,48 +1024,9 @@
     }
   }
 
-  function getClipboardFileExtension(mimeType: string): string {
-    const knownExtensions: Record<string, string> = {
-      'application/msword': 'doc',
-      'application/pdf': 'pdf',
-      'application/vnd.ms-excel': 'xls',
-      'application/vnd.ms-powerpoint': 'ppt',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-      'audio/mpeg': 'mp3',
-      'image/jpeg': 'jpg',
-      'image/svg+xml': 'svg',
-      'image/x-icon': 'ico',
-      'text/plain': 'txt',
-      'video/quicktime': 'mov'
-    }
-    return knownExtensions[mimeType] ?? mimeType.split('/')[1]?.split('+')[0] ?? 'bin'
-  }
-
-  function createClipboardUploadFile(file: File, index: number, total: number): File {
-    const originalName = file.name.trim()
-    const hasUsableName = originalName && !/^(?:image|blob)(?:\.[^.]+)?$/i.test(originalName)
-    if (hasUsableName) return file
-
-    const timestamp = dayjs().format('YYYYMMDD_HHmmss')
-    const sequence = total > 1 ? `_${index + 1}` : ''
-    const extension = getClipboardFileExtension(file.type)
-    const prefix = file.type.startsWith('image/') ? '粘贴图片' : '粘贴文件'
-    return new File([file], `${prefix}_${timestamp}${sequence}.${extension}`, {
-      type: file.type,
-      lastModified: Date.now()
-    })
-  }
-
   async function handlePasteFiles(event: ClipboardEvent): Promise<void> {
     if (uploading.value) return
-    const clipboardItems = Array.from(event.clipboardData?.items ?? [])
-    const itemFiles = clipboardItems
-      .filter((item) => item.kind === 'file')
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => file !== null)
-    const sourceFiles = itemFiles.length ? itemFiles : Array.from(event.clipboardData?.files ?? [])
+    const sourceFiles = getClipboardFiles(event.clipboardData)
 
     if (!sourceFiles.length) {
       ElMessage.warning('剪贴板中没有可上传的文件，请先复制图片或实际文件后重试')
@@ -1084,7 +1045,7 @@
     }
 
     const files = sourceFiles.map((file, index) =>
-      createClipboardUploadFile(file, index, sourceFiles.length)
+      createNamedClipboardFile(file, index, sourceFiles.length)
     )
     try {
       await uploadFiles(files.length === 1 ? files[0] : files, uploadButton)
