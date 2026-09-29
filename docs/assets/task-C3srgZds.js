@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./task-workspace-BaWNZwAh.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`preventive`,mode:`task`}))}});export{i as default};

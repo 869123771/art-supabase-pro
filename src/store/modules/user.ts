@@ -349,12 +349,20 @@ export const useUserStore = defineStore(
 
     const ensureDictLoaded = async (dictCode: keyof DictMap | string): Promise<void> => {
       const code = String(dictCode)
+      // 全量缓存可能早于新增字典；缺失的类型需要单独补取。
+      const listFetchedAt = Object.prototype.hasOwnProperty.call(dictMap.value, code)
+        ? dictListFetchedAt
+        : 0
       // 空字典也是已加载结果；不能按数组长度判断，否则每次渲染都会重新请求。
-      if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
+      if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), listFetchedAt)) return
       if (dictListRequest) {
         // 全量请求在途时复用其结果；若其失败，当前字典仍可按类型单独补取。
         await dictListRequest.catch(() => undefined)
-        if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
+        if (
+          Object.prototype.hasOwnProperty.call(dictMap.value, code) &&
+          isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)
+        )
+          return
       }
       await fetchDictByCode(code)
     }
@@ -368,10 +376,7 @@ export const useUserStore = defineStore(
         return
       }
 
-      const code = String(dictCode)
-      // 查询过但不存在的值也遵循 TTL，避免表格中每个相同缺失值重复触发请求。
-      if (isDictionaryCacheFresh(dictCodeFetchedAt.get(code), dictListFetchedAt)) return
-      await ensureDictLoaded(code)
+      await ensureDictLoaded(dictCode)
     }
 
     return {

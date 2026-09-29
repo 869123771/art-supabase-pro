@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./execution-analytics-DSvaG8N-.js";var i=e({name:`MesLaborEfficiency`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`person`}))}});export{i as default};

@@ -408,6 +408,27 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   { menuName: 'TmsCustomerPrice', buttons: crud({ view: true, export: true }) },
   { menuName: 'TmsCustomerPriceEdit', buttons: [button('Save', '保存客户价')] },
   { menuName: 'TmsDriver', buttons: crud() },
+  {
+    menuName: 'TmsDriverBlacklist',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Delete', '删除'),
+      button('Export', '导出')
+    ]
+  },
+  { menuName: 'TmsServiceCase', buttons: crud({ view: true, export: true }) },
+  {
+    menuName: 'TmsElectronicContract',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Terminate', '终止')
+    ]
+  },
+  { menuName: 'TmsTransportAgreement', buttons: crud({ view: true, export: true }) },
   { menuName: 'TmsFavoriteRoute', buttons: crud() },
   {
     menuName: 'TmsStation',
@@ -441,6 +462,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     buttons: [
       button('View', '查看'),
       button('Dispatch', '配载调度'),
+      button('ViewAgreement', '查看协议'),
+      button('RemindSignature', '提醒签署'),
+      button('RemindRevision', '提醒修改'),
       button('Merge', '合单配载'),
       button('Split', '拆单配载'),
       button('Cancel', '取消订单'),
@@ -463,6 +487,17 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Cancel', '取消运单', 'TmsWaybill:Cancel')
     ]
   },
+  ...['TmsPickupAppointment', 'TmsDeliveryAppointment'].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('Add', '新增预约'),
+      button('Edit', '编辑预约'),
+      button('Delete', '删除预约'),
+      button('Confirm', '确认预约'),
+      button('Complete', '完结预约'),
+      button('Arrival', '记录到场')
+    ]
+  })),
   {
     menuName: 'TmsDeliveryManagement',
     buttons: [
@@ -497,10 +532,18 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'VehicleArchiveManage',
     buttons: [
-      ...crud({ view: true }).map((item) => ({
+      ...crud({ view: true, import: true, export: true }).map((item) => ({
         ...item,
         code: `VehicleArchive:${item.action}`
       })),
+      button('Copy', '复制车辆档案', 'VehicleArchive:Copy'),
+      button('Ocr', '证件智能识别', 'VehicleArchive:Ocr'),
+      button('TabBasic', '页签 · 基础信息', 'VehicleArchive:TabBasic'),
+      button('TabBody', '页签 · 车身参数', 'VehicleArchive:TabBody'),
+      button('TabEngine', '页签 · 发动机参数', 'VehicleArchive:TabEngine'),
+      button('TabOther', '页签 · 其他信息', 'VehicleArchive:TabOther'),
+      button('TabTypes', '页签 · 车型', 'VehicleArchive:TabTypes'),
+      button('TabApprovalHistory', '页签 · 审批历程', 'VehicleArchive:TabApprovalHistory'),
       button('TypeAdd', '新增车型规格', 'VehicleArchive:TypeAdd'),
       button('TypeEdit', '编辑车型规格', 'VehicleArchive:TypeEdit'),
       button('TypeDelete', '删除车型规格', 'VehicleArchive:TypeDelete')
@@ -572,7 +615,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   })),
   {
     menuName: 'VehicleQuery',
-    buttons: [button('View', '查看'), button('AiAnalyze', 'AI 健康分析')]
+    buttons: [
+      button('View', '查看'),
+      button('AiAnalyze', 'AI 健康分析'),
+      button('TabBasic', '页签 · 基础信息'),
+      button('TabBody', '页签 · 车身参数'),
+      button('TabEngine', '页签 · 发动机参数'),
+      button('TabOther', '页签 · 其他信息')
+    ]
   },
   {
     menuName: 'VehicleFleetHealth',

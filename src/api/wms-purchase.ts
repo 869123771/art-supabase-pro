@@ -266,7 +266,8 @@ export async function changeWmsPurchaseStatus(
 }
 
 export async function fetchWmsPurchaseOrganizations(
-  tenantId?: string
+  tenantId?: string,
+  organizationType?: string
 ): Promise<WmsPurchaseOrganization[]> {
   let orgQuery = supabase
     .from('mdm_organization')
@@ -280,6 +281,7 @@ export async function fetchWmsPurchaseOrganizations(
     orgQuery = orgQuery.eq('tenant_id', tenantId)
     initQuery = initQuery.eq('tenant_id', tenantId)
   }
+  if (organizationType) orgQuery = orgQuery.eq('organization_type', organizationType)
   const [{ data: organizations }, { data: initialization }] = await Promise.all([
     responseHandle<WmsPurchaseOrganizationRecord[]>(() => orgQuery.limit(2000), readOptions),
     responseHandle<WmsPurchaseInitializationRecord[]>(() => initQuery.limit(2000), readOptions)
@@ -299,12 +301,12 @@ export async function fetchWmsInitializationStatusPage(query: {
   current: number
   size: number
 }): Promise<{ data: WmsInitializationStatusRow[]; total: number }> {
-  const rows = (await fetchWmsPurchaseOrganizations(query.tenantId)).map(
-    (row): WmsInitializationStatusRow => ({
+  const rows = (await fetchWmsPurchaseOrganizations(query.tenantId, 'company'))
+    .filter((row) => Boolean(row.enabledOn))
+    .map((row): WmsInitializationStatusRow => ({
       ...row,
       initializationStatus: row.initializationClosedAt ? 'initialized' : 'not_initialized'
-    })
-  )
+    }))
   const keyword = query.keyword?.trim().toLowerCase()
   const filtered = rows.filter(
     (row) =>

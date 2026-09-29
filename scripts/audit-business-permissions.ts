@@ -68,6 +68,10 @@ const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|pl
 // Adding a file here requires an explicit security rationale; normal business maintenance is forbidden.
 const platformSuperAllowlist = new Map<string, string>([
   [
+    'modules/art-supabase-vms/src/views/archive-manage/vehicle-archive-edit/index.vue',
+    'controlled vehicle-document OCR form write; server also validates platform-super authority'
+  ],
+  [
     'modules/art-supabase-scm/src/views/sales-document/scm-document-workspace.vue',
     'cross-tenant document selector and tenant column'
   ],

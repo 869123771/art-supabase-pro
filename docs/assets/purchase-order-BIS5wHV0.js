@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./purchase-workspace-DsADwPMa.js";var i=e({name:`ScmPurchaseOrder`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`purchase_order`}))}});export{i as default};

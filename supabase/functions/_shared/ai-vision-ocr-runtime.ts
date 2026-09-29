@@ -37,12 +37,18 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
   entityType: string
   entityTable: string
   envPrefix: string
+  inlineImages?: boolean
+  strictProvider?: boolean
   requiredPermission?: string | ((body: Record<string, unknown>) => string | null)
+  allowReview?: boolean
   authorizeImageUrls?: (context: {
     admin: SupabaseClient
+    userClient: SupabaseClient
     appUser: { tenant_id: string; user_email: string }
     userId: string
     imageUrls: string[]
+    requestedTenantId: string | null
+    supabaseUrl: string
   }) => Promise<boolean>
   defaultPrompt: string
   expectedShape: Record<string, unknown>
@@ -74,6 +80,7 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
     unauthorized: string
     forbidden: string
     invalidImages: string
+    invalidImageContent?: string
     disabled: string
     rateLimited: string
     providerFailed: string
@@ -85,7 +92,7 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-art-tenant-scope',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
@@ -123,6 +130,41 @@ function isUuid(value: string | null): value is string {
 function integerValue(value: unknown, fallback: number, min: number, max: number): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.trunc(parsed))) : fallback
+}
+
+async function loadImageDataUrl(url: string): Promise<string | null> {
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 15_000)
+  if (!response.ok || !response.body) return null
+  const mime = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
+  if (mime !== 'image/jpeg' && mime !== 'image/png' && mime !== 'image/webp') {
+    await response.body.cancel()
+    return null
+  }
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.length
+    if (size > 8 * 1024 * 1024) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+  if (!size) return null
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.length
+  }
+  let binary = ''
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000))
+  }
+  return `data:${mime};base64,${btoa(binary)}`
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
@@ -185,15 +227,15 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
       }
       const body = (await req.json()) as Record<string, unknown>
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false }
+      })
       const requiredPermission =
         typeof config.requiredPermission === 'function'
           ? config.requiredPermission(body)
           : config.requiredPermission
       if (requiredPermission) {
-        const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-          global: { headers: { Authorization: authHeader } },
-          auth: { autoRefreshToken: false, persistSession: false }
-        })
         const { data: hasPermission, error: permissionError } = await userClient.rpc(
           'current_has_permission',
           { p_permission: requiredPermission }
@@ -208,6 +250,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
       const action = body.action === 'review' ? 'review' : 'analyze'
       if (action === 'review') {
+        if (config.allowReview === false) {
+          return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
+        }
         const artifactId = stringValue(body.artifactId)
         const entityId = stringValue(body.entityId)
         if (
@@ -289,7 +334,15 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       }
       if (
         config.authorizeImageUrls &&
-        !(await config.authorizeImageUrls({ admin, appUser, userId: user.id, imageUrls }))
+        !(await config.authorizeImageUrls({
+          admin,
+          userClient,
+          appUser,
+          userId: user.id,
+          imageUrls,
+          requestedTenantId: req.headers.get('x-art-tenant-scope'),
+          supabaseUrl
+        }))
       ) {
         return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
       }
@@ -325,7 +378,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         return json({ code: 'feature_disabled', message: config.labels.disabled }, 503)
       }
 
-      const endpoints = resolveAiProviderEndpoints(
+      const resolvedEndpoints = resolveAiProviderEndpoints(
         {
           provider: runtimeConfig.provider,
           model: runtimeConfig.visionModel || runtimeConfig.model,
@@ -333,6 +386,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         },
         { openAiModel: Deno.env.get(`AI_${config.envPrefix}_OPENAI_MODEL`) }
       )
+      const endpoints = config.strictProvider
+        ? resolvedEndpoints.filter((endpoint) => endpoint.id === runtimeConfig.provider)
+        : resolvedEndpoints
       if (!endpoints.length) {
         return json({ code: 'missing_secret', message: 'AI 服务尚未配置' }, 500)
       }
@@ -369,6 +425,21 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         '必须把图片中可见文字按自然阅读顺序完整抄录到 rawText；保留换行，不得把任务说明、字段模板或推测内容写入 rawText。',
         '即使没有识别到文字，也必须返回 rawText 空字符串。'
       ].join('\n')
+      if (config.inlineImages && !config.authorizeImageUrls) {
+        throw new Error('Inline OCR images require an image authorization policy')
+      }
+      const providerImageUrls = config.inlineImages
+        ? await Promise.all(imageUrls.map((url) => loadImageDataUrl(url)))
+        : imageUrls
+      if (providerImageUrls.some((url) => !url)) {
+        return json(
+          {
+            code: 'invalid_image_content',
+            message: config.labels.invalidImageContent ?? config.labels.invalidImages
+          },
+          422
+        )
+      }
       let resolvedModel = endpoints[0].model
       const startedAt = Date.now()
       const inputMetadata = config.inputMetadata(input)
@@ -414,13 +485,9 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const userContent = [
         {
           type: 'text',
-          text: JSON.stringify(
-            { context: inputMetadata, expectedShape: config.expectedShape },
-            null,
-            2
-          )
+          text: JSON.stringify({ context: inputMetadata, expectedShape: config.expectedShape }, null, 2)
         },
-        ...imageUrls.map((url) => ({ type: 'image_url', image_url: { url } }))
+        ...providerImageUrls.map((url) => ({ type: 'image_url', image_url: { url } }))
       ]
       const requestBody: Record<string, unknown> = {
         model: resolvedModel,
@@ -503,8 +570,12 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         )
       }
       if (!providerResult?.response.ok) {
-        const message = providerResult?.errorText || 'AI provider request failed'
-        await finishRun('failed', undefined, 'provider_error', message)
+        await finishRun(
+          'failed',
+          undefined,
+          'provider_error',
+          `AI provider returned HTTP ${providerResult?.response.status ?? 'unknown'}`
+        )
         return json({ code: 'provider_error', message: config.labels.providerFailed }, 502)
       }
 

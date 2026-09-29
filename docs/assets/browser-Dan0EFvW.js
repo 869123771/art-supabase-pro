@@ -1,0 +1,1 @@
+import{et as e}from"./framework-0MLItC78.js";var t=()=>e&&/firefox/i.test(window.navigator.userAgent),n=()=>e&&/android/i.test(window.navigator.userAgent);export{t as n,n as t};
