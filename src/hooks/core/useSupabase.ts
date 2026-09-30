@@ -1,6 +1,11 @@
 import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
+import {
+  DeleteReferenceBlockedError,
+  getDeleteReferenceContext
+} from '@/utils/supabase/delete-reference'
+import { mittBus } from '@/utils/sys'
 import type { QueryResult } from '@/types/api/response'
 import {
   getFriendlySupabaseErrorMessage,
@@ -190,15 +195,26 @@ export function useSupabase() {
             [responseError, queryError, normalizedError, error],
             options.errorMessage
           )
-      if ((showMessage || showErrorMessage) && !sessionFailureHandled) {
+      const referenceContext = getDeleteReferenceContext(error)
+      const referenceHandled = Boolean(
+        referenceContext && mittBus.all.get('deleteReferenceBlocked')?.length
+      )
+      if (referenceContext && referenceHandled)
+        mittBus.emit('deleteReferenceBlocked', referenceContext)
+      if ((showMessage || showErrorMessage) && !sessionFailureHandled && !referenceHandled) {
         ElMessage.error(message)
       }
       if (breakReturn) {
+        if (referenceHandled) throw new DeleteReferenceBlockedError(error)
         throw new Error(message, { cause: error })
       }
       return {
         data: null,
-        error: returnRawError && responseBody ? keysToCamelDeep(responseBody) : normalizedError
+        error: referenceHandled
+          ? new DeleteReferenceBlockedError(error)
+          : returnRawError && responseBody
+            ? keysToCamelDeep(responseBody)
+            : normalizedError
       }
     }
 

@@ -1,4 +1,34 @@
 import { useSupabase } from '@/hooks'
+import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import type { DeleteReferenceContext } from '@/utils/supabase/delete-reference'
+
+export interface RecordDeleteDependency extends Omit<
+  MasterDataDeleteDependencyDetail,
+  'dependencyCode' | 'cleanupAllowed' | 'createdAt'
+> {
+  sourceTable: string
+  createdAt: string | null
+}
+
+export async function fetchRecordDeleteDependencies(
+  context: DeleteReferenceContext
+): Promise<RecordDeleteDependency[]> {
+  const { data, error } = await fetchAllRangePages<RecordDeleteDependency>(({ from, to }) =>
+    responseHandle<RecordDeleteDependency[]>(
+      () =>
+        supabase
+          .rpc('get_record_delete_dependency_details', {
+            p_table: context.table,
+            p_ids: context.ids,
+            p_constraint: context.constraint ?? null
+          })
+          .range(from, to),
+      { breakReturn: true, showErrorMessage: false, errorMessage: '关联记录检查失败，请重试' }
+    )
+  )
+  if (error || !data) throw new Error('关联记录检查失败，请重试', { cause: error })
+  return data
+}
 
 export type MasterDataDeleteResourceType =
   | 'carrier'

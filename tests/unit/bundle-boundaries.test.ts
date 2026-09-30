@@ -70,7 +70,9 @@ test('startup modules avoid the all-utils barrel and defer dictionary queries', 
     '../../src/store/modules/menu.ts',
     '../../src/store/modules/user.ts',
     '../../src/router/core/MenuProcessor.ts',
-    '../../src/api/common.ts',
+    '../../src/api/attachments.ts',
+    '../../src/api/region-options.ts',
+    '../../src/api/unique-field.ts',
     '../../src/views/auth/login/index.vue'
   ]
 

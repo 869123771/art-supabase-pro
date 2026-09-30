@@ -1,9 +1,12 @@
 import Resources = Api.DataCenter.Resources
-import { uploadAttachment } from '@/api/common'
+import { uploadAttachment } from '@/api/attachments'
 
 const uploadAndRefresh = async (files: File | File[], args: Resources.Args): Promise<void> => {
   try {
-    await uploadAttachment(files, { onProgress: args.onProgress })
+    await uploadAttachment(files, {
+      targetTenantId: typeof args.targetTenantId === 'string' ? args.targetTenantId : undefined,
+      onProgress: args.onProgress
+    })
   } finally {
     // 部分文件成功、部分失败时也刷新列表，让已完成的上传立即可见。
     await args.handleGetResourceList?.()

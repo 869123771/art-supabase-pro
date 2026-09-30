@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./workspace-B5Yohd94.js";var i=e({name:`WmsOtherOutbound`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`other_outbound`}))}});export{i as default};

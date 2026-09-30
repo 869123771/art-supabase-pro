@@ -65,7 +65,7 @@
           </div>
         </template>
         <template #avatar>
-          <ArtUploadImage v-model="formData.avatar" />
+          <ArtUploadImage v-model="formData.avatar" :resource-tenant-id="formData.tenantId || ''" />
         </template>
       </ArtForm>
     </div>

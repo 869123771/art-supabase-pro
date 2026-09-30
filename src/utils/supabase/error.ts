@@ -327,6 +327,10 @@ export function getFriendlySupabaseErrorMessage(
     return STATUS_MESSAGES[401]
   }
 
+  if (details.names.includes('DeleteReferenceBlockedError')) {
+    return '删除受阻，请处理弹窗中的关联记录后重试'
+  }
+
   // 业务 RPC 用 23514 报告校验失败；保留其安全的中文原因，避免只显示泛化提示。
   if (details.codes.includes('23514')) {
     const businessMessage = details.messages.find(isSafeBusinessMessage)

@@ -65,6 +65,8 @@
   }
 
   const panelProps = computed<ResourcePanelProps>(() => ({
+    resourceTenantId: props.resourceTenantId,
+    includePlatformTenant: props.includePlatformTenant,
     multiple: props.multiple,
     limit: props.limit,
     pageSize: props.pageSize,

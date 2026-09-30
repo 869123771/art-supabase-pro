@@ -735,6 +735,7 @@ declare namespace Api {
     namespace Resources {
       interface Args {
         btn?: Button
+        targetTenantId?: string
         handleGetResourceList?: () => void | Promise<void>
         onProgress?: (progress: UploadProgress) => void
         [key: string]: unknown
@@ -762,7 +763,7 @@ declare namespace Api {
       /** 用户搜索参数 */
       type ResourceSearchParams = Partial<
         Pick<ResourceListItem, 'originName' | 'suffix'> & Api.Common.CommonSearchParams
-      >
+      > & { tenantId?: string }
 
       interface Button {
         name: string

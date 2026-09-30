@@ -82,7 +82,12 @@
                   {{ record.cleanupAllowed ? '可选择清理' : '需保留/处理' }}
                 </ElTag>
                 <ElButton
-                  v-if="group.meta.routeName || group.meta.routePath"
+                  v-if="
+                    record.targetId &&
+                    (group.meta.routeName
+                      ? router.hasRoute(group.meta.routeName)
+                      : group.meta.routePath)
+                  "
                   link
                   type="primary"
                   @click="openDependency(group.meta, record)"
@@ -115,6 +120,14 @@
         <div class="master-delete-guard__footer-actions">
           <ElButton @click="api.handleClose()">关闭</ElButton>
           <ElButton
+            type="primary"
+            :loading="checking"
+            :disabled="cleanupLoading"
+            @click="retryInspection"
+          >
+            重新检查
+          </ElButton>
+          <ElButton
             v-if="safeRecordCount"
             type="danger"
             plain
@@ -133,7 +146,8 @@
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { groupBy, uniq } from 'lodash-es'
-  import { ElMessage, type CheckboxValueType } from 'element-plus'
+  import { Loading } from '@element-plus/icons-vue'
+  import { ElMessage, type MessageHandler, type CheckboxValueType } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -176,6 +190,7 @@
       | { resourceType: MasterDataDeleteResourceType; fetchDependencies?: never }
       | {
           resourceType?: never
+          navigationResource?: { type: string; queryKey: string }
           fetchDependencies: (resourceIds: string[]) => Promise<MasterDataDeleteDependencyDetail[]>
         }
     )
@@ -199,6 +214,15 @@
   const cleanupLoading = ref(false)
   const inspectionError = ref('')
   let inspectionSequence = 0
+  const checking = ref(false)
+  let progressMessage: MessageHandler | undefined
+  const cancelInspection = () => {
+    inspectionSequence += 1
+    checking.value = false
+    progressMessage?.close()
+  }
+  onBeforeUnmount(cancelInspection)
+  onDeactivated(cancelInspection)
 
   const dependencyMeta: Record<string, DependencyMeta> = {
     carrier_price: {
@@ -467,6 +491,10 @@
 
   const formatRecordMeta = (record: MasterDataDeleteDependencyDetail): string => {
     const parts = [record.recordSummary, record.recordStatus]
+    if ((currentOptions.value?.resources.length ?? 0) > 1) {
+      const resource = currentOptions.value?.resources.find((item) => item.id === record.resourceId)
+      if (resource) parts.unshift(`引用：${resource.label}`)
+    }
     if (record.recordAmount !== null && record.recordAmount !== undefined) {
       parts.push(
         `¥${Number(record.recordAmount).toLocaleString('zh-CN', {
@@ -509,36 +537,48 @@
       : selectedRecordIds.value.filter((recordId) => !groupRecordIds.includes(recordId))
   }
 
-  const loadDependencies = async (): Promise<void> => {
+  const loadDependencies = async (sequence = inspectionSequence): Promise<void> => {
     const options = currentOptions.value
     if (!options) return
     const records = options.fetchDependencies
       ? await options.fetchDependencies(resourceIds.value)
       : await fetchMasterDataDeleteDependencies(options.resourceType, resourceIds.value)
-    if (options !== currentOptions.value) return
+    if (options !== currentOptions.value || sequence !== inspectionSequence) return
     dependencies.value = records
     selectedRecordIds.value = []
   }
 
   const inspect = async (options: MasterDataDeleteGuardOpenOptions): Promise<boolean> => {
     const sequence = ++inspectionSequence
+    const hadDialog = Boolean(unref(dialogRef.value?.visible))
     currentOptions.value = options
-    dependencies.value = []
+    if (!hadDialog) dependencies.value = []
     selectedRecordIds.value = []
     inspectionError.value = ''
-    await dialogRef.value?.handleOpen(
-      {},
-      {
-        title: `暂时无法删除${options.resourceLabel}`,
-        size: 'md',
-        contentMaxHeight: '68vh',
-        loading: true,
-        loadingText: '正在检查关联资料…',
-        showCancelButton: false,
-        showConfirmButton: false,
-        dialogProps: { closeOnClickModal: false }
-      }
-    )
+    checking.value = true
+    progressMessage?.close()
+    const progressTimer = window.setTimeout(() => {
+      if (sequence !== inspectionSequence || hadDialog) return
+      progressMessage = ElMessage({
+        message: '正在检查删除条件…',
+        icon: () => h(Loading, { class: 'el-icon is-loading' }),
+        duration: 0,
+        type: 'info'
+      })
+    }, 200)
+    const showResult = () =>
+      dialogRef.value?.handleOpen(
+        {},
+        {
+          title: inspectionError.value ? '删除检查未完成' : `暂时无法删除${options.resourceLabel}`,
+          size: 'md',
+          contentMaxHeight: '68vh',
+          loading: false,
+          showCancelButton: false,
+          showConfirmButton: false,
+          dialogProps: { closeOnClickModal: false }
+        }
+      )
     try {
       if (options.resolveResources) {
         const resources = await options.resolveResources()
@@ -546,20 +586,30 @@
         currentOptions.value = { ...options, resources }
       }
       await loadDependencies()
-      if (sequence !== inspectionSequence || !dialogRef.value?.visible.value) return true
-      if (dependencies.value.length) return true
-      await dialogRef.value?.handleClose(true)
+      if (sequence !== inspectionSequence || (hadDialog && !unref(dialogRef.value?.visible)))
+        return true
+      if (dependencies.value.length) {
+        await showResult()
+        return true
+      }
+      if (hadDialog) await dialogRef.value?.handleClose(true)
       return false
     } catch (error) {
-      if (sequence === inspectionSequence) {
+      if (sequence === inspectionSequence && (!hadDialog || unref(dialogRef.value?.visible))) {
         inspectionError.value = getFriendlySupabaseErrorMessage(
           error,
           '暂时无法检查关联资料，请重试'
         )
+        await showResult()
       }
       return true
     } finally {
-      if (sequence === inspectionSequence) dialogRef.value?.setLoading(false)
+      window.clearTimeout(progressTimer)
+      if (sequence === inspectionSequence) {
+        checking.value = false
+        progressMessage?.close()
+        progressMessage = undefined
+      }
     }
   }
 
@@ -635,10 +685,11 @@
       attachment: 'attachmentId',
       order: 'orderId'
     }
-    const resourceType = options.resourceType ?? 'accessory_item'
+    const resourceType =
+      options.resourceType ?? options.navigationResource?.type ?? 'accessory_item'
     const resourceQuery = options.resourceType
       ? { [resourceQueryKeyMap[options.resourceType]]: record.resourceId }
-      : { accessoryItemId: record.resourceId }
+      : { [options.navigationResource?.queryKey ?? 'accessoryItemId']: record.resourceId }
     const query = {
       fromMasterDelete: '1',
       resourceType,
@@ -688,7 +739,7 @@
     if (meta.routePath) await router.push({ path: meta.routePath, query })
   }
 
-  defineExpose({ inspect })
+  defineExpose({ inspect, checking })
 </script>
 
 <style scoped lang="scss">

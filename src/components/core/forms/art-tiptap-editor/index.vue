@@ -592,7 +592,7 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import { useFullscreen } from '@vueuse/core'
-  import { uploadAttachment } from '@/api/common'
+  import { uploadAttachment } from '@/api/attachments'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import type { Editor, JSONContent } from '@tiptap/core'
   import { EditorContent, useEditor } from '@tiptap/vue-3'

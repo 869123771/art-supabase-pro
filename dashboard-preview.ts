@@ -6,14 +6,6 @@ import { createPinia } from 'pinia'
 import type { DomainCommandKind } from '@/api/domain-command'
 
 const screen = new URLSearchParams(location.search).get('screen') || 'business'
-const nativeFetch = globalThis.fetch.bind(globalThis)
-globalThis.fetch = (input, init) => {
-  const url = input instanceof Request ? input.url : String(input)
-  if (/^https?:\/\//.test(url) && !url.startsWith(location.origin)) {
-    return new Promise<Response>(() => {})
-  }
-  return nativeFetch(input, init)
-}
 const app = createApp({ render: () => h(component, componentProps) })
 app.use(createPinia())
 const [EnterpriseBigScreen, DomainCommandScreen, AssetMaintenanceBigScreen] = await Promise.all([

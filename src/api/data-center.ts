@@ -343,8 +343,10 @@ export async function editDict(params: Api.DataCenter.DictListItem) {
 }
 
 // 资源列表
-export async function fetchGetResourceList(params: Api.DataCenter.Resources.ResourceSearchParams) {
-  const { originName = '', suffix = '', from = 0, to = 9 } = params
+export async function fetchGetResourceList(
+  params: Api.DataCenter.Resources.ResourceSearchParams & { tenantId?: string }
+) {
+  const { originName = '', suffix = '', tenantId, from = 0, to = 9 } = params
   const specs: FilterSpec[] = [{ col: 'originName', op: 'ilike', val: `%${originName}%` }]
 
   if (suffix) {
@@ -364,6 +366,7 @@ export async function fetchGetResourceList(params: Api.DataCenter.Resources.Reso
     .order('create_time', { ascending: false })
     .range(from, to)
 
+  if (tenantId) query = query.eq('tenant_id', tenantId)
   query = applyFilters(query, specs, { skipEmpty: true, camelToSnake: true })
   return await responseHandle<Api.DataCenter.Resources.ResourceListItem[]>(() => query, {
     showErrorMessage: true

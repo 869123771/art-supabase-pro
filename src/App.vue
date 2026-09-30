@@ -8,6 +8,7 @@
     }"
   >
     <a class="app-skip-link" href="#main-content">跳至主要内容</a>
+    <GlobalReferenceFeedback v-if="deleteReferenceContext" :context="deleteReferenceContext" />
     <RouterView v-slot="{ Component }">
       <component :is="Component" id="main-content" tabindex="-1" />
     </RouterView>
@@ -15,6 +16,8 @@
 </template>
 
 <script setup lang="ts">
+  import { mittBus } from '@/utils/sys'
+  import type { DeleteReferenceContext } from '@/utils/supabase/delete-reference'
   import { useUserStore } from './store/modules/user'
   import { useSettingStore } from './store/modules/setting'
   import zh from 'element-plus/es/locale/lang/zh-cn'
@@ -28,6 +31,21 @@
   import { LanguageEnum } from './enums/appEnum'
 
   const userStore = useUserStore()
+  const GlobalReferenceFeedback = defineAsyncComponent(
+    () => import('@/components/business/master-data-delete-guard/global-reference-feedback.vue')
+  )
+  const deleteReferenceContext = shallowRef<DeleteReferenceContext>()
+  const showDeleteReferences = (context: DeleteReferenceContext): void => {
+    deleteReferenceContext.value = context
+  }
+  onMounted(() => mittBus.on('deleteReferenceBlocked', showDeleteReferences))
+  onUnmounted(() => mittBus.off('deleteReferenceBlocked', showDeleteReferences))
+  watch(
+    () => userStore.isLogin,
+    (loggedIn) => {
+      if (!loggedIn) deleteReferenceContext.value = undefined
+    }
+  )
   const settingStore = useSettingStore()
   const { language } = storeToRefs(userStore)
   const { boxBorderMode } = storeToRefs(settingStore)

@@ -20,13 +20,31 @@
           </template>
         </el-segmented>
       </div>
-      <div class="flex justify-end">
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <el-select
+          v-if="needsUploadTenantChoice"
+          v-model="selectedUploadTenantId"
+          filterable
+          clearable
+          :loading="tenantScopeStore.loading"
+          :no-data-text="tenantScopeStore.loadError || '暂无可选租户'"
+          placeholder="先选择上传租户"
+          aria-label="资源所属租户"
+          class="w-full md:w-[220px]"
+        >
+          <el-option
+            v-for="tenant in uploadTenantOptions"
+            :key="tenant.id"
+            :label="tenant.tenantName"
+            :value="tenant.id"
+          />
+        </el-select>
         <el-input
           v-model="queryParams.originName"
           placeholder="搜索此分类下的资源"
           clearable
           class="w-full md:w-[180px]"
-          @input="handleGetResourceList"
+          @input="searchResources"
         >
           <template #suffix>
             <ArtSvgIcon icon="ri-search-line" />
@@ -40,7 +58,7 @@
       type="button"
       class="resource-paste-zone"
       :class="{ 'is-uploading': uploading }"
-      :disabled="uploading"
+      :disabled="uploading || !activeUploadTenantId"
       aria-label="粘贴剪贴板文件并上传"
       @paste="handlePasteFiles"
     >
@@ -131,11 +149,17 @@
       </component>
       <div v-else class="h-full w-full flex flex-1 items-center justify-center">
         <ArtEmptyState
-          title="暂无可用资源"
-          description="可以切换资源类型，或尝试更换搜索关键词"
+          :title="loadError ? '资源加载失败' : '暂无可用资源'"
+          :description="
+            loadError ? '请检查网络后重新加载' : '可以切换资源类型，或尝试更换搜索关键词'
+          "
           size="compact"
           :visual-size="76"
-        />
+        >
+          <el-button v-if="loadError" type="primary" plain @click="handleGetResourceList">
+            重新加载
+          </el-button>
+        </ArtEmptyState>
       </div>
 
       <!-- 右键菜单组件 -->
@@ -194,12 +218,17 @@
                 v-bind="btn.uploadConfig ?? {}"
                 @change="handleFile($event, btn)"
               />
-              <ArtTooltip :content="btn.label" placement="top" :show-after="300" :offset="10">
+              <ArtTooltip
+                :content="activeUploadTenantId ? btn.label : '请先选择上传租户'"
+                placement="top"
+                :show-after="300"
+                :offset="10"
+              >
                 <button
                   type="button"
                   class="res-app"
                   :class="getDockEffectClass(index)"
-                  :disabled="uploading"
+                  :disabled="uploading || !activeUploadTenantId"
                   :aria-label="btn.label"
                   @click="handleUploadButtonClick(btn)"
                   @mouseenter="hoveredDockIndex = index"
@@ -228,13 +257,15 @@
   import { ElMessage, ElScrollbar } from 'element-plus'
   import { deleteResource, fetchGetResourceList, renameResource } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@utils/table/tableUtils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatSize } from '@/utils/file'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useTimeoutFn } from '@vueuse/core'
+  import { useDebounceFn, useTimeoutFn } from '@vueuse/core'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
@@ -249,6 +280,7 @@
     showCopyActions: false,
     showPasteUpload: false,
     showRenameAction: false,
+    includePlatformTenant: false,
     pageSize: 30,
     dbClickConfirm: false
   })
@@ -261,6 +293,30 @@
   const modelValue = defineModel<string | string[] | undefined>()
 
   const resourceStore = useResourceStore()
+  const tenantScopeStore = useTenantScopeStore()
+  const userStore = useUserStore()
+  const selectedUploadTenantId = ref('')
+  const uploadTenantOptions = computed(() => {
+    const platformTenantId = userStore.getUserInfo.tenantId
+    if (!props.includePlatformTenant || !userStore.isPlatformSuper || !platformTenantId) {
+      return tenantScopeStore.tenantOptions
+    }
+    return [
+      { id: platformTenantId, tenantName: '平台租户（超级管理员）' },
+      ...tenantScopeStore.tenantOptions
+    ]
+  })
+  const needsUploadTenantChoice = computed(
+    () => tenantScopeStore.isAllTenants && !props.resourceTenantId
+  )
+  const activeUploadTenantId = computed(
+    () =>
+      props.resourceTenantId ||
+      (tenantScopeStore.isAllTenants
+        ? selectedUploadTenantId.value
+        : tenantScopeStore.effectiveTenantId) ||
+      ''
+  )
   const { confirmDelete, promptText } = useArtFeedback()
   interface MasterDataDeleteGuardExpose {
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
@@ -337,6 +393,11 @@
     originName: '',
     suffix: ''
   })
+  let resourceRequestId = 0
+  const searchResources = useDebounceFn(() => {
+    queryParams.value.page = 1
+    void handleGetResourceList()
+  }, 250)
 
   const fileInputRefs = new Map<string, HTMLInputElement>()
   const hoveredDockIndex = ref<number>()
@@ -346,6 +407,7 @@
    */
   // 资源卡片只整体替换列表，避免为大量只读资源记录创建深层响应式代理。
   const resources = shallowRef<Resource[]>([])
+  const loadError = ref(false)
   const playingResourceKey = ref<string>()
 
   /**
@@ -967,11 +1029,13 @@
     btn: Api.DataCenter.Resources.Button
   ): Promise<void> {
     if (!btn.upload || uploading.value) return
+    if (!activeUploadTenantId.value) throw new Error('请先选择资源所属租户')
     prepareUploadProgress(files)
     uploading.value = true
     try {
       await btn.upload(files, {
         btn,
+        targetTenantId: activeUploadTenantId.value,
         handleGetResourceList,
         onProgress: handleUploadProgress
       })
@@ -1057,30 +1121,49 @@
     playingResourceKey.value = undefined
     const { options } = segment.value
     queryParams.value.suffix = options.find((i) => i.value === String(value))?.suffix ?? ''
-    handleGetResourceList()
+    queryParams.value.page = 1
+    void handleGetResourceList()
   }
 
   const handleGetResourceList = async () => {
+    const requestId = ++resourceRequestId
     try {
       playingResourceKey.value = undefined
       loading.value = true
+      loadError.value = false
       resources.value = []
       const { suffix, originName, page: current, pageSize: size } = queryParams.value
       const { from, to } = pageInfoHandler({ current, size })
       const params = {
         originName,
         suffix,
+        tenantId: activeUploadTenantId.value || undefined,
         from,
         to
       }
-      const { data } = await fetchGetResourceList(params)
+      const { data, error } = await fetchGetResourceList(params)
+      if (requestId !== resourceRequestId) return
+      loadError.value = Boolean(error)
       resources.value = data ?? []
+    } catch (error) {
+      if (requestId !== resourceRequestId) return
+      loadError.value = true
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '资源加载失败，请稍后重试'))
     } finally {
-      loading.value = false
+      if (requestId === resourceRequestId) loading.value = false
     }
   }
 
-  onMounted(handleGetResourceList)
+  watch(activeUploadTenantId, () => {
+    selectedKeys.value = []
+    queryParams.value.page = 1
+    void handleGetResourceList()
+  })
+
+  onMounted(() => {
+    if (tenantScopeStore.isAllTenants) void tenantScopeStore.loadTenantOptions()
+    void handleGetResourceList()
+  })
 </script>
 
 <style scoped lang="scss">

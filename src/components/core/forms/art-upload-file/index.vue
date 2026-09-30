@@ -122,6 +122,7 @@
       v-if="showResourcePicker && !readonly"
       v-model:visible="resourcePickerVisible"
       title="从资源管理器选择文件"
+      :resource-tenant-id="props.resourceTenantId"
       :multiple="multiple"
       :limit="multiple ? Math.max(limit - fileList.length, 0) : 1"
       @confirm="handleResourceConfirm"
@@ -138,7 +139,7 @@
     UploadUserFile
   } from 'element-plus'
   import { ElMessage, genFileId } from 'element-plus'
-  import { uploadAttachment } from '@/api/common'
+  import { uploadAttachment } from '@/api/attachments'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'

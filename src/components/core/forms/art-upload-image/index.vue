@@ -12,6 +12,7 @@
     :multiple="multiple"
     :limit="limit"
     :accept="fileType"
+    :disabled="readonly || disabled"
     v-bind="$attrs"
   >
     <slot name="default">
@@ -85,8 +86,9 @@
       </div>
     </template>
     <ArtResourcePicker
-      v-if="showResourcePicker"
+      v-if="showResourcePicker && !readonly && !disabled"
       v-model:visible="isOpenResource"
+      :resource-tenant-id="resourceTenantId"
       :multiple="multiple"
       :limit="limit"
       @confirm="handleConfirm"
@@ -106,7 +108,7 @@
     shouldSyncUploadFileList
   } from '@/components/core/forms/upload-model-utils'
   import ResourceListItem = Api.DataCenter.Resources.ResourceListItem
-  import { uploadAttachment } from '@/api/common'
+  import { uploadAttachment } from '@/api/attachments'
 
   defineOptions({ name: 'ArtUploadImage', inheritAttrs: false })
 
@@ -122,6 +124,7 @@
     limit = 5,
     multiple = false,
     readonly = false,
+    disabled = false,
     showResourcePicker = true,
     resourceTenantId = '',
     uploadRequest
@@ -137,6 +140,7 @@
     limit?: number
     multiple?: boolean
     readonly?: boolean
+    disabled?: boolean
     showResourcePicker?: boolean
     resourceTenantId?: string
     uploadRequest?: (file: File) => Promise<Api.DataCenter.Resources.ResourceListItem[]>
@@ -271,6 +275,7 @@
   }
 
   function beforeUpload(rawFile: File) {
+    if (readonly || disabled) return false
     /*if (!fileType.includes(rawFile.type)) {
       ElMessage.error(`只允许上传：${fileType.join(', ')}`)
       return false
@@ -305,6 +310,7 @@
   }
 
   const handleConfirm = (selected: ResourceListItem[]) => {
+    if (readonly || disabled) return
     if (resourceTenantId && selected.some((resource) => resource.tenantId !== resourceTenantId)) {
       ElMessage.warning('所选图片不属于当前目标租户，请重新选择')
       return

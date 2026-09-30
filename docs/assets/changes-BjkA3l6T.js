@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./center-BQSXjXGG.js";var i=e({name:`MdmChangeManagement`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-view":`changes`}))}});export{i as default};

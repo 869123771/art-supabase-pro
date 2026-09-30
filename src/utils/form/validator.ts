@@ -20,7 +20,7 @@
 
 import type { FormItemRule } from 'element-plus'
 import { debounce } from 'lodash-es'
-import { checkUnique } from '@/api/common'
+import { checkUniqueField } from '@/api/unique-field'
 
 /**
  * 验证手机号码（中国大陆）
@@ -110,7 +110,7 @@ export function uniqueValidator(options: {
 
   const debouncedCheck = debounce(async (value: string, callback: (error?: Error) => void) => {
     try {
-      const { total } = await checkUnique({
+      const { total } = await checkUniqueField({
         table,
         field,
         value,
