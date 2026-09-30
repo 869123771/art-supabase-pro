@@ -1,7 +1,9 @@
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { fetchAllRangePages } from '@/utils/supabase/pagination'
 import type {
   WmsInitializationStatusRow,
+  WmsPendingInitializationDocument,
   WmsPurchaseBin,
   WmsPurchaseDocument,
   WmsPurchaseKind,
@@ -333,9 +335,99 @@ export async function changeWmsInitializationStatus(
       }),
     {
       ...writeOptions,
-      message: action === 'close' ? '库存初始化已结束，期初余额已生成' : '库存组织已反初始化'
+      showMessage: false,
+      showErrorMessage: false,
+      errorMessage: action === 'close' ? '结束初始化失败，请重试' : '反初始化失败，请重试'
     }
   )
+}
+
+export async function fetchWmsPendingInitializationDocuments(
+  tenantId: string,
+  organizationId: string
+): Promise<WmsPendingInitializationDocument[]> {
+  const options = {
+    ...readOptions,
+    errorMessage: '待处理初始化单据加载失败，请重试'
+  }
+  const [stock, purchase, sales] = await Promise.all([
+    fetchAllRangePages<Record<string, unknown>>(({ from, to }) =>
+      responseHandle<Record<string, unknown>[]>(
+        () =>
+          supabase
+            .from('wms_initial_stock_document')
+            .select('id,document_no,status')
+            .eq('tenant_id', tenantId)
+            .eq('organization_id', organizationId)
+            .neq('status', 'approved')
+            .order('id')
+            .range(from, to),
+        options
+      )
+    ),
+    fetchAllRangePages<Record<string, unknown>>(({ from, to }) =>
+      responseHandle<Record<string, unknown>[]>(
+        () =>
+          supabase
+            .from('wms_purchase_document')
+            .select('id,document_no,status,kind')
+            .eq('tenant_id', tenantId)
+            .eq('organization_id', organizationId)
+            .eq('is_initialization', true)
+            .neq('status', 'approved')
+            .order('id')
+            .range(from, to),
+        options
+      )
+    ),
+    fetchAllRangePages<Record<string, unknown>>(({ from, to }) =>
+      responseHandle<Record<string, unknown>[]>(
+        () =>
+          supabase
+            .from('wms_sales_document')
+            .select('id,document_no,status,kind')
+            .eq('tenant_id', tenantId)
+            .eq('organization_id', organizationId)
+            .eq('is_initialization', true)
+            .neq('status', 'approved')
+            .order('id')
+            .range(from, to),
+        options
+      )
+    )
+  ])
+  const queryError = stock.error ?? purchase.error ?? sales.error
+  if (queryError || !stock.data || !purchase.data || !sales.data) {
+    throw new Error('待处理初始化单据加载失败，请重试', { cause: queryError })
+  }
+
+  function normalize(
+    rows: Record<string, unknown>[],
+    source: WmsPendingInitializationDocument['source']
+  ): WmsPendingInitializationDocument[] {
+    return rows.map((row) => {
+      if (
+        typeof row.id !== 'string' ||
+        typeof row.documentNo !== 'string' ||
+        typeof row.status !== 'string'
+      ) {
+        throw new Error('待处理初始化单据数据异常，请刷新后重试')
+      }
+      return {
+        id: row.id,
+        source,
+        kind: typeof row.kind === 'string' ? row.kind : null,
+        documentNo: row.documentNo,
+        status: row.status
+      }
+    })
+  }
+
+  return [
+    ...normalize(stock.data, 'stock'),
+    ...normalize(purchase.data, 'purchase'),
+    ...normalize(sales.data, 'sales')
+  ].sort((left, right) => left.documentNo.localeCompare(right.documentNo, 'zh-CN'))
 }
 
 export async function fetchWmsPurchaseMaterials(params: {

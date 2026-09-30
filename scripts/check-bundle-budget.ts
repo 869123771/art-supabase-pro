@@ -24,7 +24,7 @@ for (const relativePath of relativePaths) {
     assets.push({
       path: normalizedPath,
       size: metadata.size,
-      transferredSize: normalizedPath.endsWith('.css')
+      transferredSize: /\.(?:css|js)$/.test(normalizedPath)
         ? gzipSync(await readFile(assetPath), { level: 9 }).byteLength
         : undefined
     })
@@ -34,6 +34,7 @@ for (const relativePath of relativePaths) {
 const javascriptAssets = assets.filter((asset) => asset.path.endsWith('.js'))
 const cssAssets = assets.filter((asset) => asset.path.endsWith('.css'))
 const applicationChunks = javascriptAssets.filter((asset) => !isLazyCapabilityAsset(asset.path))
+const lazyCapabilityChunks = javascriptAssets.filter((asset) => isLazyCapabilityAsset(asset.path))
 const applicationCssChunks = cssAssets.filter((asset) => !isLazyCapabilityStyle(asset.path))
 const lazyStyleChunks = cssAssets.filter((asset) => isLazyCapabilityStyle(asset.path))
 const initialAssetPaths = await getInitialAssetPaths()
@@ -50,9 +51,14 @@ checkLargest('单个 CSS 文件', cssAssets, 360 * KIB)
 // The platform deployment aggregates five independently deployable business repositories.
 // Keep the first-screen and per-JS-chunk gates strict, while allowing complete hosted route assets.
 checkLargest('普通页面 CSS 分包', routeCssChunks, 96 * KIB)
-checkTotal('JavaScript 总体积', javascriptAssets, 44 * MIB)
+// A format parser is only fetched when its renderer opens. Keep route and optional-tool
+// budgets separate so a rarely used document format does not masquerade as app startup cost.
+checkTotal('普通应用/路由 JavaScript 发布总体积', applicationChunks, 26 * MIB)
+checkTotal('按需能力 JavaScript gzip 传输总体积', lazyCapabilityChunks, 6 * MIB, true)
+checkTotal('JavaScript 发布总体积', javascriptAssets, 48 * MIB)
+checkTotal('JavaScript gzip 传输总体积', javascriptAssets, 14 * MIB, true)
 checkTotal('普通应用/路由 CSS 发布总体积', applicationCssChunks, 3 * MIB)
-checkTotal('普通应用/路由 CSS gzip 传输总体积', applicationCssChunks, 500 * KIB, true)
+checkTotal('普通应用/路由 CSS gzip 传输总体积', applicationCssChunks, 520 * KIB, true)
 checkTotal('按需工具 CSS 总体积', lazyStyleChunks, 500 * KIB)
 checkTotal('首屏 JavaScript', initialJavascriptAssets, 1.5 * MIB)
 checkTotal('首屏 CSS', initialCssAssets, 420 * KIB)

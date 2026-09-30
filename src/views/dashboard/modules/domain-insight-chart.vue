@@ -72,7 +72,10 @@
         }
       }
 
-      if ((props.variant === 'donut' || props.variant === 'rose') && props.items.filter((item) => item.value > 0).length > 1) {
+      if (
+        (props.variant === 'donut' || props.variant === 'rose') &&
+        props.items.filter((item) => item.value > 0).length > 1
+      ) {
         const isDonut = props.variant === 'donut'
         const valueMap = new Map(props.items.map((item) => [item.label, item.value]))
         return {
@@ -314,7 +317,10 @@
         }
       }
 
-      if (props.variant === 'horizontal-bar' || props.variant === 'funnel' || (props.variant === 'donut' && props.items.filter((item) => item.value > 0).length <= 1)) {
+      if (
+        props.variant === 'horizontal-bar' ||
+        (props.variant === 'donut' && props.items.filter((item) => item.value > 0).length <= 1)
+      ) {
         const toneColors = {
           primary: accent,
           success,

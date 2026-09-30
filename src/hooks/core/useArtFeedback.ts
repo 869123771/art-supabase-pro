@@ -46,7 +46,13 @@ export function useArtFeedback() {
       confirmButtonText: isDeleteAction ? '删除' : '确定',
       cancelButtonText: '取消',
       ...messageBoxOptions,
-      confirmButtonType: isDeleteAction ? 'danger' : messageBoxOptions.confirmButtonType,
+      confirmButtonType: isDeleteAction
+        ? 'danger'
+        : messageBoxOptions.confirmButtonType || 'primary',
+      cancelButtonType: messageBoxOptions.cancelButtonType ?? 'default',
+      cancelButtonClass: ['art-feedback-cancel', messageBoxOptions.cancelButtonClass]
+        .filter(Boolean)
+        .join(' '),
       customClass: feedbackClassName(customClass)
     })
   }
@@ -76,6 +82,12 @@ export function useArtFeedback() {
       type: options.type ?? 'warning',
       confirmButtonText: options.confirmButtonText ?? '确定',
       cancelButtonText: options.cancelButtonText ?? '取消',
+      confirmButtonType: options.confirmButtonType || 'primary',
+      cancelButtonType: options.cancelButtonType ?? 'default',
+      confirmButtonClass: options.confirmButtonClass,
+      cancelButtonClass: ['art-feedback-cancel', options.cancelButtonClass]
+        .filter(Boolean)
+        .join(' '),
       inputType: options.multiline ? 'textarea' : 'text',
       inputValue: options.initialValue ?? '',
       inputPlaceholder: options.placeholder,

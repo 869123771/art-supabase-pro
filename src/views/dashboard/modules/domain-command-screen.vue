@@ -190,8 +190,8 @@
                     :active-label="definition.activeLabel"
                     :active-unit="definition.activeUnit"
                     :scene-variant="definition.sceneVariant"
-                    core-eyebrow="DOMAIN TRUST INDEX"
-                    online-label="DOMAIN CONTROL ONLINE"
+                    core-eyebrow="领域运行指数"
+                    online-label="多域数据联动"
                   />
                 </article>
 
@@ -213,12 +213,23 @@
               </div>
 
               <div class="domain-column domain-column--right">
-                <article v-if="showAlertPanel" class="domain-panel domain-alert-panel">
+                <article
+                  v-if="showAlertPanel"
+                  class="domain-panel domain-alert-panel"
+                  :class="{ 'is-sparse': data.alerts.length <= 2 }"
+                >
                   <ScreenPanelHeading :title="definition.alertTitle" icon="ri:alarm-warning-line">
                     <template #aside>
                       <span class="domain-alert-count">{{ data.riskCount }}</span>
                     </template>
                   </ScreenPanelHeading>
+                  <div v-if="data.alerts.length <= 2" class="domain-alert-summary">
+                    <div
+                      ><strong>{{ data.riskCount }}</strong
+                      ><span>项待关注</span></div
+                    >
+                    <p>{{ data.description }}</p>
+                  </div>
                   <div v-if="data.alerts.length" class="domain-alert-list">
                     <div
                       v-for="alert in data.alerts.slice(0, alertDisplayLimit)"
@@ -236,8 +247,8 @@
                   <ArtEmptyState
                     v-else
                     class="screen-empty-state"
-                    title="当前没有高优先级事项"
-                    description="风险事件进入业务系统后将在此处实时汇聚。"
+                    title="风险明细暂未同步"
+                    description="请稍后刷新查看处置明细。"
                     size="compact"
                     :visual-size="72"
                   />
@@ -343,11 +354,7 @@
   const showScorePanel = computed(
     () => !['field', 'flow', 'fleet', 'people'].includes(definition.value.layout)
   )
-  const showAlertPanel = computed(
-    () =>
-      data.alerts.length > 0 ||
-      !['field', 'flow', 'fleet', 'topology', 'people'].includes(definition.value.layout)
-  )
+  const showAlertPanel = computed(() => data.riskCount > 0 || data.alerts.length > 0)
   const distributionItems = computed(() => {
     if (definition.value.layout === 'field') {
       const sourceByLabel = new Map(data.distribution.map((item) => [item.label, item]))

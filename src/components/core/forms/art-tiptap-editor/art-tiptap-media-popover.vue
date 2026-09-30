@@ -32,6 +32,7 @@
 
       <ArtUploadFile
         :model-value="null"
+        :resource-tenant-id="resourceTenantId"
         :title="uploadLabel"
         :accept="accept"
         :file-size="maxSize"
@@ -98,12 +99,14 @@
       icon: string
       accept: string
       maxSize: number
+      resourceTenantId?: string
       disabled?: boolean
       allowUrl?: boolean
       urlPlaceholder?: string
     }>(),
     {
       disabled: false,
+      resourceTenantId: '',
       allowUrl: true,
       urlPlaceholder: 'https://example.com/file'
     }

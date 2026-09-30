@@ -13,7 +13,8 @@ const LAZY_CAPABILITY_NAMES = [
   'element-plus',
   '3d-runtime',
   'exceljs',
-  'file-viewer'
+  'file-viewer',
+  'iwork[.]parser'
 ] as const
 
 const LAZY_CAPABILITY_PATTERN = new RegExp(`(?:${LAZY_CAPABILITY_NAMES.join('|')})`, 'i')

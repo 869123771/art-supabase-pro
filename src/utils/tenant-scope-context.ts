@@ -104,6 +104,22 @@ export const resolveTenantWorkspaceId = (
   homeTenantId?: string | null
 ): string => effectiveTenantId?.trim() || homeTenantId?.trim() || ''
 
+/** Resolve a tenant-owned write without falling back to the platform tenant in all-tenant mode. */
+export const resolveTenantWriteTargetId = (options: {
+  explicitTenantId?: string | null
+  effectiveTenantId?: string | null
+  actorTenantId?: string | null
+  isPlatformSuper: boolean
+}): string => {
+  const targetTenantId = options.explicitTenantId?.trim() || options.effectiveTenantId?.trim()
+  if (!targetTenantId) throw new Error('请先选择目标租户')
+  if (!UUID_PATTERN.test(targetTenantId)) throw new Error('目标租户无效，请重新选择')
+  if (!options.isPlatformSuper && targetTenantId !== options.actorTenantId) {
+    throw new Error('只能操作当前账号所属租户的数据')
+  }
+  return targetTenantId
+}
+
 export const writeTenantScopeId = (tenantId: string | null): void => {
   if (typeof sessionStorage === 'undefined') return
   try {

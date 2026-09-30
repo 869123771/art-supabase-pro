@@ -61,6 +61,7 @@
       const showArea = props.variant === 'area'
 
       return {
+        animation: false,
         grid: { left: 30, right: 8, top: 22, bottom: 20 },
         legend: {
           top: 0,

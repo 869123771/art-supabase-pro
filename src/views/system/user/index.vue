@@ -686,7 +686,7 @@
           confirmButtonText: '确认注销',
           cancelButtonText: '取消',
           type: 'warning',
-          confirmButtonClass: 'el-button--danger'
+          confirmButtonType: 'danger'
         }
       )
       await deactivateUser(row)

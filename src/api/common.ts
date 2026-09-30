@@ -1,9 +1,11 @@
 import { useSupabase } from '@/hooks'
 import { calcFileHash, formatSize } from '@/utils/file'
 import { useUserStore } from '@/store/modules/user'
+import { useTenantScopeStore } from '@/store/modules/tenantScope'
 import dayjs from 'dayjs'
 import http from '@/utils/http'
 import TreeUtils, { type TreeNode } from '@/utils/tree'
+import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
 
 const { supabase, responseHandle } = useSupabase()
 const regionTreeUtils = new TreeUtils({ childrenKey: 'children' })
@@ -74,6 +76,7 @@ export async function uploadAttachment(
   files: File | File[],
   options?: {
     bucket?: string
+    targetTenantId?: string
     createBy?: string
     remark?: string
     concurrency?: number
@@ -81,15 +84,23 @@ export async function uploadAttachment(
   }
 ): Promise<Api.DataCenter.Resources.ResourceListItem[]> {
   const {
-    getUserInfo: { userName, nickName, tenantId }
+    getUserInfo: { userName, nickName, tenantId },
+    isPlatformSuper
   } = useUserStore()
   const {
     bucket = 'attachments',
+    targetTenantId: requestedTenantId,
     createBy = userName || nickName,
     remark = '',
     concurrency = 3,
     onProgress
   } = options || {}
+  const targetTenantId = resolveTenantWriteTargetId({
+    explicitTenantId: requestedTenantId,
+    effectiveTenantId: useTenantScopeStore().effectiveTenantId,
+    actorTenantId: tenantId,
+    isPlatformSuper
+  })
 
   // 统一成数组
   const fileList = Array.isArray(files) ? files : [files]
@@ -162,6 +173,7 @@ export async function uploadAttachment(
         supabase
           .from('sys_attachment')
           .select('*')
+          .eq('tenant_id', targetTenantId)
           .eq('hash', hash)
           .order('create_time', { ascending: false })
           .limit(1)
@@ -175,7 +187,7 @@ export async function uploadAttachment(
     const suffix = file.name.split('.').pop() || ''
     const objectName = `${hash}.${suffix}`
     // Storage 对象按租户隔离，避免不同租户上传相同内容哈希时争用同一路径。
-    const storagePath = `${tenantId || 'unassigned'}/${dayjs().format('YYYY/MM/DD')}`
+    const storagePath = `${targetTenantId}/${dayjs().format('YYYY/MM/DD')}`
     const fullPath = `${storagePath}/${objectName}`
 
     // 4️⃣ 上传。对象名由内容哈希生成，相同路径对应相同文件；允许覆盖可修复
@@ -202,6 +214,7 @@ export async function uploadAttachment(
     // 6️⃣ 写库
     emitProgress('saving', file.name)
     const insertData = {
+      tenant_id: targetTenantId,
       storage_mode: 'supabase',
       origin_name: file.name,
       object_name: objectName,

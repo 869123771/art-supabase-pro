@@ -123,6 +123,7 @@
     multiple = false,
     readonly = false,
     showResourcePicker = true,
+    resourceTenantId = '',
     uploadRequest
   } = defineProps<{
     modelValue?: string | string[] | null
@@ -137,6 +138,7 @@
     multiple?: boolean
     readonly?: boolean
     showResourcePicker?: boolean
+    resourceTenantId?: string
     uploadRequest?: (file: File) => Promise<Api.DataCenter.Resources.ResourceListItem[]>
   }>()
 
@@ -303,6 +305,10 @@
   }
 
   const handleConfirm = (selected: ResourceListItem[]) => {
+    if (resourceTenantId && selected.some((resource) => resource.tenantId !== resourceTenantId)) {
+      ElMessage.warning('所选图片不属于当前目标租户，请重新选择')
+      return
+    }
     fileList.value = selected.map((item) => {
       return { name: item.originName ?? item.objectName ?? '资源文件', url: item.url }
     })
@@ -311,7 +317,8 @@
   }
 
   const handleUpload = async (options: UploadRequestOptions): Promise<unknown> => {
-    return await (uploadRequest?.(options.file) ?? uploadAttachment(options.file))
+    return await (uploadRequest?.(options.file) ??
+      uploadAttachment(options.file, { targetTenantId: resourceTenantId || undefined }))
   }
 </script>
 

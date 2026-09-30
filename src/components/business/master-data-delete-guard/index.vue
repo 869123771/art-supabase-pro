@@ -583,7 +583,7 @@
           type: 'warning',
           confirmButtonText: `确认清理 ${selected.length} 项`,
           cancelButtonText: '取消',
-          confirmButtonClass: 'el-button--danger',
+          confirmButtonType: 'danger',
           closeOnClickModal: false
         }
       )

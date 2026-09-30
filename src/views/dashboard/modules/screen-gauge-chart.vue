@@ -17,7 +17,9 @@
       />
     </svg>
     <div class="screen-gauge-chart__value">
-      <strong>{{ safeValue }}<em>{{ suffix }}</em></strong>
+      <strong
+        >{{ safeValue }}<em>{{ suffix }}</em></strong
+      >
       <span>{{ label }}</span>
     </div>
   </div>
@@ -49,8 +51,13 @@
     min-height: 0;
     color: var(--screen-accent);
 
-    &.is-warning { color: var(--screen-warning); }
-    &.is-danger { color: var(--screen-danger); }
+    &.is-warning {
+      color: var(--screen-warning);
+    }
+
+    &.is-danger {
+      color: var(--screen-danger);
+    }
 
     svg {
       width: 100%;
@@ -59,17 +66,27 @@
       transform: rotate(-90deg);
     }
 
-    circle { fill: none; stroke-width: 8; }
-    &__track { stroke: var(--screen-chart-track); }
-    &__progress { stroke: currentcolor; stroke-linecap: round; }
+    circle {
+      fill: none;
+      stroke-width: 8;
+    }
+
+    &__track {
+      stroke: var(--screen-chart-track);
+    }
+
+    &__progress {
+      stroke: currentcolor;
+      stroke-linecap: round;
+    }
 
     &__value {
       position: absolute;
       inset: 0;
       display: grid;
+      gap: 3px;
       align-content: center;
       justify-items: center;
-      gap: 3px;
       text-align: center;
 
       strong {

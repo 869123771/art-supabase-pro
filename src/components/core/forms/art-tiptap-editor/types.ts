@@ -27,6 +27,8 @@ export type ArtTiptapEditorFeature =
   | 'fullscreen'
 
 export interface ArtTiptapEditorProps {
+  /** Target tenant for uploaded media in an all-tenant business form. */
+  resourceTenantId?: string
   /** 编辑区域高度，支持任意合法 CSS 长度。 */
   height?: string
   /** 空内容时显示的占位文案。 */

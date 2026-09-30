@@ -267,7 +267,8 @@
   const handleUpload = async (options: UploadRequestOptions): Promise<unknown> => {
     activeUploads.value += 1
     try {
-      return await (props.uploadRequest?.(options.file) ?? uploadAttachment(options.file))
+      return await (props.uploadRequest?.(options.file) ??
+        uploadAttachment(options.file, { targetTenantId: props.resourceTenantId || undefined }))
     } finally {
       activeUploads.value -= 1
     }

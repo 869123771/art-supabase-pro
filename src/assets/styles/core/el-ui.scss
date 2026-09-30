@@ -650,6 +650,22 @@ html.dark .el-card {
   .el-message-box__btns {
     gap: var(--art-space-2);
     padding-top: var(--art-space-4);
+
+    .el-button + .el-button {
+      margin-left: 0;
+    }
+
+    .art-feedback-cancel {
+      --el-button-text-color: var(--el-text-color-regular);
+      --el-button-bg-color: var(--el-bg-color);
+      --el-button-border-color: var(--el-border-color);
+      --el-button-hover-text-color: var(--el-text-color-primary);
+      --el-button-hover-bg-color: var(--el-fill-color-light);
+      --el-button-hover-border-color: var(--el-border-color-dark);
+      --el-button-active-text-color: var(--el-text-color-primary);
+      --el-button-active-bg-color: var(--el-fill-color);
+      --el-button-active-border-color: var(--el-border-color-darker);
+    }
   }
 
   &.is-multiline {

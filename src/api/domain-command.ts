@@ -33,15 +33,7 @@ export type DomainCommandTone = 'primary' | 'success' | 'warning' | 'danger' | '
 export type DomainCommandLayout =
   'sentinel' | 'field' | 'treasury' | 'flow' | 'fleet' | 'topology' | 'people'
 export type DomainCommandChartVariant =
-  | 'bar'
-  | 'horizontal-bar'
-  | 'rose'
-  | 'donut'
-  | 'radar'
-  | 'funnel'
-  | 'treemap'
-  | 'graph'
-  | 'lollipop'
+  'bar' | 'horizontal-bar' | 'rose' | 'donut' | 'radar' | 'treemap' | 'graph' | 'lollipop'
 export type DomainCommandTrendVariant = 'area' | 'line' | 'bar' | 'step'
 
 export interface DomainCommandMetric {
@@ -101,7 +93,6 @@ export interface DomainCommandDefinition {
   kind: DomainCommandKind
   title: string
   shortTitle: string
-  eyebrow: string
   description: string
   path: string
   icon: string
@@ -138,7 +129,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'ai-safety',
     title: 'AI 安全与可信运行大屏',
     shortTitle: 'AI 安全',
-    eyebrow: 'AI TRUST & SECURITY COMMAND',
     description: '监测模型运行、工具调用、人工反馈与智能识别质量，形成可信 AI 处置闭环。',
     path: '/dashboard/ai-safety-command',
     icon: 'ri:shield-keyhole-line',
@@ -162,7 +152,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'safety-production',
     title: '安全生产风险大屏',
     shortTitle: '安全生产',
-    eyebrow: 'SAFETY PRODUCTION COMMAND',
     description: '统一呈现风险辨识、管控、巡检与隐患处置态势。',
     path: '/dashboard/safety-production-command',
     icon: 'ri:shield-flash-line',
@@ -177,7 +166,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     layout: 'field',
     sceneVariant: 'field',
     distributionChart: 'horizontal-bar',
-    stageChart: 'funnel',
+    stageChart: 'horizontal-bar',
     trendChart: 'bar',
     trendPrimaryLabel: '业务总量',
     trendSecondaryLabel: '高风险'
@@ -186,7 +175,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'financial-risk',
     title: '财务资金风控大屏',
     shortTitle: '资金风控',
-    eyebrow: 'FINANCIAL RISK COMMAND',
     description: '联动资金预测、应收账龄、银行对账与月结异常。',
     path: '/dashboard/financial-risk-command',
     icon: 'ri:funds-box-line',
@@ -210,7 +198,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'workflow-efficiency',
     title: '流程运营与审批效能大屏',
     shortTitle: '流程效能',
-    eyebrow: 'WORKFLOW EFFICIENCY COMMAND',
     description: '监控审批吞吐、SLA、瓶颈节点与业务回调健康度。',
     path: '/dashboard/workflow-efficiency-command',
     icon: 'ri:flow-chart',
@@ -225,7 +212,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     layout: 'flow',
     sceneVariant: 'flow',
     distributionChart: 'treemap',
-    stageChart: 'funnel',
+    stageChart: 'horizontal-bar',
     trendChart: 'step',
     trendPrimaryLabel: '发起流程',
     trendSecondaryLabel: '驳回流程'
@@ -234,7 +221,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'fleet-compliance',
     title: '车队安全与合规大屏',
     shortTitle: '车队合规',
-    eyebrow: 'FLEET SAFETY COMMAND',
     description: '聚合车辆健康、证照到期、事故与维修工单风险。',
     path: '/dashboard/fleet-compliance-command',
     icon: 'ri:truck-line',
@@ -258,7 +244,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'data-governance',
     title: '主数据治理与质量大屏',
     shortTitle: '数据治理',
-    eyebrow: 'DATA GOVERNANCE COMMAND',
     description: '监控数据质量、变更审核、黄金记录与下游分发链路。',
     path: '/dashboard/data-governance-command',
     icon: 'ri:database-2-line',
@@ -273,7 +258,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     layout: 'topology',
     sceneVariant: 'topology',
     distributionChart: 'graph',
-    stageChart: 'funnel',
+    stageChart: 'horizontal-bar',
     trendChart: 'bar',
     trendPrimaryLabel: '治理规模',
     trendSecondaryLabel: '异常数量'
@@ -282,7 +267,6 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     kind: 'workforce-insight',
     title: '人力风险与组织效能大屏',
     shortTitle: '人力效能',
-    eyebrow: 'WORKFORCE INSIGHT COMMAND',
     description: '呈现人员流动、组织分布、编制缺口和用工合规风险。',
     path: '/dashboard/workforce-insight-command',
     icon: 'ri:team-line',

@@ -14,6 +14,7 @@
   import { echarts } from '@/plugins/echarts'
   import { useChartComponent } from '@/hooks/core/useChart'
   import type { BaseChartProps } from '@/types/component/chart'
+  import { formatCompactNumberValue, formatNumberValue } from '@/utils/ui'
   import { useScreenChartTheme } from './screen-chart-theme'
 
   export interface ScreenHorizontalBarItem {
@@ -40,12 +41,18 @@
     isEmpty: false
   })
   const { rootRef, readScreenColor } = useScreenChartTheme()
+  const formatChartValue = (value: number, compact = false): string => {
+    if (compact && props.unit === '元' && Math.abs(value) >= 10_000) {
+      return `${formatCompactNumberValue(value / 10_000)}万${props.unit}`
+    }
+    return `${formatNumberValue(value)}${props.unit}`
+  }
   const chartSummary = computed(
     () =>
       `${props.summaryLabel}：${props.items
         .map(
           (item) =>
-            `${item.label} ${item.value}${props.unit}${props.riskLabel ? `，${props.riskLabel} ${item.riskValue ?? 0}${props.unit}` : ''}`
+            `${item.label} ${formatChartValue(item.value)}${props.riskLabel ? `，${props.riskLabel} ${formatChartValue(item.riskValue ?? 0)}` : ''}`
         )
         .join('；')}`
   )
@@ -78,7 +85,7 @@
                 : ''
             const item = props.items.find((entry) => entry.label === name)
             if (!item) return ''
-            return `${name}<br/>${props.valueLabel} ${item.value}${props.unit}${props.riskLabel ? `<br/>${props.riskLabel} ${item.riskValue ?? 0}${props.unit}` : ''}${item.caption ? `<br/>${item.caption}` : ''}`
+            return `${name}<br/>${props.valueLabel} ${formatChartValue(item.value)}${props.riskLabel ? `<br/>${props.riskLabel} ${formatChartValue(item.riskValue ?? 0)}` : ''}${item.caption ? `<br/>${item.caption}` : ''}`
           }
         },
         xAxis: {
@@ -144,7 +151,8 @@
               color: strong,
               fontSize: 12,
               fontWeight: 700,
-              formatter: `{c}${props.unit}`
+              formatter: (params: { value: unknown }) =>
+                formatChartValue(typeof params.value === 'number' ? params.value : 0, true)
             },
             ...getAnimationConfig(140, 900)
           },

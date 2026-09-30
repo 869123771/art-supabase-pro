@@ -277,7 +277,7 @@
     type VNodeChild
   } from 'vue'
   import type { ButtonProps, TableColumnCtx, TableProps } from 'element-plus'
-  import { ElMessage, ElMessageBox } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import { useEventListener, useResizeObserver } from '@vueuse/core'
   import { cloneDeep } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -287,6 +287,7 @@
   import type { ArtTableInstance } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTable } from '@/hooks/core/useTable'
   import type { ApiResponse } from '@/utils/table/tableCache'
   import {
@@ -308,6 +309,7 @@
   defineOptions({ name: 'ArtTableQuery' })
 
   const { hasAuth } = useAuth()
+  const { confirmAction } = useArtFeedback()
   const route = useRoute()
   const { isCrossTenantReadOnly } = useTenantScopeAccessPolicy()
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
@@ -1381,7 +1383,7 @@
 
     if (shouldConfirmHeaderAction(action)) {
       try {
-        await ElMessageBox.confirm(
+        await confirmAction(
           resolveHeaderActionContent(action, ctx),
           action.confirmTitle || '操作确认',
           {

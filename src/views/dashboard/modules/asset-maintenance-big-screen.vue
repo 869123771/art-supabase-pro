@@ -1,5 +1,9 @@
 <template>
-  <div ref="screenRef" class="enterprise-screen asset-maintenance-screen">
+  <div
+    ref="screenRef"
+    class="enterprise-screen asset-maintenance-screen"
+    :class="{ 'is-empty-assets': isAssetEmpty }"
+  >
     <ArtAsyncState
       class="enterprise-screen__state"
       :loading="state.loading"
@@ -148,7 +152,7 @@
                   </div>
                 </article>
 
-                <article class="screen-panel department-load-panel">
+                <article v-if="!isAssetEmpty" class="screen-panel department-load-panel">
                   <ScreenPanelHeading title="车间设备负荷" icon="ri:building-4-line">
                     <template #aside>
                       <span class="panel-caption">{{ data.departmentLoad.length }} 个车间</span>
@@ -174,14 +178,28 @@
 
               <div class="asset-column asset-column--center">
                 <article class="screen-panel asset-reactor-panel">
-                  <ScreenPanelHeading title="设备可靠性反应堆" icon="ri:cpu-line">
+                  <ScreenPanelHeading
+                    :title="isAssetEmpty ? '设备接入概览' : '设备可靠性反应堆'"
+                    icon="ri:cpu-line"
+                  >
                     <template #aside>
                       <span class="panel-caption is-live">
                         {{ state.error ? '上次同步' : '数据融合' }} {{ refreshText }}
                       </span>
                     </template>
                   </ScreenPanelHeading>
+                  <div v-if="isAssetEmpty" class="asset-onboarding">
+                    <span class="asset-onboarding__status">设备接入待完成</span>
+                    <strong>暂无设备台账</strong>
+                    <p>设备接入后，这里将呈现健康状态、实时信号和维修处置态势。</p>
+                    <div class="asset-onboarding__steps">
+                      <div><b>01</b><span>设备登记</span><small>建立在册清单</small></div>
+                      <div><b>02</b><span>状态同步</span><small>汇聚运行信号</small></div>
+                      <div><b>03</b><span>运维闭环</span><small>跟踪巡检与维修</small></div>
+                    </div>
+                  </div>
                   <AssetReliabilityCore
+                    v-else
                     :health="equipmentHealth"
                     :total="data.equipment.total"
                     :connected-rate="connectedRate"
@@ -220,7 +238,7 @@
               </div>
 
               <div class="asset-column asset-column--right">
-                <article class="screen-panel work-order-panel">
+                <article v-if="!isAssetEmpty" class="screen-panel work-order-panel">
                   <ScreenPanelHeading title="故障抢修队列" icon="ri:alarm-warning-line">
                     <template #aside>
                       <span class="risk-count">{{ data.repair.open }}</span>
@@ -257,7 +275,7 @@
                   />
                 </article>
 
-                <article class="screen-panel upcoming-task-panel">
+                <article v-if="!isAssetEmpty" class="screen-panel upcoming-task-panel">
                   <ScreenPanelHeading title="近期保养窗口" icon="ri:calendar-check-line">
                     <template #aside>
                       <span class="panel-caption"
@@ -491,6 +509,14 @@
   )
   const visibleActiveWorkOrders = computed(() => data.activeWorkOrders.slice(0, 4))
   const visibleUpcomingTasks = computed(() => data.upcomingTasks.slice(0, 2))
+  const isAssetEmpty = computed(
+    () =>
+      state.loaded &&
+      data.equipment.total === 0 &&
+      data.departmentLoad.length === 0 &&
+      visibleActiveWorkOrders.value.length === 0 &&
+      visibleUpcomingTasks.value.length === 0
+  )
   const maintenanceWindowChartItems = computed(() =>
     data.upcomingTasks.map((item) => ({
       name: item.equipmentName,

@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./workspace-CX4ZjoTn.js";var i=e({name:`WmsInitialSalesOutbound`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`initial_outbound`}))}});export{i as default};

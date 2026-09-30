@@ -397,7 +397,7 @@
           confirmButtonText: '确认停用',
           cancelButtonText: '取消',
           type: 'warning',
-          confirmButtonClass: 'el-button--danger'
+          confirmButtonType: 'danger'
         }
       )
       await deactivateTenant(row.id)

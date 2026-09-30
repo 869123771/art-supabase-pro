@@ -3,7 +3,7 @@
     class="screen-stage-chart"
     role="img"
     :aria-label="`阶段分布：${items.map((item) => `${item.label} ${item.value}${unit}`).join('，')}`"
-    :style="{ '--stage-accent': `var(${accentVar})`, '--stage-count': items.length }"
+    :style="{ '--stage-accent': `var(${accentVar})`, '--stage-count': Math.max(1, items.length) }"
   >
     <div
       v-for="(item, index) in items"
@@ -12,7 +12,9 @@
       :class="{ 'has-value': item.value > 0 }"
     >
       <span class="screen-stage-chart__step">{{ String(index + 1).padStart(2, '0') }}</span>
-      <strong>{{ item.value }}<em>{{ unit }}</em></strong>
+      <strong
+        >{{ item.value }}<em>{{ unit }}</em></strong
+      >
       <span class="screen-stage-chart__label">{{ item.label }}</span>
       <small v-if="item.caption">{{ item.caption }}</small>
       <i><b :style="{ width: `${Math.max(0, (item.value / maxValue) * 100)}%` }" /></i>
@@ -58,7 +60,10 @@
       padding: 10px 14px;
       border-right: 1px solid var(--screen-line);
 
-      &:last-child { border-right: 0; }
+      &:last-child {
+        border-right: 0;
+      }
+
       &::before {
         position: absolute;
         top: 22px;
@@ -72,8 +77,14 @@
         border-right: 1px solid var(--screen-line-strong);
         transform: rotate(45deg);
       }
-      &:last-child::before { display: none; }
-      &.has-value strong { color: var(--screen-text-strong); }
+
+      &:last-child::before {
+        display: none;
+      }
+
+      &.has-value strong {
+        color: var(--screen-text-strong);
+      }
     }
 
     &__step {
@@ -133,6 +144,8 @@
   }
 
   @media (width <= 640px) {
-    .screen-stage-chart { min-width: 560px; }
+    .screen-stage-chart {
+      min-width: 560px;
+    }
   }
 </style>

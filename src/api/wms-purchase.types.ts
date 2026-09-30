@@ -29,6 +29,14 @@ export interface WmsPurchaseOrganization {
   initializationClosedAt: string | null
 }
 
+export interface WmsPendingInitializationDocument {
+  id: string
+  source: 'stock' | 'purchase' | 'sales'
+  kind: string | null
+  documentNo: string
+  status: string
+}
+
 export interface WmsPurchaseMaterial extends WmsPurchaseOption {
   description: string | null
   specificationModel: string | null

@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
-  import { ElMessageBox } from 'element-plus'
+  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { WEB_LINKS } from '@/utils/constants'
   import { mittBus } from '@/utils/sys'
@@ -107,6 +107,7 @@
   defineOptions({ name: 'ArtUserMenu' })
 
   const { t } = useI18n()
+  const { confirmAction } = useArtFeedback()
   const userStore = useUserStore()
 
   const { getUserInfo: userInfo } = storeToRefs(userStore)
@@ -131,14 +132,17 @@
    */
   const loginOut = (): void => {
     closeUserMenu()
-    setTimeout(() => {
-      ElMessageBox.confirm(t('common.logOutTips'), t('common.tips'), {
-        confirmButtonText: t('common.confirm'),
-        cancelButtonText: t('common.cancel'),
-        customClass: 'login-out-dialog'
-      }).then(() => {
-        userStore.logOut()
-      })
+    setTimeout(async () => {
+      try {
+        await confirmAction(t('common.logOutTips'), t('common.tips'), {
+          confirmButtonText: t('common.confirm'),
+          cancelButtonText: t('common.cancel'),
+          customClass: 'login-out-dialog'
+        })
+      } catch {
+        return
+      }
+      userStore.logOut()
     }, 200)
   }
 

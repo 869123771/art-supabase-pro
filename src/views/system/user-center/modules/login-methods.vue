@@ -187,7 +187,7 @@
         type: 'warning',
         confirmButtonText: '确认解绑',
         cancelButtonText: '取消',
-        confirmButtonClass: 'el-button--danger'
+        confirmButtonType: 'danger'
       })
     } catch {
       return

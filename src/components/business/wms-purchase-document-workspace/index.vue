@@ -175,6 +175,7 @@
   import { useUserStore } from '@/store/modules/user'
   import {
     changeWmsPurchaseStatus,
+    fetchWmsPurchaseDocument,
     fetchWmsPurchasePage,
     fetchWmsPurchaseOrderTargets,
     type WmsPurchaseKind,
@@ -418,6 +419,23 @@
     }
   }
   onMounted(async () => {
+    const documentId = route.query.documentId
+    if (typeof documentId === 'string' && props.kind.startsWith('initial_')) {
+      if (hasAuth(permission.value.View)) {
+        try {
+          await router.replace({
+            path: route.path,
+            query: { ...route.query, documentId: undefined }
+          })
+          const document = await fetchWmsPurchaseDocument(documentId)
+          if (document.kind !== props.kind) throw new Error('单据类型不匹配')
+          await drawerRef.value?.handleOpen({ mode: 'view', document })
+        } catch {
+          ElMessage.error('期初采购单加载失败，请刷新后重试')
+        }
+      }
+      return
+    }
     const targetId = route.query.targetId
     if (
       !['purchase_inbound', 'other_inbound'].includes(props.kind) ||

@@ -38,13 +38,6 @@
           class="at-bottom-right"
         />
       </div>
-      <div class="command-data-stream is-left" aria-hidden="true">
-        <i v-for="index in 7" :key="`left-${index}`" />
-      </div>
-      <div class="command-data-stream is-right" aria-hidden="true">
-        <i v-for="index in 7" :key="`right-${index}`" />
-      </div>
-      <div class="command-scan" aria-hidden="true" />
       <div class="command-vignette" aria-hidden="true" />
 
       <div class="command-node-layer" aria-hidden="true">
@@ -64,9 +57,7 @@
       </div>
 
       <div class="command-core-summary">
-        <small>{{
-          coreEyebrow || (mode === 'business' ? 'ENTERPRISE INDEX' : 'LIVE TRANSPORT')
-        }}</small>
+        <small>{{ coreEyebrow || (mode === 'business' ? '综合运行指数' : '在途任务') }}</small>
         <strong>{{ mode === 'business' ? score : activeCount }}</strong>
         <span>{{ mode === 'business' ? scoreLabel : activeLabel }}</span>
       </div>
@@ -133,7 +124,7 @@
     scoreLabel: '综合健康度',
     activeLabel: '当前在途任务',
     activeUnit: '单',
-    onlineLabel: 'DIGITAL TWIN ONLINE',
+    onlineLabel: '多域数据联动',
     sceneVariant: 'sentinel'
   })
 
@@ -284,19 +275,6 @@
     }
   }
 
-  .command-scan {
-    position: absolute;
-    top: -45%;
-    bottom: -45%;
-    left: -18%;
-    width: 16%;
-    pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgb(103 213 255 / 9%), transparent);
-    filter: blur(4px);
-    transform: skewX(-18deg);
-    animation: commandScan 6s ease-in-out infinite;
-  }
-
   .command-energy-links {
     position: absolute;
     inset: 0;
@@ -312,7 +290,6 @@
       stroke: var(--screen-accent-soft);
       stroke-width: 0.85;
       stroke-dasharray: 4 9;
-      animation: commandEnergyFlow 2.8s linear infinite;
       vector-effect: non-scaling-stroke;
     }
 
@@ -422,40 +399,6 @@
     }
   }
 
-  .command-data-stream {
-    position: absolute;
-    top: 23%;
-    bottom: 23%;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    width: 2px;
-    pointer-events: none;
-
-    &.is-left {
-      left: 19px;
-    }
-
-    &.is-right {
-      right: 19px;
-    }
-
-    i {
-      width: 2px;
-      height: 18px;
-      background: linear-gradient(transparent, var(--screen-cyan), transparent);
-      box-shadow: 0 0 8px var(--screen-cyan);
-      animation: commandDataPulse 2s ease-in-out infinite;
-
-      @for $index from 1 through 7 {
-        &:nth-child(#{$index}) {
-          animation-delay: #{$index * -0.23}s;
-        }
-      }
-    }
-  }
-
   .command-vignette {
     position: absolute;
     inset: 0;
@@ -514,7 +457,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
-    width: 122px;
+    width: 136px;
     min-width: 0;
     padding: 7px 9px;
     color: var(--screen-accent-soft);
@@ -525,17 +468,6 @@
       inset 0 1px rgb(255 255 255 / 5%),
       0 8px 22px rgb(0 0 0 / 28%),
       0 0 18px color-mix(in srgb, currentcolor 10%, transparent);
-
-    &::before {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      content: '';
-      background: linear-gradient(90deg, transparent, currentcolor, transparent) top left / 48% 1px
-        no-repeat;
-      opacity: 0.46;
-      animation: commandNodeScan 3.6s ease-in-out infinite;
-    }
 
     &::after {
       position: absolute;
@@ -567,21 +499,21 @@
     span {
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 8px;
+      font-size: 10px;
       color: var(--screen-text-muted);
       white-space: nowrap;
     }
 
     strong {
       margin-top: 2px;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1;
       color: var(--screen-text-strong);
     }
 
     em {
       margin-left: 2px;
-      font-size: 7px;
+      font-size: 10px;
       font-style: normal;
       font-weight: 500;
       color: var(--screen-text-muted);
@@ -677,7 +609,7 @@
     transform: translate(-50%, -50%);
 
     small {
-      font-size: 7px;
+      font-size: 10px;
       font-weight: 800;
       color: rgb(225 239 255 / 78%);
       letter-spacing: 1.3px;
@@ -685,13 +617,13 @@
 
     strong {
       margin: 5px 0 2px;
-      font-size: 44px;
+      font-size: 48px;
       line-height: 1;
       color: #fff;
     }
 
     span {
-      font-size: 9px;
+      font-size: 11px;
       color: rgb(225 239 255 / 86%);
     }
   }
@@ -710,10 +642,10 @@
       display: inline-flex;
       gap: 6px;
       align-items: center;
-      font-size: 7px;
+      font-size: 10px;
       font-weight: 800;
       color: var(--screen-cyan);
-      letter-spacing: 2px;
+      letter-spacing: 0.6px;
       text-shadow: 0 0 10px rgb(53 199 215 / 70%);
 
       i {
@@ -733,47 +665,6 @@
     }
   }
 
-  @keyframes commandScan {
-    0% {
-      left: -20%;
-    }
-
-    65%,
-    100% {
-      left: 120%;
-    }
-  }
-
-  @keyframes commandEnergyFlow {
-    to {
-      stroke-dashoffset: -26;
-    }
-  }
-
-  @keyframes commandDataPulse {
-    0%,
-    100% {
-      opacity: 0.16;
-      transform: scaleY(0.44);
-    }
-
-    50% {
-      opacity: 0.9;
-      transform: scaleY(1.25);
-    }
-  }
-
-  @keyframes commandNodeScan {
-    0%,
-    100% {
-      background-position-x: -80%;
-    }
-
-    50% {
-      background-position-x: 180%;
-    }
-  }
-
   @media (width <= 1360px) {
     .enterprise-command-core {
       grid-template-rows: minmax(280px, 1fr) auto;
@@ -784,7 +675,7 @@
     }
 
     .command-domain-node {
-      width: 112px;
+      width: 122px;
     }
   }
 
@@ -850,15 +741,6 @@
       &.at-2 {
         right: 1%;
       }
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .command-scan,
-    .command-energy-links path,
-    .command-data-stream i,
-    .command-domain-node::before {
-      animation: none;
     }
   }
 </style>

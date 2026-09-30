@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./execution-event-workspace-PaMacAxy.js";var i=e({name:`MesAndon`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`andon`}))}});export{i as default};
