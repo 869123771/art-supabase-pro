@@ -315,6 +315,9 @@
     }
   },
   "table": {
+    "pagination": {
+      "pageSize": "Items per page"
+    },
     "form": {
       "reset": "Reset",
       "submit": "Submit"

@@ -1,1 +1,0 @@
-import{Ln as e,Qt as t}from"./framework-0MLItC78.js";function n(n){let r=e();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await t()}}}export{n as t};

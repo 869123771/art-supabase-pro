@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./inventory-report-workspace-_2u7zGxj.js";var i=e({name:`WmsStockLedger`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`ledger`}))}});export{i as default};

@@ -3,7 +3,6 @@ param(
   [Parameter(Mandatory = $true)][ValidateScript({ Test-Path -LiteralPath $_ -PathType Container })][string]$BackupPath,
   [Parameter(Mandatory = $true)][ValidatePattern('^[a-z0-9]{20}$')][string]$TargetProjectRef,
   [securestring]$TargetDbPassword,
-  [switch]$AllowNonEmptyTarget,
   [switch]$VerifyBackupOnly
 )
 
@@ -14,8 +13,16 @@ $BackupPath = (Resolve-Path -LiteralPath $BackupPath).Path
 
 function Invoke-Supabase {
   param([Parameter(Mandatory = $true)][string[]]$Arguments)
-  & supabase @Arguments
-  if ($LASTEXITCODE -ne 0) { throw 'A Supabase CLI command failed. See the preceding command output.' }
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    & supabase @Arguments
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousPreference
+  }
+  if ($exitCode -ne 0) { throw 'A Supabase CLI command failed. See the preceding command output.' }
 }
 
 function Get-PlainText {
@@ -27,9 +34,9 @@ function Get-PlainText {
 
 function Get-LinkedDatabaseConnection {
   param([Parameter(Mandatory = $true)][string]$Password)
-  $dryRun = & supabase db dump --linked --password $Password --data-only --dry-run
-  if ($LASTEXITCODE -ne 0) { throw 'Unable to resolve the linked target database connection.' }
-  $text = $dryRun -join "`n"
+  $dryRun = Invoke-SupabaseQuiet @('db', 'dump', '--linked', '--password', $Password, '--data-only', '--dry-run')
+  if (-not $dryRun.Succeeded) { throw 'Unable to resolve the linked target database connection.' }
+  $text = $dryRun.Output
   $dbHost = [regex]::Match($text, 'export PGHOST="([^"]+)"').Groups[1].Value
   $port = [regex]::Match($text, 'export PGPORT="([^"]+)"').Groups[1].Value
   $user = [regex]::Match($text, 'export PGUSER="([^"]+)"').Groups[1].Value
@@ -94,11 +101,32 @@ function Assert-BackupManifest {
       throw "Backup file failed integrity check: $relativePath"
     }
   }
+  foreach ($directory in @(Get-ChildItem -LiteralPath $Root -Directory -Recurse -Force)) {
+    if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw "Backup contains a linked directory: $($directory.FullName)"
+    }
+  }
+  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
+    $relativePath = $file.FullName.Substring($Root.Length + 1).Replace('\', '/')
+    if ($relativePath -notin @('manifest.json', 'README.md') -and -not $paths.Contains($relativePath)) {
+      throw "Backup contains an unverified file: $relativePath"
+    }
+  }
   foreach ($required in @('config.toml', 'database/roles.sql', 'database/schema.sql',
       'database/data.sql', 'database/migration-history-schema.sql',
       'database/migration-history-data.sql', 'metadata/functions.json',
       'metadata/storage-buckets.json', 'metadata/realtime-publication-tables.json')) {
     if (-not $paths.Contains($required)) { throw "Backup manifest is missing $required" }
+  }
+  $functionMetadata = Join-Path $Root 'metadata/functions.json'
+  $functions = @(ConvertFrom-SupabaseJsonArray `
+    -Text (Get-Content -LiteralPath $functionMetadata -Raw) `
+    -Description 'the backed-up Edge Function list')
+  foreach ($function in $functions) {
+    if ($function.slug -notmatch '^[a-z0-9][a-z0-9_-]*$' -or
+        -not (Test-Path -LiteralPath (Join-Path $Root "functions/$($function.slug)") -PathType Container)) {
+      throw "Backup is missing a deployed Edge Function: $($function.slug)"
+    }
   }
 }
 
@@ -110,16 +138,27 @@ function Invoke-PsqlRestore {
 
   # Keep the SQL files in the order specified by Supabase's logical restore guide.
   # One psql session makes session_replication_role apply to the data import.
-  & docker run --rm -v "${BackupPath}:/backup:ro" -e "PGPASSWORD=$Password" postgres:17-alpine `
-    psql "host=$($Connection.Host) port=$($Connection.Port) dbname=$($Connection.Database) user=$($Connection.User) sslmode=require" `
-    --single-transaction --variable ON_ERROR_STOP=1 `
-    --file /backup/database/roles.sql `
-    --file /backup/database/schema.sql `
-    --command 'SET session_replication_role = replica' `
-    --file /backup/database/data.sql `
-    --file /backup/database/migration-history-schema.sql `
-    --file /backup/database/migration-history-data.sql
-  if ($LASTEXITCODE -ne 0) { throw 'Database restore failed; Storage and Functions were not imported.' }
+  $previousPassword = [Environment]::GetEnvironmentVariable('PGPASSWORD', 'Process')
+  $previousPreference = $ErrorActionPreference
+  try {
+    $env:PGPASSWORD = $Password
+    $ErrorActionPreference = 'Continue'
+    & docker run --rm -v "${BackupPath}:/backup:ro" -e PGPASSWORD postgres:17-alpine `
+      psql "host=$($Connection.Host) port=$($Connection.Port) dbname=$($Connection.Database) user=$($Connection.User) sslmode=require" `
+      --single-transaction --variable ON_ERROR_STOP=1 `
+      --file /backup/database/roles.sql `
+      --file /backup/database/schema.sql `
+      --command 'SET session_replication_role = replica' `
+      --file /backup/database/data.sql `
+      --file /backup/database/migration-history-schema.sql `
+      --file /backup/database/migration-history-data.sql
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousPreference
+    [Environment]::SetEnvironmentVariable('PGPASSWORD', $previousPassword, 'Process')
+  }
+  if ($exitCode -ne 0) { throw 'Database restore failed; Storage and Functions were not imported.' }
 }
 
 function Invoke-StorageObjectUpload {
@@ -174,6 +213,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 }
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Docker Desktop is required for the database restore.' }
 if (-not (Test-DockerReady)) { throw 'Docker Desktop is installed but not running.' }
+Enable-SystemProxyForSupabaseCli
 
 if (-not $TargetDbPassword) { $TargetDbPassword = Read-Host 'Target Supabase database password' -AsSecureString }
 $plainPassword = Get-PlainText $TargetDbPassword
@@ -186,7 +226,7 @@ if (-not [IO.Path]::GetFullPath($stage).StartsWith($tempPrefix, [StringCompariso
 }
 
 try {
-  Write-Warning "This writes backup '$($manifest.created_at)' to target project $TargetProjectRef. Use a new, empty project unless -AllowNonEmptyTarget is explicitly supplied."
+  Write-Warning "This writes backup '$($manifest.created_at)' to target project $TargetProjectRef. The target must be a new, empty project."
   $confirmation = Read-Host "Type the target project ref ($TargetProjectRef) to continue"
   if ($confirmation -ne $TargetProjectRef) { throw 'Restore cancelled.' }
 
@@ -198,16 +238,28 @@ try {
   try {
     Invoke-Supabase @('link', '--project-ref', $TargetProjectRef, '--password', $plainPassword)
     $connection = Get-LinkedDatabaseConnection $plainPassword
-    $tableCheck = & supabase db query --linked --agent=no --output json "select count(*)::int as count from pg_tables where schemaname = 'public'"
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to check whether the target project is empty.' }
-    $tableJson = [regex]::Match(($tableCheck -join "`n"), '\[[\s\S]*\]').Value
-    if (-not $tableJson) { throw 'Unable to parse the target table count; refusing to restore.' }
-    $publicTableCount = (($tableJson | ConvertFrom-Json)[0].count)
-    if ($null -eq $publicTableCount -or $publicTableCount -notmatch '^\d+$') {
-      throw 'Invalid target table count; refusing to restore.'
+    $tableCheck = Invoke-SupabaseQuiet @('db', 'query', '--linked', '--agent=no', '--output', 'json', "select (select count(*) from pg_tables where schemaname = 'public') + (select count(*) from auth.users) + (select count(*) from storage.buckets) + (select count(*) from storage.objects) as count")
+    if (-not $tableCheck.Succeeded) { throw 'Unable to check whether the target project is empty.' }
+    $targetRows = @(ConvertFrom-SupabaseJsonArray `
+      -Text $tableCheck.Output `
+      -Description 'the target project emptiness check')
+    if ($targetRows.Count -ne 1 -or $null -eq $targetRows[0].count -or
+        $targetRows[0].count -notmatch '^\d+$') {
+      throw 'Invalid target project emptiness check; refusing to restore.'
     }
-    if (($publicTableCount -gt 0) -and -not $AllowNonEmptyTarget) {
-      throw "Target project already has $publicTableCount public tables. Refusing to merge. Create an empty project or rerun with -AllowNonEmptyTarget after confirming the consequences."
+    if ([long]$targetRows[0].count -gt 0) {
+      throw 'Target project already contains application tables, Auth users, or Storage data. Refusing to merge; use a new, empty project.'
+    }
+    $targetFunctionsResult = Invoke-SupabaseQuietWithRetry `
+      -Arguments @('functions', 'list', '--project-ref', $TargetProjectRef, '--output', 'json')
+    if (-not $targetFunctionsResult.Succeeded) {
+      throw 'Unable to check whether the target project already has Edge Functions.'
+    }
+    $targetFunctions = @(ConvertFrom-SupabaseJsonArray `
+      -Text $targetFunctionsResult.Output `
+      -Description 'the target Edge Function list')
+    if ($targetFunctions.Count -gt 0) {
+      throw 'Target project already has deployed Edge Functions. Refusing to overwrite them.'
     }
 
     Write-Host 'Restoring database roles, schema, and data...'
@@ -215,12 +267,23 @@ try {
 
     $realtimePath = Join-Path $BackupPath 'metadata\realtime-publication-tables.json'
     if (Test-Path $realtimePath) {
-      $realtimeJson = [regex]::Match((Get-Content -Raw $realtimePath), '\[[\s\S]*\]').Value
-      $realtimeTables = if ($realtimeJson) { @($realtimeJson | ConvertFrom-Json) } else { @() }
+      $realtimeTables = @(ConvertFrom-SupabaseJsonArray `
+        -Text (Get-Content -Raw $realtimePath) `
+        -Description 'the backed-up Realtime publication list')
+      $existingOutput = Invoke-SupabaseQuiet @('db', 'query', '--linked', '--agent=no', '--output', 'json', "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime'")
+      if (-not $existingOutput.Succeeded) { throw 'Unable to inspect the target Realtime publication.' }
+      $existingTables = @(ConvertFrom-SupabaseJsonArray `
+        -Text $existingOutput.Output `
+        -Description 'the target Realtime publication list')
+      $existingNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+      foreach ($table in $existingTables) {
+        [void]$existingNames.Add("$($table.schemaname).$($table.tablename)")
+      }
       foreach ($table in $realtimeTables) {
         if (($table.schemaname -notmatch '^[A-Za-z_][A-Za-z0-9_$]*$') -or ($table.tablename -notmatch '^[A-Za-z_][A-Za-z0-9_$]*$')) {
           throw 'Invalid Realtime table identifier in the backup metadata.'
         }
+        if ($existingNames.Contains("$($table.schemaname).$($table.tablename)")) { continue }
         Invoke-Supabase @('db', 'query', '--linked', "alter publication supabase_realtime add table `"$($table.schemaname)`".`"$($table.tablename)`"")
       }
     }

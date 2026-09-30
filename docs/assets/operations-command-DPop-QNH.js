@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./enterprise-big-screen-D-J5Ie5V.js";var i=e({name:`OperationsCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`operations`}))}});export{i as default};

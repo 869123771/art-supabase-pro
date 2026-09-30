@@ -229,12 +229,14 @@
     nextTick,
     watch,
     watchEffect,
+    watchPostEffect,
     getCurrentInstance,
     useAttrs,
     h,
     isVNode
   } from 'vue'
   import type { ComponentPublicInstance } from 'vue'
+  import { useI18n } from 'vue-i18n'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
   import { useDraggable, type DraggableEvent } from 'vue-draggable-plus'
@@ -398,6 +400,7 @@
     selectedRowKeys: () => [],
     fixedColumnMinWidth: 640
   })
+  const { t } = useI18n()
   const visibleColumns = computed(() =>
     filterTenantDimensionDescriptors(props.columns, isPlatformScope.value)
   )
@@ -561,6 +564,13 @@
   )
 
   const showPagination = computed(() => !!currentPagination.value && !isEmpty.value)
+  watchPostEffect(() => {
+    if (!showPagination.value) return
+    // Element Plus does not expose a label prop for its built-in page-size selector.
+    paginationRef.value
+      ?.querySelector<HTMLInputElement>('.el-pagination__sizes input[role="combobox"]')
+      ?.setAttribute('aria-label', t('table.pagination.pageSize'))
+  })
   const hasDraggableColumn = computed(() =>
     visibleColumns.value.some(
       (column) => column.draggable === true || typeof column.draggable === 'function'

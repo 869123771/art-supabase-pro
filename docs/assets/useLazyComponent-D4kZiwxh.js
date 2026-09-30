@@ -1,0 +1,1 @@
+import{Qt as e,Rn as t}from"./framework-Dycu6R4Q.js";function n(n){let r=t();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await e()}}}export{n as t};

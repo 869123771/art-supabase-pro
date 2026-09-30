@@ -4,7 +4,8 @@
       'art-section-title',
       {
         'art-section-title--with-line': showLine,
-        'art-section-title--with-marker': showMarker
+        'art-section-title--with-marker': showMarker,
+        'art-section-title--with-actions': $slots.actions && (!collapsible || expanded)
       }
     ]"
   >
@@ -34,6 +35,9 @@
         <span v-else>{{ title }}</span>
       </slot>
     </template>
+    <div v-if="$slots.actions && (!collapsible || expanded)" class="art-section-title__actions">
+      <slot name="actions" />
+    </div>
   </div>
 </template>
 
@@ -96,6 +100,31 @@
       margin-left: 12px;
       content: '';
       background: var(--el-border-color-lighter);
+    }
+
+    &--with-actions {
+      flex-wrap: wrap;
+      row-gap: var(--art-space-2);
+    }
+
+    &--with-actions::after {
+      order: 1;
+      min-width: 16px;
+    }
+
+    &__actions {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: var(--art-space-2);
+      align-items: center;
+      justify-content: flex-end;
+      order: 2;
+      min-width: 0;
+      margin-left: auto;
+    }
+
+    &__actions :deep(.el-button + .el-button) {
+      margin-left: 0;
     }
 
     &__toggle {

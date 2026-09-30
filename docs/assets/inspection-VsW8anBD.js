@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./execution-event-workspace-WMkE0QaX.js";var i=e({name:`MesInspection`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`inspection`}))}});export{i as default};

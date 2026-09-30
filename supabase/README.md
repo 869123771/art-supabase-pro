@@ -1,5 +1,7 @@
 # Supabase source of truth
 
+中文的远端备份与跨项目恢复操作说明见 [README.zh-CN.md](README.zh-CN.md)。
+
 This is the only Supabase directory for project `ckbftoopuyophiebamwy`. Business subrepositories do not keep separate Supabase assets.
 
 - `functions/` contains the reviewed, deployable Edge Function source. Deploy a reviewed change with `supabase functions deploy <name> --project-ref ckbftoopuyophiebamwy --use-api`.

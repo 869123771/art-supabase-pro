@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./defect-management-DHE-Tm8T.js";var i=e({name:`MesDefectManagement`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

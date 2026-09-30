@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./calendar-workspace-RWK3WvQJ.js";var i=e({name:`PmisInspectionDetail`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`detail`}))}});export{i as default};

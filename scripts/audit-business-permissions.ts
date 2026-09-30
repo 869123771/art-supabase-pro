@@ -64,7 +64,7 @@ const permissionPattern =
   /['"`]((?:System|Workflow|Tms|Finance|Hr|Mdm|Pmis|Smis|Scm|Wms|Vehicle|Insurance|Parts|PartsCategory|Supplier)[A-Za-z0-9]*(?::[A-Za-z][A-Za-z0-9]*)+)['"`]/g
 const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|platform super administrator/i
 
-// These files use platform-super only for cross-tenant context or for controlled AI writes.
+// These files use platform-super only for cross-tenant context or controlled writes where explicitly required.
 // Adding a file here requires an explicit security rationale; normal business maintenance is forbidden.
 const platformSuperAllowlist = new Map<string, string>([
   [
@@ -285,7 +285,11 @@ const platformSuperAllowlist = new Map<string, string>([
   ],
   [
     'modules/art-supabase-mdm/src/views/engineering/accessory-processing/index.vue',
-    'cross-tenant target selection and platform-super-only draft and document generation'
+    'cross-tenant target selection and tenant labels; accessory actions use button permissions'
+  ],
+  [
+    'modules/art-supabase-mdm/src/views/engineering/accessory-processing/modules/recognition-workspace.vue',
+    'cross-tenant selection and tenant-wide recognition history for platform administrators; saving uses button permissions'
   ],
   [
     'modules/art-supabase-smis/src/views/basic-data/inspection-category/index.vue',
@@ -355,6 +359,10 @@ const sourceReferenceExemptions = new Map<string, string>([
   [
     'SmisEquipmentLedger:Inspection',
     'inspection declaration is authorized at its workflow boundary'
+  ],
+  [
+    'MdmAccessoryProcessing:Generate',
+    'legacy one-click generation permission retained for role compatibility; the obsolete stage is rejected at the database boundary'
   ]
 ])
 

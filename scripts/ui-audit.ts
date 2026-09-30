@@ -120,6 +120,22 @@ function findRawTitledCards(file: string, content: string): number[] {
   return offsets
 }
 
+function findDirectBusinessFormTables(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+
+  const offsets: number[] = []
+  const visit = (node: TemplateNode): void => {
+    if (node.type === 1 && /^(?:ElForm|el-form|ElTable|el-table)$/.test(node.tag ?? '')) {
+      offsets.push(node.loc?.start.offset ?? 0)
+    }
+    node.children?.forEach(visit)
+  }
+
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
+}
+
 function scanFile(file: string, content: string, tooltipOnly = false): Finding[] {
   const findings: Finding[] = []
   const relativeFile = path.relative(projectRoot, file).replaceAll('\\', '/')
@@ -130,6 +146,15 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       line: lineAt(content, offset),
       rule,
       excerpt: excerptAt(content, offset)
+    })
+  }
+
+  if (
+    path.extname(file) === '.vue' &&
+    (relativeFile.startsWith('src/views/') || /^modules\/[^/]+\/src\/views\//.test(relativeFile))
+  ) {
+    findDirectBusinessFormTables(file, content).forEach((offset) => {
+      addFinding(offset, 'architecture/use-art-form-or-table')
     })
   }
 

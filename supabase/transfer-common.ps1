@@ -12,7 +12,8 @@ function Invoke-SupabaseQuiet {
     $ErrorActionPreference = $previousPreference
   }
 
-  $stderr = if (Test-Path $errorPath) { (Get-Content -Raw $errorPath).Trim() } else { '' }
+  $stderrContent = if (Test-Path $errorPath) { Get-Content -Raw $errorPath } else { $null }
+  $stderr = if ($null -eq $stderrContent) { '' } else { $stderrContent.Trim() }
   Remove-Item -LiteralPath $errorPath -Force -ErrorAction SilentlyContinue
 
   return [pscustomobject]@{
@@ -41,6 +42,44 @@ function Invoke-SupabaseQuietWithRetry {
   }
 
   return $lastResult
+}
+
+function Enable-SystemProxyForSupabaseCli {
+  # The Supabase CLI does not inherit the Windows Internet Settings proxy.
+  $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+  try {
+    $settings = Get-ItemProperty -Path $settingsPath -ErrorAction Stop
+    if ($settings.ProxyEnable -ne 1 -or [string]::IsNullOrWhiteSpace($settings.ProxyServer)) { return }
+
+    $entries = @($settings.ProxyServer -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $selected = $entries | Where-Object { $_ -match '^https=' } | Select-Object -First 1
+    if (-not $selected) { $selected = $entries | Select-Object -First 1 }
+    $proxy = ($selected -replace '^(https?|all)=', '').Trim()
+    if ($proxy -notmatch '^[a-z]+://') { $proxy = "http://$proxy" }
+    $env:HTTP_PROXY = $proxy
+    $env:HTTPS_PROXY = $proxy
+    $env:http_proxy = $proxy
+    $env:https_proxy = $proxy
+    Write-Host 'Using the configured Windows proxy for Supabase API calls...'
+  }
+  catch {
+    Write-Verbose 'Windows proxy settings could not be read; continuing without an HTTP proxy.'
+  }
+}
+
+function ConvertFrom-SupabaseJsonArray {
+  param(
+    [Parameter(Mandatory = $true)][string]$Text,
+    [Parameter(Mandatory = $true)][string]$Description
+  )
+
+  $json = [regex]::Match($Text, '\[[\s\S]*\]').Value
+  if (-not $json) { throw "Unable to read ${Description}: the CLI did not return a JSON array." }
+  try {
+    $parsed = ConvertFrom-Json -InputObject $json -ErrorAction Stop
+    return @($parsed)
+  }
+  catch { throw "Unable to parse $Description returned by the Supabase CLI." }
 }
 
 function Get-SupabaseApiKeyValue {
@@ -101,7 +140,7 @@ function Get-SupabaseServiceRoleKey {
   param([Parameter(Mandatory = $true)][string]$ProjectRef)
 
   $result = Invoke-SupabaseQuietWithRetry `
-    -Arguments @('projects', 'api-keys', '--project-ref', $ProjectRef, '--output', 'json') `
+    -Arguments @('projects', 'api-keys', '--project-ref', $ProjectRef, '--reveal', '--output', 'json') `
     -Attempts 3
   if (-not $result.Succeeded) {
     throw "Unable to read Supabase API keys for Storage transfer. $($result.Error)"
@@ -122,7 +161,13 @@ function Get-SupabaseServiceRoleKey {
     }
   }
 
-  throw 'No service_role API key was found. Storage transfer requires a service_role key for private buckets.'
+  # New projects may use an sb_secret_ key instead of a legacy service_role JWT.
+  foreach ($record in $records) {
+    $value = Get-SupabaseApiKeyValue -KeyRecord $record -Names @('api_key', 'key', 'value')
+    if ($value -match '^sb_secret_[A-Za-z0-9_-]+$') { return $value }
+  }
+
+  throw 'No service_role or secret API key was found. Storage transfer requires a privileged server key for private buckets.'
 }
 
 function ConvertTo-StorageApiPath {

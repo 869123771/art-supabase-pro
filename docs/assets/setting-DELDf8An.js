@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./department-setting-workspace-DfDlEM47.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`maintenance`}))}});export{i as default};

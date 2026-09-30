@@ -315,6 +315,9 @@
     }
   },
   "table": {
+    "pagination": {
+      "pageSize": "每页显示条数"
+    },
     "form": {
       "reset": "重置",
       "submit": "提交"

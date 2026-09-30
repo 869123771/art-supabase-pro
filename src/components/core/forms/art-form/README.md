@@ -149,9 +149,10 @@
 
 `ArtForm` 为每个 `FormItem.key` 自动开放同名插槽。
 
-| 插槽         | 参数                   | 说明                   |
-| ------------ | ---------------------- | ---------------------- |
-| `[item.key]` | `{ item, modelValue }` | 完全自定义当前字段内容 |
+| 插槽                   | 参数                   | 说明                                       |
+| ---------------------- | ---------------------- | ------------------------------------------ |
+| `[item.key]`           | `{ item, modelValue }` | 完全自定义当前字段内容                     |
+| `[divider.key]Actions` | `{ item, modelValue }` | 在分区标题右侧放置操作按钮；折叠时自动隐藏 |
 
 ```vue
 <ArtForm v-model="form" :items="items">
@@ -261,6 +262,19 @@
 ## 分区标题
 
 普通表单分区标题直接使用 `type: 'divider'`，不要在业务组件里为标题单独写插槽和样式。
+
+分区标题需要操作按钮时，使用与 `key` 对应的 `Actions` 插槽。按钮位于折叠开关之外，可正常点击；添加类按钮应配图标。
+
+```vue
+<ArtForm v-model="form" :items="formItems">
+  <template #fieldsSectionActions>
+    <ElButton type="primary" plain @click="addField">
+      <template #icon><ArtSvgIcon icon="ri:add-line" /></template>
+      新增字段
+    </ElButton>
+  </template>
+</ArtForm>
+```
 
 ```ts
 const formItems = computed<FormItem[]>(() => [

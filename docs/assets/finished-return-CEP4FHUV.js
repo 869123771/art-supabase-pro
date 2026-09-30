@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./production-material-workspace-BJmoUvMl.js";var i=e({name:`WmsFinishedReturn`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`finished_return`}))}});export{i as default};

@@ -41,24 +41,39 @@ function Get-PlainText {
 function Get-LinkedDatabaseConnection {
   param(
     [Parameter(Mandatory = $true)][string]$Password,
+    [Parameter(Mandatory = $true)][string]$SourceProjectRef,
     [string]$DatabaseUrl
   )
 
   if ($DatabaseUrl) {
     $uri = [uri]$DatabaseUrl
+    if ($uri.Scheme -notin @('postgres', 'postgresql')) {
+      throw 'The database URL must use postgres:// or postgresql://.'
+    }
+    $user = ([uri]::UnescapeDataString($uri.UserInfo) -split ':')[0]
+    $urlProjectRef = if ($uri.Host -match '^db\.([a-z0-9]{20})\.supabase\.co$') {
+      $Matches[1]
+    }
+    elseif ($user -match '^postgres\.([a-z0-9]{20})$') {
+      $Matches[1]
+    }
+    else { $null }
+    if ($urlProjectRef -ne $SourceProjectRef) {
+      throw 'The database URL must belong to the source project ref; refusing to mix two projects in one backup.'
+    }
     return @{
       Host = $uri.Host
       Port = $uri.Port
-      User = ([uri]::UnescapeDataString($uri.UserInfo) -split ':')[0]
+      User = $user
       Database = $uri.AbsolutePath.TrimStart('/')
     }
   }
 
   # The CLI resolves the correct pooler host for the project. Capture, never print,
   # its dry-run output because it contains the database password.
-  $dryRun = & supabase db dump --linked --password $Password --data-only --dry-run
-  if ($LASTEXITCODE -ne 0) { throw 'Unable to resolve the linked database connection.' }
-  $text = $dryRun -join "`n"
+  $dryRun = Invoke-SupabaseQuiet @('db', 'dump', '--linked', '--password', $Password, '--data-only', '--dry-run')
+  if (-not $dryRun.Succeeded) { throw 'Unable to resolve the linked database connection.' }
+  $text = $dryRun.Output
   $dbHost = [regex]::Match($text, 'export PGHOST="([^"]+)"').Groups[1].Value
   $port = [regex]::Match($text, 'export PGPORT="([^"]+)"').Groups[1].Value
   $user = [regex]::Match($text, 'export PGUSER="([^"]+)"').Groups[1].Value
@@ -81,29 +96,6 @@ function Test-DockerReady {
     $ErrorActionPreference = $previousPreference
   }
   return ($exitCode -eq 0)
-}
-
-function Enable-SystemProxyForSupabaseCli {
-  # Supabase CLI is a Go executable and does not automatically inherit the
-  # Windows Internet Settings proxy. Reuse that proxy for this script process
-  # only, so Management API calls (Functions, secrets and project metadata)
-  # work on networks where native DNS cannot resolve api.supabase.com.
-  $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
-  try {
-    $settings = Get-ItemProperty -Path $settingsPath -ErrorAction Stop
-    if ($settings.ProxyEnable -ne 1 -or [string]::IsNullOrWhiteSpace($settings.ProxyServer)) { return }
-
-    $proxy = ($settings.ProxyServer -split ';' | Select-Object -First 1).Trim()
-    if ($proxy -notmatch '^[a-z]+://') { $proxy = "http://$proxy" }
-    $env:HTTP_PROXY = $proxy
-    $env:HTTPS_PROXY = $proxy
-    $env:http_proxy = $proxy
-    $env:https_proxy = $proxy
-    Write-Host 'Using the configured Windows proxy for Supabase API calls...'
-  }
-  catch {
-    Write-Verbose 'Windows proxy settings could not be read; continuing without an HTTP proxy.'
-  }
 }
 
 function Invoke-SupabaseJsonWithRetry {
@@ -133,12 +125,11 @@ function Invoke-SupabaseJsonWithRetry {
       return $true
     }
 
-    $lastError = if (Test-Path $errorPath) {
-      (Get-Content -Raw $errorPath).Trim()
-    }
-    else {
+    $stderrContent = if (Test-Path $errorPath) { Get-Content -Raw $errorPath } else { $null }
+    $lastError = if ([string]::IsNullOrWhiteSpace($stderrContent)) {
       "Supabase CLI exited with code $exitCode."
     }
+    else { $stderrContent.Trim() }
     Remove-Item -LiteralPath $errorPath -Force -ErrorAction SilentlyContinue
 
     if ($attempt -lt $Attempts) {
@@ -390,6 +381,9 @@ if (-not $BackupRoot) { $BackupRoot = Join-Path $supabaseRoot 'backups' }
 $BackupRoot = [IO.Path]::GetFullPath($BackupRoot)
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $backupPath = Join-Path $BackupRoot $timestamp
+if (Test-Path -LiteralPath $backupPath) {
+  throw "Backup directory already exists: $backupPath. Wait one second and retry; existing backup files will not be overwritten."
+}
 $plainPassword = Get-PlainText $DbPassword
 
 Push-Location (Split-Path -Parent $supabaseRoot)
@@ -419,7 +413,7 @@ try {
   # `db query --linked` uses the Management API and does not accept --password,
   # while dump commands do. Keep command-specific targets separate.
   $queryTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked') }
-  $connection = Get-LinkedDatabaseConnection -Password $plainPassword -DatabaseUrl $DbUrl
+  $connection = Get-LinkedDatabaseConnection -Password $plainPassword -SourceProjectRef $ProjectRef -DatabaseUrl $DbUrl
 
   Write-Host 'Exporting database roles, schema, and data...'
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--role-only', '--file', (Join-Path $databasePath 'roles.sql')))
@@ -436,68 +430,86 @@ try {
   Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'auth,storage', '--keep-comments', '--file', (Join-Path $databasePath 'managed-schema-snapshot.sql')))
 
   Write-Host 'Capturing deployed Edge Function source and metadata...'
-  # Download into this backup's own Supabase workdir so remote source never
-  # overwrites reviewed or uncommitted files in the main repository.
-  $downloadProjectRoot = Join-Path $backupPath 'supabase'
-  New-Item -ItemType Directory -Path $downloadProjectRoot -Force | Out-Null
-  Copy-Item -LiteralPath (Join-Path $supabaseRoot 'config.toml') -Destination (Join-Path $downloadProjectRoot 'config.toml') -Force
-  Push-Location $backupPath
-  try {
-    Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
-  }
-  finally {
-    Pop-Location
-  }
-  $downloadedFunctions = Join-Path $downloadProjectRoot 'functions'
-  if (-not (Test-Path -LiteralPath $downloadedFunctions -PathType Container)) {
-    throw 'The Supabase CLI did not download Edge Functions into the backup workdir.'
-  }
-  $backupPrefix = [IO.Path]::GetFullPath($backupPath).TrimEnd([char[]]'\\/') + [IO.Path]::DirectorySeparatorChar
-  if (-not [IO.Path]::GetFullPath($downloadedFunctions).StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'The Edge Function download path is outside the backup directory.'
-  }
-  if (-not [IO.Path]::GetFullPath($downloadProjectRoot).StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'The temporary Supabase project is outside the backup directory.'
-  }
-  Move-Item -LiteralPath $downloadedFunctions -Destination $functionsPath
-  Remove-Item -LiteralPath $downloadProjectRoot -Recurse -Force
+  $functionMetadataPath = Join-Path $metadataPath 'functions.json'
   Invoke-SupabaseJsonWithRetry `
     -Arguments @('functions', 'list', '--project-ref', $ProjectRef, '--output', 'json') `
-    -OutputPath (Join-Path $metadataPath 'functions.json') | Out-Null
+    -OutputPath $functionMetadataPath | Out-Null
+  $deployedFunctions = @(ConvertFrom-SupabaseJsonArray `
+    -Text (Get-Content -LiteralPath $functionMetadataPath -Raw) `
+    -Description 'the deployed Edge Function list')
+
+  # Download into this backup's own Supabase workdir so remote source never
+  # overwrites reviewed or uncommitted files in the main repository.
+  if ($deployedFunctions.Count -gt 0) {
+    $downloadProjectRoot = Join-Path $backupPath 'supabase'
+    New-Item -ItemType Directory -Path $downloadProjectRoot -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $supabaseRoot 'config.toml') -Destination (Join-Path $downloadProjectRoot 'config.toml') -Force
+    Push-Location $backupPath
+    try {
+      Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
+    }
+    finally {
+      Pop-Location
+    }
+    $downloadedFunctions = Join-Path $downloadProjectRoot 'functions'
+    if (-not (Test-Path -LiteralPath $downloadedFunctions -PathType Container)) {
+      throw 'The Supabase CLI did not download Edge Functions into the backup workdir.'
+    }
+    $backupPrefix = [IO.Path]::GetFullPath($backupPath).TrimEnd([char[]]'\\/') + [IO.Path]::DirectorySeparatorChar
+    if (-not [IO.Path]::GetFullPath($downloadedFunctions).StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+      throw 'The Edge Function download path is outside the backup directory.'
+    }
+    foreach ($function in $deployedFunctions) {
+      if ($function.slug -notmatch '^[a-z0-9][a-z0-9_-]*$' -or
+          -not (Test-Path -LiteralPath (Join-Path $downloadedFunctions $function.slug) -PathType Container)) {
+        throw "Missing or invalid downloaded Edge Function: $($function.slug)"
+      }
+    }
+    Move-Item -LiteralPath $downloadedFunctions -Destination $functionsPath
+    Remove-Item -LiteralPath $downloadProjectRoot -Recurse -Force
+  }
   Invoke-SupabaseJsonWithRetry `
     -Arguments @('secrets', 'list', '--project-ref', $ProjectRef, '--output', 'json') `
     -OutputPath (Join-Path $metadataPath 'edge-function-secret-names.json') `
     -AllowFailure | Out-Null
-  Invoke-SupabaseJsonWithRetry `
-    -Arguments @('projects', 'list', '--output', 'json') `
-    -OutputPath (Join-Path $metadataPath 'projects.json') | Out-Null
   $storageBucketSql = 'select id, name, public, file_size_limit, allowed_mime_types, created_at, updated_at from storage.buckets order by id'
-  $storageBucketOutput = if ($DbUrl) {
-    & supabase db query --db-url $DbUrl --agent=no --output json $storageBucketSql
-  }
-  else {
-    & supabase db query --linked --agent=no --output json $storageBucketSql
-  }
-  $storageBucketOutput |
+  $storageBucketResult = Invoke-SupabaseQuiet (@('db', 'query') + $queryTarget + @('--agent=no', '--output', 'json', $storageBucketSql))
+  if (-not $storageBucketResult.Succeeded) { throw 'Unable to list Storage buckets.' }
+  $storageBucketResult.Output |
     Set-Content -Path (Join-Path $metadataPath 'storage-buckets.json') -Encoding utf8
-  if ($LASTEXITCODE -ne 0) { throw 'Unable to list Storage buckets.' }
   $realtimeSql = "select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime' order by schemaname, tablename"
-  $realtimeOutput = if ($DbUrl) {
-    & supabase db query --db-url $DbUrl --agent=no --output json $realtimeSql
-  }
-  else {
-    & supabase db query --linked --agent=no --output json $realtimeSql
-  }
-  $realtimeOutput |
+  $realtimeResult = Invoke-SupabaseQuiet (@('db', 'query') + $queryTarget + @('--agent=no', '--output', 'json', $realtimeSql))
+  if (-not $realtimeResult.Succeeded) { throw 'Unable to list Realtime publication tables.' }
+  $realtimeResult.Output |
     Set-Content -Path (Join-Path $metadataPath 'realtime-publication-tables.json') -Encoding utf8
-  if ($LASTEXITCODE -ne 0) { throw 'Unable to list Realtime publication tables.' }
+  [void]@(ConvertFrom-SupabaseJsonArray `
+    -Text (Get-Content -LiteralPath (Join-Path $metadataPath 'realtime-publication-tables.json') -Raw) `
+    -Description 'the Realtime publication list')
+
+  $storageCountSql = 'select bucket_id, count(*)::bigint as object_count from storage.objects group by bucket_id order by bucket_id'
+  $storageCountResult = Invoke-SupabaseQuiet (@('db', 'query') + $queryTarget + @('--agent=no', '--output', 'json', $storageCountSql))
+  if (-not $storageCountResult.Succeeded) { throw 'Unable to count Storage objects.' }
+  $storageCountResult.Output |
+    Set-Content -Path (Join-Path $metadataPath 'storage-object-counts.json') -Encoding utf8
+  $storageCounts = @(ConvertFrom-SupabaseJsonArray `
+    -Text (Get-Content -LiteralPath (Join-Path $metadataPath 'storage-object-counts.json') -Raw) `
+    -Description 'the Storage object counts')
+  $expectedObjectCounts = @{}
+  foreach ($row in $storageCounts) {
+    if ($null -eq $row.bucket_id -or $row.object_count -notmatch '^\d+$') {
+      throw 'Invalid Storage object count returned by the source project.'
+    }
+    $expectedObjectCounts[[string]$row.bucket_id] = [long]$row.object_count
+  }
 
   $bucketText = Get-Content -Raw (Join-Path $metadataPath 'storage-buckets.json')
-  $bucketJson = [regex]::Match($bucketText, '\[[\s\S]*\]').Value
-  $buckets = if ($bucketJson) { @($bucketJson | ConvertFrom-Json) } else { @() }
+  $buckets = @(ConvertFrom-SupabaseJsonArray -Text $bucketText -Description 'the Storage bucket list')
   $storageDownloadReport = New-Object System.Collections.Generic.List[object]
   $serviceRoleKey = $null
   foreach ($bucket in $buckets) {
+    if ($bucket.id -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
+      throw "Storage bucket ID cannot be represented safely in a local backup path: $($bucket.id)"
+    }
     $destination = Join-Path $storagePath $bucket.id
     Write-Host "Downloading Storage bucket '$($bucket.id)'..."
     $report = Save-StorageBucket `
@@ -505,6 +517,14 @@ try {
       -BucketId $bucket.id `
       -Destination $destination `
       -ServiceRoleKeyRef ([ref]$serviceRoleKey)
+    $downloadedCount = @(Get-ChildItem -LiteralPath $destination -File -Recurse).Count
+    $expectedCount = if ($expectedObjectCounts.ContainsKey([string]$bucket.id)) {
+      $expectedObjectCounts[[string]$bucket.id]
+    }
+    else { 0 }
+    if ($downloadedCount -ne $expectedCount) {
+      throw "Storage bucket '$($bucket.id)' has $expectedCount objects but only $downloadedCount local files. The backup is incomplete."
+    }
     $storageDownloadReport.Add($report) | Out-Null
   }
   $storageDownloadReport |

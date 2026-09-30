@@ -44,17 +44,22 @@
             :accessible-label="getDividerAccessibleLabel(item)"
             @toggle="toggleSection(item.key)"
           >
-            <slot
-              :name="item.key"
-              :item="item"
-              :modelValue="modelValue"
-              :value="getFieldValue(item.key)"
-              :setValue="createSlotSetValue(item)"
-              :clearValue="createSlotClearValue(item)"
-            >
-              <component v-if="typeof item.label !== 'string'" :is="item.label" />
-              <span v-else>{{ item.label }}</span>
-            </slot>
+            <template #default>
+              <slot
+                :name="item.key"
+                :item="item"
+                :modelValue="modelValue"
+                :value="getFieldValue(item.key)"
+                :setValue="createSlotSetValue(item)"
+                :clearValue="createSlotClearValue(item)"
+              >
+                <component v-if="typeof item.label !== 'string'" :is="item.label" />
+                <span v-else>{{ item.label }}</span>
+              </slot>
+            </template>
+            <template v-if="$slots[`${item.key}Actions`]" #actions>
+              <slot :name="`${item.key}Actions`" :item="item" :modelValue="modelValue" />
+            </template>
           </ArtSectionTitle>
           <ElFormItem v-else :prop="item.key" :label-width="getFormItemLabelWidth(item)">
             <template #label v-if="item.label">

@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-0MLItC78.js";import{t as r}from"./scm-document-workspace-CHC7BNHD.js";var i=e({name:`ScmProjectQuotation`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`project_quotation`}))}});export{i as default};
