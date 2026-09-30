@@ -738,8 +738,17 @@
   watch(
     () => route.query.recordId,
     (recordId) => {
-      searchForm.value.id = typeof recordId === 'string' ? recordId : undefined
-      void tableQueryRef.value?.refreshData()
+      selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+      Object.assign(searchForm.value, {
+        id: typeof recordId === 'string' ? recordId : undefined,
+        userName: undefined,
+        userGender: undefined,
+        userPhone: undefined,
+        userEmail: undefined,
+        accountIdentityType: undefined,
+        status: ''
+      })
+      void tableQueryRef.value?.refreshCreate()
     }
   )
 </script>

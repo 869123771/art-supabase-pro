@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./purchase-workspace-CRb18uvh.js";var i=e({name:`ScmPurchaseContract`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`purchase_contract`}))}});export{i as default};

@@ -80,6 +80,14 @@
               <span class="workflow-menu-filter__node-count">{{ data.businessTypes.length }}</span>
             </div>
           </template>
+          <template #empty>
+            <ArtEmptyState
+              title="未找到匹配项"
+              description="请调整关键词或清空筛选条件。"
+              size="compact"
+              :visual-size="64"
+            />
+          </template>
         </ElTree>
       </ElScrollbar>
       <ArtEmptyState v-else title="暂无已接入审批的菜单" size="compact" :visual-size="58" />

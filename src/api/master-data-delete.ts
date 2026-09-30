@@ -36,6 +36,29 @@ export interface CleanupMasterDataDeleteDependencyPayload {
 
 const { supabase, responseHandle } = useSupabase()
 
+export type VehicleReminderDeleteSourceType =
+  'insurance' | 'inspection' | 'maintenance' | 'part' | 'vehicle'
+
+export interface VehicleReminderDeleteDestination {
+  sourceType: VehicleReminderDeleteSourceType
+  sourceKey: string
+}
+
+export async function fetchVehicleReminderDeleteDestination(
+  workOrderId: string
+): Promise<VehicleReminderDeleteDestination | null> {
+  const { data } = await responseHandle<VehicleReminderDeleteDestination>(
+    () =>
+      supabase
+        .from('vehicle_reminder_work_order')
+        .select('sourceType:source_type,sourceKey:source_key')
+        .eq('id', workOrderId)
+        .maybeSingle(),
+    { breakReturn: true, showErrorMessage: false }
+  )
+  return data ?? null
+}
+
 export async function fetchMasterDataDeleteDependencies(
   resourceType: MasterDataDeleteResourceType,
   resourceIds: string[]
@@ -53,7 +76,7 @@ export async function fetchMasterDataDeleteDependencies(
         p_resource_ids: resourceIds
       })
     },
-    { breakReturn: true }
+    { breakReturn: true, showErrorMessage: false }
   )
   return (data ?? []).map((item) => ({
     ...item,

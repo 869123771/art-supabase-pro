@@ -63,7 +63,7 @@
       const captionMap = new Map(props.items.map((item) => [item.label, item.caption ?? '']))
 
       return {
-        grid: { left: 4, right: 58, top: 8, bottom: 4, containLabel: true },
+        grid: { left: 8, right: 88, top: 10, bottom: 8, containLabel: true },
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -96,16 +96,16 @@
           axisLine: { show: false },
           axisTick: { show: false },
           axisLabel: {
-            width: 72,
+            width: 96,
             overflow: 'truncate',
             margin: 10,
             color: muted,
-            fontSize: 10,
+            fontSize: 12,
             formatter: (value: string) =>
               `{name|${value}}\n{caption|${captionMap.get(value) ?? ''}}`,
             rich: {
-              name: { color: strong, fontSize: 10, fontWeight: 600, lineHeight: 15 },
-              caption: { color: muted, fontSize: 8, lineHeight: 12 }
+              name: { color: strong, fontSize: 12, fontWeight: 600, lineHeight: 19 },
+              caption: { color: muted, fontSize: 10, lineHeight: 15 }
             }
           }
         },
@@ -127,7 +127,7 @@
                   }
                 : undefined
             })),
-            barWidth: 12,
+            barWidth: 14,
             showBackground: true,
             backgroundStyle: { color: gridLine, borderRadius: 6 },
             itemStyle: {
@@ -142,7 +142,7 @@
               position: 'right',
               distance: 7,
               color: strong,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
               formatter: `{c}${props.unit}`
             },

@@ -8,10 +8,13 @@
       </div>
       <p>{{ props.actionHint }}</p>
     </div>
-    <ElButton type="primary" plain @click="goBack">
-      <template #icon><ArtSvgIcon icon="ri:arrow-left-line" /></template>
-      返回{{ resourceLabel }}管理
-    </ElButton>
+    <div class="master-delete-notice__actions">
+      <ElButton @click="clearLocation">清除定位</ElButton>
+      <ElButton type="primary" plain @click="goBack">
+        <template #icon><ArtSvgIcon icon="ri:arrow-left-line" /></template>
+        返回{{ resourceLabel }}管理
+      </ElButton>
+    </div>
   </aside>
 </template>
 
@@ -47,28 +50,15 @@
   const goBack = (): void => {
     if (isMasterDelete.value) {
       const returnPath = typeof route.query.returnPath === 'string' ? route.query.returnPath : '/'
-      void router.push({
-        path: returnPath,
-        query: {
-          resumeMasterDelete: '1',
-          recordId: typeof route.query.resourceId === 'string' ? route.query.resourceId : undefined,
-          resourceType:
-            typeof route.query.resourceType === 'string' ? route.query.resourceType : undefined,
-          resourceLabel: resourceLabel.value,
-          resourceName: resourceName.value
-        }
-      })
+      void router.push({ path: returnPath })
       return
     }
 
-    void router.push({
-      name: 'TmsCustomer',
-      query: {
-        resumeCustomerDelete: '1',
-        customerId: props.customerId,
-        customerName: props.customerName || undefined
-      }
-    })
+    void router.push({ name: 'TmsCustomer' })
+  }
+
+  const clearLocation = (): void => {
+    void router.replace({ path: route.path })
   }
 </script>
 
@@ -113,6 +103,16 @@
       }
     }
 
+    &__actions {
+      display: flex;
+      flex: none;
+      gap: 8px;
+
+      .el-button + .el-button {
+        margin-left: 0;
+      }
+    }
+
     .el-button {
       flex: none;
     }
@@ -120,6 +120,11 @@
     @media (width <= 720px) {
       flex-direction: column;
       align-items: stretch;
+
+      &__actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
 
       .el-button {
         width: 100%;

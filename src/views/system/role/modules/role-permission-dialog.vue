@@ -82,6 +82,14 @@
                   </span>
                 </div>
               </template>
+              <template #empty>
+                <ArtEmptyState
+                  title="暂无可显示内容"
+                  description="请调整当前范围或稍后刷新。"
+                  size="compact"
+                  :visual-size="64"
+                />
+              </template>
             </ElTreeV2>
           </template>
         </ElAutoResizer>
@@ -149,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'

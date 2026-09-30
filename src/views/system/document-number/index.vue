@@ -170,6 +170,13 @@
   const menuTree = ref<AppRouteRecord[]>([])
   const scenes = ref<Api.SystemManage.DocumentNumberSceneItem[]>([])
   const selectedMenuId = ref(typeof route.query.menuId === 'string' ? route.query.menuId : '')
+  const targetRuleKey = computed(() =>
+    route.query.fromMasterDelete === '1' &&
+    route.query.dependencyCode === 'menu_document_number_scene' &&
+    typeof route.query.recordNo === 'string'
+      ? route.query.recordNo
+      : ''
+  )
   const menuFilterLoading = ref(false)
   const isDesktopMenuLayout = useMediaQuery('(min-width: 1201px)')
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
@@ -320,7 +327,11 @@
     const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
     return fetchDocumentNumberRuleList({
       ...params,
-      ruleKeys: selectedMenuId.value ? selectedRuleKeys.value : undefined,
+      ruleKeys: targetRuleKey.value
+        ? [targetRuleKey.value]
+        : selectedMenuId.value
+          ? selectedRuleKeys.value
+          : undefined,
       from,
       to
     })
@@ -560,10 +571,11 @@
   })
 
   watch(
-    () => route.query.menuId,
-    async (menuId) => {
+    () => [route.query.menuId, targetRuleKey.value] as const,
+    async ([menuId]) => {
       selectedMenuId.value = typeof menuId === 'string' ? menuId : ''
-      await tableQueryRef.value?.getData()
+      table.searchQuery.keyword = ''
+      await tableQueryRef.value?.refreshCreate()
     }
   )
 </script>

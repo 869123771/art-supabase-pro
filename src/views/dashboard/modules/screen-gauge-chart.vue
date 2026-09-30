@@ -1,105 +1,99 @@
 <template>
-  <div ref="rootRef" class="screen-gauge-chart">
-    <div
-      ref="chartRef"
-      class="screen-gauge-chart__canvas"
-      role="img"
-      :aria-label="`${label} ${safeValue}${suffix}`"
-    />
+  <div
+    class="screen-gauge-chart"
+    :class="`is-${tone}`"
+    role="img"
+    :aria-label="`${label} ${safeValue}${suffix}`"
+  >
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="screen-gauge-chart__track" cx="60" cy="60" r="49" />
+      <circle
+        class="screen-gauge-chart__progress"
+        cx="60"
+        cy="60"
+        r="49"
+        pathLength="100"
+        :stroke-dasharray="`${safeValue} 100`"
+      />
+    </svg>
+    <div class="screen-gauge-chart__value">
+      <strong>{{ safeValue }}<em>{{ suffix }}</em></strong>
+      <span>{{ label }}</span>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import type { EChartsOption } from '@/plugins/echarts'
-  import { useChartComponent } from '@/hooks/core/useChart'
-  import type { BaseChartProps } from '@/types/component/chart'
-  import { useScreenChartTheme } from './screen-chart-theme'
-
-  interface Props extends BaseChartProps {
+  interface Props {
     value: number
     label: string
     suffix?: string
-    accentVar?: string
   }
 
-  const props = withDefaults(defineProps<Props>(), {
-    suffix: '%',
-    accentVar: '--screen-accent',
-    isEmpty: false
-  })
-
-  const { rootRef, readScreenColor } = useScreenChartTheme()
+  const props = withDefaults(defineProps<Props>(), { suffix: '分' })
   const safeValue = computed(() => Math.max(0, Math.min(100, Math.round(props.value))))
-
-  const { chartRef, getAnimationConfig } = useChartComponent({
-    props,
-    watchSources: [() => props.value, () => props.label, () => props.accentVar],
-    generateOptions: (): EChartsOption => {
-      const accent = readScreenColor(props.accentVar, '#4f7cff')
-      const strong = readScreenColor('--screen-text-strong', '#f4f8ff')
-      const muted = readScreenColor('--screen-text-muted', '#84a0b8')
-      const track = readScreenColor('--screen-chart-track', 'rgba(120, 157, 187, 0.14)')
-
-      return {
-        series: [
-          {
-            type: 'gauge',
-            startAngle: 210,
-            endAngle: -30,
-            min: 0,
-            max: 100,
-            radius: '94%',
-            center: ['50%', '54%'],
-            pointer: { show: false },
-            progress: {
-              show: true,
-              width: 11,
-              roundCap: true,
-              itemStyle: {
-                color: accent,
-                shadowBlur: 12,
-                shadowColor: `${accent}66`
-              }
-            },
-            axisLine: {
-              roundCap: true,
-              lineStyle: { width: 11, color: [[1, track]] }
-            },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            anchor: { show: false },
-            title: {
-              show: true,
-              offsetCenter: [0, '34%'],
-              color: muted,
-              fontSize: 10,
-              fontWeight: 500
-            },
-            detail: {
-              valueAnimation: true,
-              offsetCenter: [0, '-4%'],
-              color: strong,
-              formatter: (value: number) => `{score|${Math.round(value)}}{unit|${props.suffix}}`,
-              rich: {
-                score: { color: strong, fontSize: 32, fontWeight: 760 },
-                unit: { color: muted, fontSize: 13, fontWeight: 700, padding: [0, 0, 0, 2] }
-              }
-            },
-            data: [{ value: safeValue.value, name: props.label }],
-            ...getAnimationConfig(260, 1100)
-          }
-        ]
-      }
-    }
+  const tone = computed(() => {
+    if (safeValue.value >= 75) return 'healthy'
+    if (safeValue.value >= 60) return 'warning'
+    return 'danger'
   })
 </script>
 
 <style scoped lang="scss">
-  .screen-gauge-chart,
-  .screen-gauge-chart__canvas {
+  .screen-gauge-chart {
+    position: relative;
+    display: grid;
+    place-items: center;
     width: 100%;
     height: 100%;
     min-height: 0;
+    color: var(--screen-accent);
+
+    &.is-warning { color: var(--screen-warning); }
+    &.is-danger { color: var(--screen-danger); }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transform: rotate(-90deg);
+    }
+
+    circle { fill: none; stroke-width: 8; }
+    &__track { stroke: var(--screen-chart-track); }
+    &__progress { stroke: currentcolor; stroke-linecap: round; }
+
+    &__value {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 3px;
+      text-align: center;
+
+      strong {
+        font-size: clamp(24px, 2vw, 38px);
+        line-height: 1;
+        color: var(--screen-text-strong);
+      }
+
+      em {
+        margin-left: 2px;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 500;
+        color: var(--screen-text-muted);
+      }
+
+      span {
+        max-width: 90%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+        color: var(--screen-text-muted);
+        white-space: nowrap;
+      }
+    }
   }
 </style>

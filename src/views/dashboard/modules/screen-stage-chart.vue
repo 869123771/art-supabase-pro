@@ -1,23 +1,33 @@
 <template>
-  <div ref="rootRef" class="screen-stage-chart">
-    <div ref="chartRef" class="screen-stage-chart__canvas" role="img" :aria-label="chartSummary" />
+  <div
+    class="screen-stage-chart"
+    role="img"
+    :aria-label="`阶段分布：${items.map((item) => `${item.label} ${item.value}${unit}`).join('，')}`"
+    :style="{ '--stage-accent': `var(${accentVar})`, '--stage-count': items.length }"
+  >
+    <div
+      v-for="(item, index) in items"
+      :key="item.label"
+      class="screen-stage-chart__item"
+      :class="{ 'has-value': item.value > 0 }"
+    >
+      <span class="screen-stage-chart__step">{{ String(index + 1).padStart(2, '0') }}</span>
+      <strong>{{ item.value }}<em>{{ unit }}</em></strong>
+      <span class="screen-stage-chart__label">{{ item.label }}</span>
+      <small v-if="item.caption">{{ item.caption }}</small>
+      <i><b :style="{ width: `${Math.max(0, (item.value / maxValue) * 100)}%` }" /></i>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import type { EChartsOption } from '@/plugins/echarts'
-  import { echarts } from '@/plugins/echarts'
-  import { useChartComponent } from '@/hooks/core/useChart'
-  import type { BaseChartProps } from '@/types/component/chart'
-  import { useScreenChartTheme } from './screen-chart-theme'
-
   export interface ScreenStageChartItem {
     label: string
     value: number
     caption?: string
   }
 
-  interface Props extends BaseChartProps {
+  interface Props {
     items: ScreenStageChartItem[]
     unit?: string
     accentVar?: string
@@ -25,110 +35,104 @@
 
   const props = withDefaults(defineProps<Props>(), {
     unit: '单',
-    accentVar: '--screen-accent',
-    isEmpty: false
+    accentVar: '--screen-accent'
   })
-
-  const { rootRef, readScreenColor } = useScreenChartTheme()
-  const chartSummary = computed(
-    () =>
-      `阶段分布：${props.items.map((item) => `${item.label} ${item.value}${props.unit}`).join('，')}`
-  )
-
-  const { chartRef, getAnimationConfig } = useChartComponent({
-    props,
-    watchSources: [() => props.items, () => props.unit, () => props.accentVar],
-    generateOptions: (): EChartsOption => {
-      const accent = readScreenColor(props.accentVar, '#4f7cff')
-      const cyan = readScreenColor('--screen-cyan', '#35c7d7')
-      const strong = readScreenColor('--screen-text-strong', '#f4f8ff')
-      const muted = readScreenColor('--screen-text-muted', '#84a0b8')
-      const gridLine = readScreenColor('--screen-chart-grid', 'rgba(120, 157, 187, 0.13)')
-      const captionMap = new Map(props.items.map((item) => [item.label, item.caption ?? '']))
-
-      return {
-        animation: true,
-        grid: { left: 8, right: 8, top: 24, bottom: 56, containLabel: false },
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          backgroundColor: 'rgba(5, 17, 29, 0.94)',
-          borderColor: gridLine,
-          textStyle: { color: strong, fontSize: 11 },
-          formatter: (params) => {
-            const first = Array.isArray(params) ? params[0] : params
-            if (!first || typeof first !== 'object' || !('name' in first)) return ''
-            const name = String(first.name)
-            const value = 'value' in first ? Number(first.value) : 0
-            const caption = captionMap.get(name)
-            return `${name}<br/><strong>${value}${props.unit}</strong>${caption ? `<br/>${caption}` : ''}`
-          }
-        },
-        xAxis: {
-          type: 'category',
-          data: props.items.map((item) => item.label),
-          axisLine: { lineStyle: { color: gridLine } },
-          axisTick: { show: false },
-          axisLabel: {
-            interval: 0,
-            margin: 10,
-            color: muted,
-            fontSize: 10,
-            formatter: (value: string) => {
-              const caption = captionMap.get(value)
-              return caption ? `{label|${value}}\n{caption|${caption}}` : `{label|${value}}`
-            },
-            rich: {
-              label: { color: muted, fontSize: 10, lineHeight: 15 },
-              caption: { color: '#607e96', fontSize: 8, lineHeight: 12 }
-            }
-          }
-        },
-        yAxis: {
-          type: 'value',
-          minInterval: 1,
-          axisLabel: { show: false },
-          axisLine: { show: false },
-          axisTick: { show: false },
-          splitLine: { lineStyle: { color: gridLine, type: 'dashed' } }
-        },
-        series: [
-          {
-            type: 'bar',
-            data: props.items.map((item) => item.value),
-            barMaxWidth: 34,
-            barMinHeight: 2,
-            showBackground: true,
-            backgroundStyle: { color: gridLine, borderRadius: 4 },
-            itemStyle: {
-              borderRadius: [4, 4, 1, 1],
-              color: new echarts.graphic.LinearGradient(0, 1, 0, 0, [
-                { offset: 0, color: accent },
-                { offset: 1, color: cyan }
-              ])
-            },
-            label: {
-              show: true,
-              position: 'top',
-              distance: 5,
-              color: strong,
-              fontSize: 12,
-              fontWeight: 700,
-              formatter: `{c}${props.unit}`
-            },
-            ...getAnimationConfig(180, 900)
-          }
-        ]
-      }
-    }
-  })
+  const maxValue = computed(() => Math.max(1, ...props.items.map((item) => item.value)))
 </script>
 
 <style scoped lang="scss">
-  .screen-stage-chart,
-  .screen-stage-chart__canvas {
+  .screen-stage-chart {
+    display: grid;
+    grid-template-columns: repeat(var(--stage-count, 5), minmax(0, 1fr));
+    align-items: stretch;
     width: 100%;
     height: 100%;
     min-height: 0;
+
+    &__item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      padding: 10px 14px;
+      border-right: 1px solid var(--screen-line);
+
+      &:last-child { border-right: 0; }
+      &::before {
+        position: absolute;
+        top: 22px;
+        right: -4px;
+        z-index: 1;
+        width: 7px;
+        height: 7px;
+        content: '';
+        background: var(--screen-surface);
+        border-top: 1px solid var(--screen-line-strong);
+        border-right: 1px solid var(--screen-line-strong);
+        transform: rotate(45deg);
+      }
+      &:last-child::before { display: none; }
+      &.has-value strong { color: var(--screen-text-strong); }
+    }
+
+    &__step {
+      margin-bottom: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--screen-accent-soft);
+      letter-spacing: 1px;
+    }
+
+    strong {
+      font-size: clamp(22px, 1.8vw, 34px);
+      line-height: 1;
+      color: var(--screen-text-muted);
+    }
+
+    em {
+      margin-left: 3px;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 500;
+      color: var(--screen-text-muted);
+    }
+
+    &__label {
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--screen-text-strong);
+    }
+
+    small {
+      margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 11px;
+      color: var(--screen-text-muted);
+      white-space: nowrap;
+    }
+
+    i {
+      display: block;
+      width: 100%;
+      height: 4px;
+      margin-top: 16px;
+      overflow: hidden;
+      background: var(--screen-chart-track);
+      border-radius: 3px;
+    }
+
+    b {
+      display: block;
+      height: 100%;
+      background: var(--stage-accent);
+      border-radius: inherit;
+    }
+  }
+
+  @media (width <= 640px) {
+    .screen-stage-chart { min-width: 560px; }
   }
 </style>

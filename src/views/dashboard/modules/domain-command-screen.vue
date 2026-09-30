@@ -15,7 +15,10 @@
       @retry="loadData"
     >
       <ElScrollbar class="domain-command-screen__scrollbar">
-        <div class="domain-command-screen__stage">
+        <div
+          class="domain-command-screen__stage"
+          :class="{ 'has-refresh-error': state.loaded && state.error }"
+        >
           <header class="domain-header">
             <div class="domain-header__identity">
               <button
@@ -28,7 +31,6 @@
                 <ArtSvgIcon icon="ri:arrow-left-line" />
               </button>
               <div>
-                <span>{{ definition.eyebrow }}</span>
                 <h1>{{ definition.title }}</h1>
               </div>
             </div>
@@ -55,7 +57,9 @@
                 <time :datetime="currentTime">{{ timeText }}</time>
                 <span>{{ dateText }}</span>
               </div>
-              <span class="domain-live-status"><i /> 数据融合 {{ refreshText }}</span>
+              <span class="domain-live-status" :class="{ 'is-warning': state.error }">
+                <i /> {{ state.error ? '数据更新失败' : `数据融合 ${refreshText}` }}
+              </span>
               <button
                 type="button"
                 class="domain-icon-button"
@@ -81,6 +85,13 @@
             </div>
           </header>
 
+          <ScreenRefreshNotice
+            v-if="state.loaded && state.error"
+            :updated-at="refreshText"
+            :loading="state.loading"
+            @retry="loadData()"
+          />
+
           <main class="domain-content">
             <section
               class="domain-metric-rail"
@@ -105,11 +116,7 @@
             <section class="domain-layout">
               <div class="domain-column domain-column--left">
                 <article v-if="showScorePanel" class="domain-panel domain-score-panel">
-                  <ScreenPanelHeading
-                    eyebrow="COMMAND SIGNAL"
-                    title="态势研判"
-                    :icon="definition.icon"
-                  >
+                  <ScreenPanelHeading title="态势研判" :icon="definition.icon">
                     <template #aside>
                       <span class="domain-status-pill" :class="`is-${scoreTone}`">
                         <i /> {{ scoreStatus }}
@@ -147,7 +154,6 @@
 
                 <article class="domain-panel domain-distribution-panel">
                   <ScreenPanelHeading
-                    eyebrow="STRUCTURE ANALYSIS"
                     :title="definition.distributionTitle"
                     icon="ri:bar-chart-horizontal-line"
                   />
@@ -164,7 +170,6 @@
               <div class="domain-column domain-column--center">
                 <article class="domain-panel domain-core-panel">
                   <ScreenPanelHeading
-                    eyebrow="3D DOMAIN TWIN"
                     :title="`${definition.shortTitle}数字孪生`"
                     :icon="definition.icon"
                   >
@@ -191,11 +196,7 @@
                 </article>
 
                 <article class="domain-panel domain-trend-panel">
-                  <ScreenPanelHeading
-                    eyebrow="TREND PULSE"
-                    :title="definition.trendTitle"
-                    icon="ri:pulse-line"
-                  >
+                  <ScreenPanelHeading :title="definition.trendTitle" icon="ri:pulse-line">
                     <template #aside>
                       <span class="domain-panel-caption">主指标 / 风险</span>
                     </template>
@@ -213,11 +214,7 @@
 
               <div class="domain-column domain-column--right">
                 <article v-if="showAlertPanel" class="domain-panel domain-alert-panel">
-                  <ScreenPanelHeading
-                    eyebrow="PRIORITY BOARD"
-                    :title="definition.alertTitle"
-                    icon="ri:alarm-warning-line"
-                  >
+                  <ScreenPanelHeading :title="definition.alertTitle" icon="ri:alarm-warning-line">
                     <template #aside>
                       <span class="domain-alert-count">{{ data.riskCount }}</span>
                     </template>
@@ -247,11 +244,7 @@
                 </article>
 
                 <article class="domain-panel domain-stage-panel">
-                  <ScreenPanelHeading
-                    eyebrow="CONTROL LOOP"
-                    :title="definition.stageTitle"
-                    icon="ri:node-tree"
-                  />
+                  <ScreenPanelHeading :title="definition.stageTitle" icon="ri:node-tree" />
                   <DomainInsightChart
                     class="domain-stage-chart"
                     :items="data.stages"
@@ -287,6 +280,7 @@
   import EnterpriseCommandCore from './enterprise-command-core.vue'
   import ScreenGaugeChart from './screen-gauge-chart.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
+  import ScreenRefreshNotice from './screen-refresh-notice.vue'
   import { formatScreenDate } from './screen-format'
   import ScreenTrendChart from './screen-trend-chart.vue'
 

@@ -10,7 +10,10 @@
       @retry="loadData"
     >
       <ElScrollbar class="enterprise-screen__scrollbar">
-        <div class="enterprise-screen__stage">
+        <div
+          class="enterprise-screen__stage"
+          :class="{ 'has-refresh-error': state.loaded && state.error }"
+        >
           <header class="command-header">
             <div class="command-header__identity">
               <button
@@ -23,7 +26,6 @@
                 <ArtSvgIcon icon="ri:arrow-left-line" />
               </button>
               <div>
-                <span>ENTERPRISE OPERATIONS</span>
                 <h1>{{ modeTitle }}</h1>
               </div>
             </div>
@@ -54,7 +56,9 @@
                 <time :datetime="currentTime">{{ timeText }}</time>
                 <span>{{ dateText }}</span>
               </div>
-              <span class="live-status"><i /> 数据已同步</span>
+              <span class="live-status" :class="{ 'is-warning': state.error }">
+                <i /> {{ state.error ? '数据更新失败' : '数据已同步' }}
+              </span>
               <button
                 type="button"
                 class="screen-icon-button"
@@ -80,6 +84,13 @@
             </div>
           </header>
 
+          <ScreenRefreshNotice
+            v-if="state.loaded && state.error"
+            :updated-at="refreshText"
+            :loading="state.loading"
+            @retry="loadData()"
+          />
+
           <main class="screen-content">
             <section class="metric-rail" aria-label="核心经营指标">
               <article v-for="metric in primaryMetrics" :key="metric.label" class="hero-metric">
@@ -101,11 +112,7 @@
               <section class="business-layout">
                 <div class="screen-column screen-column--left">
                   <article class="screen-panel decision-panel">
-                    <ScreenPanelHeading
-                      eyebrow="DECISION SIGNAL"
-                      title="今日经营决策"
-                      icon="ri:focus-2-line"
-                    />
+                    <ScreenPanelHeading title="今日经营决策" icon="ri:focus-2-line" />
                     <div class="decision-score">
                       <ScreenGaugeChart
                         class="decision-score__gauge"
@@ -126,31 +133,24 @@
                   </article>
 
                   <article class="screen-panel finance-panel">
-                    <ScreenPanelHeading
-                      eyebrow="CASH & MARGIN"
-                      title="资金收支对比"
-                      icon="ri:bar-chart-box-line"
-                    >
+                    <ScreenPanelHeading title="资金收支对比" icon="ri:bar-chart-box-line">
                       <template #aside>
                         <span class="finance-margin">毛利率 {{ grossMarginRate }}%</span>
                       </template>
                     </ScreenPanelHeading>
-                    <ScreenStageChart
+                    <ScreenHorizontalBarChart
                       class="finance-comparison-chart"
                       :items="financeComparisonItems"
                       unit="元"
-                      accent-var="--screen-cyan"
+                      summary-label="资金收支对比"
+                      value-label="金额"
                     />
                   </article>
                 </div>
 
                 <div class="screen-column screen-column--center">
                   <article class="screen-panel trend-panel">
-                    <ScreenPanelHeading
-                      eyebrow="ENTERPRISE DIGITAL TWIN"
-                      title="全域经营数字孪生"
-                      icon="ri:global-line"
-                    >
+                    <ScreenPanelHeading title="全域经营数字孪生" icon="ri:global-line">
                       <template #aside>
                         <span class="panel-caption is-live">六域实时融合</span>
                       </template>
@@ -167,22 +167,14 @@
                   </article>
 
                   <article class="screen-panel chain-panel">
-                    <ScreenPanelHeading
-                      eyebrow="FULFILLMENT CHAIN"
-                      title="运输履约链路"
-                      icon="ri:route-line"
-                    />
+                    <ScreenPanelHeading title="运输履约链路" icon="ri:route-line" />
                     <ScreenStageChart class="fulfillment-stage-chart" :items="fulfillmentStages" />
                   </article>
                 </div>
 
                 <div class="screen-column screen-column--right">
                   <article class="screen-panel health-panel">
-                    <ScreenPanelHeading
-                      eyebrow="DOMAIN HEALTH"
-                      title="跨域健康度"
-                      icon="ri:heart-pulse-line"
-                    />
+                    <ScreenPanelHeading title="跨域健康度" icon="ri:heart-pulse-line" />
                     <ScreenHorizontalBarChart
                       class="domain-health-chart"
                       :items="domainHealthChartItems"
@@ -193,11 +185,7 @@
                   </article>
 
                   <article class="screen-panel risk-panel">
-                    <ScreenPanelHeading
-                      eyebrow="RISK RADAR"
-                      title="待关注事项"
-                      icon="ri:alarm-warning-line"
-                    >
+                    <ScreenPanelHeading title="待关注事项" icon="ri:alarm-warning-line">
                       <template #aside
                         ><span class="risk-count">{{ totalRiskCount }}</span></template
                       >
@@ -220,11 +208,7 @@
             <template v-else>
               <section class="operations-layout">
                 <article class="screen-panel dispatch-panel">
-                  <ScreenPanelHeading
-                    eyebrow="LIVE QUEUE"
-                    title="运输任务队列"
-                    icon="ri:truck-line"
-                  >
+                  <ScreenPanelHeading title="运输任务队列" icon="ri:truck-line">
                     <template #aside
                       ><span class="panel-caption"
                         >实时 {{ data.transport.inTransitCount }} 单</span
@@ -266,13 +250,11 @@
                 </article>
 
                 <article class="screen-panel network-panel">
-                  <ScreenPanelHeading
-                    eyebrow="CONTROL TOWER"
-                    title="全域运营态势"
-                    icon="ri:radar-line"
-                  >
+                  <ScreenPanelHeading title="全域运营态势" icon="ri:radar-line">
                     <template #aside>
-                      <span class="panel-caption is-live">同步 {{ refreshText }}</span>
+                      <span class="panel-caption is-live">
+                        {{ state.error ? '上次同步' : '同步' }} {{ refreshText }}
+                      </span>
                     </template>
                   </ScreenPanelHeading>
                   <EnterpriseCommandCore
@@ -287,16 +269,11 @@
                 </article>
 
                 <article class="screen-panel alert-panel">
-                  <ScreenPanelHeading
-                    eyebrow="EXCEPTION BOARD"
-                    title="异常与资源"
-                    icon="ri:error-warning-line"
-                  />
-                  <ScreenDonutChart
-                    class="operations-risk-chart"
-                    :items="riskDonutItems"
-                    center-label="风险事项"
-                  />
+                  <ScreenPanelHeading title="异常与资源" icon="ri:error-warning-line">
+                    <template #aside>
+                      <span class="risk-count">{{ totalRiskCount }} 项</span>
+                    </template>
+                  </ScreenPanelHeading>
                   <div class="risk-list risk-list--compact">
                     <div v-for="item in riskItems" :key="item.label" class="risk-item">
                       <i :class="`is-${item.tone}`" />
@@ -325,11 +302,7 @@
                 </article>
 
                 <article class="screen-panel flow-panel">
-                  <ScreenPanelHeading
-                    eyebrow="ORDER PIPELINE"
-                    title="订单阶段分布"
-                    icon="ri:bar-chart-grouped-line"
-                  />
+                  <ScreenPanelHeading title="订单阶段分布" icon="ri:bar-chart-grouped-line" />
                   <ScreenStageChart class="operations-stage-chart" :items="fulfillmentStages" />
                 </article>
               </section>
@@ -347,10 +320,10 @@
   import dayjs from 'dayjs'
   import { formatScreenDate } from './screen-format'
   import EnterpriseCommandCore from './enterprise-command-core.vue'
-  import ScreenDonutChart from './screen-donut-chart.vue'
   import ScreenGaugeChart from './screen-gauge-chart.vue'
   import ScreenHorizontalBarChart from './screen-horizontal-bar-chart.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
+  import ScreenRefreshNotice from './screen-refresh-notice.vue'
   import ScreenStageChart from './screen-stage-chart.vue'
   import {
     fetchEnterpriseDashboardData,
@@ -692,9 +665,6 @@
     }
   ])
   const totalRiskCount = computed(() => riskItems.value.reduce((sum, item) => sum + item.value, 0))
-  const riskDonutItems = computed(() =>
-    riskItems.value.map((item) => ({ label: item.label, value: item.value }))
-  )
   const visibleRiskItems = computed(() => riskItems.value.slice(0, 4))
   const domainHealthChartItems = computed(() =>
     domainHealth.value.map((item) => ({

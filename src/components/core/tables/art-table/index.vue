@@ -361,7 +361,7 @@
     data?: ArtTableRow[]
     /** 加载状态 */
     loading?: boolean
-    /** 有现有行时也显示表格加载遮罩；默认仅空表显示。 */
+    /** 有现有行时也显示表格加载遮罩，避免刷新期间的旧数据被误认为最新结果。 */
     loadingOverlay?: boolean
     /** 列渲染配置 */
     columns?: ArtTableColumn[]
@@ -393,6 +393,7 @@
     border: undefined,
     size: undefined,
     emptyHeight: '190px',
+    loadingOverlay: true,
     emptyText: '暂无数据',
     emptyDescription: '',
     showTableHeader: true,

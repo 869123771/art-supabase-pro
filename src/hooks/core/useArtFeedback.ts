@@ -37,12 +37,16 @@ export function useArtFeedback() {
         ? { ...legacyOptions, title: titleOrOptions }
         : titleOrOptions
     const { title = '操作确认', customClass, ...messageBoxOptions } = options
+    const isDeleteAction =
+      /^(批量)?删除|^清理/.test(title) ||
+      /删除|清理/.test(messageBoxOptions.confirmButtonText ?? '')
 
     return ElMessageBox.confirm(message, title, {
       type: 'warning',
-      confirmButtonText: '确定',
+      confirmButtonText: isDeleteAction ? '删除' : '确定',
       cancelButtonText: '取消',
       ...messageBoxOptions,
+      confirmButtonType: isDeleteAction ? 'danger' : messageBoxOptions.confirmButtonType,
       customClass: feedbackClassName(customClass)
     })
   }
@@ -57,8 +61,8 @@ export function useArtFeedback() {
       title: '删除确认',
       type: 'warning',
       confirmButtonText: '删除',
-      confirmButtonType: 'danger',
-      ...options
+      ...options,
+      confirmButtonType: 'danger'
     })
 
   const promptText = async (

@@ -568,17 +568,22 @@
   const handleDelete = async (row: AppRouteRecord): Promise<void> => {
     try {
       if (!row.id) throw new Error('未找到需要删除的菜单')
+      const menuId = row.id
 
-      const completeMenuTree = await loadCompleteMenuTree()
-      const descendants = treeUtils.getDescendants(completeMenuTree, row.id, true)
-      const ids = descendants.map((item) => String(item.id))
+      let ids: string[] = []
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'menu',
         resourceLabel: '菜单',
-        resources: descendants.map((item) => ({
-          id: String(item.id),
-          label: formatMenuTitle(item.meta?.title)
-        }))
+        resources: [{ id: String(row.id), label: formatMenuTitle(row.meta?.title) }],
+        resolveResources: async () => {
+          const completeMenuTree = await loadCompleteMenuTree()
+          const descendants = treeUtils.getDescendants(completeMenuTree, menuId, true)
+          ids = descendants.map((item) => String(item.id))
+          return descendants.map((item) => ({
+            id: String(item.id),
+            label: formatMenuTitle(item.meta?.title)
+          }))
+        }
       })
       if (blocked) return
 
@@ -607,7 +612,8 @@
   watch(
     () => route.query.recordId,
     () => {
-      void tableQueryRef.value?.refreshData()
+      formFilters.value = { ...initialSearchState }
+      void tableQueryRef.value?.refreshCreate()
     }
   )
 </script>

@@ -491,8 +491,12 @@
   watch(
     () => route.fullPath,
     async () => {
+      const hadDeleteTarget = Boolean(deleteTargetTypeId.value)
       await syncDeleteRouteTarget()
-      if (table.currentDictType?.id) await tableQueryRef.value?.getData()
+      if (hadDeleteTarget || deleteTargetTypeId.value) {
+        Object.assign(table.searchQuery, { label: '', code: '', i18nScope: '', status: '' })
+      }
+      if (table.currentDictType?.id) await tableQueryRef.value?.refreshCreate()
     },
     { immediate: true }
   )

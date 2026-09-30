@@ -622,8 +622,26 @@
 
   watch(
     () => route.query.recordId,
-    () => {
-      void refreshData()
+    (recordId, previousRecordId) => {
+      if (recordId || previousRecordId) {
+        selectedOrganizationKey.value = ALL_ORGANIZATIONS_KEY
+        Object.assign(searchForm.value, {
+          roleName: undefined,
+          roleCode: undefined,
+          description: undefined,
+          enabled: undefined,
+          daterange: undefined
+        })
+        Object.assign(searchParams, {
+          roleName: undefined,
+          roleCode: undefined,
+          description: undefined,
+          enabled: undefined,
+          startTime: undefined,
+          endTime: undefined
+        })
+      }
+      void getData()
     }
   )
 </script>

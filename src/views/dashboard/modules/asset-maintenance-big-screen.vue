@@ -10,7 +10,10 @@
       @retry="loadData"
     >
       <ElScrollbar class="enterprise-screen__scrollbar">
-        <div class="enterprise-screen__stage asset-maintenance-stage">
+        <div
+          class="enterprise-screen__stage asset-maintenance-stage"
+          :class="{ 'has-refresh-error': state.loaded && state.error }"
+        >
           <header class="command-header">
             <div class="command-header__identity">
               <button
@@ -23,7 +26,6 @@
                 <ArtSvgIcon icon="ri:arrow-left-line" />
               </button>
               <div>
-                <span>ASSET RELIABILITY COMMAND</span>
                 <h1>设备资产运维大屏</h1>
               </div>
             </div>
@@ -52,7 +54,9 @@
                 <time :datetime="currentTime">{{ timeText }}</time>
                 <span>{{ dateText }}</span>
               </div>
-              <span class="live-status"><i /> PMIS · MDM 已联通</span>
+              <span class="live-status" :class="{ 'is-warning': state.error }">
+                <i /> {{ state.error ? '数据更新失败' : 'PMIS · MDM 已联通' }}
+              </span>
               <button
                 type="button"
                 class="screen-icon-button"
@@ -78,6 +82,13 @@
             </div>
           </header>
 
+          <ScreenRefreshNotice
+            v-if="state.loaded && state.error"
+            :updated-at="refreshText"
+            :loading="state.loading"
+            @retry="loadData()"
+          />
+
           <main class="asset-screen-content">
             <section
               class="metric-rail"
@@ -102,11 +113,7 @@
             <section class="asset-command-layout">
               <div class="asset-column asset-column--left">
                 <article class="screen-panel asset-health-panel">
-                  <ScreenPanelHeading
-                    eyebrow="ASSET VITALS"
-                    title="设备生命体征"
-                    icon="ri:pulse-line"
-                  >
+                  <ScreenPanelHeading title="设备生命体征" icon="ri:pulse-line">
                     <template #aside>
                       <span class="panel-caption is-live">{{ healthLabel }}</span>
                     </template>
@@ -142,11 +149,7 @@
                 </article>
 
                 <article class="screen-panel department-load-panel">
-                  <ScreenPanelHeading
-                    eyebrow="WORKSHOP LOAD"
-                    title="车间设备负荷"
-                    icon="ri:building-4-line"
-                  >
+                  <ScreenPanelHeading title="车间设备负荷" icon="ri:building-4-line">
                     <template #aside>
                       <span class="panel-caption">{{ data.departmentLoad.length }} 个车间</span>
                     </template>
@@ -171,13 +174,11 @@
 
               <div class="asset-column asset-column--center">
                 <article class="screen-panel asset-reactor-panel">
-                  <ScreenPanelHeading
-                    eyebrow="3D RELIABILITY REACTOR"
-                    title="设备可靠性反应堆"
-                    icon="ri:cpu-line"
-                  >
+                  <ScreenPanelHeading title="设备可靠性反应堆" icon="ri:cpu-line">
                     <template #aside>
-                      <span class="panel-caption is-live">数据融合 {{ refreshText }}</span>
+                      <span class="panel-caption is-live">
+                        {{ state.error ? '上次同步' : '数据融合' }} {{ refreshText }}
+                      </span>
                     </template>
                   </ScreenPanelHeading>
                   <AssetReliabilityCore
@@ -192,11 +193,7 @@
                 </article>
 
                 <article class="screen-panel maintenance-pipeline-panel">
-                  <ScreenPanelHeading
-                    eyebrow="MAINTENANCE LOOP"
-                    title="维修闭环推进"
-                    icon="ri:git-merge-line"
-                  >
+                  <ScreenPanelHeading title="维修闭环推进" icon="ri:git-merge-line">
                     <template #aside>
                       <span class="pipeline-rate"
                         >本月闭环 {{ data.repair.completedMonth }} 单</span
@@ -224,11 +221,7 @@
 
               <div class="asset-column asset-column--right">
                 <article class="screen-panel work-order-panel">
-                  <ScreenPanelHeading
-                    eyebrow="FAULT COMMAND"
-                    title="故障抢修队列"
-                    icon="ri:alarm-warning-line"
-                  >
+                  <ScreenPanelHeading title="故障抢修队列" icon="ri:alarm-warning-line">
                     <template #aside>
                       <span class="risk-count">{{ data.repair.open }}</span>
                     </template>
@@ -265,11 +258,7 @@
                 </article>
 
                 <article class="screen-panel upcoming-task-panel">
-                  <ScreenPanelHeading
-                    eyebrow="SERVICE WINDOW"
-                    title="近期保养窗口"
-                    icon="ri:calendar-check-line"
-                  >
+                  <ScreenPanelHeading title="近期保养窗口" icon="ri:calendar-check-line">
                     <template #aside>
                       <span class="panel-caption"
                         >未来 30 天 {{ data.maintenance.scheduled30Days }} 项</span
@@ -333,6 +322,7 @@
   import AssetVitalsChart from './asset-vitals-chart.vue'
   import ScreenHorizontalBarChart from './screen-horizontal-bar-chart.vue'
   import ScreenPanelHeading from './screen-panel-heading.vue'
+  import ScreenRefreshNotice from './screen-refresh-notice.vue'
   import ScreenStageChart from './screen-stage-chart.vue'
   import {
     fetchAssetMaintenanceDashboardData,

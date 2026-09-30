@@ -11,6 +11,7 @@
     :button-left-limit="buttonLeftLimit"
     :show-reset="showReset"
     :reset-loading="resetLoading"
+    :submit-loading="searchLoading"
     :show-submit="showSearch"
     :disabled-submit="disabledSearch"
     :sanitize-output="sanitizeOutput"
@@ -54,6 +55,7 @@
     buttonLeftLimit?: number
     showReset?: boolean
     resetLoading?: boolean
+    searchLoading?: boolean
     showSearch?: boolean
     disabledSearch?: boolean
     enableEnterSearch?: boolean
@@ -72,6 +74,7 @@
     buttonLeftLimit: 0,
     showReset: true,
     resetLoading: false,
+    searchLoading: false,
     showSearch: true,
     disabledSearch: false,
     enableEnterSearch: true,
@@ -106,7 +109,7 @@
   }
 
   const handleEnterSearch = (event: KeyboardEvent) => {
-    if (!props.enableEnterSearch || props.disabledSearch) return
+    if (!props.enableEnterSearch || props.disabledSearch || props.searchLoading) return
 
     const target = event.target as HTMLElement | null
     const tagName = target?.tagName.toLowerCase()

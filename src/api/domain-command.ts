@@ -152,7 +152,7 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
     alertTitle: '安全与质量事件',
     layout: 'sentinel',
     sceneVariant: 'sentinel',
-    distributionChart: 'radar',
+    distributionChart: 'horizontal-bar',
     stageChart: 'donut',
     trendChart: 'step',
     trendPrimaryLabel: 'AI 运行',

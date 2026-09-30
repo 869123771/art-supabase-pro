@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,Wn as n,cn as r}from"./framework-Dycu6R4Q.js";import{t as i}from"./wms-purchase-document-workspace-d-Y12C2w.js";import{r as a}from"./permissions-Sz_iM0GD.js";var o=e({name:`WmsOtherInbound`,__name:`index`,setup(e){let o=a;return(e,a)=>(r(),t(i,{kind:`other_inbound`,permissions:n(o)},null,8,[`permissions`]))}});export{o as default};

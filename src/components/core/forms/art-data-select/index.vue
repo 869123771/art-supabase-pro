@@ -140,6 +140,16 @@
                     </span>
                   </span>
                 </template>
+                <template #empty>
+                  <ArtEmptyState
+                    :title="
+                      navigationKeyword ? '未找到匹配分类' : navigation.emptyText || '暂无分类'
+                    "
+                    description="请调整搜索关键词或刷新分类数据。"
+                    size="compact"
+                    :visual-size="64"
+                  />
+                </template>
               </ElTree>
             </ElScrollbar>
           </aside>
@@ -342,6 +352,16 @@
                         class="art-data-select-dialog__tree-check"
                       />
                     </span>
+                  </template>
+                  <template #empty>
+                    <ArtEmptyState
+                      :title="keyword ? '未找到匹配项' : emptyText"
+                      :description="emptyDescription || '请调整搜索条件或稍后重试。'"
+                      size="compact"
+                      :visual-size="72"
+                    >
+                      <slot name="empty" />
+                    </ArtEmptyState>
                   </template>
                 </ElTree>
               </ElScrollbar>

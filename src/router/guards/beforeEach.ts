@@ -157,6 +157,10 @@ export function setupBeforeEachGuard(
   loadHostedApplications?: () => Promise<unknown>
 ): void {
   router.beforeEach(async (to: RouteLocationNormalized, from: RouteLocationNormalized) => {
+    if (to.query.resumeMasterDelete === '1' || to.query.resumeCustomerDelete === '1') {
+      return { path: to.path, replace: true }
+    }
+
     if (routeRegistry?.isRegistered() && to.path !== from.path) {
       startRouteLoading(to)
     }

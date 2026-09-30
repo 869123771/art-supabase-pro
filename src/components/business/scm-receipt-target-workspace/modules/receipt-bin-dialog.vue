@@ -158,34 +158,50 @@
       return
     }
     const requestGeneration = ++generation
-    let placement: [ScmReceiptPlacementWarehouse | null, ScmReceiptPlacementBin[]]
-    try {
-      placement = await Promise.all([
-        fetchScmReceiptPlacementWarehouse(data.tenantId, warehouseId),
-        fetchScmReceiptPlacementBins(data.tenantId, warehouseId)
-      ])
-    } catch {
-      return
-    }
-    const [warehouseResult, binRows] = placement
-    if (requestGeneration !== generation || !warehouseResult) return
     context.value = data
-    warehouse.value = warehouseResult
-    bins.value = binRows
-    const currentBinId = data.line.lineSnapshot.binId
-    selectedBinId.value =
-      warehouseResult.enableLocations &&
-      binRows.some(
-        (bin) =>
-          bin.id === currentBinId && (!data.line.serialManagementEnabled || bin.supportsSerial)
-      )
-        ? currentBinId || null
-        : null
-    if (warehouseResult.enableLocations && currentBinId && !selectedBinId.value)
-      ElMessage.warning('原库位当前不可用，请重新选择')
+    warehouse.value = null
+    bins.value = []
+    selectedBinId.value = null
     await dialogRef.value?.handleOpen(data, {
       title: '指定入库库位',
       subtitle: '草稿阶段调整，确认时复核仓位规则',
+      loading: true,
+      loadingText: '正在加载可用库位…',
+      onOpen: async (_data, api) => {
+        try {
+          const [warehouseResult, binRows] = await Promise.all([
+            fetchScmReceiptPlacementWarehouse(data.tenantId, warehouseId),
+            fetchScmReceiptPlacementBins(data.tenantId, warehouseId)
+          ])
+          if (requestGeneration !== generation) return
+          if (!warehouseResult) {
+            ElMessage.warning('入库仓库不存在或当前不可访问，请核对来源单据')
+            await api.handleClose(true)
+            return
+          }
+          warehouse.value = warehouseResult
+          bins.value = binRows
+          const currentBinId = data.line.lineSnapshot.binId
+          selectedBinId.value =
+            warehouseResult.enableLocations &&
+            binRows.some(
+              (bin) =>
+                bin.id === currentBinId &&
+                (!data.line.serialManagementEnabled || bin.supportsSerial)
+            )
+              ? currentBinId || null
+              : null
+          if (warehouseResult.enableLocations && currentBinId && !selectedBinId.value)
+            ElMessage.warning('原库位当前不可用，请重新选择')
+        } catch {
+          if (requestGeneration === generation) {
+            ElMessage.error('库位信息加载失败，请重试')
+            await api.handleClose(true)
+          }
+        } finally {
+          api.setLoading(false)
+        }
+      },
       onConfirm: submit
     })
   }

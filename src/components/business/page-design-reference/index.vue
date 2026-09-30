@@ -297,8 +297,7 @@
   }
 
   async function openReferenceDialog(): Promise<void> {
-    if (state.loadError) await loadReference()
-    if (state.loadError || !routeIdentity.value) return
+    if (!routeIdentity.value) return
 
     resetDraft()
     await dialogRef.value?.handleOpen(
@@ -308,11 +307,22 @@
         subtitle: 'AI 后续会把当前路由的整个模块作为设计风格参考。',
         confirmText: state.reference ? '保存修改' : '保存参考',
         contentMaxHeight: '68vh',
+        loading: state.loadError || Boolean(state.reference),
+        loadingText: '正在加载设计参考…',
         onOpen: async (_data, api) => {
-          if (!state.reference) return
-          api.setLoading(true)
           try {
-            await loadDialogImages()
+            if (state.loadError) await loadReference()
+            if (state.loadError) {
+              ElMessage.error('设计参考加载失败，请稍后重试')
+              await api.handleClose(true)
+              return
+            }
+            resetDraft()
+            api.setOptions({
+              title: state.reference ? '编辑设计参考' : '添加设计参考',
+              confirmText: state.reference ? '保存修改' : '保存参考'
+            })
+            if (state.reference) await loadDialogImages()
           } catch {
             ElMessage.error('参考截图加载失败，请稍后重试')
           } finally {

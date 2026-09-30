@@ -16,16 +16,21 @@ const toQueryText = (value: unknown): string => (typeof value === 'string' ? val
 export function useMasterDataDeleteProcessingContext() {
   const route = useRoute()
 
-  return computed<MasterDataDeleteProcessingContext>(() => ({
-    active: route.query.fromCustomerDelete === '1' || route.query.fromMasterDelete === '1',
-    addressId: toQueryText(route.query.addressId),
-    carrierId: toQueryText(route.query.carrierId),
-    cargoId: toQueryText(route.query.cargoId),
-    customerId: toQueryText(route.query.customerId),
-    customerName: toQueryText(route.query.customerName),
-    driverId: toQueryText(route.query.driverId),
-    recordId: toQueryText(route.query.recordId),
-    recordNo: toQueryText(route.query.recordNo),
-    vehicleId: toQueryText(route.query.vehicleId)
-  }))
+  return computed<MasterDataDeleteProcessingContext>(() => {
+    const active = route.query.fromCustomerDelete === '1' || route.query.fromMasterDelete === '1'
+    const scopedText = (value: unknown): string => (active ? toQueryText(value) : '')
+
+    return {
+      active,
+      addressId: scopedText(route.query.addressId),
+      carrierId: scopedText(route.query.carrierId),
+      cargoId: scopedText(route.query.cargoId),
+      customerId: scopedText(route.query.customerId),
+      customerName: scopedText(route.query.customerName),
+      driverId: scopedText(route.query.driverId),
+      recordId: scopedText(route.query.recordId),
+      recordNo: scopedText(route.query.recordNo),
+      vehicleId: scopedText(route.query.vehicleId)
+    }
+  })
 }

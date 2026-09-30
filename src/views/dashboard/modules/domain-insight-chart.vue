@@ -72,7 +72,7 @@
         }
       }
 
-      if (props.variant === 'donut' || props.variant === 'rose') {
+      if ((props.variant === 'donut' || props.variant === 'rose') && props.items.filter((item) => item.value > 0).length > 1) {
         const isDonut = props.variant === 'donut'
         const valueMap = new Map(props.items.map((item) => [item.label, item.value]))
         return {
@@ -175,53 +175,6 @@
                 }
               ],
               ...getAnimationConfig(140, 1000)
-            }
-          ]
-        }
-      }
-
-      if (props.variant === 'funnel') {
-        const funnelItems = props.items.length ? props.items : visibleItems
-        return {
-          tooltip: hasValue ? tooltip : { show: false },
-          series: [
-            {
-              type: 'funnel',
-              left: '2%',
-              right: '2%',
-              top: 2,
-              bottom: 2,
-              minSize: '18%',
-              maxSize: '100%',
-              sort: 'none',
-              gap: 4,
-              silent: !hasValue,
-              label: {
-                show: true,
-                position: 'inside',
-                color: strong,
-                fontSize: 10,
-                formatter: (params: unknown) => {
-                  if (!params || typeof params !== 'object' || !('name' in params)) return ''
-                  const value = 'value' in params ? Number(params.value) : 0
-                  return `${String(params.name)}  ${hasValue ? value : 0}${props.unit}`
-                }
-              },
-              labelLine: { show: false },
-              itemStyle: { borderColor: '#07182a', borderWidth: 2, borderRadius: 3 },
-              data: funnelItems.map((item, index) => ({
-                name: item.label,
-                value: hasValue ? item.value : funnelItems.length - index,
-                itemStyle: {
-                  color: hasValue
-                    ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                        { offset: 0, color: `${colors[index % colors.length]}88` },
-                        { offset: 1, color: colors[index % colors.length] }
-                      ])
-                    : track
-                }
-              })),
-              ...getAnimationConfig(110, 850)
             }
           ]
         }
@@ -361,7 +314,7 @@
         }
       }
 
-      if (props.variant === 'horizontal-bar') {
+      if (props.variant === 'horizontal-bar' || props.variant === 'funnel' || (props.variant === 'donut' && props.items.filter((item) => item.value > 0).length <= 1)) {
         const toneColors = {
           primary: accent,
           success,
@@ -372,7 +325,7 @@
         const maxValue = Math.max(...visibleItems.map((item) => item.value), 1)
 
         return {
-          grid: { left: 8, right: 36, top: 6, bottom: 6, containLabel: true },
+          grid: { left: 10, right: 56, top: 12, bottom: 12, containLabel: true },
           tooltip: {
             ...tooltip,
             trigger: 'axis',
@@ -391,17 +344,17 @@
             axisLine: { show: false },
             axisTick: { show: false },
             axisLabel: {
-              color: muted,
-              fontSize: 10,
-              margin: 12,
-              width: 72,
+              color: strong,
+              fontSize: 12,
+              margin: 14,
+              width: 92,
               overflow: 'truncate'
             }
           },
           series: [
             {
               type: 'bar',
-              barWidth: visibleItems.length >= 5 ? 12 : 16,
+              barWidth: visibleItems.length >= 5 ? 14 : 20,
               showBackground: true,
               backgroundStyle: { color: track, borderRadius: 8 },
               itemStyle: {
@@ -418,7 +371,7 @@
                 position: 'right',
                 distance: 8,
                 color: strong,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 700,
                 formatter: `{c}${props.unit}`
               },

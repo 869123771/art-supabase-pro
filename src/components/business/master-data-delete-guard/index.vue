@@ -1,14 +1,23 @@
 <template>
   <ArtDialog ref="dialogRef">
-    <div class="master-delete-guard">
+    <ArtAsyncState
+      v-if="inspectionError"
+      :error="inspectionError"
+      error-title="关联信息加载失败"
+      @retry="retryInspection"
+    />
+    <div v-else class="master-delete-guard">
       <div class="master-delete-guard__lead">
         <div>
           <p>
-            {{
-              resourceTitle
-            }}仍被以下业务资料引用。可勾选安全项直接清理，业务历史请进入对应页面处理。
+            {{ resourceTitle }}仍被以下业务资料引用。<template v-if="currentOptions?.resourceType"
+              >可勾选安全项直接清理，业务历史请进入对应页面处理。</template
+            ><template v-else>请核对关联记录，并到对应业务页面处理后再删除。</template>
           </p>
-          <span>系统不会自动删除运单、合同、财务、审批或维修历史。</span>
+          <span v-if="currentOptions?.resourceType"
+            >系统不会自动删除运单、合同、财务、审批或维修历史。</span
+          >
+          <span v-else>系统不会自动解除已生效的 BOM、工单或其他业务引用。</span>
         </div>
         <ElTag type="warning" effect="light">共 {{ dependencies.length }} 条关联</ElTag>
       </div>
@@ -89,7 +98,10 @@
 
       <div class="master-delete-guard__notice">
         <i class="ri:information-line" aria-hidden="true" />
-        <span>处理页面会携带主数据 ID 和关联记录 ID，并在打开后自动过滤。</span>
+        <span v-if="currentOptions?.resourceType"
+          >处理页面会携带主数据 ID 和关联记录 ID，并在打开后自动过滤。</span
+        >
+        <span v-else>可根据关联记录编号前往对应页面核对，处理完成后再尝试删除。</span>
       </div>
     </div>
 
@@ -98,6 +110,7 @@
         <span v-if="safeRecordCount">
           已选择 {{ selectedRecordIds.length }} / {{ safeRecordCount }} 个安全项
         </span>
+        <span v-else-if="inspectionError">关联信息加载失败，请重试</span>
         <span v-else>当前关联均属于需保留或先处理的业务记录</span>
         <div class="master-delete-guard__footer-actions">
           <ElButton @click="api.handleClose()">关闭</ElButton>
@@ -122,12 +135,14 @@
   import { groupBy, uniq } from 'lodash-es'
   import { ElMessage, type CheckboxValueType } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { financeRouteNames } from '@/router/business-paths'
   import {
     cleanupMasterDataDeleteDependencies,
     fetchMasterDataDeleteDependencies,
+    fetchVehicleReminderDeleteDestination,
     type MasterDataDeleteDependencyDetail,
     type MasterDataDeleteResourceType
   } from '@/api/master-data-delete'
@@ -139,13 +154,7 @@
     label: string
   }
 
-  export interface MasterDataDeleteGuardOpenOptions {
-    resourceType: MasterDataDeleteResourceType
-    resourceLabel: string
-    resources: MasterDataDeleteResource[]
-  }
-
-  interface DependencyMeta {
+  export interface MasterDataDeleteDependencyMeta {
     label: string
     unit: string
     description: string
@@ -154,6 +163,24 @@
     routePath?: string
     order: number
   }
+
+  interface MasterDataDeleteGuardBaseOptions {
+    resourceLabel: string
+    resources: MasterDataDeleteResource[]
+    resolveResources?: () => Promise<MasterDataDeleteResource[]>
+    dependencyMeta?: Record<string, MasterDataDeleteDependencyMeta>
+  }
+
+  export type MasterDataDeleteGuardOpenOptions = MasterDataDeleteGuardBaseOptions &
+    (
+      | { resourceType: MasterDataDeleteResourceType; fetchDependencies?: never }
+      | {
+          resourceType?: never
+          fetchDependencies: (resourceIds: string[]) => Promise<MasterDataDeleteDependencyDetail[]>
+        }
+    )
+
+  type DependencyMeta = MasterDataDeleteDependencyMeta
 
   interface DependencyGroup {
     code: string
@@ -170,6 +197,8 @@
   const dependencies = shallowRef<MasterDataDeleteDependencyDetail[]>([])
   const selectedRecordIds = ref<string[]>([])
   const cleanupLoading = ref(false)
+  const inspectionError = ref('')
+  let inspectionSequence = 0
 
   const dependencyMeta: Record<string, DependencyMeta> = {
     carrier_price: {
@@ -414,7 +443,9 @@
     return `选中的 ${options.resources.length} 个${options.resourceLabel}`
   })
   const safeRecordCount = computed(
-    () => dependencies.value.filter((item) => item.cleanupAllowed).length
+    () =>
+      dependencies.value.filter((item) => item.cleanupAllowed && currentOptions.value?.resourceType)
+        .length
   )
   const dependencyGroups = computed<DependencyGroup[]>(() => {
     const groups = groupBy(dependencies.value, (item) => item.dependencyCode)
@@ -422,13 +453,14 @@
       .map(([code, records]) => ({
         code,
         records,
-        meta: dependencyMeta[code] ?? {
-          label: code,
-          unit: '条',
-          description: '该记录仍引用当前主数据，请先处理后再删除。',
-          actionLabel: '去处理',
-          order: 999
-        }
+        meta: currentOptions.value?.dependencyMeta?.[code] ??
+          dependencyMeta[code] ?? {
+            label: code,
+            unit: '条',
+            description: '该记录仍引用当前主数据，请先处理后再删除。',
+            actionLabel: '去处理',
+            order: 999
+          }
       }))
       .sort((left, right) => left.meta.order - right.meta.order)
   })
@@ -480,29 +512,61 @@
   const loadDependencies = async (): Promise<void> => {
     const options = currentOptions.value
     if (!options) return
-    dependencies.value = await fetchMasterDataDeleteDependencies(
-      options.resourceType,
-      resourceIds.value
-    )
+    const records = options.fetchDependencies
+      ? await options.fetchDependencies(resourceIds.value)
+      : await fetchMasterDataDeleteDependencies(options.resourceType, resourceIds.value)
+    if (options !== currentOptions.value) return
+    dependencies.value = records
     selectedRecordIds.value = []
   }
 
   const inspect = async (options: MasterDataDeleteGuardOpenOptions): Promise<boolean> => {
+    const sequence = ++inspectionSequence
     currentOptions.value = options
-    await loadDependencies()
-    if (!dependencies.value.length) return false
+    dependencies.value = []
+    selectedRecordIds.value = []
+    inspectionError.value = ''
     await dialogRef.value?.handleOpen(
       {},
       {
         title: `暂时无法删除${options.resourceLabel}`,
         size: 'md',
         contentMaxHeight: '68vh',
+        loading: true,
+        loadingText: '正在检查关联资料…',
         showCancelButton: false,
         showConfirmButton: false,
         dialogProps: { closeOnClickModal: false }
       }
     )
-    return true
+    try {
+      if (options.resolveResources) {
+        const resources = await options.resolveResources()
+        if (sequence !== inspectionSequence) return true
+        currentOptions.value = { ...options, resources }
+      }
+      await loadDependencies()
+      if (sequence !== inspectionSequence || !dialogRef.value?.visible.value) return true
+      if (dependencies.value.length) return true
+      await dialogRef.value?.handleClose(true)
+      return false
+    } catch (error) {
+      if (sequence === inspectionSequence) {
+        inspectionError.value = getFriendlySupabaseErrorMessage(
+          error,
+          '暂时无法检查关联资料，请重试'
+        )
+      }
+      return true
+    } finally {
+      if (sequence === inspectionSequence) dialogRef.value?.setLoading(false)
+    }
+  }
+
+  const retryInspection = async (): Promise<void> => {
+    if (!currentOptions.value) return
+    const blocked = await inspect(currentOptions.value)
+    if (!blocked) ElMessage.info('关联已解除，请再次点击删除')
   }
 
   const handleCleanup = async (): Promise<void> => {
@@ -510,7 +574,7 @@
     const selected = dependencies.value.filter((item) =>
       selectedRecordIds.value.includes(item.recordId)
     )
-    if (!options || !selected.length || cleanupLoading.value) return
+    if (!options?.resourceType || !selected.length || cleanupLoading.value) return
     try {
       await confirmAction(
         `将永久清理选中的 ${selected.length} 项配置或终态记录。运单、合同和财务历史不会被删除，是否继续？`,
@@ -551,7 +615,10 @@
     }
   }
 
-  const openDependency = (meta: DependencyMeta, record: MasterDataDeleteDependencyDetail): void => {
+  const openDependency = async (
+    meta: DependencyMeta,
+    record: MasterDataDeleteDependencyDetail
+  ): Promise<void> => {
     const options = currentOptions.value
     if (!options) return
     const resourceQueryKeyMap: Record<MasterDataDeleteResourceType, string> = {
@@ -568,10 +635,14 @@
       attachment: 'attachmentId',
       order: 'orderId'
     }
+    const resourceType = options.resourceType ?? 'accessory_item'
+    const resourceQuery = options.resourceType
+      ? { [resourceQueryKeyMap[options.resourceType]]: record.resourceId }
+      : { accessoryItemId: record.resourceId }
     const query = {
       fromMasterDelete: '1',
-      resourceType: options.resourceType,
-      [resourceQueryKeyMap[options.resourceType]]: record.resourceId,
+      resourceType,
+      ...resourceQuery,
       recordId: record.targetId,
       recordNo: record.recordNo,
       dependencyCode: record.dependencyCode,
@@ -582,12 +653,39 @@
         options.resources.find((item) => item.id === record.resourceId)?.label ??
         options.resourceLabel
     }
-    void dialogRef.value?.handleClose(true)
-    if (meta.routeName) {
-      void router.push({ name: meta.routeName, query })
+    if (record.dependencyCode === 'vehicle_reminder_work_order') {
+      const reminderRoutes = {
+        insurance: '/vms/reminder-manage/insurance-expiry',
+        inspection: '/vms/reminder-manage/inspection-expiry',
+        maintenance: '/vms/reminder-manage/maintenance-expiry',
+        part: '/vms/reminder-manage/part-service-life',
+        vehicle: '/vms/reminder-manage/vehicle-service-life'
+      } as const
+      dialogRef.value?.setLoading(true)
+      try {
+        const destination = await fetchVehicleReminderDeleteDestination(record.targetId)
+        if (!destination || !reminderRoutes[destination.sourceType]) {
+          ElMessage.error('关联工单已不存在或当前账号无法访问')
+          return
+        }
+        await dialogRef.value?.handleClose(true)
+        await router.push({
+          path: reminderRoutes[destination.sourceType],
+          query: { ...query, sourceKey: destination.sourceKey }
+        })
+      } catch (error) {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '关联工单定位失败，请重试'))
+      } finally {
+        dialogRef.value?.setLoading(false)
+      }
       return
     }
-    if (meta.routePath) void router.push({ path: meta.routePath, query })
+    await dialogRef.value?.handleClose(true)
+    if (meta.routeName) {
+      await router.push({ name: meta.routeName, query })
+      return
+    }
+    if (meta.routePath) await router.push({ path: meta.routePath, query })
   }
 
   defineExpose({ inspect })

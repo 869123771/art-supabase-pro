@@ -69,41 +69,47 @@
               : '选择 SCM 已下推的订单明细，生成可分批办理的采购入库草稿。'
           "
         />
-        <div v-if="orderTargets.length" class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div class="min-w-0 flex-1">
-            <label class="mb-2 block text-sm font-medium" for="wms-purchase-order-target"
-              >订单下推单</label
-            >
-            <ElSelect
-              id="wms-purchase-order-target"
-              v-model="selectedOrderTargetId"
-              class="w-full"
-              filterable
-              placeholder="选择订单下推单"
-            >
-              <ElOption
-                v-for="target in orderTargets"
-                :key="target.id"
-                :label="`${target.documentNo} · ${target.source?.documentNo || '采购订单'} · ${target.status === 'partial' ? '部分入库' : '待入库'}`"
-                :value="target.id"
-              />
-            </ElSelect>
-          </div>
-          <ElButton
-            type="primary"
-            :disabled="!selectedOrderTargetId"
-            @click="openSelectedOrderTarget"
-          >
-            {{ kind === 'other_inbound' ? '生成入库草稿' : '承接订单' }}
-          </ElButton>
-        </div>
-        <ArtEmptyState
-          v-else
+        <ArtAsyncState
+          :error="orderTargetError"
+          error-title="来源单据加载失败"
           class="mt-5"
-          size="compact"
-          title="暂无订单下推单"
-          description="请先在 SCM 采购订单中审核并下推采购入库。"
-        />
+          @retry="loadOrderTargets"
+        >
+          <div v-if="orderTargets.length" class="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div class="min-w-0 flex-1">
+              <label class="mb-2 block text-sm font-medium" for="wms-purchase-order-target"
+                >订单下推单</label
+              >
+              <ElSelect
+                id="wms-purchase-order-target"
+                v-model="selectedOrderTargetId"
+                class="w-full"
+                filterable
+                placeholder="选择订单下推单"
+              >
+                <ElOption
+                  v-for="target in orderTargets"
+                  :key="target.id"
+                  :label="`${target.documentNo} · ${target.source?.documentNo || '采购订单'} · ${target.status === 'partial' ? '部分入库' : '待入库'}`"
+                  :value="target.id"
+                />
+              </ElSelect>
+            </div>
+            <ElButton
+              type="primary"
+              :disabled="!selectedOrderTargetId"
+              @click="openSelectedOrderTarget"
+            >
+              {{ kind === 'other_inbound' ? '生成入库草稿' : '承接订单' }}
+            </ElButton>
+          </div>
+          <ArtEmptyState
+            v-else
+            size="compact"
+            title="暂无订单下推单"
+            description="请先在 SCM 采购订单中审核并下推采购入库。"
+          />
+        </ArtAsyncState>
       </ArtDialog>
       <ArtDialog ref="pushDialogRef" size="sm" :show-footer="false">
         <ArtEntitySummary
@@ -149,6 +155,8 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import ArtTableQuery, {
     type ArtTableQueryExpose,
     type ArtTableQueryHeaderAction
@@ -207,6 +215,7 @@
   const pushDialogRef = ref<ArtDialogExpose>()
   const orderTargetDialogRef = ref<ArtDialogExpose>()
   const orderTargets = ref<Awaited<ReturnType<typeof fetchWmsPurchaseOrderTargets>>>([])
+  const orderTargetError = ref('')
   const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
   const selectedRows = ref<Array<{ documentId: string; kind: unknown; status: unknown }>>([])
@@ -342,16 +351,27 @@
       return false
     }
   }
-  async function openOrderTargetPicker(): Promise<void> {
+  async function loadOrderTargets(): Promise<void> {
+    orderTargetDialogRef.value?.setLoading(true)
+    orderTargetError.value = ''
     try {
       orderTargets.value = await fetchWmsPurchaseOrderTargets(effectiveTenantId.value || undefined)
-      selectedOrderTargetId.value = ''
-      await orderTargetDialogRef.value?.handleOpen(undefined, {
-        title: props.kind === 'other_inbound' ? '选择来源单据' : '承接采购订单'
-      })
-    } catch {
-      ElMessage.error('订单下推单加载失败，请重试')
+    } catch (error) {
+      orderTargetError.value = getFriendlySupabaseErrorMessage(error, '来源单据加载失败，请重试')
+    } finally {
+      orderTargetDialogRef.value?.setLoading(false)
     }
+  }
+  async function openOrderTargetPicker(): Promise<void> {
+    orderTargets.value = []
+    selectedOrderTargetId.value = ''
+    orderTargetError.value = ''
+    await orderTargetDialogRef.value?.handleOpen(undefined, {
+      title: props.kind === 'other_inbound' ? '选择来源单据' : '承接采购订单',
+      loading: true,
+      loadingText: '正在加载来源单据…',
+      onOpen: loadOrderTargets
+    })
   }
   async function openSelectedOrderTarget(): Promise<void> {
     if (!selectedOrderTargetId.value) return

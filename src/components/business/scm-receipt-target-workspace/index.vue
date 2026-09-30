@@ -37,72 +37,75 @@
         focusable
       />
       <ArtDrawer ref="detailRef" size="lg" :show-footer="false">
-        <div v-if="activeDocument" class="receipt-target-detail">
-          <div class="receipt-target-detail__summary">
-            <div>
-              <span>{{ title }}单号</span>
-              <strong>{{ activeDocument.documentNo }}</strong>
-              <small>来源通知单：{{ activeDocument.source?.documentNo || '—' }}</small>
-              <small>项目：{{ activeDocument.project?.projectName || '—' }}</small>
-              <small v-if="kind === 'inbound'"
-                >施工号：{{ activeDocument.constructionNo || '待指定' }}</small
-              >
-              <small>供应商：{{ activeDocument.supplier?.supplierName || '—' }}</small>
+        <ArtAsyncState :error="detailError" error-title="单据明细加载失败" @retry="loadDetail">
+          <div v-if="activeDocument" class="receipt-target-detail">
+            <div class="receipt-target-detail__summary">
+              <div>
+                <span>{{ title }}单号</span>
+                <strong>{{ activeDocument.documentNo }}</strong>
+                <small>来源通知单：{{ activeDocument.source?.documentNo || '—' }}</small>
+                <small>项目：{{ activeDocument.project?.projectName || '—' }}</small>
+                <small v-if="kind === 'inbound'"
+                  >施工号：{{ activeDocument.constructionNo || '待指定' }}</small
+                >
+                <small>供应商：{{ activeDocument.supplier?.supplierName || '—' }}</small>
+              </div>
+              <ElTag :type="activeDocument.status === 'draft' ? 'warning' : 'success'">
+                {{ statusLabel(activeDocument.status) }}
+              </ElTag>
             </div>
-            <ElTag :type="activeDocument.status === 'draft' ? 'warning' : 'success'">
-              {{ statusLabel(activeDocument.status) }}
-            </ElTag>
-          </div>
-          <div
-            v-if="
-              kind === 'inbound' && activeDocument.projectId && activeDocument.status === 'draft'
-            "
-            class="flex min-w-0 flex-wrap items-end gap-3 rounded-lg bg-[var(--el-fill-color-light)] p-3"
-          >
-            <label class="grid min-w-[220px] flex-1 gap-1 text-sm">
-              <span class="text-[var(--el-text-color-secondary)]">项目施工号</span>
-              <ElSelect
-                v-model="selectedConstructionNo"
-                filterable
-                :disabled="!canAssignScope"
-                placeholder="选择本项目施工号"
-              >
-                <ElOption
-                  v-for="section in projectSections"
-                  :key="section.constructionNo"
-                  :label="`${section.constructionNo} · ${section.sectionName}`"
-                  :value="section.constructionNo"
-                  :disabled="section.status !== 'active'"
-                />
-              </ElSelect>
-            </label>
-            <ElButton
-              v-if="scopePermission"
-              v-auth="scopePermission"
-              :disabled="
-                !selectedConstructionNo || selectedConstructionNo === activeDocument.constructionNo
+            <div
+              v-if="
+                kind === 'inbound' && activeDocument.projectId && activeDocument.status === 'draft'
               "
-              :loading="savingScope"
-              @click="saveScope"
-              >保存施工号</ElButton
+              class="flex min-w-0 flex-wrap items-end gap-3 rounded-lg bg-[var(--el-fill-color-light)] p-3"
             >
-            <span v-if="!canAssignScope" class="text-xs text-[var(--el-text-color-secondary)]">
-              当前账号仅可查看施工号
-            </span>
+              <label class="grid min-w-[220px] flex-1 gap-1 text-sm">
+                <span class="text-[var(--el-text-color-secondary)]">项目施工号</span>
+                <ElSelect
+                  v-model="selectedConstructionNo"
+                  filterable
+                  :disabled="!canAssignScope"
+                  placeholder="选择本项目施工号"
+                >
+                  <ElOption
+                    v-for="section in projectSections"
+                    :key="section.constructionNo"
+                    :label="`${section.constructionNo} · ${section.sectionName}`"
+                    :value="section.constructionNo"
+                    :disabled="section.status !== 'active'"
+                  />
+                </ElSelect>
+              </label>
+              <ElButton
+                v-if="scopePermission"
+                v-auth="scopePermission"
+                :disabled="
+                  !selectedConstructionNo ||
+                  selectedConstructionNo === activeDocument.constructionNo
+                "
+                :loading="savingScope"
+                @click="saveScope"
+                >保存施工号</ElButton
+              >
+              <span v-if="!canAssignScope" class="text-xs text-[var(--el-text-color-secondary)]">
+                当前账号仅可查看施工号
+              </span>
+            </div>
+            <ArtTable
+              :data="activeLines"
+              :columns="lineColumns"
+              :pagination="false"
+              row-key="id"
+              table-layout="fixed"
+              height="auto"
+              empty-text="暂无明细"
+            />
+            <div v-if="kind === 'asset_payable'" class="receipt-target-detail__total">
+              应付金额 <strong>{{ formatCurrencyValue(activeDocument.totalAmount) }}</strong>
+            </div>
           </div>
-          <ArtTable
-            :data="activeLines"
-            :columns="lineColumns"
-            :pagination="false"
-            row-key="id"
-            table-layout="fixed"
-            height="auto"
-            empty-text="暂无明细"
-          />
-          <div v-if="kind === 'asset_payable'" class="receipt-target-detail__total">
-            应付金额 <strong>{{ formatCurrencyValue(activeDocument.totalAmount) }}</strong>
-          </div>
-        </div>
+        </ArtAsyncState>
       </ArtDrawer>
       <ReceiptSerialDialog ref="serialDialogRef" @success="reloadActiveLines" />
       <ReceiptBinDialog v-if="kind === 'inbound'" ref="binDialogRef" @success="reloadActiveLines" />
@@ -115,6 +118,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -127,6 +131,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatCurrencyValue } from '@/utils/ui/format'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
@@ -189,6 +194,7 @@
   const binDialogRef = ref<InstanceType<typeof ReceiptBinDialog>>()
   const activeDocument = ref<ScmReceiptTargetDocument>()
   const activeLines = ref<ScmReceiptTargetLine[]>([])
+  const detailError = ref('')
   const projectSections = ref<
     Array<{ constructionNo: string; sectionName: string; status: 'active' | 'closed' }>
   >([])
@@ -365,18 +371,38 @@
       tenantId: effectiveTenantId.value || query.tenantId
     })
   }
+  async function loadDetail(): Promise<void> {
+    const row = activeDocument.value
+    if (!row) return
+    detailRef.value?.setLoading(true)
+    detailError.value = ''
+    try {
+      const [{ data }, sections] = await Promise.all([
+        fetchScmReceiptTargetLines(row.id),
+        props.kind === 'inbound' && row.projectId
+          ? fetchScmReceiptProjectSections(row.projectId)
+          : Promise.resolve([])
+      ])
+      activeLines.value = data ?? []
+      projectSections.value = sections
+    } catch (error) {
+      detailError.value = getFriendlySupabaseErrorMessage(error, '单据明细加载失败，请重试')
+    } finally {
+      detailRef.value?.setLoading(false)
+    }
+  }
   async function openDetail(row: ScmReceiptTargetDocument) {
-    const [{ data }, sections] = await Promise.all([
-      fetchScmReceiptTargetLines(row.id),
-      props.kind === 'inbound' && row.projectId
-        ? fetchScmReceiptProjectSections(row.projectId)
-        : Promise.resolve([])
-    ])
     activeDocument.value = row
-    activeLines.value = data ?? []
-    projectSections.value = sections
+    activeLines.value = []
+    projectSections.value = []
+    detailError.value = ''
     selectedConstructionNo.value = row.constructionNo ?? ''
-    await detailRef.value?.handleOpen(row, { title: row.documentNo })
+    await detailRef.value?.handleOpen(row, {
+      title: row.documentNo,
+      loading: true,
+      loadingText: '正在加载单据明细…',
+      onOpen: loadDetail
+    })
   }
   onMounted(async () => {
     const targetId = route.query.targetId

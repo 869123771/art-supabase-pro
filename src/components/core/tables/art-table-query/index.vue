@@ -13,6 +13,7 @@
       v-show="showSearchBar"
       v-model="searchModel"
       v-bind="resolvedSearchBarProps"
+      :search-loading="resolvedLoading"
       @search="handleSearch"
       @reset="handleReset"
     >
@@ -1385,9 +1386,9 @@
           action.confirmTitle || '操作确认',
           {
             type: action.type === 'delete' ? 'warning' : 'info',
-            confirmButtonText: '确定',
+            confirmButtonText: action.type === 'delete' ? '删除' : '确定',
             cancelButtonText: '取消',
-            confirmButtonClass: action.type === 'delete' ? 'el-button--danger' : undefined
+            confirmButtonType: action.type === 'delete' ? 'danger' : 'primary'
           }
         )
       } catch {

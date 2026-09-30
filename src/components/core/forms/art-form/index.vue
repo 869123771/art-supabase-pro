@@ -210,6 +210,7 @@
                 @click="handleSubmit"
                 v-ripple
                 :disabled="disabledSubmit"
+                :loading="submitLoading"
               >
                 <ElIcon>
                   <Search />
@@ -531,6 +532,8 @@
     showReset?: boolean
     /** 异步重置业务筛选时的按钮加载状态 */
     resetLoading?: boolean
+    /** 异步提交期间显示按钮反馈并阻止重复提交 */
+    submitLoading?: boolean
     /** 是否显示提交按钮 */
     showSubmit?: boolean
     /** 是否禁用提交按钮 */
@@ -568,6 +571,7 @@
     buttonLeftLimit: 2,
     showReset: true,
     resetLoading: false,
+    submitLoading: false,
     showSubmit: true,
     disabledSubmit: false,
     rootClass: '',
@@ -1233,6 +1237,7 @@
    * 处理提交事件
    */
   const handleSubmit = () => {
+    if (props.submitLoading || props.disabledSubmit) return
     syncTenantScopeField()
     // 对外只抛出清洗后的结果，避免业务层重复过滤空值。
     emit('submit', getSanitizedOutput())

@@ -225,7 +225,7 @@
   import type { FileType, Resource, ResourcePanelProps } from './type.ts'
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
-  import { ElMessage, ElMessageBox, ElScrollbar } from 'element-plus'
+  import { ElMessage, ElScrollbar } from 'element-plus'
   import { deleteResource, fetchGetResourceList, renameResource } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { pageInfoHandler } from '@utils/table/tableUtils'
@@ -261,7 +261,7 @@
   const modelValue = defineModel<string | string[] | undefined>()
 
   const resourceStore = useResourceStore()
-  const { promptText } = useArtFeedback()
+  const { confirmDelete, promptText } = useArtFeedback()
   interface MasterDataDeleteGuardExpose {
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }
@@ -851,14 +851,10 @@
       })
       if (blocked) return
 
-      await ElMessageBox.confirm(
+      await confirmDelete(
         `确定要删除“${resource.originName || '未命名附件'}”吗？删除后将无法恢复。`,
-        '删除附件',
         {
-          confirmButtonText: '确认删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          confirmButtonClass: 'el-button--danger'
+          title: '删除附件'
         }
       )
 

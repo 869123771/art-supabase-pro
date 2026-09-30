@@ -45,12 +45,7 @@
       v-if="organizationDetailDrawerComponent"
       ref="organizationDetailDrawerRef"
     />
-    <component
-      :is="deleteGuardComponent"
-      v-if="deleteGuardComponent"
-      ref="deleteGuardRef"
-      @cleared="handleDeleteDependenciesCleared"
-    />
+    <MasterDataDeleteGuard ref="deleteGuardRef" @cleared="handleDeleteDependenciesCleared" />
   </div>
 </template>
 
@@ -78,7 +73,9 @@
   import { deleteOrganization, fetchGetOrganizationTree } from '@/api/system-manage'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
-  import type { MasterDataDeleteGuardOpenOptions } from '@/components/business/master-data-delete-guard/index.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
 
   defineOptions({ name: 'Organization' })
@@ -123,9 +120,6 @@
   )
   const { component: organizationDetailDrawerComponent, load: loadOrganizationDetailDrawer } =
     useLazyComponent(() => import('./modules/organization-detail-drawer.vue'))
-  const { component: deleteGuardComponent, load: loadDeleteGuard } = useLazyComponent(
-    () => import('@/components/business/master-data-delete-guard/index.vue')
-  )
   const organizationDepthMap = shallowRef(new Map<string, number>())
   const overview = reactive<OverviewState>({
     organizations: 0,
@@ -484,7 +478,6 @@
   const handleDelete = async (row: Organization): Promise<void> => {
     if (!row.id || isProtectedOrganization(row)) return
     try {
-      await loadDeleteGuard()
       const blocked = await deleteGuardRef.value?.inspect({
         resourceType: 'organization',
         resourceLabel: '组织',
@@ -509,8 +502,13 @@
   watch(
     () => route.query.recordId,
     (recordId) => {
-      searchForm.value.recordId = typeof recordId === 'string' ? recordId : ''
-      void tableQueryRef.value?.refreshData()
+      Object.assign(searchForm.value, {
+        recordId: typeof recordId === 'string' ? recordId : '',
+        keyword: '',
+        organizationType: undefined,
+        status: undefined
+      })
+      void tableQueryRef.value?.refreshCreate()
     }
   )
 </script>
