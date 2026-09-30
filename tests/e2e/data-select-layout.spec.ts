@@ -79,7 +79,14 @@ test('table and tree selectors keep usable content and footer at low heights', a
     const region = await dialog.locator('.art-data-select-dialog__content').boundingBox()
     expect(region!.height).toBeGreaterThan(80)
     if (label === '表格多选') {
-      await expect(dialog.locator('.art-data-select-dialog__pager')).toBeInViewport({ ratio: 1 })
+      const pager = dialog.locator('.art-data-select-dialog__pager')
+      await expect(pager).toBeInViewport({ ratio: 1 })
+      const tableBounds = await dialog
+        .locator('.art-data-select-dialog__content .el-table')
+        .boundingBox()
+      const pagerBounds = await pager.boundingBox()
+      expect(Math.abs(tableBounds!.y - region!.y)).toBeLessThanOrEqual(1)
+      expect(Math.abs(tableBounds!.y + tableBounds!.height - pagerBounds!.y)).toBeLessThanOrEqual(1)
       const search = dialog.locator('.art-data-select-dialog__search input').first()
       await search.fill('no-such-fixture-987654')
       await search.press('Enter')

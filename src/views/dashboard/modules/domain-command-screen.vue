@@ -2,7 +2,15 @@
   <div
     ref="screenRef"
     class="domain-command-screen"
-    :class="[`is-${kind}`, `is-layout-${definition.layout}`, { 'has-no-alerts': !showAlertPanel }]"
+    :class="[
+      `is-${kind}`,
+      `is-layout-${definition.layout}`,
+      {
+        'has-no-alerts': !showAlertPanel,
+        'has-no-trend': !showTrendPanel,
+        'has-no-stage': !showStagePanel
+      }
+    ]"
     :style="{ '--theme-color': definition.accent }"
   >
     <ArtAsyncState
@@ -36,20 +44,24 @@
             </div>
 
             <nav class="domain-nav" aria-label="专业大屏场景">
-              <RouterLink to="/dashboard/business-cockpit">
-                <ArtSvgIcon icon="ri:dashboard-3-line" />
-                综合总览
-              </RouterLink>
-              <RouterLink
-                v-for="item in navItems"
-                :key="item.path"
-                :to="item.path"
-                :aria-current="item.kind === kind ? 'page' : undefined"
-                :class="{ 'is-active': item.kind === kind }"
-              >
-                <ArtSvgIcon :icon="item.icon" />
-                {{ item.shortTitle }}
-              </RouterLink>
+              <ElScrollbar class="domain-nav__scrollbar">
+                <div class="domain-nav__items">
+                  <RouterLink to="/dashboard/business-cockpit">
+                    <ArtSvgIcon icon="ri:dashboard-3-line" />
+                    综合总览
+                  </RouterLink>
+                  <RouterLink
+                    v-for="item in navItems"
+                    :key="item.path"
+                    :to="item.path"
+                    :aria-current="item.kind === kind ? 'page' : undefined"
+                    :class="{ 'is-active': item.kind === kind }"
+                  >
+                    <ArtSvgIcon :icon="item.icon" />
+                    {{ item.shortTitle }}
+                  </RouterLink>
+                </div>
+              </ElScrollbar>
             </nav>
 
             <div class="domain-header__status">
@@ -134,7 +146,7 @@
                       <p>{{ data.description }}</p>
                     </div>
                   </div>
-                  <div class="domain-score__signals">
+                  <div class="domain-score__signals" :class="{ 'is-compact': !showRiskSignal }">
                     <div>
                       <span>综合指数</span>
                       <strong>{{ data.score }}<em>/100</em></strong>
@@ -145,7 +157,7 @@
                         >{{ data.activeCount }}<em>{{ definition.activeUnit }}</em></strong
                       >
                     </div>
-                    <div>
+                    <div v-if="showRiskSignal">
                       <span>风险事项</span>
                       <strong class="is-risk">{{ data.riskCount }}<em>项</em></strong>
                     </div>
@@ -157,7 +169,13 @@
                     :title="definition.distributionTitle"
                     icon="ri:bar-chart-horizontal-line"
                   />
+                  <div v-if="isTreasury && !hasDistributionData" class="domain-zero-state">
+                    <ArtSvgIcon icon="ri:check-double-line" />
+                    <strong>暂无应收账龄压力</strong>
+                    <span>当前各账龄区间金额均为 0 元</span>
+                  </div>
                   <DomainInsightChart
+                    v-else
                     class="domain-distribution-chart"
                     :items="distributionItems"
                     :variant="definition.distributionChart"
@@ -179,6 +197,7 @@
                   </ScreenPanelHeading>
                   <EnterpriseCommandCore
                     class="domain-command-core"
+                    :style="{ '--domain-telemetry-count': coreTelemetry.length }"
                     mode="business"
                     :title="data.headline"
                     :score="data.score"
@@ -195,7 +214,7 @@
                   />
                 </article>
 
-                <article class="domain-panel domain-trend-panel">
+                <article v-if="showTrendPanel" class="domain-panel domain-trend-panel">
                   <ScreenPanelHeading :title="definition.trendTitle" icon="ri:pulse-line">
                     <template #aside>
                       <span class="domain-panel-caption">主指标 / 风险</span>
@@ -223,27 +242,18 @@
                       <span class="domain-alert-count">{{ data.riskCount }}</span>
                     </template>
                   </ScreenPanelHeading>
-                  <div v-if="data.alerts.length <= 2" class="domain-alert-summary">
-                    <div
-                      ><strong>{{ data.riskCount }}</strong
-                      ><span>项待关注</span></div
-                    >
-                    <p>{{ data.description }}</p>
-                  </div>
-                  <div v-if="data.alerts.length" class="domain-alert-list">
-                    <div
-                      v-for="alert in data.alerts.slice(0, alertDisplayLimit)"
-                      :key="alert.id"
-                      class="domain-alert"
-                    >
-                      <i :class="`is-${alert.tone}`" />
-                      <div>
-                        <strong>{{ alert.title }}</strong>
-                        <span>{{ alert.detail }}</span>
+                  <ElScrollbar v-if="data.alerts.length" class="domain-alert-scrollbar">
+                    <div class="domain-alert-list">
+                      <div v-for="alert in data.alerts" :key="alert.id" class="domain-alert">
+                        <i :class="`is-${alert.tone}`" />
+                        <div>
+                          <strong>{{ alert.title }}</strong>
+                          <span>{{ alert.detail }}</span>
+                        </div>
+                        <b>{{ alert.value }}</b>
                       </div>
-                      <b>{{ alert.value }}</b>
                     </div>
-                  </div>
+                  </ElScrollbar>
                   <ArtEmptyState
                     v-else
                     class="screen-empty-state"
@@ -254,9 +264,15 @@
                   />
                 </article>
 
-                <article class="domain-panel domain-stage-panel">
+                <article v-if="showStagePanel" class="domain-panel domain-stage-panel">
                   <ScreenPanelHeading :title="definition.stageTitle" icon="ri:node-tree" />
+                  <div v-if="isTreasury && !hasStageData" class="domain-zero-state">
+                    <ArtSvgIcon icon="ri:funds-line" />
+                    <strong>未来 30 天暂无资金缺口</strong>
+                    <span>7 / 15 / 30 天预测余额均为 0 元</span>
+                  </div>
                   <DomainInsightChart
+                    v-else
                     class="domain-stage-chart"
                     :items="data.stages"
                     :variant="definition.stageChart"
@@ -352,9 +368,27 @@
     return data.metrics.slice(0, limitByLayout[definition.value.layout])
   })
   const showScorePanel = computed(
-    () => !['field', 'flow', 'fleet', 'people'].includes(definition.value.layout)
+    () =>
+      !['field', 'flow', 'fleet', 'people'].includes(definition.value.layout) &&
+      (definition.value.layout !== 'treasury' || showTrendPanel.value)
   )
   const showAlertPanel = computed(() => data.riskCount > 0 || data.alerts.length > 0)
+  const isTreasury = computed(() => definition.value.layout === 'treasury')
+  const hasDistributionData = computed(() => distributionItems.value.some((item) => item.value > 0))
+  const hasStageData = computed(() => data.stages.some((item) => item.value > 0))
+  const showTrendPanel = computed(
+    () => !isTreasury.value || data.trend.some((point) => point.primary || point.secondary)
+  )
+  const showStagePanel = computed(() => {
+    if (definition.value.layout !== 'fleet') return true
+    return (
+      data.distribution.length !== data.stages.length ||
+      data.distribution.some((item, index) => item.value !== data.stages[index]?.value)
+    )
+  })
+  const showRiskSignal = computed(
+    () => definition.value.activeLabel !== '风险事项' || data.activeCount !== data.riskCount
+  )
   const distributionItems = computed(() => {
     if (definition.value.layout === 'field') {
       const sourceByLabel = new Map(data.distribution.map((item) => [item.label, item]))
@@ -394,19 +428,18 @@
       unit: definition.value.activeUnit,
       tone: 'info' as const
     },
-    {
-      label: '风险事项',
-      value: data.riskCount,
-      unit: '项',
-      tone: data.riskCount ? ('danger' as const) : ('success' as const)
-    },
+    ...(showRiskSignal.value
+      ? [
+          {
+            label: '风险事项',
+            value: data.riskCount,
+            unit: '项',
+            tone: data.riskCount ? ('danger' as const) : ('success' as const)
+          }
+        ]
+      : []),
     { label: '数据节点', value: data.nodes.length, unit: '域', tone: 'primary' as const }
   ])
-  const alertDisplayLimit = computed(() => {
-    if (definition.value.layout === 'fleet') return 2
-    if (definition.value.layout === 'flow') return 4
-    return 6
-  })
   const clockInterval = useIntervalFn(() => {
     currentTime.value = new Date().toISOString()
   }, 1000)

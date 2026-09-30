@@ -601,7 +601,11 @@ export async function linkUserToEmployee(params: {
 }
 
 /*分配用户角色*/
-export async function assignUserRoles(params: Api.SystemManage.UserListItem) {
+export async function assignUserRoles(params: {
+  id: string
+  tenantId: string
+  userRoles: string[]
+}) {
   const { id, tenantId, userRoles } = params
   const payload = {
     action: 'assign_roles',

@@ -35,20 +35,24 @@
       </BusinessWorkspaceHeader>
 
       <section v-if="!focusMode" class="project-assistant__stats art-card-xs">
-        <button
-          v-for="stat in stats"
-          :key="stat.type"
-          type="button"
-          :class="{ 'is-active': filters.objectType === stat.type }"
-          :aria-pressed="filters.objectType === stat.type"
-          @click="selectStat(stat.type)"
-        >
-          <span><ArtSvgIcon :icon="stat.icon" /></span>
-          <div
-            ><strong>{{ stat.value }}</strong
-            ><small>{{ stat.label }}</small></div
-          >
-        </button>
+        <ElScrollbar>
+          <div class="project-assistant__stats-list">
+            <button
+              v-for="stat in stats"
+              :key="stat.type"
+              type="button"
+              :class="{ 'is-active': filters.objectType === stat.type }"
+              :aria-pressed="filters.objectType === stat.type"
+              @click="selectStat(stat.type)"
+            >
+              <span><ArtSvgIcon :icon="stat.icon" /></span>
+              <div
+                ><strong>{{ stat.value }}</strong
+                ><small>{{ stat.label }}</small></div
+              >
+            </button>
+          </div>
+        </ElScrollbar>
       </section>
 
       <nav class="project-assistant__mobile-nav art-card-xs" aria-label="AI 助手工作区">
@@ -471,8 +475,6 @@
     background: var(--art-main-bg-color);
 
     &__stats {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(110px, 1fr));
       padding: 7px;
 
       button {
@@ -543,6 +545,11 @@
           color: var(--el-text-color-secondary);
         }
       }
+    }
+
+    &__stats-list {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
     }
 
     &__workspace {
@@ -640,7 +647,7 @@
     }
 
     @media (width <= 1280px) {
-      &__stats {
+      &__stats-list {
         grid-template-columns: repeat(3, 1fr);
       }
     }
@@ -649,7 +656,7 @@
       min-height: auto;
       overflow: visible;
 
-      &__stats {
+      &__stats-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -737,16 +744,13 @@
       gap: var(--art-space-3);
 
       &__stats {
+        padding: var(--art-space-2);
+      }
+
+      &__stats-list {
         display: flex;
         gap: var(--art-space-1);
-        padding: var(--art-space-2);
-        overflow-x: auto;
-        overscroll-behavior-inline: contain;
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar {
-          display: none;
-        }
+        width: max-content;
 
         button {
           flex: 0 0 112px;

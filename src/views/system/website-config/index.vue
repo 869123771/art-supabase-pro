@@ -42,17 +42,21 @@
       <div class="website-config-page__body">
         <aside class="website-config-page__nav-panel art-card-xs">
           <div class="website-config-page__nav-title">配置分组</div>
-          <button
-            v-for="item in navigationItems"
-            :key="item.key"
-            type="button"
-            class="website-config-page__nav-item"
-            :class="{ 'is-active': page.activeSection === item.key }"
-            @click="scrollToSection(item.key)"
-          >
-            <ArtSvgIcon :icon="item.icon" />
-            <span>{{ item.label }}</span>
-          </button>
+          <ElScrollbar class="website-config-page__nav-scrollbar">
+            <div class="website-config-page__nav-items">
+              <button
+                v-for="item in navigationItems"
+                :key="item.key"
+                type="button"
+                class="website-config-page__nav-item"
+                :class="{ 'is-active': page.activeSection === item.key }"
+                @click="scrollToSection(item.key)"
+              >
+                <ArtSvgIcon :icon="item.icon" />
+                <span>{{ item.label }}</span>
+              </button>
+            </div>
+          </ElScrollbar>
 
           <div class="website-config-page__publish-tip">
             <strong>发布影响</strong>
@@ -912,6 +916,16 @@
       color: var(--el-text-color-secondary);
     }
 
+    &__nav-scrollbar {
+      min-width: 0;
+    }
+
+    &__nav-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
     &__nav-item {
       display: flex;
       gap: 10px;
@@ -1165,6 +1179,15 @@
       &__publish-tip {
         grid-column: 1 / -1;
       }
+
+      &__nav-scrollbar {
+        grid-column: 1 / -1;
+      }
+
+      &__nav-items {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
     }
   }
 
@@ -1177,17 +1200,14 @@
       }
 
       &__nav-panel {
+        padding: 6px;
+      }
+
+      &__nav-items {
         display: flex;
         flex-direction: row;
         gap: var(--art-space-1);
-        padding: 6px;
-        overflow-x: auto;
-        overscroll-behavior-inline: contain;
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar {
-          display: none;
-        }
+        width: max-content;
       }
 
       &__nav-title {

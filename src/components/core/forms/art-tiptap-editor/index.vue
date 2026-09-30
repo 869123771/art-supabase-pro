@@ -9,487 +9,489 @@
     }"
     :style="{ '--art-tiptap-height': height }"
   >
-    <div class="art-tiptap-editor__toolbar" role="toolbar" aria-label="富文本编辑工具栏">
-      <div v-if="isFeatureVisible('history')" class="art-tiptap-editor__tool-group">
-        <ToolbarButton
-          label="撤销（Ctrl+Z）"
-          icon="ri:arrow-go-back-line"
-          :disabled="isActionDisabled || !canUndo"
-          @click="runCommand(() => editor?.chain().focus().undo().run())"
-        />
-        <ToolbarButton
-          label="重做（Ctrl+Shift+Z）"
-          icon="ri:arrow-go-forward-line"
-          :disabled="isActionDisabled || !canRedo"
-          @click="runCommand(() => editor?.chain().focus().redo().run())"
-        />
-      </div>
-
-      <div v-if="isFeatureVisible('heading')" class="art-tiptap-editor__tool-group">
-        <ElDropdown
-          trigger="click"
-          placement="bottom-start"
-          :disabled="isActionDisabled"
-          popper-class="art-tiptap-editor-popper"
-          @command="setBlockType"
-        >
+    <ElScrollbar class="art-tiptap-editor__toolbar-scrollbar">
+      <div class="art-tiptap-editor__toolbar" role="toolbar" aria-label="富文本编辑工具栏">
+        <div v-if="isFeatureVisible('history')" class="art-tiptap-editor__tool-group">
           <ToolbarButton
-            label="段落样式"
-            icon="ri:heading"
-            :text="currentBlockLabel"
-            dropdown
-            :tooltip="false"
-            :disabled="isActionDisabled"
+            label="撤销（Ctrl+Z）"
+            icon="ri:arrow-go-back-line"
+            :disabled="isActionDisabled || !canUndo"
+            @click="runCommand(() => editor?.chain().focus().undo().run())"
           />
-          <template #dropdown>
-            <ElDropdownMenu class="art-tiptap-editor-menu">
-              <ElDropdownItem
-                v-for="item in blockTypes"
-                :key="item.value"
-                :command="item.value"
-                :class="{ 'is-selected': currentBlockType === item.value }"
-              >
-                <span :class="`art-tiptap-editor-menu__block--${item.value}`">{{
-                  item.label
-                }}</span>
-                <ArtSvgIcon
-                  v-if="currentBlockType === item.value"
-                  icon="ri:check-line"
-                  aria-hidden="true"
-                />
-              </ElDropdownItem>
-            </ElDropdownMenu>
-          </template>
-        </ElDropdown>
-      </div>
-
-      <div class="art-tiptap-editor__tool-group">
-        <ToolbarButton
-          v-if="isFeatureVisible('bold')"
-          label="加粗（Ctrl+B）"
-          icon="ri:bold"
-          toggle
-          :active="isActive('bold')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleBold().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('italic')"
-          label="斜体（Ctrl+I）"
-          icon="ri:italic"
-          toggle
-          :active="isActive('italic')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleItalic().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('underline')"
-          label="下划线（Ctrl+U）"
-          icon="ri:underline"
-          toggle
-          :active="isActive('underline')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleUnderline().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('strike')"
-          label="删除线"
-          icon="ri:strikethrough"
-          toggle
-          :active="isActive('strike')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleStrike().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('code')"
-          label="行内代码"
-          icon="ri:code-line"
-          toggle
-          :active="isActive('code')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleCode().run())"
-        />
-      </div>
-
-      <div
-        v-if="isFeatureVisible('fontSize') || isFeatureVisible('lineHeight')"
-        class="art-tiptap-editor__tool-group"
-      >
-        <ElDropdown
-          v-if="isFeatureVisible('fontSize')"
-          trigger="click"
-          placement="bottom-start"
-          :disabled="isActionDisabled"
-          popper-class="art-tiptap-editor-popper"
-          @command="setFontSize"
-        >
           <ToolbarButton
-            label="字号"
-            icon="ri:font-size"
-            :text="currentFontSizeLabel"
-            dropdown
-            :tooltip="false"
+            label="重做（Ctrl+Shift+Z）"
+            icon="ri:arrow-go-forward-line"
+            :disabled="isActionDisabled || !canRedo"
+            @click="runCommand(() => editor?.chain().focus().redo().run())"
+          />
+        </div>
+
+        <div v-if="isFeatureVisible('heading')" class="art-tiptap-editor__tool-group">
+          <ElDropdown
+            trigger="click"
+            placement="bottom-start"
             :disabled="isActionDisabled"
-          />
-          <template #dropdown>
-            <ElDropdownMenu class="art-tiptap-editor-menu">
-              <ElDropdownItem
-                v-for="item in fontSizes"
-                :key="item.value || 'default'"
-                :command="item.value"
-                :class="{ 'is-selected': currentFontSize === item.value }"
-              >
-                <span>{{ item.label }}</span>
-                <ArtSvgIcon
-                  v-if="currentFontSize === item.value"
-                  icon="ri:check-line"
-                  aria-hidden="true"
-                />
-              </ElDropdownItem>
-            </ElDropdownMenu>
-          </template>
-        </ElDropdown>
-        <ElDropdown
-          v-if="isFeatureVisible('lineHeight')"
-          trigger="click"
-          placement="bottom-start"
-          :disabled="isActionDisabled"
-          popper-class="art-tiptap-editor-popper"
-          @command="setLineHeight"
-        >
-          <ToolbarButton
-            label="行高"
-            icon="ri:line-height"
-            :text="currentLineHeightLabel"
-            dropdown
-            :tooltip="false"
-            :disabled="isActionDisabled"
-          />
-          <template #dropdown>
-            <ElDropdownMenu class="art-tiptap-editor-menu">
-              <ElDropdownItem
-                v-for="item in lineHeights"
-                :key="item.value || 'default'"
-                :command="item.value"
-                :class="{ 'is-selected': currentLineHeight === item.value }"
-              >
-                <span>{{ item.label }}</span>
-                <ArtSvgIcon
-                  v-if="currentLineHeight === item.value"
-                  icon="ri:check-line"
-                  aria-hidden="true"
-                />
-              </ElDropdownItem>
-            </ElDropdownMenu>
-          </template>
-        </ElDropdown>
-      </div>
-
-      <div
-        v-if="isFeatureVisible('textColor') || isFeatureVisible('backgroundColor')"
-        class="art-tiptap-editor__tool-group"
-      >
-        <ElPopover
-          v-if="isFeatureVisible('textColor')"
-          v-model:visible="textColorPopoverVisible"
-          placement="bottom"
-          :width="286"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="art-tiptap-editor-popper"
-        >
-          <template #reference>
-            <span class="art-tiptap-editor__menu-trigger">
-              <ToolbarButton
-                label="文字颜色"
-                icon="ri:font-color"
-                dropdown
-                :tooltip="false"
-                :disabled="isActionDisabled"
-              />
-            </span>
-          </template>
-          <ColorPalette
-            label="文字颜色"
-            :colors="textColors"
-            :model-value="currentTextColor"
-            @select="selectTextColor"
-          />
-        </ElPopover>
-        <ElPopover
-          v-if="isFeatureVisible('backgroundColor')"
-          v-model:visible="backgroundColorPopoverVisible"
-          placement="bottom"
-          :width="286"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="art-tiptap-editor-popper"
-        >
-          <template #reference>
-            <span class="art-tiptap-editor__menu-trigger">
-              <ToolbarButton
-                label="高亮颜色"
-                icon="ri:mark-pen-line"
-                dropdown
-                :tooltip="false"
-                :disabled="isActionDisabled"
-              />
-            </span>
-          </template>
-          <ColorPalette
-            label="高亮颜色"
-            :colors="highlightColors"
-            :model-value="currentBackgroundColor"
-            fallback-color="#fff2a8"
-            @select="selectBackgroundColor"
-          />
-        </ElPopover>
-      </div>
-
-      <div class="art-tiptap-editor__tool-group">
-        <ToolbarButton
-          v-if="isFeatureVisible('blockquote')"
-          label="引用"
-          icon="ri:double-quotes-l"
-          toggle
-          :active="isActive('blockquote')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleBlockquote().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('bulletList')"
-          label="无序列表"
-          icon="ri:list-unordered"
-          toggle
-          :active="isActive('bulletList')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleBulletList().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('orderedList')"
-          label="有序列表"
-          icon="ri:list-ordered-2"
-          toggle
-          :active="isActive('orderedList')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleOrderedList().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('taskList')"
-          label="任务列表"
-          icon="ri:list-check-3"
-          toggle
-          :active="isActive('taskList')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleTaskList().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('codeBlock')"
-          label="代码块"
-          icon="ri:code-box-line"
-          toggle
-          :active="isActive('codeBlock')"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleCodeBlock().run())"
-        />
-      </div>
-
-      <div v-if="isFeatureVisible('textAlign')" class="art-tiptap-editor__tool-group">
-        <ElDropdown
-          trigger="click"
-          placement="bottom-start"
-          :disabled="isActionDisabled"
-          popper-class="art-tiptap-editor-popper"
-          @command="setTextAlignment"
-        >
-          <ToolbarButton
-            :label="currentAlignment.label"
-            :icon="currentAlignment.icon"
-            dropdown
-            :tooltip="false"
-            :disabled="isActionDisabled"
-          />
-          <template #dropdown>
-            <ElDropdownMenu class="art-tiptap-editor-menu">
-              <ElDropdownItem
-                v-for="item in alignments"
-                :key="item.value"
-                :command="item.value"
-                :class="{ 'is-selected': currentAlignment.value === item.value }"
-              >
-                <span class="art-tiptap-editor-menu__option">
-                  <ArtSvgIcon :icon="item.icon" aria-hidden="true" />
-                  {{ item.label }}
-                </span>
-                <ArtSvgIcon
-                  v-if="currentAlignment.value === item.value"
-                  icon="ri:check-line"
-                  aria-hidden="true"
-                />
-              </ElDropdownItem>
-            </ElDropdownMenu>
-          </template>
-        </ElDropdown>
-      </div>
-
-      <div class="art-tiptap-editor__tool-group">
-        <ElPopover
-          v-if="isFeatureVisible('link')"
-          v-model:visible="linkPopoverVisible"
-          placement="bottom"
-          :width="320"
-          :trigger="[]"
-          :show-arrow="false"
-          popper-class="art-tiptap-editor-popper"
-        >
-          <template #reference>
-            <span class="art-tiptap-editor__popover-trigger">
-              <ToolbarButton
-                label="插入或编辑链接"
-                icon="ri:link"
-                toggle
-                :active="isActive('link')"
-                :tooltip="false"
-                :disabled="isActionDisabled"
-                @click="openLinkPopover"
-              />
-            </span>
-          </template>
-          <div class="art-tiptap-editor__panel-form">
-            <div class="art-tiptap-editor__panel-heading">
-              <span class="art-tiptap-editor__panel-icon" aria-hidden="true">
-                <ArtSvgIcon icon="ri:link" />
-              </span>
-              <span>
-                <strong>{{ isActive('link') ? '编辑链接' : '插入链接' }}</strong>
-                <small>支持网页、邮箱和电话号码</small>
-              </span>
-            </div>
-            <input
-              v-model="linkUrl"
-              type="text"
-              placeholder="https://example.com"
-              aria-label="链接地址"
-              @keyup.enter="applyLink"
+            popper-class="art-tiptap-editor-popper"
+            @command="setBlockType"
+          >
+            <ToolbarButton
+              label="段落样式"
+              icon="ri:heading"
+              :text="currentBlockLabel"
+              dropdown
+              :tooltip="false"
+              :disabled="isActionDisabled"
             />
-            <div class="art-tiptap-editor__popover-actions">
-              <button
-                v-if="isActive('link')"
-                class="is-secondary"
-                type="button"
-                @click="removeLink"
-              >
-                移除链接
-              </button>
-              <button type="button" @click="applyLink">应用链接</button>
-            </div>
-          </div>
-        </ElPopover>
+            <template #dropdown>
+              <ElDropdownMenu class="art-tiptap-editor-menu">
+                <ElDropdownItem
+                  v-for="item in blockTypes"
+                  :key="item.value"
+                  :command="item.value"
+                  :class="{ 'is-selected': currentBlockType === item.value }"
+                >
+                  <span :class="`art-tiptap-editor-menu__block--${item.value}`">{{
+                    item.label
+                  }}</span>
+                  <ArtSvgIcon
+                    v-if="currentBlockType === item.value"
+                    icon="ri:check-line"
+                    aria-hidden="true"
+                  />
+                </ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+        </div>
 
-        <MediaPopover
-          v-if="isFeatureVisible('image')"
-          :resource-tenant-id="resourceTenantId"
-          kind="image"
-          label="插入图片"
-          icon="ri:image-add-line"
-          :accept="mediaConfig.image.accept"
-          :max-size="mediaConfig.image.maxSize"
-          :disabled="isActionDisabled"
-          url-placeholder="https://example.com/image.png"
-          @upload="insertUploadedImage"
-          @url="insertImageUrl"
-          @visibility-change="setMediaPopoverVisibility('image', $event)"
-        />
-        <MediaPopover
-          v-if="isFeatureVisible('video')"
-          :resource-tenant-id="resourceTenantId"
-          kind="video"
-          label="插入视频"
-          icon="ri:video-add-line"
-          :accept="mediaConfig.video.accept"
-          :max-size="mediaConfig.video.maxSize"
-          :disabled="isActionDisabled"
-          url-placeholder="https://example.com/video.mp4"
-          @upload="insertUploadedVideo"
-          @url="insertVideoUrl"
-          @visibility-change="setMediaPopoverVisibility('video', $event)"
-        />
-        <MediaPopover
-          v-if="isFeatureVisible('audio')"
-          :resource-tenant-id="resourceTenantId"
-          kind="audio"
-          label="插入音频"
-          icon="ri:volume-up-line"
-          :accept="mediaConfig.audio.accept"
-          :max-size="mediaConfig.audio.maxSize"
-          :disabled="isActionDisabled"
-          url-placeholder="https://example.com/audio.mp3"
-          @upload="insertUploadedAudio"
-          @url="insertAudioUrl"
-          @visibility-change="setMediaPopoverVisibility('audio', $event)"
-        />
-        <MediaPopover
-          v-if="isFeatureVisible('file')"
-          :resource-tenant-id="resourceTenantId"
-          kind="file"
-          label="插入附件"
-          icon="ri:attachment-2"
-          :accept="mediaConfig.file.accept"
-          :max-size="mediaConfig.file.maxSize"
-          :disabled="isActionDisabled"
-          url-placeholder="https://example.com/document.pdf"
-          @upload="insertUploadedFile"
-          @url="insertFileUrl"
-          @visibility-change="setMediaPopoverVisibility('file', $event)"
-        />
+        <div class="art-tiptap-editor__tool-group">
+          <ToolbarButton
+            v-if="isFeatureVisible('bold')"
+            label="加粗（Ctrl+B）"
+            icon="ri:bold"
+            toggle
+            :active="isActive('bold')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleBold().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('italic')"
+            label="斜体（Ctrl+I）"
+            icon="ri:italic"
+            toggle
+            :active="isActive('italic')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleItalic().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('underline')"
+            label="下划线（Ctrl+U）"
+            icon="ri:underline"
+            toggle
+            :active="isActive('underline')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleUnderline().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('strike')"
+            label="删除线"
+            icon="ri:strikethrough"
+            toggle
+            :active="isActive('strike')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleStrike().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('code')"
+            label="行内代码"
+            icon="ri:code-line"
+            toggle
+            :active="isActive('code')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleCode().run())"
+          />
+        </div>
 
-        <ElPopover
-          v-if="isFeatureVisible('table')"
-          v-model:visible="tablePopoverVisible"
-          placement="bottom"
-          :width="244"
-          :trigger="[]"
-          :show-arrow="false"
-          popper-class="art-tiptap-editor-popper"
+        <div
+          v-if="isFeatureVisible('fontSize') || isFeatureVisible('lineHeight')"
+          class="art-tiptap-editor__tool-group"
         >
-          <template #reference>
-            <span class="art-tiptap-editor__popover-trigger">
-              <ToolbarButton
-                label="插入表格"
-                icon="ri:table-2"
-                :tooltip="false"
-                :disabled="isActionDisabled"
-                @click="tablePopoverVisible = true"
+          <ElDropdown
+            v-if="isFeatureVisible('fontSize')"
+            trigger="click"
+            placement="bottom-start"
+            :disabled="isActionDisabled"
+            popper-class="art-tiptap-editor-popper"
+            @command="setFontSize"
+          >
+            <ToolbarButton
+              label="字号"
+              icon="ri:font-size"
+              :text="currentFontSizeLabel"
+              dropdown
+              :tooltip="false"
+              :disabled="isActionDisabled"
+            />
+            <template #dropdown>
+              <ElDropdownMenu class="art-tiptap-editor-menu">
+                <ElDropdownItem
+                  v-for="item in fontSizes"
+                  :key="item.value || 'default'"
+                  :command="item.value"
+                  :class="{ 'is-selected': currentFontSize === item.value }"
+                >
+                  <span>{{ item.label }}</span>
+                  <ArtSvgIcon
+                    v-if="currentFontSize === item.value"
+                    icon="ri:check-line"
+                    aria-hidden="true"
+                  />
+                </ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+          <ElDropdown
+            v-if="isFeatureVisible('lineHeight')"
+            trigger="click"
+            placement="bottom-start"
+            :disabled="isActionDisabled"
+            popper-class="art-tiptap-editor-popper"
+            @command="setLineHeight"
+          >
+            <ToolbarButton
+              label="行高"
+              icon="ri:line-height"
+              :text="currentLineHeightLabel"
+              dropdown
+              :tooltip="false"
+              :disabled="isActionDisabled"
+            />
+            <template #dropdown>
+              <ElDropdownMenu class="art-tiptap-editor-menu">
+                <ElDropdownItem
+                  v-for="item in lineHeights"
+                  :key="item.value || 'default'"
+                  :command="item.value"
+                  :class="{ 'is-selected': currentLineHeight === item.value }"
+                >
+                  <span>{{ item.label }}</span>
+                  <ArtSvgIcon
+                    v-if="currentLineHeight === item.value"
+                    icon="ri:check-line"
+                    aria-hidden="true"
+                  />
+                </ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+        </div>
+
+        <div
+          v-if="isFeatureVisible('textColor') || isFeatureVisible('backgroundColor')"
+          class="art-tiptap-editor__tool-group"
+        >
+          <ElPopover
+            v-if="isFeatureVisible('textColor')"
+            v-model:visible="textColorPopoverVisible"
+            placement="bottom"
+            :width="286"
+            trigger="click"
+            :show-arrow="false"
+            popper-class="art-tiptap-editor-popper"
+          >
+            <template #reference>
+              <span class="art-tiptap-editor__menu-trigger">
+                <ToolbarButton
+                  label="文字颜色"
+                  icon="ri:font-color"
+                  dropdown
+                  :tooltip="false"
+                  :disabled="isActionDisabled"
+                />
+              </span>
+            </template>
+            <ColorPalette
+              label="文字颜色"
+              :colors="textColors"
+              :model-value="currentTextColor"
+              @select="selectTextColor"
+            />
+          </ElPopover>
+          <ElPopover
+            v-if="isFeatureVisible('backgroundColor')"
+            v-model:visible="backgroundColorPopoverVisible"
+            placement="bottom"
+            :width="286"
+            trigger="click"
+            :show-arrow="false"
+            popper-class="art-tiptap-editor-popper"
+          >
+            <template #reference>
+              <span class="art-tiptap-editor__menu-trigger">
+                <ToolbarButton
+                  label="高亮颜色"
+                  icon="ri:mark-pen-line"
+                  dropdown
+                  :tooltip="false"
+                  :disabled="isActionDisabled"
+                />
+              </span>
+            </template>
+            <ColorPalette
+              label="高亮颜色"
+              :colors="highlightColors"
+              :model-value="currentBackgroundColor"
+              fallback-color="#fff2a8"
+              @select="selectBackgroundColor"
+            />
+          </ElPopover>
+        </div>
+
+        <div class="art-tiptap-editor__tool-group">
+          <ToolbarButton
+            v-if="isFeatureVisible('blockquote')"
+            label="引用"
+            icon="ri:double-quotes-l"
+            toggle
+            :active="isActive('blockquote')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleBlockquote().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('bulletList')"
+            label="无序列表"
+            icon="ri:list-unordered"
+            toggle
+            :active="isActive('bulletList')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleBulletList().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('orderedList')"
+            label="有序列表"
+            icon="ri:list-ordered-2"
+            toggle
+            :active="isActive('orderedList')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleOrderedList().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('taskList')"
+            label="任务列表"
+            icon="ri:list-check-3"
+            toggle
+            :active="isActive('taskList')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleTaskList().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('codeBlock')"
+            label="代码块"
+            icon="ri:code-box-line"
+            toggle
+            :active="isActive('codeBlock')"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().toggleCodeBlock().run())"
+          />
+        </div>
+
+        <div v-if="isFeatureVisible('textAlign')" class="art-tiptap-editor__tool-group">
+          <ElDropdown
+            trigger="click"
+            placement="bottom-start"
+            :disabled="isActionDisabled"
+            popper-class="art-tiptap-editor-popper"
+            @command="setTextAlignment"
+          >
+            <ToolbarButton
+              :label="currentAlignment.label"
+              :icon="currentAlignment.icon"
+              dropdown
+              :tooltip="false"
+              :disabled="isActionDisabled"
+            />
+            <template #dropdown>
+              <ElDropdownMenu class="art-tiptap-editor-menu">
+                <ElDropdownItem
+                  v-for="item in alignments"
+                  :key="item.value"
+                  :command="item.value"
+                  :class="{ 'is-selected': currentAlignment.value === item.value }"
+                >
+                  <span class="art-tiptap-editor-menu__option">
+                    <ArtSvgIcon :icon="item.icon" aria-hidden="true" />
+                    {{ item.label }}
+                  </span>
+                  <ArtSvgIcon
+                    v-if="currentAlignment.value === item.value"
+                    icon="ri:check-line"
+                    aria-hidden="true"
+                  />
+                </ElDropdownItem>
+              </ElDropdownMenu>
+            </template>
+          </ElDropdown>
+        </div>
+
+        <div class="art-tiptap-editor__tool-group">
+          <ElPopover
+            v-if="isFeatureVisible('link')"
+            v-model:visible="linkPopoverVisible"
+            placement="bottom"
+            :width="320"
+            :trigger="[]"
+            :show-arrow="false"
+            popper-class="art-tiptap-editor-popper"
+          >
+            <template #reference>
+              <span class="art-tiptap-editor__popover-trigger">
+                <ToolbarButton
+                  label="插入或编辑链接"
+                  icon="ri:link"
+                  toggle
+                  :active="isActive('link')"
+                  :tooltip="false"
+                  :disabled="isActionDisabled"
+                  @click="openLinkPopover"
+                />
+              </span>
+            </template>
+            <div class="art-tiptap-editor__panel-form">
+              <div class="art-tiptap-editor__panel-heading">
+                <span class="art-tiptap-editor__panel-icon" aria-hidden="true">
+                  <ArtSvgIcon icon="ri:link" />
+                </span>
+                <span>
+                  <strong>{{ isActive('link') ? '编辑链接' : '插入链接' }}</strong>
+                  <small>支持网页、邮箱和电话号码</small>
+                </span>
+              </div>
+              <input
+                v-model="linkUrl"
+                type="text"
+                placeholder="https://example.com"
+                aria-label="链接地址"
+                @keyup.enter="applyLink"
               />
-            </span>
-          </template>
-          <TablePicker @insert="insertTable" />
-        </ElPopover>
-        <ToolbarButton
-          v-if="isFeatureVisible('horizontalRule')"
-          label="插入分隔线"
-          icon="ri:separator"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().setHorizontalRule().run())"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('clearFormat')"
-          label="清除格式"
-          icon="ri:format-clear"
-          :disabled="isActionDisabled"
-          @click="clearFormat"
-        />
-        <ToolbarButton
-          v-if="isFeatureVisible('fullscreen')"
-          :label="isFullscreen ? '退出全屏' : '全屏编辑'"
-          :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'"
-          toggle
-          :active="isFullscreen"
-          :disabled="disabled"
-          @click="toggleFullscreen"
-        />
+              <div class="art-tiptap-editor__popover-actions">
+                <button
+                  v-if="isActive('link')"
+                  class="is-secondary"
+                  type="button"
+                  @click="removeLink"
+                >
+                  移除链接
+                </button>
+                <button type="button" @click="applyLink">应用链接</button>
+              </div>
+            </div>
+          </ElPopover>
+
+          <MediaPopover
+            v-if="isFeatureVisible('image')"
+            :resource-tenant-id="resourceTenantId"
+            kind="image"
+            label="插入图片"
+            icon="ri:image-add-line"
+            :accept="mediaConfig.image.accept"
+            :max-size="mediaConfig.image.maxSize"
+            :disabled="isActionDisabled"
+            url-placeholder="https://example.com/image.png"
+            @upload="insertUploadedImage"
+            @url="insertImageUrl"
+            @visibility-change="setMediaPopoverVisibility('image', $event)"
+          />
+          <MediaPopover
+            v-if="isFeatureVisible('video')"
+            :resource-tenant-id="resourceTenantId"
+            kind="video"
+            label="插入视频"
+            icon="ri:video-add-line"
+            :accept="mediaConfig.video.accept"
+            :max-size="mediaConfig.video.maxSize"
+            :disabled="isActionDisabled"
+            url-placeholder="https://example.com/video.mp4"
+            @upload="insertUploadedVideo"
+            @url="insertVideoUrl"
+            @visibility-change="setMediaPopoverVisibility('video', $event)"
+          />
+          <MediaPopover
+            v-if="isFeatureVisible('audio')"
+            :resource-tenant-id="resourceTenantId"
+            kind="audio"
+            label="插入音频"
+            icon="ri:volume-up-line"
+            :accept="mediaConfig.audio.accept"
+            :max-size="mediaConfig.audio.maxSize"
+            :disabled="isActionDisabled"
+            url-placeholder="https://example.com/audio.mp3"
+            @upload="insertUploadedAudio"
+            @url="insertAudioUrl"
+            @visibility-change="setMediaPopoverVisibility('audio', $event)"
+          />
+          <MediaPopover
+            v-if="isFeatureVisible('file')"
+            :resource-tenant-id="resourceTenantId"
+            kind="file"
+            label="插入附件"
+            icon="ri:attachment-2"
+            :accept="mediaConfig.file.accept"
+            :max-size="mediaConfig.file.maxSize"
+            :disabled="isActionDisabled"
+            url-placeholder="https://example.com/document.pdf"
+            @upload="insertUploadedFile"
+            @url="insertFileUrl"
+            @visibility-change="setMediaPopoverVisibility('file', $event)"
+          />
+
+          <ElPopover
+            v-if="isFeatureVisible('table')"
+            v-model:visible="tablePopoverVisible"
+            placement="bottom"
+            :width="244"
+            :trigger="[]"
+            :show-arrow="false"
+            popper-class="art-tiptap-editor-popper"
+          >
+            <template #reference>
+              <span class="art-tiptap-editor__popover-trigger">
+                <ToolbarButton
+                  label="插入表格"
+                  icon="ri:table-2"
+                  :tooltip="false"
+                  :disabled="isActionDisabled"
+                  @click="tablePopoverVisible = true"
+                />
+              </span>
+            </template>
+            <TablePicker @insert="insertTable" />
+          </ElPopover>
+          <ToolbarButton
+            v-if="isFeatureVisible('horizontalRule')"
+            label="插入分隔线"
+            icon="ri:separator"
+            :disabled="isActionDisabled"
+            @click="runCommand(() => editor?.chain().focus().setHorizontalRule().run())"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('clearFormat')"
+            label="清除格式"
+            icon="ri:format-clear"
+            :disabled="isActionDisabled"
+            @click="clearFormat"
+          />
+          <ToolbarButton
+            v-if="isFeatureVisible('fullscreen')"
+            :label="isFullscreen ? '退出全屏' : '全屏编辑'"
+            :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'"
+            toggle
+            :active="isFullscreen"
+            :disabled="disabled"
+            @click="toggleFullscreen"
+          />
+        </div>
       </div>
-    </div>
+    </ElScrollbar>
 
     <BubbleMenu
       v-if="editor && isFeatureVisible('table')"
@@ -501,81 +503,85 @@
       role="toolbar"
       aria-label="表格编辑工具栏"
     >
-      <span class="art-tiptap-editor__table-toolbar-title">
-        <ArtSvgIcon icon="ri:table-2" aria-hidden="true" />
-        表格
-      </span>
-      <div class="art-tiptap-editor__tool-group">
-        <ToolbarButton
-          label="在上方插入行"
-          icon="ri:insert-row-top"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().addRowBefore().run())"
-        />
-        <ToolbarButton
-          label="在下方插入行"
-          icon="ri:insert-row-bottom"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().addRowAfter().run())"
-        />
-        <ToolbarButton
-          label="删除当前行"
-          icon="ri:delete-row"
-          danger
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().deleteRow().run())"
-        />
-      </div>
-      <div class="art-tiptap-editor__tool-group">
-        <ToolbarButton
-          label="在左侧插入列"
-          icon="ri:insert-column-left"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().addColumnBefore().run())"
-        />
-        <ToolbarButton
-          label="在右侧插入列"
-          icon="ri:insert-column-right"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().addColumnAfter().run())"
-        />
-        <ToolbarButton
-          label="删除当前列"
-          icon="ri:delete-column"
-          danger
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().deleteColumn().run())"
-        />
-      </div>
-      <div class="art-tiptap-editor__tool-group art-tiptap-editor__tool-group--labeled">
-        <ToolbarButton
-          label="合并单元格"
-          icon="ri:merge-cells-horizontal"
-          show-label
-          :disabled="isActionDisabled || !canMergeCells"
-          @click="runCommand(() => editor?.chain().focus().mergeCells().run())"
-        />
-        <ToolbarButton
-          label="拆分单元格"
-          icon="ri:split-cells-horizontal"
-          show-label
-          :disabled="isActionDisabled || !canSplitCell"
-          @click="runCommand(() => editor?.chain().focus().splitCell().run())"
-        />
-        <ToolbarButton
-          label="切换表头行"
-          icon="ri:layout-row-line"
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().toggleHeaderRow().run())"
-        />
-        <ToolbarButton
-          label="删除整个表格"
-          icon="ri:delete-bin-6-line"
-          danger
-          :disabled="isActionDisabled"
-          @click="runCommand(() => editor?.chain().focus().deleteTable().run())"
-        />
-      </div>
+      <ElScrollbar class="art-tiptap-editor__table-toolbar-scrollbar">
+        <div class="art-tiptap-editor__table-toolbar-content">
+          <span class="art-tiptap-editor__table-toolbar-title">
+            <ArtSvgIcon icon="ri:table-2" aria-hidden="true" />
+            表格
+          </span>
+          <div class="art-tiptap-editor__tool-group">
+            <ToolbarButton
+              label="在上方插入行"
+              icon="ri:insert-row-top"
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().addRowBefore().run())"
+            />
+            <ToolbarButton
+              label="在下方插入行"
+              icon="ri:insert-row-bottom"
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().addRowAfter().run())"
+            />
+            <ToolbarButton
+              label="删除当前行"
+              icon="ri:delete-row"
+              danger
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().deleteRow().run())"
+            />
+          </div>
+          <div class="art-tiptap-editor__tool-group">
+            <ToolbarButton
+              label="在左侧插入列"
+              icon="ri:insert-column-left"
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().addColumnBefore().run())"
+            />
+            <ToolbarButton
+              label="在右侧插入列"
+              icon="ri:insert-column-right"
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().addColumnAfter().run())"
+            />
+            <ToolbarButton
+              label="删除当前列"
+              icon="ri:delete-column"
+              danger
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().deleteColumn().run())"
+            />
+          </div>
+          <div class="art-tiptap-editor__tool-group art-tiptap-editor__tool-group--labeled">
+            <ToolbarButton
+              label="合并单元格"
+              icon="ri:merge-cells-horizontal"
+              show-label
+              :disabled="isActionDisabled || !canMergeCells"
+              @click="runCommand(() => editor?.chain().focus().mergeCells().run())"
+            />
+            <ToolbarButton
+              label="拆分单元格"
+              icon="ri:split-cells-horizontal"
+              show-label
+              :disabled="isActionDisabled || !canSplitCell"
+              @click="runCommand(() => editor?.chain().focus().splitCell().run())"
+            />
+            <ToolbarButton
+              label="切换表头行"
+              icon="ri:layout-row-line"
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().toggleHeaderRow().run())"
+            />
+            <ToolbarButton
+              label="删除整个表格"
+              icon="ri:delete-bin-6-line"
+              danger
+              :disabled="isActionDisabled"
+              @click="runCommand(() => editor?.chain().focus().deleteTable().run())"
+            />
+          </div>
+        </div>
+      </ElScrollbar>
     </BubbleMenu>
 
     <ElScrollbar class="art-tiptap-editor__scrollbar" :height="editorViewportHeight">

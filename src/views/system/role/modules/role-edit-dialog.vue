@@ -75,12 +75,12 @@
 
   const emit = defineEmits<Emits>()
   const userStore = useUserStore()
-  const { getUserInfo, isSuper } = storeToRefs(userStore)
+  const { getUserInfo, isPlatformSuper } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<RoleEditDialogOpenData>>()
   const formRef = ref<ArtFormExpose>()
   const dialogType = ref<DialogType>('add')
   const tenantOptions = shallowRef<TenantListItem[]>([])
-  const canSelectTenant = computed(() => Boolean(isSuper.value))
+  const canSelectTenant = computed(() => isPlatformSuper.value)
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
   const selectableTenantOptions = computed(() =>
     tenantOptions.value.filter((tenant): tenant is TenantListItem & { id: string } =>

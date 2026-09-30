@@ -130,17 +130,19 @@
     </ElScrollbar>
 
     <footer class="project-assistant__composer">
-      <div v-if="chat.messages.length" class="project-assistant__quick-actions">
-        <button
-          v-for="action in quickActions"
-          :key="action.label"
-          type="button"
-          :disabled="chat.sending"
-          @click="emit('suggest', action.prompt)"
-        >
-          <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
-        </button>
-      </div>
+      <ElScrollbar v-if="chat.messages.length" class="project-assistant__quick-scrollbar">
+        <div class="project-assistant__quick-actions">
+          <button
+            v-for="action in quickActions"
+            :key="action.label"
+            type="button"
+            :disabled="chat.sending"
+            @click="emit('suggest', action.prompt)"
+          >
+            <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
+          </button>
+        </div>
+      </ElScrollbar>
       <div class="project-assistant__composer-box">
         <ElInput
           :model-value="chat.input"
@@ -609,13 +611,8 @@
     &__quick-actions {
       display: flex;
       gap: 6px;
+      width: max-content;
       padding-bottom: 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
 
       button {
         display: inline-flex;

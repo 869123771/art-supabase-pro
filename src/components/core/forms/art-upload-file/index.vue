@@ -6,7 +6,7 @@
     :tabindex="canPaste ? 0 : undefined"
     :class="{
       'is-readonly': readonly,
-      'is-disabled': disabled,
+      'is-disabled': uploadDisabled,
       'is-trigger-only': !showTip && !showFileList,
       'is-inline': inline && !showTip && !showFileList,
       'has-hover-effect': hoverEffect && !readonly
@@ -16,10 +16,10 @@
     <div
       v-if="!readonly"
       class="art-upload-file__controls"
-      :class="{ 'has-resource-mode': showResourcePicker }"
+      :class="{ 'has-resource-mode': canPickResource }"
     >
       <ElUpload
-        v-if="!resourceMode"
+        v-if="!resourceMode || !canPickResource"
         ref="uploadRef"
         v-model:file-list="fileList"
         :http-request="handleUpload"
@@ -30,21 +30,26 @@
         :multiple="multiple"
         :limit="limit"
         :accept="accept"
-        :disabled="disabled || uploading"
+        :disabled="uploadDisabled || uploading"
         :show-file-list="false"
         v-bind="$attrs"
       >
         <slot name="trigger" :uploading="uploading">
           <span
             class="art-upload-file__trigger"
-            :class="{ 'is-disabled': disabled, 'is-loading': uploading }"
+            :class="{ 'is-disabled': uploadDisabled, 'is-loading': uploading }"
+            :title="
+              missingTenantTarget && !uploadRequest ? '请先在页头选择业务所属租户' : undefined
+            "
           >
             <ArtSvgIcon
               :icon="uploading ? 'ri:loader-4-line' : 'ri:attachment-2'"
               :class="{ 'art-upload-file__spinner': uploading }"
               aria-hidden="true"
             />
-            {{ uploading ? '上传中…' : title }}
+            {{
+              uploading ? '上传中…' : missingTenantTarget && !uploadRequest ? '先选择租户' : title
+            }}
           </span>
         </slot>
       </ElUpload>
@@ -52,18 +57,18 @@
         v-else
         type="button"
         class="art-upload-file__trigger"
-        :disabled="disabled || uploading || pickerAtLimit"
+        :disabled="uploadDisabled || uploading || pickerAtLimit"
         :title="pickerAtLimit ? `最多关联 ${limit} 个文件，请先移除一个` : undefined"
         @click="resourcePickerVisible = true"
       >
         <ArtSvgIcon icon="ri:folder-open-line" aria-hidden="true" />
         从资源管理器选择
       </button>
-      <ArtTooltip v-if="showResourcePicker" :content="sourceTooltip">
+      <ArtTooltip v-if="canPickResource" :content="sourceTooltip">
         <ElCheckbox
           v-model="resourceMode"
           class="art-upload-file__source-toggle"
-          :disabled="disabled || uploading"
+          :disabled="uploadDisabled || uploading"
           aria-label="从资源管理器选择文件"
         />
       </ArtTooltip>
@@ -119,7 +124,7 @@
     </ul>
 
     <ArtResourcePicker
-      v-if="showResourcePicker && !readonly"
+      v-if="canPickResource && !readonly"
       v-model:visible="resourcePickerVisible"
       title="从资源管理器选择文件"
       :resource-tenant-id="props.resourceTenantId"
@@ -154,6 +159,7 @@
   import { isAcceptedFileType } from '@/utils/file/accept'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
 
   defineOptions({ name: 'ArtUploadFile', inheritAttrs: false })
 
@@ -214,7 +220,17 @@
   const uploading = computed(() => activeUploads.value > 0)
   const resourcePickerVisible = ref(false)
   const resourceMode = ref(false)
-  const canPaste = computed(() => !props.readonly && !props.disabled && !resourceMode.value)
+  const tenantScopeStore = useTenantScopeStore()
+  const missingTenantTarget = computed(
+    () => tenantScopeStore.isAllTenants && !props.resourceTenantId.trim()
+  )
+  const uploadDisabled = computed(
+    () => props.disabled || (missingTenantTarget.value && !props.uploadRequest)
+  )
+  const canPickResource = computed(
+    () => props.showResourcePicker && !missingTenantTarget.value && !props.disabled
+  )
+  const canPaste = computed(() => !props.readonly && !uploadDisabled.value && !resourceMode.value)
   const pickerAtLimit = computed(() => props.multiple && fileList.value.length >= props.limit)
   const sourceTooltip = computed(() =>
     resourceMode.value ? '取消勾选后上传本地文件' : '勾选后从资源管理器选择已有文件'
@@ -226,8 +242,18 @@
   }
 
   const resolvedTip = computed(
-    () => props.tip || `单个文件不超过 ${formatFileSize(props.fileSize)}`
+    () =>
+      (missingTenantTarget.value && !props.uploadRequest
+        ? '请先在页头选择业务所属租户'
+        : props.tip) || `单个文件不超过 ${formatFileSize(props.fileSize)}`
   )
+
+  watch(canPickResource, (allowed) => {
+    if (!allowed) {
+      resourceMode.value = false
+      resourcePickerVisible.value = false
+    }
+  })
 
   watch(
     () => [props.modelValue, props.fileName] as const,
@@ -256,6 +282,7 @@
   }
 
   const beforeUpload = (file: File): boolean => {
+    if (uploadDisabled.value) return false
     if (!isAcceptedFileType(file, props.accept)) {
       ElMessage.warning('文件格式不符合当前上传要求')
       return false
@@ -329,6 +356,7 @@
   }
 
   const handleResourceConfirm = (selected: Resource[]): void => {
+    if (!canPickResource.value || uploadDisabled.value) return
     const resources = selected.filter((resource) => Boolean(resource.url?.trim()))
     if (!resources.length) {
       ElMessage.warning('请选择有可访问地址的文件')

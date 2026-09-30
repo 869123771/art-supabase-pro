@@ -802,11 +802,11 @@
       max-width: 100%;
       padding: 12px;
       margin: 0;
-      overflow: auto hidden;
       font-family: Consolas, monospace;
       font-size: 11px;
       line-height: 1.6;
       color: var(--el-text-color-regular);
+      overflow-wrap: anywhere;
       white-space: pre-wrap;
       background: var(--el-fill-color-light);
       border-radius: var(--el-border-radius-base);

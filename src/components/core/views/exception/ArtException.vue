@@ -1,73 +1,75 @@
 <template>
-  <main class="exception-page" :class="`exception-page--${data.tone}`">
-    <div class="exception-page__glow exception-page__glow--top" aria-hidden="true"></div>
-    <div class="exception-page__glow exception-page__glow--bottom" aria-hidden="true"></div>
+  <ElScrollbar class="exception-scrollbar">
+    <main class="exception-page" :class="`exception-page--${data.tone}`">
+      <div class="exception-page__glow exception-page__glow--top" aria-hidden="true"></div>
+      <div class="exception-page__glow exception-page__glow--bottom" aria-hidden="true"></div>
 
-    <section class="exception-page__panel" :aria-labelledby="titleId">
-      <div class="exception-page__content">
-        <div class="exception-page__status">
-          <span class="exception-page__status-icon" aria-hidden="true">
-            <ArtSvgIcon :icon="data.icon" />
-          </span>
-          <span>{{ data.statusLabel }}</span>
+      <section class="exception-page__panel" :aria-labelledby="titleId">
+        <div class="exception-page__content">
+          <div class="exception-page__status">
+            <span class="exception-page__status-icon" aria-hidden="true">
+              <ArtSvgIcon :icon="data.icon" />
+            </span>
+            <span>{{ data.statusLabel }}</span>
+          </div>
+
+          <p class="exception-page__code" aria-hidden="true">{{ data.title }}</p>
+          <h1 :id="titleId" class="exception-page__title">{{ data.heading }}</h1>
+          <p class="exception-page__description">{{ data.desc }}</p>
+
+          <div class="exception-page__hint">
+            <ArtSvgIcon icon="ri:information-line" aria-hidden="true" />
+            <span>{{ data.hint }}</span>
+          </div>
+
+          <div class="exception-page__actions">
+            <ElButton
+              v-ripple
+              type="primary"
+              size="large"
+              :loading="primaryLoading"
+              :disabled="secondaryLoading"
+              @click="handlePrimaryClick"
+            >
+              <ArtSvgIcon v-if="!primaryLoading" :icon="data.primaryIcon" aria-hidden="true" />
+              <span>{{ data.btnText }}</span>
+            </ElButton>
+            <ElButton
+              size="large"
+              :loading="secondaryLoading"
+              :disabled="primaryLoading"
+              @click="handleSecondaryClick"
+            >
+              <ArtSvgIcon v-if="!secondaryLoading" :icon="data.secondaryIcon" aria-hidden="true" />
+              <span>{{ data.secondaryBtnText }}</span>
+            </ElButton>
+          </div>
+
+          <p class="exception-page__support">
+            <ArtSvgIcon icon="ri:customer-service-2-line" aria-hidden="true" />
+            <span>{{ data.supportText }}</span>
+          </p>
         </div>
 
-        <p class="exception-page__code" aria-hidden="true">{{ data.title }}</p>
-        <h1 :id="titleId" class="exception-page__title">{{ data.heading }}</h1>
-        <p class="exception-page__description">{{ data.desc }}</p>
-
-        <div class="exception-page__hint">
-          <ArtSvgIcon icon="ri:information-line" aria-hidden="true" />
-          <span>{{ data.hint }}</span>
+        <div class="exception-page__visual" aria-hidden="true">
+          <div class="exception-page__visual-header">
+            <span class="exception-page__visual-dot"></span>
+            <span>{{ data.visualLabel }}</span>
+            <span class="exception-page__visual-code">{{ data.title }}</span>
+          </div>
+          <div class="exception-page__illustration">
+            <span class="exception-page__code-watermark">{{ data.title }}</span>
+            <ThemeSvg :src="data.imgUrl" size="100%" />
+          </div>
+          <div class="exception-page__visual-footer">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </div>
-
-        <div class="exception-page__actions">
-          <ElButton
-            v-ripple
-            type="primary"
-            size="large"
-            :loading="primaryLoading"
-            :disabled="secondaryLoading"
-            @click="handlePrimaryClick"
-          >
-            <ArtSvgIcon v-if="!primaryLoading" :icon="data.primaryIcon" aria-hidden="true" />
-            <span>{{ data.btnText }}</span>
-          </ElButton>
-          <ElButton
-            size="large"
-            :loading="secondaryLoading"
-            :disabled="primaryLoading"
-            @click="handleSecondaryClick"
-          >
-            <ArtSvgIcon v-if="!secondaryLoading" :icon="data.secondaryIcon" aria-hidden="true" />
-            <span>{{ data.secondaryBtnText }}</span>
-          </ElButton>
-        </div>
-
-        <p class="exception-page__support">
-          <ArtSvgIcon icon="ri:customer-service-2-line" aria-hidden="true" />
-          <span>{{ data.supportText }}</span>
-        </p>
-      </div>
-
-      <div class="exception-page__visual" aria-hidden="true">
-        <div class="exception-page__visual-header">
-          <span class="exception-page__visual-dot"></span>
-          <span>{{ data.visualLabel }}</span>
-          <span class="exception-page__visual-code">{{ data.title }}</span>
-        </div>
-        <div class="exception-page__illustration">
-          <span class="exception-page__code-watermark">{{ data.title }}</span>
-          <ThemeSvg :src="data.imgUrl" size="100%" />
-        </div>
-        <div class="exception-page__visual-footer">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
+  </ElScrollbar>
 </template>
 
 <script setup lang="ts">
@@ -170,6 +172,10 @@
 </script>
 
 <style lang="scss" scoped>
+  .exception-scrollbar {
+    height: 100dvh;
+  }
+
   .exception-page {
     --exception-accent: var(--theme-color);
     --exception-soft: color-mix(in srgb, var(--exception-accent) 9%, var(--default-box-color));
@@ -501,7 +507,6 @@
 
     @media (width <= 560px) {
       padding: 12px;
-      overflow: auto;
 
       &__panel {
         border-radius: var(--custom-radius);

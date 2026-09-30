@@ -33,11 +33,13 @@
         <strong>{{ activeSectionMeta.title }}</strong>
         <small>{{ activeSectionMeta.description }}</small>
       </div>
-      <ElSegmented
-        v-model="activeSection"
-        :options="sectionOptions"
-        aria-label="AI 运行中心工作区"
-      />
+      <ElScrollbar class="ai-operations__workspace-nav-scrollbar">
+        <ElSegmented
+          v-model="activeSection"
+          :options="sectionOptions"
+          aria-label="AI 运行中心工作区"
+        />
+      </ElScrollbar>
     </section>
 
     <div
@@ -939,8 +941,9 @@
         }
       }
 
-      :deep(.el-segmented) {
+      &-scrollbar {
         flex: 0 0 auto;
+        max-width: 100%;
       }
     }
 
@@ -1478,7 +1481,7 @@
       &__workspace-nav {
         align-items: flex-start;
 
-        :deep(.el-segmented) {
+        &-scrollbar {
           max-width: 68%;
         }
       }
@@ -1489,10 +1492,13 @@
         position: static;
         flex-direction: column;
 
-        :deep(.el-segmented) {
+        &-scrollbar {
           width: 100%;
           max-width: none;
-          overflow-x: auto;
+        }
+
+        :deep(.el-segmented) {
+          width: max-content;
         }
       }
 

@@ -15,12 +15,13 @@
  * - 手机号：1开头，第二位3-9，共11位
  * - 普通密码：6-20位，必须包含字母和数字
  *
- * @module utils/validation/formValidator
+ * @module utils/form/validator
  */
 
 import type { FormItemRule } from 'element-plus'
-import { debounce } from 'lodash-es'
-import { checkUniqueField } from '@/api/unique-field'
+import { isFieldValueTaken } from '@/api/unique-field'
+import { createLatestUniqueValidation } from './latest-unique-validation'
+import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
 /**
  * 验证手机号码（中国大陆）
@@ -108,33 +109,19 @@ export function uniqueValidator(options: {
 }): FormItemRule['validator'] {
   const { table, field, getExcludeId, extraWhere, message = '该值已存在', delay = 300 } = options
 
-  const debouncedCheck = debounce(async (value: string, callback: (error?: Error) => void) => {
-    try {
-      const { total } = await checkUniqueField({
+  const validateLatest = createLatestUniqueValidation({
+    delay,
+    duplicateMessage: message,
+    errorMessage: (error) => getFriendlySupabaseErrorMessage(error, '校验失败，请稍后重试'),
+    check: (value) =>
+      isFieldValueTaken({
         table,
         field,
         value,
         excludeId: getExcludeId?.(),
         extraWhere: extraWhere?.()
       })
+  })
 
-      if (total && total > 0) {
-        callback(new Error(message))
-      } else {
-        callback()
-      }
-    } catch (error: unknown) {
-      callback(new Error(getFriendlySupabaseErrorMessage(error, '校验失败，请稍后重试')))
-    }
-  }, delay)
-
-  return (_rule, value, callback) => {
-    if (!value) {
-      callback()
-      return
-    }
-
-    debouncedCheck(value, callback)
-  }
+  return (_rule, value, callback) => validateLatest(value, callback)
 }
-import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'

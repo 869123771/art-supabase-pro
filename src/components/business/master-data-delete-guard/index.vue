@@ -10,7 +10,7 @@
       <div class="master-delete-guard__lead">
         <div>
           <p>
-            {{ resourceTitle }}仍被以下业务资料引用。<template v-if="currentOptions?.resourceType"
+            {{ resourceTitle }}仍被以下业务资料引用。<template v-if="safeRecordCount"
               >可勾选安全项直接清理，业务历史请进入对应页面处理。</template
             ><template v-else>请核对关联记录，并到对应业务页面处理后再删除。</template>
           </p>
@@ -106,7 +106,9 @@
         <span v-if="currentOptions?.resourceType"
           >处理页面会携带主数据 ID 和关联记录 ID，并在打开后自动过滤。</span
         >
-        <span v-else>可根据关联记录编号前往对应页面核对，处理完成后再尝试删除。</span>
+        <span v-else
+          >请核对关联记录编号；可清理的旧草稿需明确勾选，其他记录请到对应业务页面处理。</span
+        >
       </div>
     </div>
 
@@ -135,7 +137,9 @@
             :disabled="!selectedRecordIds.length"
             @click="handleCleanup"
           >
-            清理选中项（{{ selectedRecordIds.length }}）
+            {{ currentOptions?.cleanup?.actionLabel ?? '清理选中项' }}（{{
+              selectedRecordIds.length
+            }}）
           </ElButton>
         </div>
       </div>
@@ -183,6 +187,13 @@
     resources: MasterDataDeleteResource[]
     resolveResources?: () => Promise<MasterDataDeleteResource[]>
     dependencyMeta?: Record<string, MasterDataDeleteDependencyMeta>
+    cleanup?: CustomDependencyCleanup
+  }
+
+  interface CustomDependencyCleanup {
+    actionLabel: string
+    confirmMessage: (count: number) => string
+    run: (records: MasterDataDeleteDependencyDetail[]) => Promise<number>
   }
 
   export type MasterDataDeleteGuardOpenOptions = MasterDataDeleteGuardBaseOptions &
@@ -458,6 +469,9 @@
   }
 
   const resourceIds = computed(() => currentOptions.value?.resources.map((item) => item.id) ?? [])
+  const canCleanup = computed(() =>
+    Boolean(currentOptions.value?.resourceType || currentOptions.value?.cleanup)
+  )
   const resourceTitle = computed(() => {
     const options = currentOptions.value
     if (!options) return '当前资料'
@@ -467,9 +481,7 @@
     return `选中的 ${options.resources.length} 个${options.resourceLabel}`
   })
   const safeRecordCount = computed(
-    () =>
-      dependencies.value.filter((item) => item.cleanupAllowed && currentOptions.value?.resourceType)
-        .length
+    () => dependencies.value.filter((item) => item.cleanupAllowed && canCleanup.value).length
   )
   const dependencyGroups = computed<DependencyGroup[]>(() => {
     const groups = groupBy(dependencies.value, (item) => item.dependencyCode)
@@ -621,32 +633,37 @@
 
   const handleCleanup = async (): Promise<void> => {
     const options = currentOptions.value
-    const selected = dependencies.value.filter((item) =>
-      selectedRecordIds.value.includes(item.recordId)
+    const selected = dependencies.value.filter(
+      (item) => item.cleanupAllowed && selectedRecordIds.value.includes(item.recordId)
     )
-    if (!options?.resourceType || !selected.length || cleanupLoading.value) return
+    if (!options || !canCleanup.value || !selected.length || cleanupLoading.value) return
     try {
       await confirmAction(
-        `将永久清理选中的 ${selected.length} 项配置或终态记录。运单、合同和财务历史不会被删除，是否继续？`,
+        options.cleanup?.confirmMessage(selected.length) ??
+          `将永久清理选中的 ${selected.length} 项配置或终态记录。运单、合同和财务历史不会被删除，是否继续？`,
         '清理关联项确认',
         {
           type: 'warning',
-          confirmButtonText: `确认清理 ${selected.length} 项`,
+          confirmButtonText: options.cleanup?.actionLabel ?? `确认清理 ${selected.length} 项`,
           cancelButtonText: '取消',
           confirmButtonType: 'danger',
           closeOnClickModal: false
         }
       )
       cleanupLoading.value = true
-      const grouped = groupBy(selected, (item) => item.dependencyCode)
       let deletedCount = 0
-      for (const [dependencyCode, records] of Object.entries(grouped)) {
-        deletedCount += await cleanupMasterDataDeleteDependencies({
-          resourceType: options.resourceType,
-          resourceIds: resourceIds.value,
-          dependencyCode,
-          recordIds: records.map((item) => item.recordId)
-        })
+      if (options.cleanup) {
+        deletedCount = await options.cleanup.run(selected)
+      } else if (options.resourceType) {
+        const grouped = groupBy(selected, (item) => item.dependencyCode)
+        for (const [dependencyCode, records] of Object.entries(grouped)) {
+          deletedCount += await cleanupMasterDataDeleteDependencies({
+            resourceType: options.resourceType,
+            resourceIds: resourceIds.value,
+            dependencyCode,
+            recordIds: records.map((item) => item.recordId)
+          })
+        }
       }
       await loadDependencies()
       if (!dependencies.value.length) {
@@ -658,6 +675,14 @@
       ElMessage.success(`已清理 ${deletedCount} 项，其余业务历史仍需保留或处理`)
     } catch (error) {
       if (error !== 'cancel' && error !== 'close') {
+        try {
+          await loadDependencies()
+        } catch (checkError) {
+          inspectionError.value = getFriendlySupabaseErrorMessage(
+            checkError,
+            '关联重新检查失败，请稍后重试'
+          )
+        }
         ElMessage.error(getFriendlySupabaseErrorMessage(error, '清理失败，请稍后重试'))
       }
     } finally {

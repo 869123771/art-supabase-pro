@@ -147,7 +147,7 @@
             </div>
           </template>
 
-          <div class="message-container">
+          <ElScrollbar class="message-container" max-height="24rem">
             <div v-for="(message, index) in messageList" :key="index" class="message-item">
               <div class="message-header">
                 <ElTag size="small" :type="message.type === 'received' ? 'success' : 'info'">
@@ -164,7 +164,7 @@
               :visual-size="88"
               size="compact"
             />
-          </div>
+          </ElScrollbar>
         </ElCard>
       </ElCol>
     </ElRow>
@@ -178,7 +178,7 @@
         </div>
       </template>
 
-      <div class="log-container">
+      <ElScrollbar class="log-container" max-height="16rem">
         <ElAlert
           v-for="(log, index) in logList"
           :key="index"
@@ -200,7 +200,7 @@
           :visual-size="88"
           size="compact"
         />
-      </div>
+      </ElScrollbar>
     </ElCard>
   </div>
 </template>
@@ -492,7 +492,9 @@
   @reference '@styles/core/tailwind.css';
 
   .message-container {
-    @apply max-h-96 overflow-y-auto space-y-3;
+    :deep(.el-scrollbar__view) {
+      @apply space-y-3;
+    }
   }
 
   .message-item {
@@ -509,25 +511,5 @@
 
   .message-content {
     @apply text-sm text-gray-800 dark:text-gray-200 break-words font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded;
-  }
-
-  .log-container {
-    @apply max-h-64 overflow-y-auto;
-  }
-
-  /* 滚动条样式 */
-  .message-container::-webkit-scrollbar,
-  .log-container::-webkit-scrollbar {
-    @apply w-4;
-  }
-
-  .message-container::-webkit-scrollbar-track,
-  .log-container::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded;
-  }
-
-  .message-container::-webkit-scrollbar-thumb,
-  .log-container::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded hover:bg-gray-400;
   }
 </style>

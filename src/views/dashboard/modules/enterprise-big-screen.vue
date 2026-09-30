@@ -31,24 +31,28 @@
             </div>
 
             <nav class="screen-nav" aria-label="大屏场景">
-              <RouterLink
-                v-for="item in screenNavItems"
-                :key="item.path"
-                :to="item.path"
-                :aria-current="item.mode === mode ? 'page' : undefined"
-                :class="{ 'is-active': item.mode === mode }"
-              >
-                <ArtSvgIcon :icon="item.icon" />
-                {{ item.label }}
-              </RouterLink>
-              <RouterLink to="/dashboard/asset-maintenance-command">
-                <ArtSvgIcon icon="ri:settings-3-line" />
-                设备运维
-              </RouterLink>
-              <RouterLink to="/tms/in-transit-monitor">
-                <ArtSvgIcon icon="ri:route-line" />
-                在途监控
-              </RouterLink>
+              <ElScrollbar class="screen-nav__scrollbar">
+                <div class="screen-nav__items">
+                  <RouterLink
+                    v-for="item in screenNavItems"
+                    :key="item.path"
+                    :to="item.path"
+                    :aria-current="item.mode === mode ? 'page' : undefined"
+                    :class="{ 'is-active': item.mode === mode }"
+                  >
+                    <ArtSvgIcon :icon="item.icon" />
+                    {{ item.label }}
+                  </RouterLink>
+                  <RouterLink to="/dashboard/asset-maintenance-command">
+                    <ArtSvgIcon icon="ri:settings-3-line" />
+                    设备运维
+                  </RouterLink>
+                  <RouterLink to="/tms/in-transit-monitor">
+                    <ArtSvgIcon icon="ri:route-line" />
+                    在途监控
+                  </RouterLink>
+                </div>
+              </ElScrollbar>
             </nav>
 
             <div class="command-header__status">
@@ -190,16 +194,18 @@
                         ><span class="risk-count">{{ totalRiskCount }}</span></template
                       >
                     </ScreenPanelHeading>
-                    <div class="risk-list">
-                      <div v-for="item in visibleRiskItems" :key="item.label" class="risk-item">
-                        <i :class="`is-${item.tone}`" />
-                        <div
-                          ><strong>{{ item.label }}</strong
-                          ><span>{{ item.description }}</span></div
-                        >
-                        <b>{{ item.value }}</b>
+                    <ElScrollbar class="screen-list-scrollbar">
+                      <div class="risk-list">
+                        <div v-for="item in visibleRiskItems" :key="item.label" class="risk-item">
+                          <i :class="`is-${item.tone}`" />
+                          <div
+                            ><strong>{{ item.label }}</strong
+                            ><span>{{ item.description }}</span></div
+                          >
+                          <b>{{ item.value }}</b>
+                        </div>
                       </div>
-                    </div>
+                    </ElScrollbar>
                   </article>
                 </div>
               </section>
@@ -215,30 +221,32 @@
                       ></template
                     >
                   </ScreenPanelHeading>
-                  <div v-if="activeOrders.length" class="dispatch-list">
-                    <div
-                      v-for="(order, index) in activeOrders"
-                      :key="order.orderNo"
-                      class="dispatch-item"
-                    >
-                      <span class="dispatch-item__index">{{
-                        String(index + 1).padStart(2, '0')
-                      }}</span>
-                      <div class="dispatch-item__route">
-                        <strong>{{ order.originStation || '待补充起点' }}</strong>
-                        <i><b /></i>
-                        <strong>{{ order.destinationStation || '待补充终点' }}</strong>
-                        <span
-                          >{{ order.dispatchPlateNo || '待派车' }} ·
-                          {{ order.dispatchDriverName || '待派司机' }}</span
-                        >
-                      </div>
-                      <div class="dispatch-item__eta">
-                        <strong>{{ formatEta(order.plannedArrivalTime) }}</strong>
-                        <span>{{ order.orderNo }}</span>
+                  <ElScrollbar v-if="activeOrders.length" class="screen-list-scrollbar">
+                    <div class="dispatch-list">
+                      <div
+                        v-for="(order, index) in activeOrders"
+                        :key="order.orderNo"
+                        class="dispatch-item"
+                      >
+                        <span class="dispatch-item__index">{{
+                          String(index + 1).padStart(2, '0')
+                        }}</span>
+                        <div class="dispatch-item__route">
+                          <strong>{{ order.originStation || '待补充起点' }}</strong>
+                          <i><b /></i>
+                          <strong>{{ order.destinationStation || '待补充终点' }}</strong>
+                          <span
+                            >{{ order.dispatchPlateNo || '待派车' }} ·
+                            {{ order.dispatchDriverName || '待派司机' }}</span
+                          >
+                        </div>
+                        <div class="dispatch-item__eta">
+                          <strong>{{ formatEta(order.plannedArrivalTime) }}</strong>
+                          <span>{{ order.orderNo }}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </ElScrollbar>
                   <ArtEmptyState
                     v-else
                     class="screen-empty-state"
@@ -274,16 +282,18 @@
                       <span class="risk-count">{{ totalRiskCount }} 项</span>
                     </template>
                   </ScreenPanelHeading>
-                  <div class="risk-list risk-list--compact">
-                    <div v-for="item in riskItems" :key="item.label" class="risk-item">
-                      <i :class="`is-${item.tone}`" />
-                      <div
-                        ><strong>{{ item.label }}</strong
-                        ><span>{{ item.description }}</span></div
-                      >
-                      <b>{{ item.value }}</b>
+                  <ElScrollbar class="screen-list-scrollbar">
+                    <div class="risk-list risk-list--compact">
+                      <div v-for="item in riskItems" :key="item.label" class="risk-item">
+                        <i :class="`is-${item.tone}`" />
+                        <div
+                          ><strong>{{ item.label }}</strong
+                          ><span>{{ item.description }}</span></div
+                        >
+                        <b>{{ item.value }}</b>
+                      </div>
                     </div>
-                  </div>
+                  </ElScrollbar>
                   <div class="resource-strip">
                     <div
                       ><span>车辆在线</span

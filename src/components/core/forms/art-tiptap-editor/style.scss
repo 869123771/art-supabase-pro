@@ -59,26 +59,24 @@ $editor-radius: 10px;
   --tt-shadow: 0 16px 48px rgb(0 0 0 / 50%), 0 6px 12px rgb(0 0 0 / 22%);
 }
 
-.art-tiptap-editor__toolbar {
+.art-tiptap-editor__toolbar-scrollbar {
   position: sticky;
   top: 0;
   z-index: 8;
+  background: color-mix(in srgb, var(--tt-bg) 97%, transparent);
+  border-bottom: 1px solid var(--tt-border);
+  backdrop-filter: blur(12px);
+}
+
+.art-tiptap-editor__toolbar {
   display: flex;
   flex-wrap: nowrap;
   gap: 3px;
   align-items: center;
+  width: max-content;
+  min-width: 100%;
   min-height: 46px;
   padding: 6px 8px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  background: color-mix(in srgb, var(--tt-bg) 97%, transparent);
-  border-bottom: 1px solid var(--tt-border);
-  backdrop-filter: blur(12px);
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .art-tiptap-editor__tool-group {
@@ -179,28 +177,25 @@ $editor-radius: 10px;
 }
 
 .art-tiptap-editor__table-toolbar {
-  display: flex;
-  gap: 4px;
-  align-items: center;
   max-width: min(92vw, 720px);
   padding: 4px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
   color: var(--tt-text);
-  scrollbar-width: none;
   background: var(--tt-bg);
   border: 1px solid var(--tt-border);
   border-radius: 13px;
   box-shadow: var(--tt-shadow);
 
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
   .art-tiptap-editor__tool-group + .art-tiptap-editor__tool-group {
     padding-left: 5px;
     margin-left: 1px;
   }
+}
+
+.art-tiptap-editor__table-toolbar-content {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: max-content;
 }
 
 .art-tiptap-editor.has-open-popover .art-tiptap-editor__table-toolbar,
@@ -746,8 +741,9 @@ $editor-radius: 10px;
 
   pre {
     padding: 14px 16px;
-    overflow-x: auto;
     color: var(--tt-text);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
     background: var(--tt-surface);
     border-radius: 8px;
 
@@ -854,21 +850,21 @@ $editor-radius: 10px;
 
   .tableWrapper {
     margin: 1.2em 0;
-    overflow-x: auto;
   }
 
   table {
     width: 100%;
-    min-width: 420px;
+    min-width: 0;
     table-layout: fixed;
     border-collapse: collapse;
 
     th,
     td {
       position: relative;
-      min-width: 72px;
+      min-width: 0;
       padding: 9px 11px;
       vertical-align: top;
+      overflow-wrap: anywhere;
       border: 1px solid var(--tt-border-strong);
 
       > * {

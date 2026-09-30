@@ -38,6 +38,15 @@ const ORDER_EXTRACTION_DEFAULT_PROMPT = [
   '只返回包含 summary、confidence、fieldConfidence、missingFields、warnings、order 的 JSON 对象。'
 ].join('\n')
 
+const ORDER_CONFIG_EXTRACTION_RULES = [
+  'orderConfig 只提取原文明确提及的运输配置。loadType、billingMode、billingUnit、cargoCategory、packaging、transportRequirements、trackingMethod 按 allowedOptions 的中文标签匹配 value；无法匹配用 null。',
+  'selfPickup、insured、allowConsolidation 仅在原文明确肯定或否定时返回布尔值；truckCount 只在明确给出整车数量时填写。车型和车长不得猜测。',
+  '运输要求是 allowedOptions 中匹配到的 value 数组；未提及的配置字段用 null，不得套用默认值。'
+].join('\n')
+
+const ORDER_CONFIG_EXAMPLE_RULE =
+  'State whether the load is less-than-truckload or full-truckload, plus billing mode, cargo category, packaging, and any explicit handling or tracking requirements.'
+
 interface AiOption {
   label: string
   value: string
@@ -57,6 +66,12 @@ interface AiOrderRequest {
     paymentMethods?: AiOption[]
     transportModes?: AiOption[]
     cargoUnits?: AiOption[]
+    loadTypes?: AiOption[]
+    billingModes?: AiOption[]
+    cargoCategories?: AiOption[]
+    packagingOptions?: AiOption[]
+    transportRequirements?: AiOption[]
+    trackingMethods?: AiOption[]
   }
 }
 
@@ -117,6 +132,16 @@ function numberValue(value: unknown): number | null {
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : null
 }
 
+function temperatureValue(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const normalized = Number(value)
+  return Number.isFinite(normalized) && normalized >= -80 && normalized <= 80 ? normalized : null
+}
+
+function booleanValue(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null
+}
+
 function integerValue(value: unknown, fallback: number, min: number, max: number): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
@@ -169,6 +194,41 @@ function normalizeCargoItems(value: unknown, cargoUnits: AiOption[] | undefined)
       (item) =>
         item.cargoName || item.packageType || item.quantity || item.weightKg || item.volumeM3
     )
+}
+
+function normalizeOrderConfig(value: unknown, options: AiOrderRequest['options']) {
+  if (!isRecord(value)) return null
+  const truckCount = value.truckCount
+  const normalized = {
+    loadType: normalizeOption(value.loadType, options?.loadTypes),
+    allowConsolidation: booleanValue(value.allowConsolidation),
+    truckCount:
+      typeof truckCount === 'number' &&
+      Number.isInteger(truckCount) &&
+      truckCount >= 1 &&
+      truckCount <= 10
+        ? truckCount
+        : null,
+    billingMode: normalizeOption(value.billingMode, options?.billingModes),
+    billingUnit: normalizeOption(value.billingUnit, options?.cargoUnits),
+    cargoCategory: normalizeOption(value.cargoCategory, options?.cargoCategories),
+    tempMinC: temperatureValue(value.tempMinC),
+    tempMaxC: temperatureValue(value.tempMaxC),
+    packaging: normalizeOption(value.packaging, options?.packagingOptions),
+    selfPickup: booleanValue(value.selfPickup),
+    insured: booleanValue(value.insured),
+    transportRequirements: Array.isArray(value.transportRequirements)
+      ? value.transportRequirements
+          .map((item) => normalizeOption(item, options?.transportRequirements))
+          .filter((item): item is string => Boolean(item))
+      : null,
+    trackingMethod: normalizeOption(value.trackingMethod, options?.trackingMethods),
+    trackingNumber: stringValue(value.trackingNumber),
+    remark: stringValue(value.remark)
+  }
+  return Object.fromEntries(
+    Object.entries(normalized).filter(([, item]) => item !== null)
+  ) as typeof normalized
 }
 
 function getRequiredMissingFields(order: {
@@ -255,7 +315,8 @@ function normalizeResponse(payload: Record<string, unknown>, options: AiOrderReq
     codAmount: numberValue(rawOrder.codAmount),
     handlingFee: numberValue(rawOrder.handlingFee),
     transportMode: normalizeOption(rawOrder.transportMode, options?.transportModes),
-    orderRemark: stringValue(rawOrder.orderRemark)
+    orderRemark: stringValue(rawOrder.orderRemark),
+    orderConfig: normalizeOrderConfig(rawOrder.orderConfig, options)
   }
 
   return {
@@ -298,11 +359,14 @@ function getProviderModel(baseUrl: string, hasImages: boolean): string {
   if (hasImages) {
     return (
       Deno.env.get('AI_ORDER_VISION_MODEL') ||
-      (isNvidia ? 'meta/llama-3.2-11b-vision-instruct' : sharedModel)
+      (isNvidia ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' : sharedModel)
     )
   }
 
-  return Deno.env.get('AI_ORDER_MODEL') || (isNvidia ? 'meta/llama-3.1-8b-instruct' : sharedModel)
+  return (
+    Deno.env.get('AI_ORDER_MODEL') ||
+    (isNvidia ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' : sharedModel)
+  )
 }
 
 async function fetchWithTimeout(
@@ -506,7 +570,11 @@ Deno.serve(async (req) => {
     const compatibleModel =
       imageUrls.length > 0 ? runtimeConfig.visionModel || runtimeConfig.model : runtimeConfig.model
     const providerEndpoints = resolveAiProviderEndpoints(
-      { model: compatibleModel, fallbackModel: runtimeConfig.fallbackModel },
+      {
+        provider: runtimeConfig.provider,
+        model: compatibleModel,
+        fallbackModel: runtimeConfig.fallbackModel
+      },
       {
         openAiModel:
           imageUrls.length > 0
@@ -592,71 +660,75 @@ Deno.serve(async (req) => {
     let userContent: unknown
 
     if (action === 'generate_example') {
-      systemPrompt = publishedPrompt.content
+      systemPrompt = `${publishedPrompt.content}\n${ORDER_CONFIG_EXAMPLE_RULE}`
       userContent = JSON.stringify({ allowedOptions: body.options ?? {} }, null, 2)
     } else {
-      systemPrompt = publishedPrompt.content
-
-      const expectedShape = {
-        summary: '一句中文摘要',
-        confidence: 0.0,
-        fieldConfidence: {
-          originStationName: 0.0,
-          destinationStationName: 0.0,
-          shippingContactName: 0.0,
-          receivingContactName: 0.0,
-          paymentMethod: 0.0
-        },
-        missingFields: ['缺失字段中文名'],
-        warnings: ['需要人工确认的事项'],
-        order: {
-          originStationName: null,
-          destinationStationName: null,
-          transferStationName: null,
-          deliveryMethod: null,
-          shippingCustomerName: null,
-          shippingContactName: null,
-          shippingContactPhone: null,
-          shippingAddressDetail: null,
-          receivingCustomerName: null,
-          receivingContactName: null,
-          receivingContactPhone: null,
-          receivingAddressDetail: null,
-          cargoItems: [
-            {
-              cargoName: null,
-              packageType: null,
-              unit: null,
-              quantity: null,
-              weightKg: null,
-              volumeM3: null
-            }
-          ],
-          transportFee: null,
-          deliveryFee: null,
-          unloadingFee: null,
-          collectPaymentFee: null,
-          transferFee: null,
-          declaredValue: null,
-          insuranceFee: null,
-          packageFee: null,
-          otherFee: null,
-          paymentMethod: null,
-          cashAmount: null,
-          collectAmount: null,
-          monthlyAmount: null,
-          codAmount: null,
-          handlingFee: null,
-          transportMode: null,
-          orderRemark: null
-        }
-      }
+      systemPrompt = `${publishedPrompt.content}\n${ORDER_CONFIG_EXTRACTION_RULES}`
 
       const inputText = JSON.stringify(
         {
-          sourceText: prompt,
+          outputKeys: [
+            'summary',
+            'confidence',
+            'fieldConfidence',
+            'missingFields',
+            'warnings',
+            'order'
+          ],
+          orderFields: [
+            'originStationName',
+            'destinationStationName',
+            'transferStationName',
+            'deliveryMethod',
+            'shippingCustomerName',
+            'shippingContactName',
+            'shippingContactPhone',
+            'shippingAddressDetail',
+            'receivingCustomerName',
+            'receivingContactName',
+            'receivingContactPhone',
+            'receivingAddressDetail',
+            'cargoItems',
+            'transportFee',
+            'deliveryFee',
+            'unloadingFee',
+            'collectPaymentFee',
+            'transferFee',
+            'declaredValue',
+            'insuranceFee',
+            'packageFee',
+            'otherFee',
+            'paymentMethod',
+            'cashAmount',
+            'collectAmount',
+            'monthlyAmount',
+            'codAmount',
+            'handlingFee',
+            'transportMode',
+            'orderRemark',
+            'orderConfig'
+          ],
+          cargoItemFields: ['cargoName', 'packageType', 'unit', 'quantity', 'weightKg', 'volumeM3'],
+          orderConfigFields: [
+            'loadType',
+            'allowConsolidation',
+            'truckCount',
+            'billingMode',
+            'billingUnit',
+            'cargoCategory',
+            'tempMinC',
+            'tempMaxC',
+            'packaging',
+            'selfPickup',
+            'insured',
+            'transportRequirements',
+            'trackingMethod',
+            'trackingNumber',
+            'remark'
+          ],
           allowedOptions: body.options ?? {},
-          expectedShape
+          sourceText: prompt,
+          task: '从 sourceText 提取实际值并生成完整 JSON。不要原样复制字段列表；明确出现的信息必须填写，未提及的字段可省略或设为 null。'
         },
         null,
         2
@@ -708,6 +780,21 @@ Deno.serve(async (req) => {
     ): Promise<{ response: Response; errorText: string }> => {
       resolvedModel = modelName
       requestBody.model = modelName
+      if (
+        endpoint.id === 'openai_compatible' &&
+        /integrate\.api\.nvidia\.com/i.test(endpoint.baseUrl) &&
+        modelName === 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
+      ) {
+        requestBody.temperature = 0.2
+        requestBody.top_k = 1
+        requestBody.chat_template_kwargs = { enable_thinking: false }
+        delete requestBody.response_format
+      } else {
+        requestBody.temperature = runtimeConfig.temperature
+        delete requestBody.top_k
+        delete requestBody.chat_template_kwargs
+        requestBody.response_format = { type: 'json_object' }
+      }
       let lastResponse = await requestProvider(endpoint)
       let errorText = ''
 
@@ -747,25 +834,27 @@ Deno.serve(async (req) => {
         activeEndpoint = endpoint
         break
       }
-      console.error(
-        'ai-order-assistant provider attempt failed',
-        endpoint.label,
-        endpointResult.response.status,
-        endpointResult.errorText
-      )
+      console.error('ai-order-assistant provider attempt failed', {
+        provider: endpoint.label,
+        model: resolvedModel,
+        status: endpointResult.response.status
+      })
     }
 
     const providerResponse = providerResult?.response
     if (!providerResponse) throw new Error('AI provider chain produced no response')
     if (!providerResponse.ok) {
-      const providerError = providerResult?.errorText || 'AI provider request failed'
-      console.error(
-        'ai-order-assistant provider retry error',
-        providerResponse.status,
-        providerError
+      console.error('ai-order-assistant provider request failed', {
+        model: resolvedModel,
+        status: providerResponse.status
+      })
+      await finishRun('failed', undefined, 'provider_error', `HTTP ${providerResponse.status}`)
+      return json(
+        providerResponse.status === 410
+          ? { code: 'model_unavailable', message: '当前 AI 模型已下线，请联系管理员切换模型' }
+          : { code: 'provider_error', message: 'AI 服务暂不可用，请稍后重试' },
+        502
       )
-      await finishRun('failed', undefined, 'provider_error', providerError)
-      return json({ code: 'provider_error', message: 'AI provider request failed' }, 502)
     }
 
     const providerPayload = await providerResponse.json()
@@ -885,7 +974,7 @@ Deno.serve(async (req) => {
       return json(
         {
           code: 'provider_timeout',
-          message: 'AI 服务响应超时，请稍后重试或更换更快的模型'
+          message: 'AI 响应超时，请重试；如持续失败请联系管理员调整模型'
         },
         504
       )
@@ -901,7 +990,7 @@ Deno.serve(async (req) => {
     return json(
       {
         code: 'server_error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: 'AI 识别服务暂不可用，请稍后重试'
       },
       500
     )

@@ -40,7 +40,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
-  import type { FormRules } from 'element-plus'
+  import { ElMessage, type FormRules } from 'element-plus'
   import { assignUserRoles, fetchGetEnableRoleList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
 
@@ -53,7 +53,7 @@
 
   const emit = defineEmits<Emits>()
   const userStore = useUserStore()
-  const { getUserInfo, isSuper } = storeToRefs(userStore)
+  const { getUserInfo, isPlatformSuper } = storeToRefs(userStore)
   const dialogRef = ref<ArtDialogExpose<UserListItem>>()
   const formRef = ref()
   const rules: FormRules = {}
@@ -66,7 +66,7 @@
   const userContext = shallowRef<UserListItem>()
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
   const roleQueryTenantId = computed(() =>
-    isSuper.value ? formData.value.tenantId : currentTenantId.value
+    isPlatformSuper.value ? formData.value.tenantId : currentTenantId.value
   )
   const selectedRoleCount = computed(() => formData.value.userRoles?.length ?? 0)
   const userAvatarFallback = computed(() => {
@@ -115,11 +115,16 @@
     }
 
     try {
-      const params = { ...formData.value } as UserListItem
-      if (!isSuper.value) {
-        params.tenantId = currentTenantId.value
+      const tenantId = roleQueryTenantId.value
+      if (!formData.value.id || !tenantId) {
+        ElMessage.warning('用户或所属租户信息缺失，请关闭后重新打开')
+        return false
       }
-      await assignUserRoles(params)
+      await assignUserRoles({
+        id: formData.value.id,
+        tenantId,
+        userRoles: [...(formData.value.userRoles ?? [])]
+      })
       emit('success')
       return true
     } catch {
@@ -134,7 +139,7 @@
     formData.value = {
       id,
       userRoles,
-      tenantId: isSuper.value ? tenantId : currentTenantId.value
+      tenantId: isPlatformSuper.value ? tenantId : currentTenantId.value
     }
     await dialogRef.value?.handleOpen(data, {
       title: '分配用户角色',

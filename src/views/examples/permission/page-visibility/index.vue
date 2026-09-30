@@ -59,7 +59,7 @@
                   字段定义，前端会根据用户接口所拥有的角色对路由和菜单进行过滤与控制
                 </p>
                 <pre
-                  class="p-4 mt-3 mb-0 overflow-x-auto font-mono text-xs leading-[1.5] bg-g-200 border-full-d rounded-md"
+                  class="p-4 mt-3 mb-0 font-mono text-xs leading-[1.5] bg-g-200 border-full-d rounded-md whitespace-pre-wrap break-all"
                 ><code class="">{
   path: 'page-visibility',
   name: 'PermissionPageVisibility',
@@ -102,7 +102,7 @@
                   >接口地址：src/api/menuApi.ts getMenuList</p
                 >
                 <pre
-                  class="p-4 mt-3 mb-0 overflow-x-auto font-mono text-xs leading-[1.5] bg-g-200 border-full-d rounded-md"
+                  class="p-4 mt-3 mb-0 font-mono text-xs leading-[1.5] bg-g-200 border-full-d rounded-md whitespace-pre-wrap break-all"
                 ><code class="">
 {
   "code": 200,

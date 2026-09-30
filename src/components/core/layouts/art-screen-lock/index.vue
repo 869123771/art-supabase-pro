@@ -81,66 +81,68 @@
     </ElDialog>
 
     <!-- 解锁界面 -->
-    <main v-else class="unlock-content">
-      <div class="unlock-content__brand">
-        <ArtLogo :size="32" />
-        <span>{{ brandName }}</span>
-      </div>
-
-      <section class="unlock-panel" aria-labelledby="unlock-title">
-        <span class="lock-symbol lock-symbol--large" aria-hidden="true">
-          <ElIcon><Lock /></ElIcon>
-        </span>
-        <h1 id="unlock-title">{{ $t('lockScreen.unlock.title') }}</h1>
-        <p class="unlock-panel__description">{{ $t('lockScreen.unlock.description') }}</p>
-
-        <div class="lock-identity">
-          <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
-          <div class="lock-identity__text">
-            <span>{{ $t('lockScreen.currentAccount') }}</span>
-            <strong :title="displayName">{{ displayName }}</strong>
-          </div>
+    <ElScrollbar v-else class="unlock-scrollbar">
+      <main class="unlock-content">
+        <div class="unlock-content__brand">
+          <ArtLogo :size="32" />
+          <span>{{ brandName }}</span>
         </div>
 
-        <ArtForm
-          ref="unlockFormRef"
-          v-model="unlockForm"
-          custom-layout
-          root-class="lock-screen-form"
-          :show-reset="false"
-          :show-submit="false"
-          :rules="rules"
-          @submit="handleUnlock"
-        >
-          <ElFormItem
-            prop="password"
-            for="unlock-screen-password"
-            :label="$t('lockScreen.unlock.passwordLabel')"
-            class="lock-field"
+        <section class="unlock-panel" aria-labelledby="unlock-title">
+          <span class="lock-symbol lock-symbol--large" aria-hidden="true">
+            <ElIcon><Lock /></ElIcon>
+          </span>
+          <h1 id="unlock-title">{{ $t('lockScreen.unlock.title') }}</h1>
+          <p class="unlock-panel__description">{{ $t('lockScreen.unlock.description') }}</p>
+
+          <div class="lock-identity">
+            <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
+            <div class="lock-identity__text">
+              <span>{{ $t('lockScreen.currentAccount') }}</span>
+              <strong :title="displayName">{{ displayName }}</strong>
+            </div>
+          </div>
+
+          <ArtForm
+            ref="unlockFormRef"
+            v-model="unlockForm"
+            custom-layout
+            root-class="lock-screen-form"
+            :show-reset="false"
+            :show-submit="false"
+            :rules="rules"
+            @submit="handleUnlock"
           >
-            <ElInput
-              id="unlock-screen-password"
-              ref="unlockInputRef"
-              v-model="unlockForm.password"
-              class="lock-input"
-              type="password"
-              name="unlock-screen-password"
-              autocomplete="new-password"
-              show-password
-              :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
-              @input="unlockError = ''"
-            />
-          </ElFormItem>
-          <p v-if="unlockError" class="unlock-error" role="alert">{{ unlockError }}</p>
-          <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
-            {{ $t('lockScreen.unlock.btnText') }}
-          </ElButton>
-          <ElButton text class="lock-secondary" @click="toLogin">
-            {{ $t('lockScreen.unlock.backBtnText') }}
-          </ElButton>
-        </ArtForm>
-      </section>
-    </main>
+            <ElFormItem
+              prop="password"
+              for="unlock-screen-password"
+              :label="$t('lockScreen.unlock.passwordLabel')"
+              class="lock-field"
+            >
+              <ElInput
+                id="unlock-screen-password"
+                ref="unlockInputRef"
+                v-model="unlockForm.password"
+                class="lock-input"
+                type="password"
+                name="unlock-screen-password"
+                autocomplete="new-password"
+                show-password
+                :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
+                @input="unlockError = ''"
+              />
+            </ElFormItem>
+            <p v-if="unlockError" class="unlock-error" role="alert">{{ unlockError }}</p>
+            <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
+              {{ $t('lockScreen.unlock.btnText') }}
+            </ElButton>
+            <ElButton text class="lock-secondary" @click="toLogin">
+              {{ $t('lockScreen.unlock.backBtnText') }}
+            </ElButton>
+          </ArtForm>
+        </section>
+      </main>
+    </ElScrollbar>
   </div>
 </template>
 
@@ -705,15 +707,19 @@
     outline-offset: 2px;
   }
 
-  .unlock-content {
+  .unlock-scrollbar {
     position: fixed;
     inset: 0;
     z-index: 2500;
+  }
+
+  .unlock-content {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 100dvh;
     padding: 80px 20px 32px;
-    overflow-y: auto;
     background: color-mix(in srgb, var(--theme-color) 3%, var(--el-bg-color-page));
   }
 

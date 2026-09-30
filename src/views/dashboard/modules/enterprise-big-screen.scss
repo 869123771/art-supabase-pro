@@ -162,19 +162,21 @@
   }
 
   .screen-nav {
-    display: flex;
-    gap: 4px;
     justify-self: center;
     max-width: 100%;
     padding: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
     background: rgb(4 17 29 / 70%);
     border: 1px solid var(--screen-line);
     border-radius: 9px;
 
-    &::-webkit-scrollbar {
-      display: none;
+    &__scrollbar {
+      max-width: 100%;
+    }
+
+    &__items {
+      display: flex;
+      gap: 4px;
+      width: max-content;
     }
 
     a {
@@ -581,14 +583,18 @@
     border-radius: 999px;
   }
 
+  .screen-list-scrollbar {
+    flex: 1;
+    min-height: 0;
+    margin-top: 13px;
+  }
+
   .risk-list,
   .dispatch-list {
     display: grid;
     gap: 7px;
     align-content: start;
-    min-height: 0;
-    margin-top: 13px;
-    overflow: auto;
+    padding-right: 6px;
   }
 
   .risk-item {
@@ -651,7 +657,7 @@
   }
 
   .risk-list--compact {
-    flex: 1;
+    min-height: 0;
   }
 
   .resource-strip {
@@ -840,7 +846,7 @@
 
 @media (width <= 1280px) {
   .enterprise-screen {
-    overflow: auto;
+    overflow: hidden;
 
     &__stage {
       grid-template-rows: auto auto;
@@ -960,11 +966,6 @@
     .trend-panel,
     .network-panel {
       min-height: 540px;
-    }
-
-    .fulfillment-stage-chart,
-    .operations-stage-chart {
-      overflow-x: auto;
     }
   }
 }

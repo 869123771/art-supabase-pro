@@ -1,6 +1,6 @@
 <!-- 布局内容 -->
 <template>
-  <div class="layout-content" :class="{ 'overflow-auto': isFullPage }" :style="containerStyle">
+  <component :is="isFullPage ? ElScrollbar : 'div'" class="layout-content" :style="containerStyle">
     <div id="app-content-header">
       <!-- 节日滚动 -->
       <ArtFestivalTextScroll v-if="!isFullPage" />
@@ -35,7 +35,7 @@
         class="fixed top-0 left-0 z-[2000] w-screen h-screen pointer-events-none bg-box"
       />
     </Teleport>
-  </div>
+  </component>
 </template>
 <script setup lang="ts">
   import {
@@ -48,6 +48,7 @@
     type VNode
   } from 'vue'
   import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
+  import { ElScrollbar } from 'element-plus'
   import { useAutoLayoutHeight } from '@/hooks/core/useLayoutHeight'
   import { useSettingStore } from '@/store/modules/setting'
   import { useTenantScopeStore } from '@/store/modules/tenantScope'

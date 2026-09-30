@@ -1,7 +1,8 @@
 .hljs {
   display: block;
-  overflow-x: auto;
+  overflow-wrap: anywhere;
   padding: 0.5em;
+  white-space: pre-wrap;
 
   color: #a6accd;
 }

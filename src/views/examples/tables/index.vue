@@ -54,7 +54,7 @@
             </ElCollapseItem>
             <ElCollapseItem name="logs" title="缓存日志">
               <div class="flex flex-col gap-2">
-                <div class="max-h-50 overflow-y-auto">
+                <ElScrollbar max-height="12.5rem">
                   <div v-if="cacheDebugLogs.length === 0" class="p-5 text-center">
                     <ArtEmptyState title="暂无缓存日志" :visual-size="60" size="compact" />
                   </div>
@@ -72,7 +72,7 @@
                       {{ log }}
                     </div>
                   </div>
-                </div>
+                </ElScrollbar>
                 <div class="flex gap-2 mt-2">
                   <ElButton size="small" @click="cacheDebugLogs = []">清空日志</ElButton>
                 </div>
@@ -100,11 +100,13 @@
                 </div>
                 <div class="flex flex-col gap-2">
                   <span class="font-medium text-g-700">当前请求参数：</span>
-                  <ElText
-                    tag="pre"
-                    class="max-h-50 p-2 overflow-y-auto text-xs bg-g-200 border border-g-400 rounded-md"
-                    >{{ JSON.stringify(requestParams, null, 2) }}</ElText
-                  >
+                  <ElScrollbar max-height="12.5rem">
+                    <ElText
+                      tag="pre"
+                      class="p-2 text-xs bg-g-200 border border-g-400 rounded-md whitespace-pre-wrap break-all"
+                      >{{ JSON.stringify(requestParams, null, 2) }}</ElText
+                    >
+                  </ElScrollbar>
                 </div>
                 <div class="flex gap-2 mt-2">
                   <ElButton size="small" @click="handleCancelRequest">取消请求</ElButton>
@@ -343,17 +345,19 @@
               <span>最近事件日志：</span>
               <ElTag size="small">{{ eventLogs.length }} 条</ElTag>
             </div>
-            <div class="flex flex-col gap-1 max-h-50 overflow-y-auto">
-              <div
-                v-for="(log, index) in eventLogs.slice(0, 20)"
-                :key="index"
-                class="flex-c gap-2 p-1.5 px-2 text-xs bg-g-300 border-l-1 border-g-400 rounded"
-              >
-                <ElTag :type="getEventType(log.type)" size="small">{{ log.type }}</ElTag>
-                <span class="flex-1 text-g-700">{{ log.message }}</span>
-                <span class="text-xs text-g-600">{{ log.time }}</span>
+            <ElScrollbar max-height="12.5rem">
+              <div class="flex flex-col gap-1">
+                <div
+                  v-for="(log, index) in eventLogs.slice(0, 20)"
+                  :key="index"
+                  class="flex-c gap-2 p-1.5 px-2 text-xs bg-g-300 border-l-1 border-g-400 rounded"
+                >
+                  <ElTag :type="getEventType(log.type)" size="small">{{ log.type }}</ElTag>
+                  <span class="flex-1 text-g-700">{{ log.message }}</span>
+                  <span class="text-xs text-g-600">{{ log.time }}</span>
+                </div>
               </div>
-            </div>
+            </ElScrollbar>
           </div>
         </div>
 

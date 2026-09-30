@@ -163,7 +163,7 @@
             </span>
           </div>
         </template>
-        <div v-if="lines.length" class="overflow-x-auto">
+        <ElScrollbar v-if="lines.length">
           <ArtTable
             :data="lines"
             :columns="lineColumns"
@@ -207,7 +207,7 @@
               />
             </template>
           </ArtTable>
-        </div>
+        </ElScrollbar>
       </ArtSectionCard>
     </div>
   </ArtDrawer>
@@ -388,9 +388,10 @@
     />
   </ArtDialog>
   <ArtDialog ref="serialViewDialogRef" size="sm" :show-footer="false"
-    ><div
-      class="max-h-96 overflow-auto rounded-xl bg-[var(--el-fill-color-light)] p-4 font-mono text-sm whitespace-pre-wrap"
-      >{{ serialList.join('\n') || '暂无序列号' }}</div
+    ><ElScrollbar
+      max-height="24rem"
+      class="rounded-xl bg-[var(--el-fill-color-light)] font-mono text-sm whitespace-pre-wrap"
+      ><div class="p-4">{{ serialList.join('\n') || '暂无序列号' }}</div></ElScrollbar
     ></ArtDialog
   >
 </template>

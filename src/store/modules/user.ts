@@ -45,7 +45,6 @@ import type { DictMap } from '@/types/store'
 
 import { fetchGetUserInfo, logout } from '@/api/auth'
 import { groupBy } from 'lodash-es'
-import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
 import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
 import { isDictionaryCacheFresh } from './dictionary-cache-policy'
 /**
@@ -97,10 +96,6 @@ export const useUserStore = defineStore(
     const getSettingState = computed(() => useSettingStore().$state)
     // 计算属性：获取工作台状态
     const getWorktabState = computed(() => useWorktabStore().$state)
-    // 当前用户是否为超级管理员
-    const isSuper = computed(() =>
-      Boolean(getUserInfo.value.userRoles?.includes(SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE))
-    )
     const isPlatformSuper = computed(() => hasPlatformSuperAccess(getUserInfo.value))
     /**
      * 设置用户字典
@@ -389,7 +384,6 @@ export const useUserStore = defineStore(
       accessToken,
       refreshToken,
       dictMap,
-      isSuper,
       isPlatformSuper,
       getDictMap,
       getUserInfo,

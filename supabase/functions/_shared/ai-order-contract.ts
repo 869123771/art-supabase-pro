@@ -33,6 +33,19 @@ const NUMBER_FIELDS = [
   'handlingFee'
 ] as const
 
+const CONFIG_TEXT_FIELDS = [
+  'loadType',
+  'billingMode',
+  'billingUnit',
+  'cargoCategory',
+  'packaging',
+  'trackingMethod',
+  'trackingNumber',
+  'remark'
+] as const
+const CONFIG_BOOLEAN_FIELDS = ['allowConsolidation', 'selfPickup', 'insured'] as const
+const CONFIG_NUMBER_FIELDS = ['truckCount', 'tempMinC', 'tempMaxC'] as const
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -154,6 +167,52 @@ export function validateAiOrderProviderPayload(payload: unknown): AiOrderContrac
     }
   }
 
+  if (
+    'orderConfig' in payload.order &&
+    payload.order.orderConfig !== null &&
+    !isRecord(payload.order.orderConfig)
+  ) {
+    addError('order.orderConfig 必须是对象或 null')
+  } else if (isRecord(payload.order.orderConfig)) {
+    const config = payload.order.orderConfig
+    for (const field of CONFIG_TEXT_FIELDS) {
+      if (field in config && !isNullableString(config[field])) {
+        addError(`order.orderConfig.${field} 必须是字符串或 null`)
+      }
+    }
+    for (const field of CONFIG_BOOLEAN_FIELDS) {
+      if (field in config && config[field] !== null && typeof config[field] !== 'boolean') {
+        addError(`order.orderConfig.${field} 必须是布尔值或 null`)
+      }
+    }
+    for (const field of CONFIG_NUMBER_FIELDS) {
+      const value = config[field]
+      const validTemperature =
+        field !== 'truckCount' &&
+        typeof value === 'number' &&
+        Number.isFinite(value) &&
+        value >= -80 &&
+        value <= 80
+      const validTruckCount =
+        field === 'truckCount' &&
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 1 &&
+        value <= 10
+      if (field in config && value !== null && !validTemperature && !validTruckCount) {
+        addError(`order.orderConfig.${field} 数值无效`)
+      }
+    }
+    if (
+      'transportRequirements' in config &&
+      config.transportRequirements !== null &&
+      (!Array.isArray(config.transportRequirements) ||
+        !config.transportRequirements.every((item) => typeof item === 'string'))
+    ) {
+      addError('order.orderConfig.transportRequirements 必须是字符串数组或 null')
+    }
+  }
+
   if (!Array.isArray(payload.order.cargoItems)) {
     addError('order.cargoItems 必须是数组')
   } else if (payload.order.cargoItems.length > 20) {
@@ -211,6 +270,17 @@ export function compareAiOrderPayloads(
 
   for (const [field, proposedValue] of Object.entries(proposedPayload)) {
     if (!hasProposedValue(proposedValue)) continue
+    if (field === 'orderConfig' && isRecord(proposedValue)) {
+      const finalConfig = isRecord(finalPayload.orderConfig) ? finalPayload.orderConfig : {}
+      for (const [configField, configValue] of Object.entries(proposedValue)) {
+        if (!hasProposedValue(configValue)) continue
+        const accepted =
+          JSON.stringify(canonicalize(configValue)) ===
+          JSON.stringify(canonicalize(finalConfig[configField]))
+        ;(accepted ? acceptedFields : correctedFields).push(`orderConfig.${configField}`)
+      }
+      continue
+    }
     const accepted =
       JSON.stringify(canonicalize(proposedValue)) ===
       JSON.stringify(canonicalize(finalPayload[field]))

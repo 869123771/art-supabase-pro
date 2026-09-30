@@ -73,6 +73,11 @@
         },
         tooltip: {
           trigger: 'axis',
+          axisPointer: {
+            type: 'line',
+            lineStyle: { color: gridLine, width: 1 }
+          },
+          confine: true,
           backgroundColor: 'rgba(5, 17, 29, 0.95)',
           borderColor: gridLine,
           textStyle: { color: strong, fontSize: 11 }
@@ -113,6 +118,7 @@
                 : cyan,
               borderRadius: isBar ? [4, 4, 0, 0] : 0
             },
+            emphasis: { disabled: true },
             areaStyle: showArea
               ? {
                   color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -136,6 +142,7 @@
                   data: props.points.map((point) => point.secondary ?? 0),
                   lineStyle: { width: 1.5, color: danger },
                   itemStyle: { color: danger, borderRadius: isBar ? [4, 4, 0, 0] : 0 },
+                  emphasis: { disabled: true },
                   ...getAnimationConfig(220, 900)
                 }
               ]

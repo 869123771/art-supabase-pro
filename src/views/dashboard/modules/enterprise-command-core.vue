@@ -201,7 +201,7 @@
 
     &__telemetry {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--domain-telemetry-count, 4), minmax(0, 1fr));
       gap: 1px;
       margin-top: 9px;
       overflow: hidden;

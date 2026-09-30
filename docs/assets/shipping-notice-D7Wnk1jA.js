@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./scm-document-workspace-BNctjdPC.js";var i=e({name:`ScmShippingNotice`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`shipping_notice`}))}});export{i as default};

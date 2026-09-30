@@ -240,17 +240,19 @@
 
       <footer class="art-ai-assistant__composer">
         <div class="art-ai-assistant__composer-content">
-          <div v-if="state.messages.length" class="art-ai-assistant__quick-actions">
-            <button
-              v-for="action in quickActions"
-              :key="action.label"
-              type="button"
-              :disabled="state.sending || !isOnline"
-              @click="sendSuggestion(action.prompt)"
-            >
-              <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
-            </button>
-          </div>
+          <ElScrollbar v-if="state.messages.length" class="art-ai-assistant__quick-scrollbar">
+            <div class="art-ai-assistant__quick-actions">
+              <button
+                v-for="action in quickActions"
+                :key="action.label"
+                type="button"
+                :disabled="state.sending || !isOnline"
+                @click="sendSuggestion(action.prompt)"
+              >
+                <ArtSvgIcon :icon="action.icon" /> {{ action.label }}
+              </button>
+            </div>
+          </ElScrollbar>
           <div class="art-ai-assistant__composer-box">
             <ElInput
               v-model="state.input"
@@ -1467,13 +1469,8 @@
 
     &__quick-actions {
       gap: 6px;
+      width: max-content;
       padding-bottom: 9px;
-      overflow-x: auto;
-      scrollbar-width: none;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
 
       button {
         display: inline-flex;

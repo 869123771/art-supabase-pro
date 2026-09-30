@@ -35,22 +35,26 @@
             </div>
 
             <nav class="screen-nav" aria-label="大屏场景">
-              <RouterLink to="/dashboard/business-cockpit">
-                <ArtSvgIcon icon="ri:bar-chart-box-line" />
-                经营驾驶舱
-              </RouterLink>
-              <RouterLink to="/dashboard/operations-command">
-                <ArtSvgIcon icon="ri:radar-line" />
-                运营态势
-              </RouterLink>
-              <RouterLink
-                to="/dashboard/asset-maintenance-command"
-                class="is-active"
-                aria-current="page"
-              >
-                <ArtSvgIcon icon="ri:settings-3-line" />
-                设备运维
-              </RouterLink>
+              <ElScrollbar class="screen-nav__scrollbar">
+                <div class="screen-nav__items">
+                  <RouterLink to="/dashboard/business-cockpit">
+                    <ArtSvgIcon icon="ri:bar-chart-box-line" />
+                    经营驾驶舱
+                  </RouterLink>
+                  <RouterLink to="/dashboard/operations-command">
+                    <ArtSvgIcon icon="ri:radar-line" />
+                    运营态势
+                  </RouterLink>
+                  <RouterLink
+                    to="/dashboard/asset-maintenance-command"
+                    class="is-active"
+                    aria-current="page"
+                  >
+                    <ArtSvgIcon icon="ri:settings-3-line" />
+                    设备运维
+                  </RouterLink>
+                </div>
+              </ElScrollbar>
             </nav>
 
             <div class="command-header__status">

@@ -110,7 +110,7 @@
   const emit = defineEmits<Emits>()
   const userStore = useUserStore()
   const router = useRouter()
-  const { getDictMap, getUserInfo, isSuper } = storeToRefs(userStore)
+  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
   const { t } = useI18n()
   const {
     passwordMinLength,
@@ -161,7 +161,7 @@
       (String(formData.value.userEmail ?? '').toLowerCase() === '869123771@qq.com' ||
         Boolean(formData.value.userRoles?.includes('R_SUPER')))
   )
-  const canSelectTenant = computed(() => Boolean(isSuper.value))
+  const canSelectTenant = computed(() => isPlatformSuper.value)
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
   const contextTitle = computed(() =>
     isEdit.value ? '维护用户资料与访问状态' : '创建新的登录账号'

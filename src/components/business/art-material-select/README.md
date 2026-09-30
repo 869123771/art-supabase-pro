@@ -16,6 +16,8 @@ The supplied `apiFn` receives `DataSelectFetchParams`. Read the selected categor
 
 Use `multiple` with `v-model:model-values` for batch selection. Single-selection workflows show the selected summary by default so the category, result, and confirmation regions remain consistent; pass `:show-selected-panel="false"` only when the available width cannot support it.
 
+For a material-heavy workspace, pass `dialog-width` to size the picker without changing other material selectors. The underlying `ArtDialog` limits the width to the viewport.
+
 Pass `label-key` when a business field should display a material property other than `materialName` (for example, `description`). Use `reset-draft-on-open` when each visit should start with an empty selection panel while keeping the already confirmed form value until a new choice is confirmed.
 
 For a toolbar action instead of the default selection input, use the forwarded `trigger` slot. It receives `open`, `clear`, `selectedRows`, and `selectedKeys` from `ArtDataSelect`:

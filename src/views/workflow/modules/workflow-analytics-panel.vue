@@ -51,18 +51,20 @@
               <span>生成于 {{ formatDate(state.data.generatedAt) }}</span>
             </div></template
           >
-          <div class="workflow-analytics__bars" aria-label="审批每日发起趋势">
-            <article v-for="item in recentDaily" :key="item.date">
-              <div>
-                <span
-                  :style="{ height: `${(item.startedCount / dailyMax) * 100}%` }"
-                  :title="`${item.date}：发起 ${item.startedCount}`"
-                />
-              </div>
-              <strong>{{ item.startedCount }}</strong>
-              <small>{{ dayjs(item.date).format('MM-DD') }}</small>
-            </article>
-          </div>
+          <ElScrollbar>
+            <div class="workflow-analytics__bars" aria-label="审批每日发起趋势">
+              <article v-for="item in recentDaily" :key="item.date">
+                <div>
+                  <span
+                    :style="{ height: `${(item.startedCount / dailyMax) * 100}%` }"
+                    :title="`${item.date}：发起 ${item.startedCount}`"
+                  />
+                </div>
+                <strong>{{ item.startedCount }}</strong>
+                <small>{{ dayjs(item.date).format('MM-DD') }}</small>
+              </article>
+            </div>
+          </ElScrollbar>
         </ArtSectionCard>
 
         <ArtSectionCard class="workflow-analytics__business" preserve-content-structure>
@@ -539,8 +541,7 @@
       display: grid;
       grid-template-columns: repeat(14, minmax(24px, 1fr));
       gap: 7px;
-      min-width: 0;
-      overflow-x: auto;
+      min-width: 427px;
 
       article {
         display: grid;
@@ -803,8 +804,11 @@
       }
 
       &__business-list article {
-        grid-template-columns: minmax(160px, 1.4fr) repeat(4, minmax(70px, 0.7fr));
-        overflow-x: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__business-name {
+        grid-column: 1 / -1;
       }
 
       &__metrics--governance {
@@ -812,8 +816,11 @@
       }
 
       &__node-list article {
-        grid-template-columns: minmax(190px, 1.4fr) repeat(4, minmax(70px, 0.7fr));
-        overflow-x: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      &__node-main {
+        grid-column: 1 / -1;
       }
 
       &__approver-list {
@@ -857,7 +864,6 @@
 
       &__node-list article {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        overflow: visible;
       }
 
       &__node-main {

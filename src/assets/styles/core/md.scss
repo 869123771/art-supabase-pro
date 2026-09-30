@@ -801,9 +801,8 @@ $font-color: #24292e;
 }
 
 .markdown-body table {
-  display: block;
   width: 100%;
-  overflow: auto;
+  table-layout: fixed;
 }
 
 .markdown-body table th {
@@ -813,6 +812,7 @@ $font-color: #24292e;
 .markdown-body table td,
 .markdown-body table th {
   padding: 6px 13px;
+  overflow-wrap: anywhere;
   border: 1px solid #dfe2e5;
 }
 
@@ -876,9 +876,10 @@ $font-color: #24292e;
 .markdown-body .highlight pre,
 .markdown-body pre {
   padding: 15px 20px 15px 0;
-  overflow: auto;
+  overflow-wrap: anywhere;
   font-size: 92%;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .markdown-body pre code {
@@ -905,13 +906,11 @@ $font-color: #24292e;
 }
 
 .markdown-body .blob-wrapper {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body .blob-wrapper-embedded {
-  max-height: 240px;
-  overflow-y: auto;
+  max-height: none;
 }
 
 .markdown-body .blob-num {

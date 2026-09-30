@@ -132,16 +132,17 @@
     }
   }
 
+  .auth-channels__scrollbar {
+    width: 100%;
+  }
+
   .auth-channels__icons {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
     justify-content: center;
-    max-height: 94px;
     padding: 2px 4px;
-    overflow-y: auto;
-    scrollbar-width: thin;
   }
 
   .auth-channels__button {
@@ -372,12 +373,8 @@
       flex-wrap: nowrap;
       gap: 6px;
       justify-content: flex-start;
-      overflow: auto hidden;
-      scrollbar-width: none;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
+      width: max-content;
+      min-width: 100%;
     }
 
     .auth-channels__button {

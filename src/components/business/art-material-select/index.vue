@@ -11,6 +11,7 @@
     :description-key="getMaterialDescription"
     :title="title"
     :subtitle="subtitle"
+    :dialog-width="dialogWidth"
     :placeholder="placeholder"
     :search-placeholder="searchPlaceholder"
     :empty-text="emptyText"
@@ -40,6 +41,7 @@
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
   import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
   import type {
+    ArtDataSelectProps,
     DataSelectApiFn,
     DataSelectColumn,
     DataSelectKey,
@@ -83,6 +85,7 @@
     categories?: MaterialSelectCategory[]
     title?: string
     subtitle?: string
+    dialogWidth?: ArtDataSelectProps['dialogWidth']
     placeholder?: string
     searchPlaceholder?: string
     emptyText?: string

@@ -128,11 +128,12 @@
 
           <div class="mb-5">
             <h4 class="m-0 mb-2 text-sm font-semibold"> 当前路由权限配置： </h4>
-            <div
-              class="max-h-30 p-3 overflow-y-auto font-mono text-xs break-all whitespace-pre-wrap bg-g-200 border-full-d rounded"
+            <ElScrollbar
+              max-height="7.5rem"
+              class="p-3 font-mono text-xs break-all whitespace-pre-wrap bg-g-200 border-full-d rounded"
             >
               <code>{{ JSON.stringify(backendAuthList, null, 2) }}</code>
-            </div>
+            </ElScrollbar>
           </div>
 
           <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5">
@@ -221,11 +222,12 @@
 
           <div class="mb-5">
             <h4 class="m-0 mb-2 text-sm font-semibold">当前用户权限列表（buttons 字段）：</h4>
-            <div
-              class="max-h-30 p-3 overflow-y-auto font-mono text-xs break-all whitespace-pre-wrap bg-g-200 border-full-d rounded"
+            <ElScrollbar
+              max-height="7.5rem"
+              class="p-3 font-mono text-xs break-all whitespace-pre-wrap bg-g-200 border-full-d rounded"
             >
               <code>{{ JSON.stringify(frontendAuthList, null, 2) }}</code>
-            </div>
+            </ElScrollbar>
           </div>
 
           <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5">

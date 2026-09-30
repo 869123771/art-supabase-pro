@@ -1306,6 +1306,11 @@
       font-size: 15px;
     }
 
+    // ArtTable 的默认上边距会让等高表格越过内容区，遮住分页栏上沿。
+    :deep(.art-table > .el-table) {
+      margin-top: 0;
+    }
+
     :deep(.el-table th.el-table__cell) {
       height: 54px;
       font-size: 15px;

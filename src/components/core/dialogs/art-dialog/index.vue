@@ -66,7 +66,7 @@
       :height="normalizedContentHeight"
       :max-height="normalizedContentMaxHeight"
       :always="options.scrollbarAlways"
-      :native="options.nativeScrollbar"
+      :native="false"
       class="art-dialog__scrollbar"
       @wheel.capture="handleWheelBoundary"
     >
@@ -341,8 +341,9 @@
 
   const shouldUseScrollbar = computed(() => {
     return Boolean(
-      options.value.useScrollbar !== false &&
-      (normalizedContentHeight.value || normalizedContentMaxHeight.value || isFullscreen.value)
+      isFullscreen.value ||
+      (options.value.useScrollbar !== false &&
+        (normalizedContentHeight.value || normalizedContentMaxHeight.value))
     )
   })
 
@@ -544,7 +545,7 @@
   :global(.art-dialog.is-fullscreen > .el-dialog__body) {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
   }
 
   :global(.art-dialog.is-focus-mode .art-dialog__content) {

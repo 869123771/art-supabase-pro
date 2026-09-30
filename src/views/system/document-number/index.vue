@@ -25,11 +25,13 @@
     </BusinessWorkspaceHeader>
 
     <section class="number-rule-page__category art-card-xs">
-      <ElSegmented
-        :model-value="table.searchQuery.category ?? ''"
-        :options="categorySegments"
-        @change="handleCategoryChange"
-      />
+      <ElScrollbar>
+        <ElSegmented
+          :model-value="table.searchQuery.category ?? ''"
+          :options="categorySegments"
+          @change="handleCategoryChange"
+        />
+      </ElScrollbar>
     </section>
 
     <div class="number-rule-page__workspace">
@@ -589,7 +591,6 @@
     &__category {
       flex: none;
       padding: 8px 12px;
-      overflow-x: auto;
     }
 
     &__workspace {

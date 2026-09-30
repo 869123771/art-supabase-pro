@@ -19,53 +19,58 @@
     </button>
 
     <template #dropdown>
-      <ElDropdownMenu class="tenant-scope-switcher__menu">
-        <ElDropdownItem :command="ALL_TENANTS_COMMAND" :disabled="isAllTenants">
-          <span class="tenant-scope-switcher__item-icon">
-            <ArtSvgIcon icon="ri:global-line" />
-          </span>
-          <span class="tenant-scope-switcher__item-copy">
-            <strong>全部租户</strong>
-            <small>跨租户查看与管理，新增时明确所属租户</small>
-          </span>
-          <ArtSvgIcon
-            v-if="isAllTenants"
-            icon="ri:check-line"
-            class="tenant-scope-switcher__check"
-          />
-        </ElDropdownItem>
+      <ElScrollbar
+        class="tenant-scope-switcher__scrollbar"
+        max-height="min(520px, calc(100vh - 120px))"
+      >
+        <ElDropdownMenu class="tenant-scope-switcher__menu">
+          <ElDropdownItem :command="ALL_TENANTS_COMMAND" :disabled="isAllTenants">
+            <span class="tenant-scope-switcher__item-icon">
+              <ArtSvgIcon icon="ri:global-line" />
+            </span>
+            <span class="tenant-scope-switcher__item-copy">
+              <strong>全部租户</strong>
+              <small>跨租户查看与管理，新增时明确所属租户</small>
+            </span>
+            <ArtSvgIcon
+              v-if="isAllTenants"
+              icon="ri:check-line"
+              class="tenant-scope-switcher__check"
+            />
+          </ElDropdownItem>
 
-        <ElDropdownItem
-          v-for="tenant in tenantOptions"
-          :key="tenant.id"
-          :command="tenant.id"
-          :disabled="tenant.id === selectedTenantId"
-        >
-          <span class="tenant-scope-switcher__item-icon">
-            <ArtSvgIcon icon="ri:building-line" />
-          </span>
-          <span class="tenant-scope-switcher__item-copy">
-            <strong>{{ tenant.tenantName }}</strong>
-            <small>{{ tenant.tenantCode }}</small>
-          </span>
-          <ArtSvgIcon
-            v-if="tenant.id === selectedTenantId"
-            icon="ri:check-line"
-            class="tenant-scope-switcher__check"
-          />
-        </ElDropdownItem>
+          <ElDropdownItem
+            v-for="tenant in tenantOptions"
+            :key="tenant.id"
+            :command="tenant.id"
+            :disabled="tenant.id === selectedTenantId"
+          >
+            <span class="tenant-scope-switcher__item-icon">
+              <ArtSvgIcon icon="ri:building-line" />
+            </span>
+            <span class="tenant-scope-switcher__item-copy">
+              <strong>{{ tenant.tenantName }}</strong>
+              <small>{{ tenant.tenantCode }}</small>
+            </span>
+            <ArtSvgIcon
+              v-if="tenant.id === selectedTenantId"
+              icon="ri:check-line"
+              class="tenant-scope-switcher__check"
+            />
+          </ElDropdownItem>
 
-        <ElDropdownItem v-if="loadError" :command="RETRY_COMMAND" divided>
-          <span class="tenant-scope-switcher__item-icon tenant-scope-switcher__item-icon--danger">
-            <ArtSvgIcon icon="ri:refresh-line" />
-          </span>
-          <span class="tenant-scope-switcher__item-copy">
-            <strong>重新加载</strong>
-            <small>{{ loadError }}</small>
-          </span>
-          <span />
-        </ElDropdownItem>
-      </ElDropdownMenu>
+          <ElDropdownItem v-if="loadError" :command="RETRY_COMMAND" divided>
+            <span class="tenant-scope-switcher__item-icon tenant-scope-switcher__item-icon--danger">
+              <ArtSvgIcon icon="ri:refresh-line" />
+            </span>
+            <span class="tenant-scope-switcher__item-copy">
+              <strong>重新加载</strong>
+              <small>{{ loadError }}</small>
+            </span>
+            <span />
+          </ElDropdownItem>
+        </ElDropdownMenu>
+      </ElScrollbar>
     </template>
   </ElDropdown>
 </template>
@@ -144,10 +149,12 @@
     }
   }
 
-  .tenant-scope-switcher__menu {
+  .tenant-scope-switcher__scrollbar {
     width: min(360px, calc(100vw - 24px));
-    max-height: min(520px, calc(100vh - 120px));
-    overflow-y: auto;
+  }
+
+  .tenant-scope-switcher__menu {
+    width: 100%;
 
     :deep(.el-dropdown-menu__item) {
       display: grid;

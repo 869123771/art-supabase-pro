@@ -149,29 +149,31 @@
             class="auth-channels"
           >
             <div class="auth-channels__divider"><span>其他方式</span></div>
-            <div class="auth-channels__icons" role="group" aria-label="第三方登录方式">
-              <ArtTooltip
-                v-for="channel in enabledAuthChannels"
-                :key="channel.key"
-                :content="`${channel.label}登录`"
-                placement="top"
-                effect="dark"
-                popper-class="auth-channel-tooltip"
-                :show-after="240"
-                :hide-after="0"
-                :disabled="Boolean(oauthLoadingKey)"
-              >
-                <ArtIconButton
-                  class="auth-channels__button"
-                  :class="`is-${channel.key}`"
-                  :icon="channel.icon"
-                  :label="`使用${channel.label}登录`"
-                  :loading="oauthLoadingKey === channel.key"
-                  :disabled="Boolean(oauthLoadingKey || loading || !websiteConfigLoaded)"
-                  @click="handleAuthChannelLogin(channel)"
-                />
-              </ArtTooltip>
-            </div>
+            <ElScrollbar class="auth-channels__scrollbar" :max-height="94">
+              <div class="auth-channels__icons" role="group" aria-label="第三方登录方式">
+                <ArtTooltip
+                  v-for="channel in enabledAuthChannels"
+                  :key="channel.key"
+                  :content="`${channel.label}登录`"
+                  placement="top"
+                  effect="dark"
+                  popper-class="auth-channel-tooltip"
+                  :show-after="240"
+                  :hide-after="0"
+                  :disabled="Boolean(oauthLoadingKey)"
+                >
+                  <ArtIconButton
+                    class="auth-channels__button"
+                    :class="`is-${channel.key}`"
+                    :icon="channel.icon"
+                    :label="`使用${channel.label}登录`"
+                    :loading="oauthLoadingKey === channel.key"
+                    :disabled="Boolean(oauthLoadingKey || loading || !websiteConfigLoaded)"
+                    @click="handleAuthChannelLogin(channel)"
+                  />
+                </ArtTooltip>
+              </div>
+            </ElScrollbar>
             <p class="auth-channels__hint">首次使用需先在个人中心绑定</p>
           </div>
 
