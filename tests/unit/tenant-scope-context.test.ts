@@ -195,6 +195,15 @@ test('platform table reads discard legacy tenant filters but preserve business f
     ),
     'https://example.supabase.co/rest/v1/sys_role?tenant_id=eq.target&enabled=eq.true'
   )
+  for (const table of [
+    'sys_user',
+    'mdm_master_group',
+    'scm_order_target_document',
+    'wms_purchase_document_list'
+  ]) {
+    const url = `https://example.supabase.co/rest/v1/${table}?tenant_id=eq.target&status=eq.active`
+    assert.equal(normalizePlatformTenantReadUrl(url), url)
+  }
 })
 
 test('tenant scope header is attached only to Supabase Data API requests', () => {

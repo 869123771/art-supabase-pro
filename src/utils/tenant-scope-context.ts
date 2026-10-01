@@ -4,9 +4,13 @@ export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
+  'mdm_master_group',
+  'scm_order_target_document',
   'sys_attachment',
   'sys_document_number_rule',
-  'sys_role'
+  'sys_role',
+  'sys_user',
+  'wms_purchase_document_list'
 ])
 
 const tenantIdFromRecord = (value: unknown): string | null => {
@@ -81,7 +85,8 @@ export const normalizePlatformTenantReadUrl = (requestUrl: string): string => {
       return requestUrl
     }
 
-    // These reads use tenant_id as an intentional target selector, including attachment deduplication.
+    // These reads use tenant_id as an intentional target selector, including user/role filters,
+    // tenant-owned reference lists, and attachment deduplication.
     if (TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS.has(url.pathname.split('/').at(-1) ?? '')) {
       return requestUrl
     }
