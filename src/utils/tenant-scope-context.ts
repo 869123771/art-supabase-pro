@@ -3,7 +3,11 @@ export const TENANT_SCOPE_STORAGE_KEY = 'art-platform-tenant-scope-id'
 export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set(['sys_document_number_rule'])
+const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
+  'sys_attachment',
+  'sys_document_number_rule',
+  'sys_role'
+])
 
 const tenantIdFromRecord = (value: unknown): string | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
@@ -77,7 +81,7 @@ export const normalizePlatformTenantReadUrl = (requestUrl: string): string => {
       return requestUrl
     }
 
-    // Number-rule workspaces and previews use tenant_id as an intentional target selector.
+    // These reads use tenant_id as an intentional target selector, including attachment deduplication.
     if (TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS.has(url.pathname.split('/').at(-1) ?? '')) {
       return requestUrl
     }

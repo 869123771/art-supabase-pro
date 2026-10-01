@@ -23,7 +23,7 @@
   </p>
 </div>
 
-![运输运营工作台](screenshort/02-dashboard.png)
+![运输运营工作台](screenshots/02-dashboard.png)
 
 ## 项目定位
 
@@ -76,78 +76,78 @@
 
 支持粘贴客户聊天、运输委托等文字资料，也可以上传订单图片。AI 完成识别、字段核对、主数据匹配与建档建议，最终由操作人员确认后回填订单，避免 AI 越权直接保存业务数据。
 
-![AI 智能填单](screenshort/04-ai-order-copilot.png)
+![AI 智能填单](screenshots/04-ai-order-copilot.png)
 
 ### TMS 实时在途监控
 
 在同一驾驶舱内查看在途车辆、运输进度、线路、实时报警、司机与货物信息，并提供 AI 异常研判和快捷处置入口。
 
-![TMS 实时在途监控](screenshort/05-in-transit-monitor.png)
+![TMS 实时在途监控](screenshots/05-in-transit-monitor.png)
 
 ### 一车一档与车辆健康
 
 围绕单车聚合档案、司机、零部件、保险、年检、违章、事故、维修保养、例检、里程和设备信息，并提供 AI 车辆健康研判。
 
-![车辆全生命周期档案](screenshort/06-vehicle-lifecycle.png)
+![车辆全生命周期档案](screenshots/06-vehicle-lifecycle.png)
 
 ### 审批工作台与流程治理
 
 审批中心统一承载待办、已处理、我发起、离岗委托和租户隔离；流程定义采用版本化治理，已发布版本保持不可变，可查看节点快照与版本差异。
 
-![审批工作台](screenshort/07-approval-workbench.png)
+![审批工作台](screenshots/07-approval-workbench.png)
 
-![流程版本治理](screenshort/08-workflow-governance.png)
+![流程版本治理](screenshots/08-workflow-governance.png)
 
 ### Supabase AI 项目助手
 
 统一浏览 Database、视图、函数、触发器、RLS 与 Edge Functions。项目助手基于实时元数据提供只读分析与治理建议，不直接执行 SQL 或修改项目。
 
-![Supabase AI 项目助手](screenshort/09-supabase-ai-assistant.png)
+![Supabase AI 项目助手](screenshots/09-supabase-ai-assistant.png)
 
 ### 运输财务工作台
 
 集中展示应收、应付、回款、付款、开票、费用审核、核销进度和运输毛利，并提供 AI 回款风险研判。
 
-![运输财务工作台](screenshort/11-finance-workbench.png)
+![运输财务工作台](screenshots/11-finance-workbench.png)
 
 ### AI 运行与质量运营
 
 对 AI 调用次数、成功率、响应耗时、Token 消耗、能力分布、OCR/填单质量、用户反馈和失败原因进行统一观测，让 AI 能力可追踪、可评价、可持续改进。
 
-![AI 运行中心](screenshort/12-ai-operations.png)
+![AI 运行中心](screenshots/12-ai-operations.png)
 
 ### HR 人员与组织运营
 
 围绕组织、岗位和员工身份建立连续的人事数据主线，并在同一工作区展示任职状态、组织归属、岗位、用工类型、系统账号与完整履历。
 
-![HR 员工花名册](screenshort/13-hr-employee-roster.png)
+![HR 员工花名册](screenshots/13-hr-employee-roster.png)
 
 ### SMIS 安全生产治理
 
 通过安全基础资料、设备台账、资质培训、应急救援、反违章、劳保工器具和事故管理形成可追溯闭环；演练计划明确关联预案、周期、组织、负责人和预警状态。
 
-![SMIS 应急演练计划](screenshort/15-smis-emergency-drill-plan.png)
+![SMIS 应急演练计划](screenshots/15-smis-emergency-drill-plan.png)
 
 ### TMS 司机移动工作台
 
 司机端以 H5 与微信小程序承接运输执行，集中呈现绑定车辆、当前任务、运输节点、剩余里程与现场操作入口，并与 Web 管理端共享受控的运单履约状态。
 
-![TMS 司机移动工作台](screenshort/16-driver-mobile-home.png)
+![TMS 司机移动工作台](screenshots/16-driver-mobile-home.png)
 
 <details>
 <summary><strong>查看更多：登录体验、运输开单与 AI SQL 工作台</strong></summary>
 
 ### 企业级登录体验
 
-![登录页面](screenshort/01-login.png)
+![登录页面](screenshots/01-login.png)
 
 ### 运输开单工作区
 
-![运输开单](screenshort/03-smart-order.png)
+![运输开单](screenshots/03-smart-order.png)
 
 ### AI SQL 工作台
 
-![AI SQL 工作台](screenshort/10-ai-sql-workbench.png)
+![AI SQL 工作台](screenshots/10-ai-sql-workbench.png)
 
 </details>
 
@@ -323,7 +323,7 @@ art-supabase-pro/
 │  ├─ migrations/                  # 历史说明；当前数据库变更直接执行并验证
 │  └─ tests/                       # 数据库测试
 ├─ tests/                          # 单元与 E2E 测试
-└─ screenshort/                    # README 产品截图
+└─ screenshots/                    # README 产品截图
 ```
 
 ## 安全与权限原则

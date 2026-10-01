@@ -183,6 +183,18 @@ test('platform table reads discard legacy tenant filters but preserve business f
     ),
     'https://example.supabase.co/rest/v1/sys_document_number_rule?tenant_id=eq.selected&enabled=eq.true'
   )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/sys_attachment?tenant_id=eq.target&hash=eq.filehash'
+    ),
+    'https://example.supabase.co/rest/v1/sys_attachment?tenant_id=eq.target&hash=eq.filehash'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/sys_role?tenant_id=eq.target&enabled=eq.true'
+    ),
+    'https://example.supabase.co/rest/v1/sys_role?tenant_id=eq.target&enabled=eq.true'
+  )
 })
 
 test('tenant scope header is attached only to Supabase Data API requests', () => {

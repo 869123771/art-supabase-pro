@@ -15,7 +15,7 @@
   </p>
 </div>
 
-![Transportation operations dashboard](screenshort/02-dashboard.png)
+![Transportation operations dashboard](screenshots/02-dashboard.png)
 
 ## Overview
 
@@ -54,55 +54,55 @@ The main repository pins domain applications with Git submodules and supplies au
 
 Convert customer chats, transport instructions, and uploaded order images into a reviewable order draft. Enabled ordinary users can create master data in their own tenant through AI when they hold the corresponding business `Add` permission. Other controlled AI writes require platform-super authorization, and the operator remains responsible for the final save.
 
-![AI-assisted order entry](screenshort/04-ai-order-copilot.png)
+![AI-assisted order entry](screenshots/04-ai-order-copilot.png)
 
 ### Real-time transportation monitoring
 
 Monitor vehicles, routes, progress, alerts, drivers, cargo, and remaining mileage in one operations cockpit, with quick access to AI anomaly analysis and response actions.
 
-![Real-time transportation monitoring](screenshort/05-in-transit-monitor.png)
+![Real-time transportation monitoring](screenshots/05-in-transit-monitor.png)
 
 ### Vehicle lifecycle record
 
 Aggregate archives, drivers, parts, insurance, inspections, violations, accidents, maintenance, routine checks, mileage, and devices around a single vehicle.
 
-![Vehicle lifecycle record](screenshort/06-vehicle-lifecycle.png)
+![Vehicle lifecycle record](screenshots/06-vehicle-lifecycle.png)
 
 ### Workflow governance
 
 Published workflow versions remain immutable. Operators can inspect historical node snapshots, version differences, approval tasks, delegations, transfers, SLAs, and callback recovery.
 
-![Approval workspace](screenshort/07-approval-workbench.png)
+![Approval workspace](screenshots/07-approval-workbench.png)
 
-![Workflow version governance](screenshort/08-workflow-governance.png)
+![Workflow version governance](screenshots/08-workflow-governance.png)
 
 ### Supabase project copilot
 
 Browse database objects, views, functions, triggers, RLS policies, and Edge Functions, then ask a read-only project assistant for evidence-based analysis and governance recommendations.
 
-![Supabase project copilot](screenshort/09-supabase-ai-assistant.png)
+![Supabase project copilot](screenshots/09-supabase-ai-assistant.png)
 
 ### Finance and AI operations
 
 Track receivables, payables, collections, payments, invoices, cost review, and transport profit. The AI operations center provides observability for success rates, latency, token usage, capability adoption, quality signals, feedback, and failures.
 
-![Transportation finance workspace](screenshort/11-finance-workbench.png)
+![Transportation finance workspace](screenshots/11-finance-workbench.png)
 
-![AI operations center](screenshort/12-ai-operations.png)
+![AI operations center](screenshots/12-ai-operations.png)
 
 ### HR and safety operations
 
 HR connects organizations, positions, employee identities, employment status, account provisioning, and lifecycle history in one workspace. SMIS connects safety master data, equipment, qualifications, training, emergency response, PPE, tools, and incident governance.
 
-![HR employee directory](screenshort/13-hr-employee-roster.png)
+![HR employee directory](screenshots/13-hr-employee-roster.png)
 
-![SMIS emergency drill planning](screenshort/15-smis-emergency-drill-plan.png)
+![SMIS emergency drill planning](screenshots/15-smis-emergency-drill-plan.png)
 
 ### TMS driver workspace
 
 The H5 and WeChat Mini Program driver app brings the assigned vehicle, active task, transport milestones, remaining mileage, and field actions into one mobile workspace backed by controlled TMS lifecycle contracts.
 
-![TMS driver workspace](screenshort/16-driver-mobile-home.png)
+![TMS driver workspace](screenshots/16-driver-mobile-home.png)
 
 ## Technology Stack
 
