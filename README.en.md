@@ -52,7 +52,7 @@ The main repository pins domain applications with Git submodules and supplies au
 
 ### AI-assisted order entry
 
-Convert customer chats, transport instructions, and uploaded order images into a reviewable order draft. AI can extract fields and suggest master-data matches, while the operator remains responsible for the final save.
+Convert customer chats, transport instructions, and uploaded order images into a reviewable order draft. Enabled ordinary users can create master data in their own tenant through AI when they hold the corresponding business `Add` permission. Other controlled AI writes require platform-super authorization, and the operator remains responsible for the final save.
 
 ![AI-assisted order entry](screenshort/04-ai-order-copilot.png)
 

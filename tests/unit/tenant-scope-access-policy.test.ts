@@ -1,9 +1,61 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  areTenantCreateTargetsInScope,
   resolveTenantReadTargetId,
   resolveTenantScopeReadOnly
 } from '../../src/utils/tenant-scope-access-policy'
+
+test('root creations require explicit tenant targets within the selected scope', () => {
+  const ownTenantId = '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+  const otherTenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+
+  assert.equal(
+    areTenantCreateTargetsInScope({
+      effectiveTenantId: null,
+      isAllTenants: true,
+      isPlatformSuper: true,
+      tenantIds: [ownTenantId, otherTenantId]
+    }),
+    true
+  )
+  assert.equal(
+    areTenantCreateTargetsInScope({
+      effectiveTenantId: ownTenantId,
+      isAllTenants: false,
+      isPlatformSuper: true,
+      tenantIds: [otherTenantId]
+    }),
+    false
+  )
+  assert.equal(
+    areTenantCreateTargetsInScope({
+      effectiveTenantId: ownTenantId,
+      isAllTenants: false,
+      isPlatformSuper: false,
+      tenantIds: [ownTenantId]
+    }),
+    true
+  )
+  assert.equal(
+    areTenantCreateTargetsInScope({
+      effectiveTenantId: ownTenantId,
+      isAllTenants: true,
+      isPlatformSuper: false,
+      tenantIds: [otherTenantId]
+    }),
+    false
+  )
+  assert.equal(
+    areTenantCreateTargetsInScope({
+      effectiveTenantId: null,
+      isAllTenants: true,
+      isPlatformSuper: true,
+      tenantIds: []
+    }),
+    false
+  )
+})
 
 test('tenant read targets respect all, selected, ordinary and forged scopes', () => {
   const ownTenantId = '028e6a68-a9db-4055-974c-1e05bfe94b0f'

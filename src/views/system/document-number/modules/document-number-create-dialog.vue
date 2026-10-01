@@ -96,6 +96,8 @@
   import { renderDocumentNumber, validateDocumentNumberTemplate } from '@/utils/document-number'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { areTenantCreateTargetsInScope } from '@/utils/tenant-scope-access-policy'
   import type { AppRouteRecord } from '@/types/router'
 
   type NumberScene = Api.SystemManage.DocumentNumberSceneItem
@@ -136,7 +138,8 @@
   const dialogRef = ref<ArtDialogExpose>()
   const formRef = ref<FormExpose>()
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const tenantScopeStore = useTenantScopeStore()
+  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
 
   const createInitialForm = (): CreateFormModel => ({
@@ -206,14 +209,18 @@
         props: {
           multiple: true,
           filterable: true,
-          disabled: !isPlatformSuper.value,
+          disabled: !tenantScopeStore.isAllTenants,
           collapseTags: true,
           collapseTagsTooltip: true,
           maxCollapseTags: 3,
-          placeholder: '可一次选择多个租户',
+          placeholder: tenantScopeStore.isAllTenants ? '可一次选择多个租户' : '当前租户范围',
           options: form.tenantOptions
         },
-        description: '一次保存即可批量配置；已有租户规则会更新，缺失的会自动创建。'
+        description: tenantScopeStore.isAllTenants
+          ? '一次保存即可批量配置；已有租户规则会更新，缺失的会自动创建。'
+          : isPlatformSuper.value
+            ? '当前只配置顶部所选租户；切换范围后请重新打开。'
+            : '当前账号只能配置所属租户。'
       },
       { label: '生成策略', key: 'strategySection', type: 'divider', span: 24 },
       {
@@ -363,12 +370,26 @@
     ])
     form.scenes = sceneResult.data ?? []
     form.menus = (menuResult.data ?? []).filter((menu) => menu.type !== 'button')
-    form.tenantOptions = (tenantResult.data ?? []).map((tenant) => ({
-      label: `${tenant.tenantName}（${tenant.tenantCode}）`,
-      value: String(tenant.id)
-    }))
-    if (!isPlatformSuper.value && getUserInfo.value.tenantId) {
-      form.data.tenantIds = [String(getUserInfo.value.tenantId)]
+    const selectedTenantId = tenantScopeStore.effectiveTenantId
+    form.tenantOptions = (tenantResult.data ?? [])
+      .filter((tenant) => tenantScopeStore.isAllTenants || String(tenant.id) === selectedTenantId)
+      .map((tenant) => ({
+        label: `${tenant.tenantName}（${tenant.tenantCode}）`,
+        value: String(tenant.id)
+      }))
+    if (!tenantScopeStore.isAllTenants && selectedTenantId) {
+      if (!form.tenantOptions.some((option) => option.value === selectedTenantId)) {
+        form.tenantOptions = [
+          {
+            label:
+              tenantScopeStore.selectedTenant?.tenantName ||
+              userStore.getUserInfo.tenant?.tenantName ||
+              '当前租户',
+            value: selectedTenantId
+          }
+        ]
+      }
+      form.data.tenantIds = [selectedTenantId]
     }
     buildMenuTree()
   }
@@ -382,6 +403,18 @@
     const scene = selectedScene.value
     if (!scene) return false
 
+    if (
+      !areTenantCreateTargetsInScope({
+        effectiveTenantId: tenantScopeStore.effectiveTenantId,
+        isAllTenants: tenantScopeStore.isAllTenants,
+        isPlatformSuper: tenantScopeStore.isPlatformScope,
+        tenantIds: form.data.tenantIds
+      })
+    ) {
+      ElMessage.warning('租户范围已变化，请重新打开配置窗口')
+      return false
+    }
+
     try {
       const result = await addDocumentNumberRules({
         tenantIds: form.data.tenantIds,
@@ -393,12 +426,14 @@
         timezone: form.data.timezone,
         remark: form.data.remark
       })
+      if (result.error || !result.data) return false
       const created = result.data?.created ?? 0
       const updated = result.data?.updated ?? 0
       ElMessage.success(`批量配置完成：新建 ${created} 个，更新 ${updated} 个租户规则`)
       emit('success')
       return true
     } catch {
+      ElMessage.error('编号规则配置失败，请检查当前租户范围后重试')
       return false
     }
   }

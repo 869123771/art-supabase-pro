@@ -4,7 +4,10 @@ import { useTenantScopeStore } from '@/store/modules/tenantScope'
 import { getDocumentNumberPeriodKey, renderDocumentNumber } from '@/utils/document-number'
 import { applyFilters } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
-import { resolveTenantReadTargetId } from '@/utils/tenant-scope-access-policy'
+import {
+  areTenantCreateTargetsInScope,
+  resolveTenantReadTargetId
+} from '@/utils/tenant-scope-access-policy'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -189,6 +192,18 @@ export async function fetchDocumentNumberSceneList() {
 }
 
 export async function addDocumentNumberRules(payload: CreatePayload) {
+  const tenantScopeStore = useTenantScopeStore()
+  if (
+    !areTenantCreateTargetsInScope({
+      effectiveTenantId: tenantScopeStore.effectiveTenantId,
+      isAllTenants: tenantScopeStore.isAllTenants,
+      isPlatformSuper: tenantScopeStore.isPlatformScope,
+      tenantIds: payload.tenantIds
+    })
+  ) {
+    throw new Error('当前范围只能配置所属租户的编号规则')
+  }
+
   return await responseHandle<Api.SystemManage.DocumentNumberRuleBatchResult>(
     () =>
       supabase.rpc('configure_document_number_rule_for_tenants', {

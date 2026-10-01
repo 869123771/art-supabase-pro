@@ -27,10 +27,30 @@ export function resolveTenantReadTargetId({
   requestedTenantId,
   isPlatformSuper
 }: TenantReadTargetInput): string | null | undefined {
-  const effectiveId = effectiveTenantId?.trim() || null
-  const requestedId = requestedTenantId?.trim() || null
+  const effectiveId = effectiveTenantId?.trim()
+  const requestedId = requestedTenantId?.trim()
 
-  if (isPlatformSuper && !effectiveId) return requestedId
+  if (isPlatformSuper && !effectiveId) return requestedId || null
   if (!effectiveId || (requestedId && requestedId !== effectiveId)) return undefined
   return effectiveId
+}
+
+interface TenantCreateScopeInput {
+  effectiveTenantId: string | null
+  isAllTenants: boolean
+  isPlatformSuper: boolean
+  tenantIds: readonly string[]
+}
+
+/** Root creations need explicit targets; only platform super may assign several tenants. */
+export function areTenantCreateTargetsInScope({
+  effectiveTenantId,
+  isAllTenants,
+  isPlatformSuper,
+  tenantIds
+}: TenantCreateScopeInput): boolean {
+  if (!tenantIds.length || tenantIds.some((tenantId) => !tenantId.trim())) return false
+  if (isPlatformSuper && isAllTenants) return true
+  const selectedTenantId = effectiveTenantId?.trim()
+  return Boolean(selectedTenantId && tenantIds.every((tenantId) => tenantId === selectedTenantId))
 }
