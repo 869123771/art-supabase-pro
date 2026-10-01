@@ -44,6 +44,45 @@ function Invoke-SupabaseQuietWithRetry {
   return $lastResult
 }
 
+function Test-SupabaseCliProjectVisible {
+  param([Parameter(Mandatory = $true)][string]$ProjectRef)
+
+  $result = Invoke-SupabaseQuiet @('projects', 'list', '--agent=no', '--output-format', 'json')
+  if (-not $result.Succeeded) { return $false }
+
+  try {
+    $projects = @((ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop).projects)
+    return @($projects | Where-Object { $_.ref -eq $ProjectRef }).Count -gt 0
+  }
+  catch {
+    return $false
+  }
+}
+
+function Assert-SupabaseCliProjectAccess {
+  param([Parameter(Mandatory = $true)][string]$ProjectRef)
+
+  if (Test-SupabaseCliProjectVisible -ProjectRef $ProjectRef) { return }
+
+  $inheritedToken = $env:SUPABASE_ACCESS_TOKEN
+  if (-not [string]::IsNullOrWhiteSpace($inheritedToken)) {
+    Remove-Item Env:SUPABASE_ACCESS_TOKEN -ErrorAction SilentlyContinue
+    $savedLoginWorks = $false
+    try {
+      $savedLoginWorks = Test-SupabaseCliProjectVisible -ProjectRef $ProjectRef
+    }
+    finally {
+      if (-not $savedLoginWorks) { $env:SUPABASE_ACCESS_TOKEN = $inheritedToken }
+    }
+    if ($savedLoginWorks) {
+      Write-Host 'Using the saved Supabase CLI login instead of an inherited access token.'
+      return
+    }
+  }
+
+  throw "Supabase CLI cannot access project $ProjectRef. Run 'supabase login --agent=no --output-format text' and confirm the project appears in 'supabase projects list'."
+}
+
 function Enable-SystemProxyForSupabaseCli {
   # The Supabase CLI does not inherit the Windows Internet Settings proxy.
   $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
@@ -65,6 +104,14 @@ function Enable-SystemProxyForSupabaseCli {
   catch {
     Write-Verbose 'Windows proxy settings could not be read; continuing without an HTTP proxy.'
   }
+}
+
+function Get-PlainText {
+  param([Parameter(Mandatory = $true)][securestring]$Value)
+
+  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
+  try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
 }
 
 function ConvertFrom-SupabaseJsonArray {
@@ -174,4 +221,119 @@ function ConvertTo-StorageApiPath {
   param([Parameter(Mandatory = $true)][string]$Path)
 
   return (($Path -split '/') | ForEach-Object { [uri]::EscapeDataString($_) }) -join '/'
+}
+
+function New-StorageAdminHeaders {
+  param(
+    [Parameter(Mandatory = $true)][string]$Key,
+    [switch]$Upsert
+  )
+
+  $headers = @{ apikey = $Key }
+  # New sb_secret_ keys are not JWTs and must not be sent as bearer tokens.
+  if ($Key -notmatch '^sb_secret_') { $headers.Authorization = "Bearer $Key" }
+  if ($Upsert) { $headers['x-upsert'] = 'true' }
+  return $headers
+}
+
+function Invoke-StorageObjectUpload {
+  param(
+    [Parameter(Mandatory = $true)][string]$ApiUrl,
+    [Parameter(Mandatory = $true)][string]$ServiceRoleKey,
+    [Parameter(Mandatory = $true)][string]$BucketId,
+    [Parameter(Mandatory = $true)][string]$ObjectName,
+    [Parameter(Mandatory = $true)][string]$FilePath
+  )
+
+  $encodedBucket = [uri]::EscapeDataString($BucketId)
+  $encodedObject = ConvertTo-StorageApiPath $ObjectName
+  $headers = New-StorageAdminHeaders -Key $ServiceRoleKey -Upsert
+  for ($attempt = 1; $attempt -le 3; $attempt++) {
+    try {
+      Invoke-WebRequest `
+        -Method Post `
+        -Uri "$($ApiUrl.TrimEnd('/'))/storage/v1/object/$encodedBucket/$encodedObject" `
+        -Headers $headers `
+        -InFile $FilePath `
+        -ContentType 'application/octet-stream' `
+        -UseBasicParsing `
+        -TimeoutSec 180 | Out-Null
+      return
+    }
+    catch {
+      if ($attempt -eq 3) { throw }
+      Write-Warning "Storage upload failed for '$BucketId/$ObjectName' (attempt $attempt/3). Retrying..."
+      Start-Sleep -Seconds (3 * $attempt)
+    }
+  }
+}
+
+function Assert-BackupManifest {
+  param(
+    [Parameter(Mandatory = $true)][string]$Root,
+    [Parameter(Mandatory = $true)]$Manifest,
+    [string]$TargetProjectRef
+  )
+
+  if ($Manifest.format_version -ne 1 -or $Manifest.project_ref -notmatch '^[a-z0-9]{20}$') {
+    throw 'Invalid backup manifest format or source project ref.'
+  }
+  if ($TargetProjectRef -and $Manifest.project_ref -eq $TargetProjectRef) {
+    throw 'The target project must differ from the backup source project.'
+  }
+
+  $files = @($Manifest.files)
+  if ($files.Count -eq 0) { throw 'The backup manifest has no files.' }
+  $rootPrefix = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]'\/') + [IO.Path]::DirectorySeparatorChar
+  $paths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  foreach ($entry in $files) {
+    $relativePath = [string]$entry.path
+    $normalizedPath = $relativePath.Replace('\', '/')
+    if ([string]::IsNullOrWhiteSpace($relativePath) -or [IO.Path]::IsPathRooted($relativePath) -or
+        $relativePath.Contains(':') -or
+        @($normalizedPath -split '/' | Where-Object { $_ -eq '.' -or $_ -eq '..' }).Count -gt 0) {
+      throw "Unsafe path in backup manifest: $relativePath"
+    }
+    $fullPath = [IO.Path]::GetFullPath((Join-Path $Root $relativePath))
+    if (-not $fullPath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        -not $paths.Add($normalizedPath)) {
+      throw "Duplicate or out-of-root backup path: $relativePath"
+    }
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+      throw "Backup file is missing: $relativePath"
+    }
+    $file = Get-Item -LiteralPath $fullPath
+    if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $file.Length -ne [long]$entry.bytes -or
+        (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash -ne [string]$entry.sha256) {
+      throw "Backup file failed integrity check: $relativePath"
+    }
+  }
+  foreach ($directory in @(Get-ChildItem -LiteralPath $Root -Directory -Recurse -Force)) {
+    if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+      throw "Backup contains a linked directory: $($directory.FullName)"
+    }
+  }
+  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
+    $relativePath = $file.FullName.Substring($Root.Length + 1).Replace('\', '/')
+    if ($relativePath -notin @('manifest.json', 'README.md') -and -not $paths.Contains($relativePath)) {
+      throw "Backup contains an unverified file: $relativePath"
+    }
+  }
+  foreach ($required in @('config.toml', 'database/roles.sql', 'database/schema.sql',
+      'database/data.sql', 'database/migration-history-schema.sql',
+      'database/migration-history-data.sql', 'metadata/functions.json',
+      'metadata/storage-buckets.json', 'metadata/realtime-publication-tables.json')) {
+    if (-not $paths.Contains($required)) { throw "Backup manifest is missing $required" }
+  }
+  $functionMetadata = Join-Path $Root 'metadata/functions.json'
+  $functions = @(ConvertFrom-SupabaseJsonArray `
+    -Text (Get-Content -LiteralPath $functionMetadata -Raw) `
+    -Description 'the backed-up Edge Function list')
+  foreach ($function in $functions) {
+    if ($function.slug -notmatch '^[a-z0-9][a-z0-9_-]*$' -or
+        -not (Test-Path -LiteralPath (Join-Path $Root "functions/$($function.slug)") -PathType Container)) {
+      throw "Backup is missing a deployed Edge Function: $($function.slug)"
+    }
+  }
 }

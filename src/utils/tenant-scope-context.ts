@@ -5,6 +5,10 @@ export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
   'mdm_master_group',
+  'mdm_production_department',
+  'mdm_production_personnel',
+  'mdm_work_center',
+  'mdm_work_center_defaults',
   'scm_order_target_document',
   'sys_attachment',
   'sys_document_number_rule',

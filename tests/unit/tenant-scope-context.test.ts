@@ -158,12 +158,30 @@ test('platform scope state is explicit even when all tenants is selected', () =>
   }
 })
 
-test('platform table reads discard legacy tenant filters but preserve business filters and RPCs', () => {
+test('platform table reads discard legacy tenant filters but preserve explicit filters and RPCs', () => {
   assert.equal(
     normalizePlatformTenantReadUrl(
       'https://example.supabase.co/rest/v1/mdm_production_department?select=*&tenant_id=eq.platform&enabled=eq.true'
     ),
-    'https://example.supabase.co/rest/v1/mdm_production_department?select=*&enabled=eq.true'
+    'https://example.supabase.co/rest/v1/mdm_production_department?select=*&tenant_id=eq.platform&enabled=eq.true'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/mdm_production_personnel?tenant_id=eq.selected&enabled=eq.true'
+    ),
+    'https://example.supabase.co/rest/v1/mdm_production_personnel?tenant_id=eq.selected&enabled=eq.true'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/mdm_work_center?tenant_id=eq.selected&code=ilike.%25A%25'
+    ),
+    'https://example.supabase.co/rest/v1/mdm_work_center?tenant_id=eq.selected&code=ilike.%25A%25'
+  )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/mdm_work_center_defaults?tenant_id=eq.selected&select=policy'
+    ),
+    'https://example.supabase.co/rest/v1/mdm_work_center_defaults?tenant_id=eq.selected&select=policy'
   )
   assert.equal(
     normalizePlatformTenantReadUrl(

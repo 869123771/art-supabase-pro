@@ -26,18 +26,6 @@ function Invoke-Supabase {
   }
 }
 
-function Get-PlainText {
-  param([Parameter(Mandatory = $true)][securestring]$Value)
-
-  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
-  try {
-    return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
-  }
-  finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
-  }
-}
-
 function Get-LinkedDatabaseConnection {
   param(
     [Parameter(Mandatory = $true)][string]$Password,
@@ -185,10 +173,7 @@ function Invoke-StorageList {
   )
 
   $encodedBucket = [uri]::EscapeDataString($BucketId)
-  $headers = @{
-    apikey = $ServiceRoleKey
-    Authorization = "Bearer $ServiceRoleKey"
-  }
+  $headers = New-StorageAdminHeaders -Key $ServiceRoleKey
   $body = @{
     prefix = $Prefix
     limit = $Limit
@@ -228,10 +213,7 @@ function Invoke-StorageObjectDownload {
 
   $encodedBucket = [uri]::EscapeDataString($BucketId)
   $encodedObject = ConvertTo-StorageApiPath $ObjectName
-  $headers = @{
-    apikey = $ServiceRoleKey
-    Authorization = "Bearer $ServiceRoleKey"
-  }
+  $headers = New-StorageAdminHeaders -Key $ServiceRoleKey
   New-Item -ItemType Directory -Path (Split-Path -Parent $OutputPath) -Force | Out-Null
 
   for ($attempt = 1; $attempt -le 3; $attempt++) {
@@ -373,8 +355,9 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   throw 'Docker Desktop is required for supabase db dump. Install and start Docker Desktop, then rerun this script.'
 }
 if (-not (Test-DockerReady)) { throw 'Docker Desktop is installed but not running.' }
-if (-not $DbPassword) { $DbPassword = Read-Host 'Supabase database password' -AsSecureString }
 Enable-SystemProxyForSupabaseCli
+Assert-SupabaseCliProjectAccess -ProjectRef $ProjectRef
+if (-not $DbPassword) { $DbPassword = Read-Host 'Supabase database password' -AsSecureString }
 
 $supabaseRoot = $PSScriptRoot
 if (-not $BackupRoot) { $BackupRoot = Join-Path $supabaseRoot 'backups' }
@@ -556,13 +539,25 @@ try {
   @"
 # Supabase backup $timestamp
 
-Restore to a new, empty Supabase project with:
+Package this snapshot for verified delivery with:
+
+```powershell
+.\supabase\package-supabase-backup.ps1 -BackupPath '$backupPath'
+```
+
+Restore into an isolated local Supabase stack with:
+
+```powershell
+.\supabase\restore-local-supabase.ps1 -BackupPath '$backupPath' -LocalRoot '<new-local-directory>'
+```
+
+Or restore to a new, empty remote Supabase project with:
 
 ```powershell
 .\supabase\restore-supabase.ps1 -BackupPath '$backupPath' -TargetProjectRef '<new-project-ref>'
 ```
 
-The restore script prompts for the target database password. This backup contains application data and Storage files, so keep it outside Git and in encrypted storage. Review the limitations in manifest.json and supabase/README.md before importing.
+The remote restore prompts for the target database password. Local restore needs no source credentials. This backup contains application data and Storage files, so keep it outside Git and share only with authorized recipients. Review the limitations in manifest.json and supabase/README.zh-CN.md before importing.
 "@ | Set-Content -Path (Join-Path $backupPath 'README.md') -Encoding utf8
 
   Write-Host "Backup completed: $backupPath" -ForegroundColor Green

@@ -1,13 +1,13 @@
 # Supabase source of truth
 
-中文的远端备份与跨项目恢复操作说明见 [README.zh-CN.md](README.zh-CN.md)。
+中文的远端备份、只读分发、本地恢复与跨项目恢复操作说明见 [README.zh-CN.md](README.zh-CN.md)。
 
 This is the only Supabase directory for project `ckbftoopuyophiebamwy`. Business subrepositories do not keep separate Supabase assets.
 
 - `functions/` contains the reviewed, deployable Edge Function source. Deploy a reviewed change with `supabase functions deploy <name> --project-ref ckbftoopuyophiebamwy --use-api`.
 - `migrations/` has no local migration SQL. Reviewed production SQL is applied directly through the project-scoped Supabase MCP after backup and validation.
 - `tests/` contains database regression SQL shared by the whole workspace.
-- `backup-supabase.ps1` exports the remote project into one timestamped, Git-ignored backup directory. `restore-supabase.ps1` imports that backup into a new project.
+- `backup-supabase.ps1` exports the remote project into one timestamped, Git-ignored backup directory. `package-supabase-backup.ps1` packages it for verified download, and `restore-local-supabase.ps1` restores it into an isolated local stack. `restore-supabase.ps1` imports it into a new remote project.
 
 Database structure, data, and migration history are kept together inside the backup directory. Export does not create one SQL file per migration in the repository.
 
@@ -81,5 +81,7 @@ To restore into a **new, empty** Supabase project:
 The restore script verifies the manifest and file hashes, asks for the target database password and project ref confirmation, and refuses a project that already has application tables. It restores the database (including Auth users and migration history), Storage objects, Realtime publication membership, and deployed Edge Functions. The source repository's project link is not changed.
 
 To check a backup without connecting to either project, add `-VerifyBackupOnly` to the restore command.
+
+For recipient-only download access, the owner can package the verified backup and use `publish-supabase-backup.ps1` to upload it to a **private bucket in a separate distribution project**. The package removes source Auth password hashes, sessions, refresh tokens, MFA data, OAuth flow data, migration history rows, and the owner-only managed-schema snapshot; the original owner backup remains intact. Share only the short-lived signed URL and SHA-256. Recipients use `download-supabase-backup.ps1`, `restore-local-supabase.ps1`, and `set-local-login.ps1`; they need no source project token or database password. Review business data and Storage files for other secrets before distribution. See [README.zh-CN.md](README.zh-CN.md) for the full owner and recipient commands, including an offline test with `-ArchivePath`.
 
 Supabase cannot export Edge Function secret **values** or dashboard-only Auth/OAuth, SMTP, domain, and similar settings; configure those on the new project. Changes made to managed `auth` and `storage` schemas require manual review of `database/managed-schema-snapshot.sql` before the target is equivalent. If the source uses Vault or encrypted columns, transfer its encryption root key through Supabase's supported procedure before restoring. Custom `LOGIN` role passwords, Function import maps, and `deno.json` must be supplied separately. See the [Supabase backup and restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore) for those limits.

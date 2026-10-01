@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./calendar-workspace-BOTf9cvj.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`patrol`,mode:`detail`}))}});export{i as default};

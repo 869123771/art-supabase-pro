@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./analysis-workspace-Chl5MyOg.js";var i=e({name:`PmisPatrolAnalysis`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`patrol`}))}});export{i as default};

@@ -25,13 +25,6 @@ function Invoke-Supabase {
   if ($exitCode -ne 0) { throw 'A Supabase CLI command failed. See the preceding command output.' }
 }
 
-function Get-PlainText {
-  param([Parameter(Mandatory = $true)][securestring]$Value)
-  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
-  try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
-  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
-}
-
 function Get-LinkedDatabaseConnection {
   param([Parameter(Mandatory = $true)][string]$Password)
   $dryRun = Invoke-SupabaseQuiet @('db', 'dump', '--linked', '--password', $Password, '--data-only', '--dry-run')
@@ -59,75 +52,6 @@ function Test-DockerReady {
     $ErrorActionPreference = $previousPreference
   }
   return ($exitCode -eq 0)
-}
-
-function Assert-BackupManifest {
-  param(
-    [Parameter(Mandatory = $true)][string]$Root,
-    [Parameter(Mandatory = $true)]$Manifest
-  )
-
-  if ($Manifest.format_version -ne 1 -or $Manifest.project_ref -notmatch '^[a-z0-9]{20}$') {
-    throw 'Invalid backup manifest format or source project ref.'
-  }
-  if ($Manifest.project_ref -eq $TargetProjectRef) {
-    throw 'The target project must differ from the backup source project.'
-  }
-
-  $files = @($Manifest.files)
-  if ($files.Count -eq 0) { throw 'The backup manifest has no files.' }
-  $rootPrefix = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]'\/') + [IO.Path]::DirectorySeparatorChar
-  $paths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-  foreach ($entry in $files) {
-    $relativePath = [string]$entry.path
-    $normalizedPath = $relativePath.Replace('\', '/')
-    if ([string]::IsNullOrWhiteSpace($relativePath) -or [IO.Path]::IsPathRooted($relativePath) -or
-        $relativePath.Contains(':') -or
-        @($normalizedPath -split '/' | Where-Object { $_ -eq '.' -or $_ -eq '..' }).Count -gt 0) {
-      throw "Unsafe path in backup manifest: $relativePath"
-    }
-    $fullPath = [IO.Path]::GetFullPath((Join-Path $Root $relativePath))
-    if (-not $fullPath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase) -or
-        -not $paths.Add($normalizedPath)) {
-      throw "Duplicate or out-of-root backup path: $relativePath"
-    }
-    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
-      throw "Backup file is missing: $relativePath"
-    }
-    $file = Get-Item -LiteralPath $fullPath
-    if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
-        $file.Length -ne [long]$entry.bytes -or
-        (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash -ne [string]$entry.sha256) {
-      throw "Backup file failed integrity check: $relativePath"
-    }
-  }
-  foreach ($directory in @(Get-ChildItem -LiteralPath $Root -Directory -Recurse -Force)) {
-    if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-      throw "Backup contains a linked directory: $($directory.FullName)"
-    }
-  }
-  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
-    $relativePath = $file.FullName.Substring($Root.Length + 1).Replace('\', '/')
-    if ($relativePath -notin @('manifest.json', 'README.md') -and -not $paths.Contains($relativePath)) {
-      throw "Backup contains an unverified file: $relativePath"
-    }
-  }
-  foreach ($required in @('config.toml', 'database/roles.sql', 'database/schema.sql',
-      'database/data.sql', 'database/migration-history-schema.sql',
-      'database/migration-history-data.sql', 'metadata/functions.json',
-      'metadata/storage-buckets.json', 'metadata/realtime-publication-tables.json')) {
-    if (-not $paths.Contains($required)) { throw "Backup manifest is missing $required" }
-  }
-  $functionMetadata = Join-Path $Root 'metadata/functions.json'
-  $functions = @(ConvertFrom-SupabaseJsonArray `
-    -Text (Get-Content -LiteralPath $functionMetadata -Raw) `
-    -Description 'the backed-up Edge Function list')
-  foreach ($function in $functions) {
-    if ($function.slug -notmatch '^[a-z0-9][a-z0-9_-]*$' -or
-        -not (Test-Path -LiteralPath (Join-Path $Root "functions/$($function.slug)") -PathType Container)) {
-      throw "Backup is missing a deployed Edge Function: $($function.slug)"
-    }
-  }
 }
 
 function Invoke-PsqlRestore {
@@ -161,46 +85,10 @@ function Invoke-PsqlRestore {
   if ($exitCode -ne 0) { throw 'Database restore failed; Storage and Functions were not imported.' }
 }
 
-function Invoke-StorageObjectUpload {
-  param(
-    [Parameter(Mandatory = $true)][string]$ProjectRef,
-    [Parameter(Mandatory = $true)][string]$ServiceRoleKey,
-    [Parameter(Mandatory = $true)][string]$BucketId,
-    [Parameter(Mandatory = $true)][string]$ObjectName,
-    [Parameter(Mandatory = $true)][string]$FilePath
-  )
-
-  $encodedBucket = [uri]::EscapeDataString($BucketId)
-  $encodedObject = ConvertTo-StorageApiPath $ObjectName
-  $headers = @{
-    apikey = $ServiceRoleKey
-    Authorization = "Bearer $ServiceRoleKey"
-    'x-upsert' = 'true'
-  }
-  for ($attempt = 1; $attempt -le 3; $attempt++) {
-    try {
-      Invoke-WebRequest `
-        -Method Post `
-        -Uri "https://$ProjectRef.supabase.co/storage/v1/object/$encodedBucket/$encodedObject" `
-        -Headers $headers `
-        -InFile $FilePath `
-        -ContentType 'application/octet-stream' `
-        -UseBasicParsing `
-        -TimeoutSec 180 | Out-Null
-      return
-    }
-    catch {
-      if ($attempt -eq 3) { throw }
-      Write-Warning "Storage upload failed for '$BucketId/$ObjectName' (attempt $attempt/3). Retrying..."
-      Start-Sleep -Seconds (3 * $attempt)
-    }
-  }
-}
-
 $manifestPath = Join-Path $BackupPath 'manifest.json'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'Invalid backup: manifest.json is missing.' }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-Assert-BackupManifest -Root $BackupPath -Manifest $manifest
+Assert-BackupManifest -Root $BackupPath -Manifest $manifest -TargetProjectRef $TargetProjectRef
 if ($VerifyBackupOnly) {
   Write-Host "Backup verified: $BackupPath" -ForegroundColor Green
   return
@@ -302,7 +190,7 @@ try {
         foreach ($file in $bucketFiles) {
           $objectName = $file.FullName.Substring($bucket.FullName.Length + 1).Replace('\', '/')
           Invoke-StorageObjectUpload `
-            -ProjectRef $TargetProjectRef `
+            -ApiUrl "https://$TargetProjectRef.supabase.co" `
             -ServiceRoleKey $serviceRoleKey `
             -BucketId $bucket.Name `
             -ObjectName $objectName `
