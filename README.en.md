@@ -17,6 +17,8 @@
 
 ![Transportation operations dashboard](screenshots/02-dashboard.png)
 
+> Historical showcase screenshot dated September 22, 2026. The running dashboard and its data may differ.
+
 ## Overview
 
 Yiqi Workshop goes beyond a UI-only admin template. It uses Supabase Auth, PostgreSQL, RLS, Storage, Realtime, RPC, and Edge Functions as its backend foundation. A shared platform runtime and independently maintained domain repositories combine into one reproducible application.

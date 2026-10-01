@@ -25,6 +25,8 @@
 
 ![运输运营工作台](screenshots/02-dashboard.png)
 
+> 历史展示截图：画面显示 2026 年 9 月 22 日。实际工作台界面与数据以当前运行版本为准。
+
 ## 项目定位
 
 亿企工场不是只展示表格、表单和图表的 UI 模板。它以 **Supabase Auth、PostgreSQL、RLS、Storage、Realtime、RPC 与 Edge Functions** 为后端基础，以主平台统一公共运行时、业务子仓独立演进的方式，提供可以继续落地和二次开发的企业业务能力。
