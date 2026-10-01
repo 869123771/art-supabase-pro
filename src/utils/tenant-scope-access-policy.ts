@@ -14,3 +14,23 @@ export function resolveTenantScopeReadOnly({
 }: TenantScopeAccessPolicyInput): boolean {
   return isAllTenants && !isPlatformSuper && !PLATFORM_CONTROL_PLANE_ROUTES.has(routePath)
 }
+
+interface TenantReadTargetInput {
+  effectiveTenantId: string | null
+  requestedTenantId?: string | null
+  isPlatformSuper: boolean
+}
+
+/** Null means an authorized all-tenant read; undefined means the requested scope is invalid. */
+export function resolveTenantReadTargetId({
+  effectiveTenantId,
+  requestedTenantId,
+  isPlatformSuper
+}: TenantReadTargetInput): string | null | undefined {
+  const effectiveId = effectiveTenantId?.trim() || null
+  const requestedId = requestedTenantId?.trim() || null
+
+  if (isPlatformSuper && !effectiveId) return requestedId
+  if (!effectiveId || (requestedId && requestedId !== effectiveId)) return undefined
+  return effectiveId
+}

@@ -63,7 +63,7 @@
         trigger: 'item' as const,
         backgroundColor: 'rgba(5, 17, 29, 0.96)',
         borderColor: gridLine,
-        textStyle: { color: strong, fontSize: 11 },
+        textStyle: { color: strong, fontSize: 13 },
         formatter: (params: unknown) => {
           if (!params || typeof params !== 'object' || !('name' in params)) return ''
           const name = String(params.name)
@@ -87,8 +87,8 @@
             left: '31%',
             top: '38%',
             textAlign: 'center',
-            textStyle: { color: strong, fontSize: 28, fontWeight: 760 },
-            subtextStyle: { color: muted, fontSize: 9, lineHeight: 17 }
+            textStyle: { color: strong, fontSize: 30, fontWeight: 760 },
+            subtextStyle: { color: muted, fontSize: 11, lineHeight: 17 }
           },
           tooltip: hasValue ? tooltip : { show: false },
           legend: {
@@ -103,10 +103,10 @@
               `{name|${name}}  {value|${valueMap.get(name) ?? 0}${props.unit}}`,
             textStyle: {
               color: muted,
-              fontSize: 9,
+              fontSize: 11,
               rich: {
-                name: { color: muted, width: 66, fontSize: 9 },
-                value: { color: strong, fontSize: 10, fontWeight: 700 }
+                name: { color: muted, width: 66, fontSize: 11 },
+                value: { color: strong, fontSize: 12, fontWeight: 700 }
               }
             },
             data: props.items.map((item) => item.label)
@@ -128,7 +128,7 @@
               label: {
                 show: false,
                 color: strong,
-                fontSize: 9,
+                fontSize: 11,
                 formatter: '{b}\n{c}'
               },
               labelLine: { length: 7, length2: 5, lineStyle: { color: gridLine } },
@@ -155,7 +155,7 @@
               name: item.label,
               max: Math.ceil(maxValue * 1.2)
             })),
-            axisName: { color: muted, fontSize: 9 },
+            axisName: { color: muted, fontSize: 11 },
             axisLine: { lineStyle: { color: gridLine } },
             splitLine: { lineStyle: { color: [gridLine] } },
             splitArea: { areaStyle: { color: ['transparent', 'rgba(109, 140, 255, 0.025)'] } }
@@ -220,7 +220,7 @@
                   position: 'insideLeft',
                   distance: 14,
                   color: strong,
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: 600,
                   formatter: (params: unknown) => {
                     if (!params || typeof params !== 'object' || !('name' in params)) return ''
@@ -250,7 +250,7 @@
               label: {
                 show: true,
                 color: strong,
-                fontSize: 10,
+                fontSize: 12,
                 lineHeight: 16,
                 formatter: (params: unknown) => {
                   if (!params || typeof params !== 'object' || !('name' in params)) return ''
@@ -299,7 +299,7 @@
               edgeSymbol: ['none', 'circle'],
               edgeSymbolSize: 4,
               lineStyle: { color: accent, width: 1, opacity: 0.34, curveness: 0.16 },
-              label: { show: true, color: strong, fontSize: 9, position: 'inside' },
+              label: { show: true, color: strong, fontSize: 11, position: 'inside' },
               data: [
                 {
                   name: '治理中心',
@@ -353,7 +353,7 @@
             axisTick: { show: false },
             axisLabel: {
               color: strong,
-              fontSize: 12,
+              fontSize: 13,
               margin: 14,
               width: 92,
               overflow: 'truncate'
@@ -379,7 +379,7 @@
                 position: 'right',
                 distance: 8,
                 color: strong,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 700,
                 formatter: `{c}${props.unit}`
               },
@@ -404,14 +404,14 @@
           data: props.items.map((item) => item.label),
           axisLine: { lineStyle: { color: gridLine } },
           axisTick: { show: false },
-          axisLabel: { color: muted, fontSize: 9, interval: 0, hideOverlap: true }
+          axisLabel: { color: muted, fontSize: 11, interval: 0, hideOverlap: true }
         },
         yAxis: {
           type: 'value',
           minInterval: 1,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { color: muted, fontSize: 8 },
+          axisLabel: { color: muted, fontSize: 10 },
           splitLine: { lineStyle: { color: gridLine, type: 'dashed' } }
         },
         series: [
@@ -431,7 +431,7 @@
               show: true,
               position: 'top',
               color: strong,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 700,
               formatter: `{c}${props.unit}`
             },

@@ -68,7 +68,7 @@
           right: 6,
           itemWidth: 8,
           itemHeight: 3,
-          textStyle: { color: muted, fontSize: 9 },
+          textStyle: { color: muted, fontSize: 11 },
           data: hasSecondary ? [props.primaryLabel, props.secondaryLabel] : [props.primaryLabel]
         },
         tooltip: {
@@ -80,7 +80,7 @@
           confine: true,
           backgroundColor: 'rgba(5, 17, 29, 0.95)',
           borderColor: gridLine,
-          textStyle: { color: strong, fontSize: 11 }
+          textStyle: { color: strong, fontSize: 13 }
         },
         xAxis: {
           type: 'category',
@@ -88,14 +88,14 @@
           data: props.points.map((point) => point.label),
           axisLine: { lineStyle: { color: gridLine } },
           axisTick: { show: false },
-          axisLabel: { color: muted, fontSize: 9, hideOverlap: true }
+          axisLabel: { color: muted, fontSize: 11, hideOverlap: true }
         },
         yAxis: {
           type: 'value',
           minInterval: 1,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { color: muted, fontSize: 9 },
+          axisLabel: { color: muted, fontSize: 11 },
           splitLine: { lineStyle: { color: gridLine, type: 'dashed' } }
         },
         series: [

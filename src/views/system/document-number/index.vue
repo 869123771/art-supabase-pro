@@ -133,6 +133,7 @@
   import { fetchGetEnableMenuList } from '@/api/system-manage'
   import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import { useAuth } from '@/hooks/core/useAuth'
   import { pageInfoHandler } from '@/utils/table/tableUtils'
   import { formatWithDayjs } from '@/utils/time'
@@ -183,6 +184,7 @@
   const isDesktopMenuLayout = useMediaQuery('(min-width: 1201px)')
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   const userStore = useUserStore()
+  const tenantScopeStore = useTenantScopeStore()
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
   const { hasAuth, hasAnyAuth } = useAuth()
   const canManage = computed(() =>
@@ -280,7 +282,7 @@
         type: 'input',
         props: { clearable: true, placeholder: '搜索名称、规则键或目标表' }
       },
-      ...(isPlatformSuper.value
+      ...(tenantScopeStore.isAllTenants
         ? [
             {
               label: '生效租户',
@@ -473,9 +475,11 @@
       : [])
   ]
 
+  let statsRequestId = 0
   const loadStats = async (): Promise<void> => {
-    const { data } = await fetchDocumentNumberRuleStats()
-    Object.assign(overview.stats, data)
+    const requestId = ++statsRequestId
+    const { data } = await fetchDocumentNumberRuleStats(table.searchQuery.tenantId)
+    if (requestId === statsRequestId) Object.assign(overview.stats, data)
   }
 
   const loadTenantOptions = async (): Promise<void> => {
@@ -578,6 +582,23 @@
       selectedMenuId.value = typeof menuId === 'string' ? menuId : ''
       table.searchQuery.keyword = ''
       await tableQueryRef.value?.refreshCreate()
+    }
+  )
+
+  watch(
+    () => table.searchQuery.tenantId,
+    () => void loadStats()
+  )
+
+  watch(
+    () => tenantScopeStore.revision,
+    async () => {
+      const hadTenantFilter = Boolean(table.searchQuery.tenantId)
+      table.searchQuery.tenantId = undefined
+      await Promise.all([
+        tableQueryRef.value?.refreshCreate(),
+        ...(hadTenantFilter ? [] : [loadStats()])
+      ])
     }
   )
 </script>

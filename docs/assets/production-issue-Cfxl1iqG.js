@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./production-material-workspace-BPOFj-aS.js";var i=e({name:`WmsProductionIssue`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`issue`}))}});export{i as default};

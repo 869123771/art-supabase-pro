@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./scm-document-workspace-1wluaQp_.js";var i=e({name:`ScmLoading`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`loading`}))}});export{i as default};

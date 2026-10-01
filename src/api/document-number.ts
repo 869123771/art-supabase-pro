@@ -1,8 +1,10 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
+import { useTenantScopeStore } from '@/store/modules/tenantScope'
 import { getDocumentNumberPeriodKey, renderDocumentNumber } from '@/utils/document-number'
 import { applyFilters } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { resolveTenantReadTargetId } from '@/utils/tenant-scope-access-policy'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
@@ -11,6 +13,23 @@ type SearchParams = Api.SystemManage.DocumentNumberRuleSearchParams
 type UpdatePayload = Api.SystemManage.DocumentNumberRuleUpdatePayload
 type CreatePayload = Api.SystemManage.DocumentNumberRuleCreatePayload
 type NumberScene = Api.SystemManage.DocumentNumberSceneItem
+
+const resolveRuleReadTenantId = (requestedTenantId?: string): string | null | undefined => {
+  const tenantScopeStore = useTenantScopeStore()
+  return resolveTenantReadTargetId({
+    effectiveTenantId: tenantScopeStore.effectiveTenantId,
+    requestedTenantId,
+    isPlatformSuper: tenantScopeStore.isPlatformScope
+  })
+}
+
+const emptyRuleStats = (): Api.SystemManage.DocumentNumberRuleStats => ({
+  total: 0,
+  automatic: 0,
+  manual: 0,
+  tenantCount: 0,
+  categoryCounts: { business_document: 0, master_data: 0, vehicle: 0 }
+})
 
 const ruleSelect = `
   *,
@@ -41,6 +60,9 @@ const enhanceRule = (rule: NumberRule): NumberRule => {
 
 export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
   const { keyword = '', tenantId, category, autoEnabled, ruleKeys, from = 0, to = 19 } = params
+  const readTenantId = resolveRuleReadTenantId(tenantId)
+  if (readTenantId === undefined) return { data: [] as NumberRule[], total: 0, error: null }
+
   let query = supabase
     .from('sys_document_number_rule')
     .select(ruleSelect, { count: 'exact' })
@@ -51,7 +73,7 @@ export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
   query = applyFilters(
     query,
     [
-      { col: 'tenant_id', op: 'eq', val: tenantId },
+      { col: 'tenant_id', op: 'eq', val: readTenantId },
       { col: 'category', op: 'eq', val: category },
       { col: 'auto_enabled', op: 'eq', val: autoEnabled }
     ],
@@ -77,46 +99,49 @@ export async function fetchDocumentNumberRuleList(params: SearchParams = {}) {
 
 export async function fetchDocumentNumberRulesByKeys(ruleKeys: string[], tenantId?: string) {
   if (!ruleKeys.length) return { data: [] as NumberRule[], error: null }
-  let query = supabase
+  const readTenantId = resolveRuleReadTenantId(tenantId)
+  if (!readTenantId) return { data: [] as NumberRule[], error: null }
+
+  const query = supabase
     .from('sys_document_number_rule')
     .select(ruleSelect)
     .in('rule_key', ruleKeys)
     .eq('enabled', true)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
+    .eq('tenant_id', readTenantId)
   const result = await responseHandle<NumberRule[]>(() => query, {
     showErrorMessage: false
   })
   return { ...result, data: (result.data ?? []).map(enhanceRule) }
 }
 
-export async function fetchDocumentNumberRuleStats(): Promise<{
+export async function fetchDocumentNumberRuleStats(tenantId?: string): Promise<{
   data: Api.SystemManage.DocumentNumberRuleStats
   error: unknown | null
 }> {
-  const { data, error } = await responseHandle<NumberRule[]>(
-    () =>
-      supabase
-        .from('sys_document_number_rule')
-        .select('id, tenant_id, category, auto_enabled, update_time'),
-    { showErrorMessage: true }
-  )
+  const readTenantId = resolveRuleReadTenantId(tenantId)
+  if (readTenantId === undefined) return { data: emptyRuleStats(), error: null }
+
+  let query = supabase
+    .from('sys_document_number_rule')
+    .select('id, tenant_id, category, auto_enabled, update_time')
+  if (readTenantId) query = query.eq('tenant_id', readTenantId)
+
+  const { data, error } = await responseHandle<NumberRule[]>(() => query, {
+    showErrorMessage: true
+  })
   const rows = data ?? []
-  const categoryCounts: Record<Api.SystemManage.DocumentNumberCategory, number> = {
-    business_document: 0,
-    master_data: 0,
-    vehicle: 0
-  }
+  const stats = emptyRuleStats()
   rows.forEach((row) => {
-    categoryCounts[row.category] += 1
+    stats.categoryCounts[row.category] += 1
   })
 
   return {
     data: {
+      ...stats,
       total: rows.length,
       automatic: rows.filter((row) => row.autoEnabled).length,
       manual: rows.filter((row) => !row.autoEnabled).length,
       tenantCount: new Set(rows.map((row) => row.tenantId)).size,
-      categoryCounts,
       lastUpdateTime: rows
         .map((row) => row.updateTime ?? '')
         .sort()

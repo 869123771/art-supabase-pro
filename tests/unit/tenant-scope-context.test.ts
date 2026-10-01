@@ -177,6 +177,12 @@ test('platform table reads discard legacy tenant filters but preserve business f
     ),
     'https://example.supabase.co/rest/v1/rpc/list_people?tenant_id=platform'
   )
+  assert.equal(
+    normalizePlatformTenantReadUrl(
+      'https://example.supabase.co/rest/v1/sys_document_number_rule?tenant_id=eq.selected&enabled=eq.true'
+    ),
+    'https://example.supabase.co/rest/v1/sys_document_number_rule?tenant_id=eq.selected&enabled=eq.true'
+  )
 })
 
 test('tenant scope header is attached only to Supabase Data API requests', () => {
