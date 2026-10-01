@@ -374,8 +374,10 @@
   )
   const showAlertPanel = computed(() => data.riskCount > 0 || data.alerts.length > 0)
   const isTreasury = computed(() => definition.value.layout === 'treasury')
-  const hasDistributionData = computed(() => distributionItems.value.some((item) => item.value > 0))
-  const hasStageData = computed(() => data.stages.some((item) => item.value > 0))
+  const hasDistributionData = computed(() =>
+    distributionItems.value.some((item) => Math.abs(item.value) > 0)
+  )
+  const hasStageData = computed(() => data.stages.some((item) => Math.abs(item.value) > 0))
   const showTrendPanel = computed(
     () => !isTreasury.value || data.trend.some((point) => point.primary || point.secondary)
   )

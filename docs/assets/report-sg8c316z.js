@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./task-workspace-C0fFo9Sa.js";var i=e({name:`PmisInspectionReport`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`inspection`,mode:`report`}))}});export{i as default};

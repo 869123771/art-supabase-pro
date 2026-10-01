@@ -32,7 +32,7 @@
   const { rootRef, readScreenColor } = useScreenChartTheme()
   const total = computed(() => props.items.reduce((sum, item) => sum + Math.max(0, item.value), 0))
   const chartSummary = computed(() =>
-    total.value
+    props.items.some((item) => item.value !== 0)
       ? `${props.title}：${props.items.map((item) => `${item.label} ${item.value}${props.unit}`).join('，')}`
       : `${props.title}：当前均为零`
   )
@@ -52,7 +52,9 @@
       const track = readScreenColor('--screen-chart-track', 'rgba(120, 157, 187, 0.13)')
       const gridLine = readScreenColor('--screen-chart-grid', 'rgba(120, 157, 187, 0.11)')
       const colors = [accent, cyan, success, warning, danger, accentSoft]
-      const hasValue = total.value > 0
+      const hasValue =
+        total.value > 0 ||
+        (props.variant === 'lollipop' && props.items.some((item) => item.value < 0))
       const visibleItems = props.items.length
         ? props.items
         : [{ label: '当前无待处置数据', value: 0, caption: '基线正常', tone: 'success' as const }]
@@ -433,7 +435,11 @@
               fontWeight: 700,
               formatter: `{c}${props.unit}`
             },
-            data: props.items.map((item) => item.value),
+            data: props.items.map((item) => ({
+              value: item.value,
+              itemStyle: item.value < 0 ? { color: danger } : undefined,
+              label: item.value < 0 ? { position: 'bottom' as const, offset: [0, -16] } : undefined
+            })),
             ...getAnimationConfig(120, 850)
           },
           ...(isLollipop
@@ -441,8 +447,14 @@
                 {
                   type: 'scatter' as const,
                   symbolSize: 13,
-                  data: props.items.map((item) => item.value),
-                  itemStyle: { color: cyan, shadowBlur: 12, shadowColor: `${cyan}88` },
+                  data: props.items.map((item) => ({
+                    value: item.value,
+                    itemStyle: {
+                      color: item.value < 0 ? danger : cyan,
+                      shadowColor: item.value < 0 ? `${danger}88` : `${cyan}88`
+                    }
+                  })),
+                  itemStyle: { shadowBlur: 12 },
                   z: 4,
                   ...getAnimationConfig(240, 850)
                 }

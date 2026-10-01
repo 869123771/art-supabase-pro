@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./report-ledger-GU8iprCF.js";var i=e({name:`MesReportAllocation`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`allocation`}))}});export{i as default};

@@ -2,6 +2,10 @@
 
 `ArtEmployeeSelect` is the platform employee/person selector. It owns tenant-scoped secure search, pagination, employee identity labels, and the shared selection-dialog layout.
 
+An explicit `tenant-id` (for example, the tenant of an existing record) takes precedence over the tenant selected in the application shell. In the platform-wide “全部租户” view, the picker stays disabled until a concrete target tenant is available.
+
+The current default RPC, `hr_list_employee_selector_secure`, returns active or probation employees who are **not yet linked to a login account**. It does not provide a complete business employee roster. Business workflows that must select already linked employees need a full-roster selector RPC with their own read permission and tenant-scope checks; do not silently substitute the HR roster management RPC, which requires `Hr:Employee:View`.
+
 ```vue
 <ArtEmployeeSelect
   v-model="form.employeeId"

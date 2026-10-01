@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./purchase-workspace-CEviTOtU.js";var i=e({name:`ScmReceiptNotice`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`receipt_notice`}))}});export{i as default};

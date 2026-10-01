@@ -951,6 +951,21 @@
   }
 }
 
+@media (width >= 2200px) and (height >= 1200px) {
+  .domain-command-screen:is(
+      .is-financial-risk,
+      .is-workflow-efficiency,
+      .is-fleet-compliance,
+      .is-data-governance
+    )
+    .domain-command-screen__stage {
+    width: 80%;
+    height: 80vh;
+    transform: scale(1.25);
+    transform-origin: top left;
+  }
+}
+
 .is-spinning {
   animation: domainRefreshSpin 1s linear infinite;
 }

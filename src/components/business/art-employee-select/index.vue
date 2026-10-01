@@ -5,8 +5,8 @@
     :selected-data="selectedData"
     :api-fn="fetchEmployees"
     :columns="columns"
-    :placeholder="placeholder"
-    :disabled="disabled"
+    :placeholder="resolvedTenantId ? placeholder : '请先选择目标租户'"
+    :disabled="disabled || !resolvedTenantId"
     :clearable="clearable"
     row-key="id"
     :label-key="getEmployeeLabel"
@@ -50,7 +50,7 @@
     DataSelectKey,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
-  import { useUserStore } from '@/store/modules/user'
+  import { useTenantScopeStore } from '@/store/modules/tenantScope'
   import {
     fetchEmployeeSelectorList,
     type EmployeeIntegrationItem
@@ -100,14 +100,14 @@
     clear: []
   }>()
 
-  const userStore = useUserStore()
+  const tenantScopeStore = useTenantScopeStore()
   // Single and multiple selectors have different value types; the dynamic component
   // boundary is intentional and values are normalized by the handlers below.
   const selectorComponent = computed<Component>(() =>
     props.multiple ? ArtTableMultipleSelect : ArtTableSingleSelect
   )
-  const { getUserInfo } = storeToRefs(userStore)
-  const resolvedTenantId = computed(() => props.tenantId || getUserInfo.value.tenantId || '')
+  const { effectiveTenantId } = storeToRefs(tenantScopeStore)
+  const resolvedTenantId = computed(() => props.tenantId || effectiveTenantId.value || '')
   const employeeMaintenanceActions = [
     {
       label: '去维护员工花名册',
@@ -190,6 +190,7 @@
   }
 
   const fetchEmployees = async (params: DataSelectFetchParams) => {
+    if (!resolvedTenantId.value) return { data: [], total: 0 }
     const from = Math.max((params.page - 1) * params.pageSize, 0)
     const result = await (props.apiFn ?? fetchEmployeeSelectorList)({
       tenantId: resolvedTenantId.value,
@@ -197,6 +198,7 @@
       from,
       to: from + params.pageSize - 1
     })
+    if (result.error) throw result.error
     return { data: result.data, total: result.total }
   }
 
