@@ -20,36 +20,23 @@
 
 <script setup lang="ts">
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchGetUserList } from '@/api/system-manage'
+  import { queryDemoUsers, type DemoUser, type DemoUserQuery } from './demo-user-data'
 
-  defineOptions({ name: 'UserMixedUsageExample' })
+  defineOptions({ name: 'TablesBasic' })
 
-  type ExampleUserSearchParams = Api.SystemManage.UserSearchParams & {
-    current?: number
-    size?: number
-  }
-
-  const fetchExampleUserList = (params: ExampleUserSearchParams) => {
-    const { current = 1, size = 20, ...filters } = params
-    return fetchGetUserList({
-      ...filters,
-      from: (current - 1) * size,
-      to: current * size - 1
-    })
-  }
+  const loadDemoUsers = (params: DemoUserQuery) => Promise.resolve(queryDemoUsers(params))
 
   const { data, columns, loading, pagination, handleSizeChange, handleCurrentChange } = useTable<
-    Api.SystemManage.UserListItem,
-    typeof fetchExampleUserList
+    DemoUser,
+    typeof loadDemoUsers
   >({
     core: {
-      apiFn: fetchExampleUserList,
+      apiFn: loadDemoUsers,
       apiParams: {
         current: 1,
         size: 20,
-        userName: '',
-        userPhone: '',
-        userEmail: ''
+        name: '',
+        phone: ''
       },
       columnsFactory: () => [
         {
@@ -57,8 +44,8 @@
           label: 'ID'
         },
         {
-          prop: 'nickName',
-          label: '昵称'
+          prop: 'userName',
+          label: '示例用户'
         },
         {
           prop: 'userGender',

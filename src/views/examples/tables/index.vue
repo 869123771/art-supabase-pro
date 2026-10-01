@@ -17,9 +17,8 @@
       </template>
       <div>
         <p class="m-0 mb-4 leading-[1.6] text-g-700">
-          集成搜索、刷新、全屏、大小控制、列显示隐藏、拖拽排序、表格样式控制、并内置 useTable
-          组合式函数，提供强大的组合式 API，集成数据获取、智能缓存（LRU算法）、
-          多种刷新策略等核心功能，全面提升表格开发效率。
+          使用本地示例数据展示搜索、分页、缓存、刷新和列配置。页面中的用户与操作均为演示，
+          不读取或修改实际账号。
         </p>
 
         <!-- 调试面板 -->
@@ -144,11 +143,13 @@
     <ElCard class="flex-1 art-table-card" style="margin-top: 0">
       <template #header>
         <div class="flex-cb">
-          <h4 class="m-0">用户数据表格</h4>
+          <h4 class="m-0">示例用户表格</h4>
           <div class="flex gap-2">
             <ElTag v-if="error" type="danger">{{ tableErrorMessage }}</ElTag>
             <ElTag v-else-if="loading" type="warning">加载中...</ElTag>
-            <ElTag v-else type="success">{{ data.length }} 条数据</ElTag>
+            <ElTag v-else type="success"
+              >当前页 {{ data.length }} / 共 {{ pagination.total }} 条</ElTag
+            >
           </div>
         </div>
       </template>
@@ -164,26 +165,27 @@
       >
         <template #left>
           <ElSpace wrap>
-            <ElButton type="primary" @click="handleAdd" v-ripple>
+            <ElButton @click="handleAdd" v-ripple>
               <ElIcon>
                 <Plus />
               </ElIcon>
-              新增用户
+              模拟新增
             </ElButton>
 
             <!-- 导出导入功能 -->
             <ArtExcelExport
               :data="data"
               :columns="exportColumns"
-              filename="用户数据"
+              type="default"
+              filename="示例用户数据"
               :auto-index="true"
               button-text="导出"
               @export-success="handleExportSuccess"
             />
             <ArtExcelImport
+              :button-props="{ type: 'default' }"
               @import-success="handleImportSuccess"
               @import-error="handleImportError"
-              style="margin: 0 12px"
             />
 
             <ElButton @click="handleClearData" plain v-ripple> 清空数据 </ElButton>
@@ -195,7 +197,7 @@
               批量删除 ({{ selectedRows.length }})
             </ElButton>
             <!-- 动态列配置演示按钮 -->
-            <ElDropdown @command="handleColumnCommand" style="margin-left: 10px">
+            <ElDropdown @command="handleColumnCommand">
               <ElButton type="primary" plain>
                 动态更新表格列
                 <ElIcon class="el-icon--right">
@@ -443,28 +445,19 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useTable, CacheInvalidationStrategy } from '@/hooks/core/useTable'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { fetchGetUserList } from '@/api/system-manage'
-  import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
+  import { queryDemoUsers, type DemoUser, type DemoUserQuery } from './demo-user-data'
   import { getColumnKey } from '@/hooks/core/useTableColumns'
 
-  defineOptions({ name: 'AdvancedTableDemo' })
+  defineOptions({ name: 'Tables' })
 
   const { confirmDelete } = useArtFeedback()
 
-  type UserListItem = Api.SystemManage.UserListItem
-  type ExampleUserSearchParams = Api.SystemManage.UserSearchParams & {
-    current?: number
-    size?: number
-    name?: string
-    phone?: string
-    department?: string
+  type ExampleUserSearchParams = DemoUserQuery & {
     daterange?: string[]
-    startTime?: string | null
-    endTime?: string | null
   }
 
   // 选中的行
-  const selectedRows = ref<UserListItem[]>([])
+  const selectedRows = ref<DemoUser[]>([])
 
   // 表格实例引用
   const tableRef = ref()
@@ -511,20 +504,16 @@
 
   // 校验规则
   const rules = {
-    name: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-    phone: [
-      { required: true, message: '请输入手机号', trigger: 'blur' },
-      { pattern: /^1[3456789]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
-    ]
+    phone: [{ pattern: /^1[3456789]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }]
   }
 
   // 表单搜索初始值
   const searchFormState = ref({
     name: '',
     phone: '',
-    status: '1',
+    status: '',
     department: '',
-    daterange: ['2025-01-01', '2025-02-10']
+    daterange: [] as string[]
   })
 
   // 搜索表单状态
@@ -631,35 +620,7 @@
     }
   }
 
-  const fetchExampleUserList = (params: ExampleUserSearchParams) => {
-    const { current = 1, size = 20, name, phone, department, daterange, ...filters } = params
-    void department
-    void daterange
-
-    return fetchGetUserList({
-      ...filters,
-      userName: name || filters.userName,
-      userPhone: phone || filters.userPhone,
-      from: (current - 1) * size,
-      to: current * size - 1
-    })
-  }
-
-  // 模拟网络请求
-  // const simulateNetworkRequest = (): Promise<void> => {
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => {
-  //       resolve()
-  //     }, 500)
-  //   })
-  // }
-
-  // 模拟网络请求完成后加载数据
-  // onMounted(async () => {
-  //   // 等待模拟的网络请求完成
-  //   await simulateNetworkRequest()
-  //   await fetchData({ name: 'ricky', phone: 19388828388 })
-  // })
+  const loadDemoUsers = (params: ExampleUserSearchParams) => Promise.resolve(queryDemoUsers(params))
 
   /**
    * 使用 useTable Hook 管理表格数据
@@ -721,18 +682,18 @@
     reorderColumns, // 重新排序列
     getColumnConfig, // 获取列配置
     getAllColumns // 获取所有列配置
-  } = useTable<UserListItem, typeof fetchExampleUserList>({
+  } = useTable<DemoUser, typeof loadDemoUsers>({
     // 核心配置
     core: {
       apiFn: (params) => {
         const requestKey = JSON.stringify(params)
-        addCacheLog(`🚀 API 请求: current=${params.current}, size=${params.size}`)
+        addCacheLog(`🚀 示例数据查询: current=${params.current}, size=${params.size}`)
         addCacheLog(`🔑 请求键: ${requestKey.substring(0, 100)}...`)
 
         // 记录缓存键（这里假设会被缓存）
         updateCacheKeys(requestKey)
 
-        return fetchExampleUserList(params)
+        return loadDemoUsers(params)
       },
       apiParams: {
         current: 1,
@@ -814,33 +775,6 @@
       ]
     },
 
-    // 数据处理
-    transform: {
-      dataTransformer: (records) => {
-        if (!Array.isArray(records)) return []
-
-        return records.map((item, index: number) => ({
-          ...item,
-          avatar: ACCOUNT_TABLE_DATA[index % ACCOUNT_TABLE_DATA.length].avatar,
-          department: ['技术部', '产品部', '运营部', '市场部', '设计部'][
-            Math.floor(Math.random() * 5)
-          ],
-          score: Math.floor(Math.random() * 5) + 1,
-          status: ['1', '2', '3', '4'][Math.floor(Math.random() * 4)]
-        }))
-      }
-      // 自定义响应适配器，处理后端特殊的返回格式
-      // responseAdapter: (data) => {
-      //   const { list, total, pageNum, pageSize } = data
-      //   return {
-      //     records: list,
-      //     total: total,
-      //     current: pageNum,
-      //     size: pageSize
-      //   }
-      // }
-    },
-
     // 性能优化
     performance: {
       enableCache: true, // 开启缓存
@@ -852,7 +786,7 @@
     // 生命周期钩子
     hooks: {
       onSuccess: (data, response) => {
-        addCacheLog(`✅ 网络请求成功: ${data.length} 条数据`)
+        addCacheLog(`✅ 示例数据加载完成: ${data.length} 条`)
         addCacheLog(
           `📝 响应信息: total=${response.total}, current=${response.current}, size=${response.size}`
         )
@@ -885,12 +819,12 @@
   )
 
   // 事件处理函数
-  const handleSelectionChange = (selection: UserListItem[]) => {
+  const handleSelectionChange = (selection: DemoUser[]) => {
     selectedRows.value = selection
     logEvent('选择变更', `已选择 ${selection.length} 行`)
   }
 
-  const handleRowClick = (row: UserListItem) => {
+  const handleRowClick = (row: DemoUser) => {
     logEvent('行点击', `点击了用户: ${row.userName}`)
   }
 
@@ -1021,26 +955,26 @@
 
   // CRUD 操作
   const handleAdd = () => {
-    ElMessage.success('新增用户成功')
+    ElMessage.info('已演示新增后刷新；示例数据未修改')
     refreshCreate()
   }
 
-  const handleEdit = (row: UserListItem) => {
-    ElMessage.success(`编辑用户 ${row.userName} 成功`)
+  const handleEdit = (row: DemoUser) => {
+    ElMessage.info(`已演示编辑“${row.userName}”后刷新；示例数据未修改`)
     setTimeout(() => {
       refreshUpdate()
     }, 1000)
   }
 
-  const handleDelete = async (row: UserListItem) => {
+  const handleDelete = async (row: DemoUser) => {
     try {
-      await confirmDelete(`确定要删除用户 ${row.userName} 吗？`, {
-        title: '删除用户',
+      await confirmDelete(`模拟删除“${row.userName}”并刷新表格？示例数据不会改变。`, {
+        title: '模拟删除',
         confirmButtonText: '确定',
         cancelButtonText: '取消'
       })
 
-      ElMessage.success('删除成功')
+      ElMessage.info('已演示删除后刷新；示例数据未修改')
       setTimeout(() => {
         refreshRemove()
       }, 1000)
@@ -1049,19 +983,22 @@
     }
   }
 
-  const handleView = (row: UserListItem) => {
+  const handleView = (row: DemoUser) => {
     ElMessage.info(`查看用户 ${row.userName}`)
   }
 
   const handleBatchDelete = async () => {
     try {
-      await confirmDelete(`确定要删除选中的 ${selectedRows.value.length} 个用户吗？`, {
-        title: '批量删除用户',
-        confirmButtonText: '确定',
-        cancelButtonText: '取消'
-      })
+      await confirmDelete(
+        `模拟删除选中的 ${selectedRows.value.length} 条记录？示例数据不会改变。`,
+        {
+          title: '模拟批量删除',
+          confirmButtonText: '确定',
+          cancelButtonText: '取消'
+        }
+      )
 
-      ElMessage.success(`批量删除 ${selectedRows.value.length} 个用户成功`)
+      ElMessage.info(`已演示批量删除 ${selectedRows.value.length} 条记录；示例数据未修改`)
       selectedRows.value = []
       setTimeout(() => {
         refreshRemove()
@@ -1081,7 +1018,7 @@
    * @param data 导入的数据数组
    */
   const handleImportSuccess = (data: Array<Record<string, unknown>>) => {
-    ElMessage.success(`导入 ${data.length} 条数据成功`)
+    ElMessage.info(`已读取 ${data.length} 条导入记录；示例数据未修改`)
     refreshCreate()
   }
 
