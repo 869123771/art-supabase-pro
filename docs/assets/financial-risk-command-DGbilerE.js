@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./domain-command-screen-CUpVFzR2.js";var i=e({name:`FinancialRiskCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`financial-risk`}))}});export{i as default};

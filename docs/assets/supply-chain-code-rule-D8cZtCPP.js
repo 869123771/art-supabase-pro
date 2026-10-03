@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./inventory-configuration-BAuw6DHW.js";var i=e({name:`MdmSupplyChainCodeRule`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

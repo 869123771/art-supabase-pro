@@ -19,6 +19,8 @@ export const financePaths = {
   expenseReimbursement: `${FMS_ROOT_PATH}/settlement/expense-reimbursement`,
   waybillProfit: `${FMS_ROOT_PATH}/settlement/waybill-profit`,
   expenseItem: `${FMS_ROOT_PATH}/settlement/expense-item`,
+  assetPayable: `${FMS_ROOT_PATH}/settlement/asset-payable`,
+  receivableAging: `${FMS_ROOT_PATH}/settlement/receivable-aging`,
   accounting: `${FMS_ROOT_PATH}/accounting`,
   accountSet: `${FMS_ROOT_PATH}/accounting/account-set`,
   accountingSubject: `${FMS_ROOT_PATH}/accounting/accounting-subject`,
@@ -39,7 +41,9 @@ export const financePaths = {
   fundAccount: `${FMS_ROOT_PATH}/treasury/fund-account`,
   fundTransfer: `${FMS_ROOT_PATH}/treasury/fund-transfer`,
   bankReconciliation: `${FMS_ROOT_PATH}/treasury/bank-reconciliation`,
-  fundJournal: `${FMS_ROOT_PATH}/treasury/fund-journal`
+  fundJournal: `${FMS_ROOT_PATH}/treasury/fund-journal`,
+  cashForecast: `${FMS_ROOT_PATH}/treasury/cash-forecast`,
+  exceptionCenter: `${FMS_ROOT_PATH}/exception-center`
 } as const
 
 export const financeRouteNames = {
@@ -119,6 +123,8 @@ export function resolveLegacyBusinessPath(path: string): string | undefined {
     ['expense-reimbursement', financePaths.expenseReimbursement],
     ['waybill-profit', financePaths.waybillProfit],
     ['expense-item', financePaths.expenseItem],
+    ['asset-payable', financePaths.assetPayable],
+    ['receivable-aging', financePaths.receivableAging],
     ['account-set', financePaths.accountSet],
     ['accounting-subject', financePaths.accountingSubject],
     ['accounting-auxiliary', financePaths.accountingAuxiliary],
@@ -137,7 +143,8 @@ export function resolveLegacyBusinessPath(path: string): string | undefined {
     ['fund-account', financePaths.fundAccount],
     ['fund-transfer', financePaths.fundTransfer],
     ['bank-reconciliation', financePaths.bankReconciliation],
-    ['fund-journal', financePaths.fundJournal]
+    ['fund-journal', financePaths.fundJournal],
+    ['cash-forecast', financePaths.cashForecast]
   ] as const
 
   const financeRoots = [FMS_ROOT_PATH, LEGACY_FMS_ROOT_PATH, LEGACY_TMS_FINANCE_ROOT_PATH]

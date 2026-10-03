@@ -3,8 +3,10 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { setupGlobDirectives } from '@/directives'
 import language from '@/locales'
 import { store } from '@/store'
+import { useMenuStore } from '@/store/modules/menu'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
+import type { AppRouteRecord } from '@/types/router'
 import { writePlatformTenantScopeActive, writeTenantScopeId } from '@/utils/tenant-scope-context'
 import SitePage from '../../../modules/art-supabase-smis/src/views/basic-data/site/index.vue'
 import '@styles/core/tailwind.css'
@@ -36,8 +38,10 @@ userStore.setUserInfo({
     tenantName: isPlatformSuper ? '平台管理员租户' : '业务租户',
     builtinType: isPlatformSuper ? 'platform' : 'business'
   },
-  platformSuper: isPlatformSuper
+  platformSuper: isPlatformSuper,
+  buttons: ['SmisSite:Import']
 } as Api.Auth.UserInfo)
+useMenuStore(store).setButtonList([{ name: 'SmisSite:Import', type: 'button' } as AppRouteRecord])
 
 const tenantScopeStore = useTenantScopeStore(store)
 tenantScopeStore.selectedTenantId = selectedTenantId

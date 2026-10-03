@@ -123,7 +123,7 @@ export const examplesRoutes: AppRouteRecord = {
     {
       path: 'form/search-bar',
       name: 'SearchBar',
-      component: '/examples/forms/search-bar',
+      component: '/examples/form/search-bar',
       type: 'menu',
       sort: 6,
       meta: {

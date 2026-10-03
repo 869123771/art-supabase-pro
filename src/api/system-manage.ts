@@ -214,7 +214,8 @@ export async function fetchGetOrganizationTree(
 
 /** Organization selectors need hierarchy and identity, not the management page's aggregate counts. */
 export async function fetchGetOrganizationOptionsTree(
-  params: Pick<Api.SystemManage.OrganizationSearchParams, 'tenantId' | 'status'> = {}
+  params: Pick<Api.SystemManage.OrganizationSearchParams, 'tenantId' | 'status'> = {},
+  options: { showErrorMessage?: boolean } = {}
 ) {
   const scopedTenantId = resolveTenantScopeId(params.tenantId)
   let query = supabase
@@ -229,7 +230,7 @@ export async function fetchGetOrganizationOptionsTree(
   if (params.status) query = query.eq('status', params.status)
 
   const response = await responseHandle<Api.SystemManage.OrganizationListItem[]>(() => query, {
-    showErrorMessage: true
+    showErrorMessage: options.showErrorMessage ?? true
   })
   return {
     ...response,

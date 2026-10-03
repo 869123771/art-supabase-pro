@@ -5,7 +5,7 @@ import language from '@/locales'
 import { store } from '@/store'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
-import CashTransactionDetailDrawer from '../../../modules/art-supabase-fms/src/views/cash-transaction/modules/cash-transaction-detail-drawer.vue'
+import CashTransactionDetailDrawer from '../../../modules/art-supabase-fms/src/views/settlement/cash-transaction/modules/cash-transaction-detail-drawer.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 

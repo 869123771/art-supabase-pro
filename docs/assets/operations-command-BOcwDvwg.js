@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./enterprise-big-screen-CJFOnXr7.js";var i=e({name:`OperationsCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{mode:`operations`}))}});export{i as default};

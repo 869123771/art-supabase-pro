@@ -13,6 +13,10 @@ import {
 test('exposes finance routes from the standalone root', () => {
   assert.equal(FMS_ROOT_PATH, '/fms')
   assert.equal(financePaths.invoiceManagement, '/fms/settlement/invoice-management')
+  assert.equal(financePaths.customerSettlement, '/fms/settlement/customer-settlement')
+  assert.equal(financePaths.assetPayable, '/fms/settlement/asset-payable')
+  assert.equal(financePaths.receivableAging, '/fms/settlement/receivable-aging')
+  assert.equal(financePaths.cashForecast, '/fms/treasury/cash-forecast')
   assert.equal(
     getWaybillCostDetailPath('waybill-1'),
     '/fms/settlement/waybill-cost/detail/waybill-1'

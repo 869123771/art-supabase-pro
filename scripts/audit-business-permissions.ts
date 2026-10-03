@@ -68,7 +68,7 @@ const platformSuperPattern = /isPlatformSuper|平台超级管理员|仅平台|pl
 // Adding a file here requires an explicit security rationale; normal business maintenance is forbidden.
 const platformSuperAllowlist = new Map<string, string>([
   [
-    'modules/art-supabase-vms/src/views/archive-manage/vehicle-archive-edit/index.vue',
+    'modules/art-supabase-vms/src/views/vehicle-archive-edit/index.vue',
     'controlled vehicle-document OCR form write; server also validates platform-super authority'
   ],
   [
@@ -88,15 +88,15 @@ const platformSuperAllowlist = new Map<string, string>([
     'cross-tenant quote category selector'
   ],
   [
-    'modules/art-supabase-fms/src/views/account-set/index.vue',
+    'modules/art-supabase-fms/src/views/accounting/account-set/index.vue',
     'cross-tenant account-set selector and tenant columns'
   ],
   [
-    'modules/art-supabase-fms/src/views/expense-item/index.vue',
+    'modules/art-supabase-fms/src/views/settlement/expense-item/index.vue',
     'cross-tenant expense-item selector and tenant columns'
   ],
   [
-    'modules/art-supabase-fms/src/views/cash-transaction/modules/cash-bank-batch-import-dialog.vue',
+    'modules/art-supabase-fms/src/views/settlement/cash-transaction/modules/cash-bank-batch-import-dialog.vue',
     'controlled AI batch write'
   ],
   [

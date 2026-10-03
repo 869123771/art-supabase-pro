@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { buildMaterialCodePreview } from '../../modules/art-supabase-mdm/src/views/material/reference/modules/material-code-preview'
+import { buildMaterialCodePreview } from '../../modules/art-supabase-mdm/src/views/components/material-reference/modules/material-code-preview'
 
 describe('buildMaterialCodePreview', () => {
   it('builds the material-type scheme and pads before the fixed segment', () => {

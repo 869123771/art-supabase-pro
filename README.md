@@ -209,6 +209,10 @@
 
 ## 技术架构
 
+业务菜单由 Supabase `sys_menu` 提供。菜单的完整访问路径、`component` 路径与业务子仓 `src/views` 下的视图目录逐段对应；详情路由的 `:id` 等参数不进入文件目录。多个菜单共用一个实现时，每个访问路径仍有自己的视图入口，复用实现放在 `views/components`。
+
+2026-10-03 的路由目录核对覆盖 11 个应用的 449 个页面菜单，修正了 111 个组件路径；数据库复查时各应用的路径与组件不匹配数均为 0。更新前菜单路径与组件映射已保存在本次工作区的 `.artifacts/menu-route-audit.json`，并有对应的恢复 SQL。
+
 ```text
 Vue 3 + TypeScript + Element Plus
               │

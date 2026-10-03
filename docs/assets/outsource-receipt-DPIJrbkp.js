@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./order-target-workspace-TNONBpVU.js";var i=e({name:`ScmOutsourceReceipt`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`outsource_receipt`}))}});export{i as default};

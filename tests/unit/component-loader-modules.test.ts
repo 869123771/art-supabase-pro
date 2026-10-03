@@ -52,11 +52,10 @@ test('preloads only marked route loaders and shares the cached request with navi
 test('maps flattened child views behind the stable application route prefix', () => {
   const loader = async () => ({ default: {} })
   const mapped = mapApplicationViewModules('vms', '../../../modules/art-supabase-vms/src/views', {
-    '../../../modules/art-supabase-vms/src/views/archive-manage/vehicle-archive-manage/index.vue':
-      loader
+    '../../../modules/art-supabase-vms/src/views/vehicle-archive-manage/index.vue': loader
   })
 
-  assert.equal(mapped['../../views/vms/archive-manage/vehicle-archive-manage/index.vue'], loader)
+  assert.equal(mapped['../../views/vms/vehicle-archive-manage/index.vue'], loader)
 })
 
 test('accepts independently built application view registrations before bootstrap', () => {
@@ -70,7 +69,7 @@ test('accepts independently built application view registrations before bootstra
 
 test('identifies missing business application pages for the host fallback', () => {
   assert.equal(resolveHostedApplicationCode('/vms/vehicle-query'), 'vms')
-  assert.equal(resolveHostedApplicationCode('/fms/account-set'), 'fms')
+  assert.equal(resolveHostedApplicationCode('/fms/accounting/account-set'), 'fms')
   assert.equal(resolveHostedApplicationCode('/mdm/workbench'), 'mdm')
   assert.equal(resolveHostedApplicationCode('/mes/workbench'), 'mes')
   assert.equal(resolveHostedApplicationCode('/wms/workbench'), 'wms')
