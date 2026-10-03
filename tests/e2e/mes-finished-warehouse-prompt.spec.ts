@@ -126,8 +126,7 @@ test('成品工单在缺少可用成品仓时给出配置提示', async ({ page 
     timeout: 120_000
   })
   await page.getByRole('button', { name: '新增工单' }).click()
-  await page.getByRole('combobox', { name: /所属租户/ }).click()
-  await page.getByRole('option', { name: '示例工厂' }).click()
+  await expect(page.getByRole('combobox', { name: /所属租户/ })).toHaveCount(0)
   await page.getByPlaceholder('请选择物料描述').click()
   await page.getByText('1000*50新型聚氨酯墙面板', { exact: true }).first().click()
   await page.getByRole('button', { name: '确定', exact: true }).last().click()

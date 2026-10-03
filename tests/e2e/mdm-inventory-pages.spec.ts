@@ -1173,6 +1173,36 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
   expect(errors).toEqual([])
 })
 
+test('库位与立体库位的空库区使用统一空状态', async ({ page }, testInfo) => {
+  await installFixtures(page)
+  await page.route('**/rest/v1/mdm_warehouse_zone?*', (route) => route.fulfill({ json: [] }))
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+
+  for (const path of ['bin', 'bin-3d']) {
+    await page.goto(`/#/mdm/inventory-master/${path}`, { waitUntil: 'domcontentloaded' })
+    await expect(
+      page.getByRole('heading', { name: path === 'bin' ? '库位管理' : '立体库位', exact: true })
+    ).toBeVisible({ timeout: 120_000 })
+    await expect(page.locator('.art-page-view:visible').last()).toHaveCSS('opacity', '1')
+    const themeTipDismiss = page.getByText('知道了', { exact: true })
+    if (await themeTipDismiss.isVisible()) await themeTipDismiss.click()
+    const empty = page.locator('.art-empty-state').filter({ hasText: '暂无库区' })
+    await expect(empty).toBeVisible({ timeout: 30_000 })
+    await expect(empty.getByText('请先')).toBeVisible()
+    const widths = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth
+    }))
+    expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1)
+    await empty.scrollIntoViewIfNeeded()
+    await page.screenshot({
+      path: join(visualDir, `mdm-${path}-empty-zone.png`),
+      animations: 'disabled'
+    })
+  }
+})
+
 test('立体库位加载失败后可重试', async ({ page }) => {
   test.setTimeout(120_000)
   await installFixtures(page)
@@ -1264,12 +1294,7 @@ test('出入库类型查询、保存、复制、删除与导出', async ({ page 
 
   await page.getByRole('button', { name: '新增类型' }).click()
   const addDialog = page.locator('.el-dialog:visible')
-  await addDialog
-    .locator('.el-form-item')
-    .filter({ hasText: '所属租户' })
-    .locator('.el-select')
-    .click()
-  await page.getByRole('option', { name: /示例工厂/ }).click()
+  await expect(addDialog.locator('.el-form-item').filter({ hasText: '所属租户' })).toHaveCount(0)
   await addDialog
     .locator('.el-form-item')
     .filter({ hasText: '移动类型编码' })
@@ -1381,6 +1406,17 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
           app_code: 'mes',
           sort: 1,
           meta: meta('生产工单')
+        },
+        {
+          id: 'wms-initial-stock-menu',
+          parent_id: null,
+          name: 'WmsInitialStock',
+          path: 'initial-stock',
+          component: '/wms/initialization/initial-stock/index',
+          type: 'menu',
+          app_code: 'wms',
+          sort: 2,
+          meta: meta('初始库存单')
         }
       ]
     })
@@ -1394,6 +1430,7 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
           id: 'wms-type-id',
           tenant_id: tenantId,
           menu_id: 'wms-work-order-menu',
+          menu_ids: ['wms-work-order-menu'],
           document_type_code: 'PP13',
           document_type_name: '演示成品装配',
           is_default: false,
@@ -1428,6 +1465,12 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
   await field.locator('.el-select').click()
   await page.getByRole('option', { name: '成品仓' }).click()
   await expect(field).toContainText('成品仓')
+  const menuField = dialog.locator('.el-form-item').filter({ hasText: '所属菜单功能' })
+  await menuField.scrollIntoViewIfNeeded()
+  await menuField.locator('.el-select').click()
+  await page.getByText('初始库存单', { exact: true }).last().click()
+  await expect(menuField).toContainText('生产工单')
+  await expect(menuField).toContainText('+ 1')
   await page.screenshot({
     path: join(visualDir, 'mdm-work-order-type-policy-selected.png'),
     fullPage: true
@@ -1438,8 +1481,476 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
   await dialog.getByRole('button', { name: '保存更改' }).click()
   const payload = (await saveRequest).postDataJSON() as {
     allowed_issue_warehouse_types: string[]
+    menu_ids: string[]
   }
   expect(payload.allowed_issue_warehouse_types).toEqual(['raw_material', 'finished'])
+  expect(payload.menu_ids).toEqual(['wms-work-order-menu', 'wms-initial-stock-menu'])
+})
+
+test('业务类型可选择多个菜单并设置出入库标志', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  const root = {
+    id: 'mdm-business-root',
+    parentId: null,
+    name: 'MdmMasterData',
+    path: '/mdm',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('MDM主数据')
+  }
+  const folder = {
+    id: 'mdm-business-folder',
+    parentId: root.id,
+    name: 'MdmUnifiedGovernance',
+    path: 'operational-master',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('统一治理目录')
+  }
+  const menu = {
+    id: 'mdm-business-menu',
+    parentId: folder.id,
+    name: 'MdmBusinessType',
+    path: 'business-type',
+    component: '/mdm/operational-master',
+    type: 'menu',
+    sort: 1,
+    meta: meta('业务类型')
+  }
+  const buttons = ['View', 'Add', 'Copy', 'Edit', 'Delete', 'Export'].map((action) => ({
+    id: `mdm-business-${action}`,
+    parentId: menu.id,
+    name: `MdmBusinessType:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action),
+    children: []
+  }))
+  await mockApplicationMenus(page, { mdm: [root, folder, menu, ...buttons] })
+  const menuRows = [
+    {
+      id: 'production-menu',
+      parent_id: null,
+      name: 'MesWorkOrder',
+      path: 'work-order',
+      component: '/mes/manufacturing',
+      type: 'menu',
+      app_code: 'mes',
+      sort: 1,
+      meta: meta('生产工单')
+    },
+    {
+      id: 'stock-menu',
+      parent_id: null,
+      name: 'WmsInitialStock',
+      path: 'initial-stock',
+      component: '/wms/initialization/initial-stock/index',
+      type: 'menu',
+      app_code: 'wms',
+      sort: 2,
+      meta: meta('初始库存单')
+    }
+  ]
+  await page.route('**/rest/v1/sys_menu?*', (route) => route.fulfill({ json: menuRows }))
+  const documentType = {
+    id: 'business-document-type',
+    tenant_id: tenantId,
+    menu_id: 'production-menu',
+    menu_ids: ['production-menu', 'stock-menu'],
+    document_type_code: 'TEST_DOC',
+    document_type_name: '测试单据类型',
+    enabled: true
+  }
+  await page.route('**/rest/v1/mdm_document_type?*', (route) =>
+    route.fulfill({ status: 206, headers: { 'content-range': '0-0/1' }, json: [documentType] })
+  )
+  const businessType = {
+    id: 'business-type-id',
+    tenant_id: tenantId,
+    document_type_id: documentType.id,
+    menu_ids: ['production-menu'],
+    business_type_code: 'TEST_BUSINESS',
+    business_type_name: '测试业务类型',
+    is_default: false,
+    source_business_type_id: null,
+    inventory_direction: null,
+    stock_movement: 'inbound',
+    owner_type: null,
+    inventory_accounting: false,
+    remark: '',
+    sort_order: 10,
+    text_color: '',
+    tag_style: 'primary',
+    enabled: true,
+    documentType
+  }
+  await page.route('**/rest/v1/mdm_business_type?*', (route) =>
+    route.fulfill({ status: 206, headers: { 'content-range': '0-0/1' }, json: [businessType] })
+  )
+  await page.goto('/#/mdm/operational-master/business-type', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '业务类型', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.locator('.el-dialog:visible')
+  const menuField = dialog.locator('.el-form-item').filter({ hasText: '所属菜单功能' })
+  await expect(menuField.locator('.el-select')).toBeEnabled()
+  await menuField.locator('.el-select').click()
+  await page.getByText('初始库存单', { exact: true }).last().click()
+  await expect(menuField).toContainText('+ 1')
+  const movementField = dialog.locator('.el-form-item').filter({ hasText: '出入库标志' })
+  await movementField.scrollIntoViewIfNeeded()
+  await movementField.getByText('出库', { exact: true }).click()
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({ path: join(visualDir, 'mdm-business-type-menus.png'), fullPage: true })
+  const saveRequest = page.waitForRequest(
+    (request) => request.method() === 'PATCH' && request.url().includes('/mdm_business_type?')
+  )
+  await dialog.getByRole('button', { name: '保存更改' }).click()
+  const payload = (await saveRequest).postDataJSON() as {
+    menu_ids: string[]
+    stock_movement: string
+  }
+  expect(payload.menu_ids).toEqual(['production-menu', 'stock-menu'])
+  expect(payload.stock_movement).toBe('outbound')
+})
+
+test('启用库存默认勾选默认库存组织', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  const root = {
+    id: 'wms-root',
+    parentId: null,
+    name: 'WmsWarehouseManagement',
+    path: '/wms',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('WMS仓储管理')
+  }
+  const folder = {
+    id: 'wms-initialization',
+    parentId: root.id,
+    name: 'WmsInitialization',
+    path: 'initialization',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('初始化')
+  }
+  const menu = {
+    id: 'wms-enable',
+    parentId: folder.id,
+    name: 'WmsInventoryEnable',
+    path: 'enable-inventory',
+    component: '/wms/initialization/enable-inventory/index',
+    type: 'menu',
+    sort: 1,
+    meta: meta('启用库存')
+  }
+  const buttons = ['View', 'Enable', 'Disable'].map((action) => ({
+    id: `wms-enable-${action}`,
+    parentId: menu.id,
+    name: `WmsInventoryEnable:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action),
+    children: []
+  }))
+  await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
+    route.fulfill({
+      json: [
+        { code: 'platform', name: '测试平台', baseUrl: '/' },
+        { code: 'wms', name: 'WMS仓储管理', baseUrl: '/wms/' }
+      ]
+    })
+  )
+  await mockApplicationMenus(page, { wms: [root, folder, menu, ...buttons] })
+  await page.route('**/rest/v1/mdm_organization?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'test-inventory-organization',
+          tenant_id: tenantId,
+          organization_code: 'TEST-ORG',
+          organization_name: '测试库存组织',
+          organization_type: 'company',
+          status: '1'
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/wms_inventory_initialization?*', (route) =>
+    route.fulfill({ json: [] })
+  )
+  await page.goto('/#/wms/initialization/enable-inventory', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '启用库存', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
+  await expect(page.getByText('测试库存组织')).toBeVisible()
+  await page.getByRole('button', { name: '启用', exact: true }).click()
+  const dialog = page.locator('.el-dialog:visible')
+  await expect(dialog.getByText('默认库存组织', { exact: true })).toBeVisible()
+  const defaultField = dialog.locator('.el-form-item').filter({ hasText: '默认库存组织' })
+  await expect(defaultField.getByRole('radio', { name: '是' })).toBeChecked()
+  await page.waitForTimeout(350)
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({
+    path: join(visualDir, 'wms-enable-default-organization.png'),
+    fullPage: true
+  })
+})
+
+test('初始库存单带出默认组织与所属功能类型', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  const root = {
+    id: 'wms-stock-root',
+    parentId: null,
+    name: 'WmsWarehouseManagement',
+    path: '/wms',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('WMS仓储管理')
+  }
+  const folder = {
+    id: 'wms-stock-folder',
+    parentId: root.id,
+    name: 'WmsInitialization',
+    path: 'initialization',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('初始化')
+  }
+  const menu = {
+    id: 'stock-menu',
+    parentId: folder.id,
+    name: 'WmsInitialStock',
+    path: 'initial-stock',
+    component: '/wms/initialization/initial-stock/index',
+    type: 'menu',
+    sort: 1,
+    meta: meta('初始库存单')
+  }
+  const buttons = ['View', 'Add', 'Copy', 'Edit', 'Delete'].map((action) => ({
+    id: `wms-stock-${action}`,
+    parentId: menu.id,
+    name: `WmsInitialStock:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action),
+    children: []
+  }))
+  await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
+    route.fulfill({
+      json: [
+        { code: 'platform', name: '测试平台', baseUrl: '/' },
+        { code: 'wms', name: 'WMS仓储管理', baseUrl: '/wms/' }
+      ]
+    })
+  )
+  await mockApplicationMenus(page, { wms: [root, folder, menu, ...buttons] })
+  await page.route('**/rest/v1/sys_menu?*', (route) => route.fulfill({ json: { id: menu.id } }))
+  await page.route('**/rest/v1/mdm_organization?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'default-stock-org',
+          tenant_id: tenantId,
+          parent_id: null,
+          organization_code: 'DEFAULT-ORG',
+          organization_name: '默认库存组织',
+          organization_type: 'company',
+          status: '1',
+          sort: 1,
+          is_system: false
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/wms_inventory_initialization?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: 'default-stock-org',
+          enabled_on: '2026-10-02',
+          is_default: true,
+          initialization_closed_at: null
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/wms_initial_stock_document?*', (route) =>
+    route.fulfill({ status: 200, headers: { 'content-range': '*/0' }, json: [] })
+  )
+  await page.route('**/rest/v1/mdm_document_type?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'initial-document-type',
+          tenant_id: tenantId,
+          menu_ids: ['stock-menu'],
+          document_type_code: 'WMS_INITIAL_STOCK',
+          document_type_name: '标准初始库存单',
+          is_default: true,
+          enabled: true
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_business_type?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'initial-business-type',
+          tenant_id: tenantId,
+          document_type_id: 'initial-document-type',
+          menu_ids: ['stock-menu'],
+          business_type_code: 'WMS_INITIAL_STOCK',
+          business_type_name: '初始化库存',
+          is_default: true,
+          enabled: true
+        }
+      ]
+    })
+  )
+  await page.goto('/#/wms/initialization/initial-stock', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '初始库存单', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
+  await page.getByRole('button', { name: '新增初始库存单' }).click()
+  const drawer = page.locator('.el-drawer:visible')
+  await expect(drawer.getByText('默认库存组织')).toBeVisible()
+  await expect(drawer.getByText('标准初始库存单')).toBeVisible()
+  await expect(drawer.getByText('初始化库存')).toBeVisible()
+  await expect(drawer.getByText('新增', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('复制', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('编制', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('删除', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('序列号', { exact: true })).toBeVisible()
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.waitForTimeout(350)
+  await page.screenshot({ path: join(visualDir, 'wms-initial-stock-defaults.png'), fullPage: true })
+})
+
+test('物料编码列表描述与编辑字段使用同一规则', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
+  const root = {
+    id: 'mdm-material-root',
+    parentId: null,
+    name: 'MdmMasterData',
+    path: '/mdm',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('MDM主数据')
+  }
+  const folder = {
+    id: 'mdm-material-folder',
+    parentId: root.id,
+    name: 'MdmMaterialMaster',
+    path: 'material-master',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('物料主数据')
+  }
+  const menu = {
+    id: 'mdm-material-menu',
+    parentId: folder.id,
+    name: 'MdmMaterialArchive',
+    path: 'material-archive',
+    component: '/mdm/material/archive',
+    type: 'menu',
+    sort: 1,
+    meta: meta('物料编码')
+  }
+  const buttons = ['View', 'Edit'].map((action) => ({
+    id: `mdm-material-${action}`,
+    parentId: menu.id,
+    name: `MdmMaterialArchive:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action)
+  }))
+  await mockApplicationMenus(page, { mdm: [root, folder, menu, ...buttons] })
+  const categoryId = '7c58fe75-24dc-4ca1-b59c-1ed04a872cc3'
+  await page.route('**/rest/v1/mdm_material_category?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: categoryId,
+          tenant_id: tenantId,
+          category_code: 'B00',
+          category_name: '雨篷配件',
+          parent_id: null,
+          status: 'enabled',
+          sort: 10,
+          composition_columns: ['material_name', 'specification_model', 'material_composition'],
+          composition_separator: ' _'
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_material?*', (route) =>
+    route.fulfill({
+      headers: { 'content-range': '0-0/1' },
+      json: [
+        {
+          ...material,
+          material_code: 'B00-0037',
+          material_name: '雨篷侧封檐',
+          category_id: categoryId,
+          category: { id: categoryId, category_code: 'B00', category_name: '雨篷配件' },
+          specification_model: '展宽 360 mm × 长度 1.1 m',
+          material_composition: '蓝色彩钢板',
+          attribute_values: {},
+          image_urls: [],
+          description: '蓝色彩钢板；雨篷侧面',
+          status: 'enabled',
+          sort: 10
+        }
+      ]
+    })
+  )
+  await page.goto('/#/mdm/material-master/material-archive', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '物料编码', exact: true })).toBeVisible({
+    timeout: 60_000
+  })
+  const row = page.locator('.el-table__body tr').filter({ hasText: 'B00-0037' })
+  await expect(row).toContainText('雨篷侧封檐 _展宽 360 mm × 长度 1.1 m _蓝色彩钢板')
+  await expect(row).not.toContainText('蓝色彩钢板；雨篷侧面')
+  await row
+    .locator('td')
+    .filter({ hasText: '雨篷侧封檐 _展宽 360 mm × 长度 1.1 m _蓝色彩钢板' })
+    .scrollIntoViewIfNeeded()
+  const themeTip = page.getByRole('button', { name: '知道了' })
+  if (await themeTip.isVisible()) await themeTip.click()
+  const visualDir = join(process.cwd(), '.artifacts', 'mdm-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({ path: join(visualDir, 'material-description.png'), fullPage: true })
+  await row.getByRole('button', { name: '编辑' }).click()
+  await expect(page.getByRole('textbox', { name: '自动生成的物料描述' })).toHaveValue(
+    '雨篷侧封檐 _展宽 360 mm × 长度 1.1 m _蓝色彩钢板'
+  )
 })
 
 test('库区新增弹窗先出现，再等待基础数据', async ({ page }) => {

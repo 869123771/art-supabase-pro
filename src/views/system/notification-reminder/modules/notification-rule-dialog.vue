@@ -25,6 +25,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { uniq } from 'lodash-es'
   import type { FormItemRule, FormRules } from 'element-plus'
@@ -277,8 +279,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
     try {
@@ -298,7 +301,8 @@
       })
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '提醒规则保存失败，请检查条件后重试', 'warning')
       return false
     }
   }

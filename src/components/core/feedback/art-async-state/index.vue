@@ -23,13 +23,16 @@
       description="正在获取最新数据，请稍候"
     />
 
-    <ElSkeleton
-      v-if="loading && loadingMode === 'skeleton'"
-      animated
-      aria-hidden="true"
-      :rows="skeletonRows"
-      class="art-async-state__skeleton"
-    />
+    <template v-if="loading && loadingMode === 'skeleton'">
+      <slot name="loading">
+        <ElSkeleton
+          animated
+          aria-hidden="true"
+          :rows="skeletonRows"
+          class="art-async-state__skeleton"
+        />
+      </slot>
+    </template>
 
     <ElResult
       v-else-if="errorMessage"

@@ -851,18 +851,6 @@
       box-shadow: 0 6px 18px rgb(31 45 61 / 8%);
     }
 
-    :global([data-box-mode='border-mode']) &__node.is-selected,
-    :global([data-box-mode='border-mode']) &__terminal.is-selected {
-      border-color: var(--theme-color);
-      box-shadow: inset 0 0 0 1px var(--theme-color);
-    }
-
-    :global([data-box-mode='shadow-mode']) &__node.is-selected,
-    :global([data-box-mode='shadow-mode']) &__terminal.is-selected {
-      border-color: transparent;
-      box-shadow: 0 10px 24px color-mix(in srgb, var(--theme-color) 22%, transparent);
-    }
-
     &.is-compact {
       .workflow-flow-map__canvas {
         height: 280px;
@@ -906,5 +894,17 @@
         grid-template-columns: minmax(0, 1fr);
       }
     }
+  }
+
+  :global(html[data-box-mode='border-mode'] .workflow-flow-map__node.is-selected),
+  :global(html[data-box-mode='border-mode'] .workflow-flow-map__terminal.is-selected) {
+    border-color: var(--theme-color);
+    box-shadow: inset 0 0 0 1px var(--theme-color);
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .workflow-flow-map__node.is-selected),
+  :global(html[data-box-mode='shadow-mode'] .workflow-flow-map__terminal.is-selected) {
+    border-color: transparent;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--theme-color) 22%, transparent);
   }
 </style>

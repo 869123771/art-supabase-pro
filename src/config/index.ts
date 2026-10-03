@@ -28,11 +28,11 @@
  * @module config
  */
 
-import { MenuThemeEnum, MenuTypeEnum, SystemThemeEnum } from '@/enums/appEnum'
+import { MenuThemeEnum, MenuTypeEnum, SystemThemeEnum } from '@/enums/app-enum'
 import { SystemConfig } from '@/types/config'
 import { configImages } from './assets/images'
-import fastEnterConfig from './modules/fastEnter'
-import { headerBarConfig } from './modules/headerBar'
+import fastEnterConfig from './modules/fast-enter'
+import { headerBarConfig } from './modules/header-bar'
 
 const appConfig: SystemConfig = {
   // 系统信息

@@ -28,7 +28,7 @@
  */
 import { useCommon } from '@/hooks/core/useCommon'
 import { useTheme } from '@/hooks/core/useTheme'
-import { SystemThemeEnum } from '@/enums/appEnum'
+import { SystemThemeEnum } from '@/enums/app-enum'
 import { useSettingStore } from '@/store/modules/setting'
 const { LIGHT, DARK } = SystemThemeEnum
 

@@ -905,14 +905,14 @@ function runModulePackageAction(
   const args = action === 'install' ? ['install', '--frozen-lockfile'] : ['run', action]
   const platformReference = readPlatformPackageReference(manifest)
   const platformPackage =
-    action === 'install' && platformReference
+    (action === 'install' || useWorkspacePlatform) && platformReference
       ? createPinnedPlatformPackage(module, platformReference)
       : undefined
 
-  if (action === 'install') {
+  if (platformPackage || action === 'install') {
     console.log(
       platformPackage
-        ? `[module] ${module.path} 使用本地主仓精简包。`
+        ? `[module] ${module.path} 使用本地主仓精简包${action === 'install' ? '' : '进行联调校验'}。`
         : `[module] ${module.path} 不依赖主仓包，按自身锁文件安装。`
     )
   }
@@ -927,6 +927,7 @@ function runModulePackageAction(
   if (esbuildBinaryPath) process.env.ESBUILD_BINARY_PATH = esbuildBinaryPath
   try {
     runPackageManager(['install', '--no-frozen-lockfile', '--prefer-offline'], moduleRoot)
+    if (action !== 'install') runPackageManager(args, moduleRoot)
   } finally {
     if (previousEsbuildBinaryPath === undefined) delete process.env.ESBUILD_BINARY_PATH
     else process.env.ESBUILD_BINARY_PATH = previousEsbuildBinaryPath
@@ -957,7 +958,9 @@ function runPackageAction(modules: ModuleDefinition[], action: ModulePackageActi
   runForEveryModule(modules, action, (module) => {
     const moduleRoot = join(projectRoot, module.path)
     const manifest = readPackageManifest(moduleRoot)
-    if (action !== 'install') ensureModuleDependencies(module, moduleRoot, manifest)
+    if (action !== 'install' && !useWorkspacePlatform) {
+      ensureModuleDependencies(module, moduleRoot, manifest)
+    }
     if (action !== 'build') {
       runModulePackageAction(module, action, manifest)
       return

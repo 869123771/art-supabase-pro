@@ -55,7 +55,12 @@
               <div class="flex flex-col gap-2">
                 <ElScrollbar max-height="12.5rem">
                   <div v-if="cacheDebugLogs.length === 0" class="p-5 text-center">
-                    <ArtEmptyState title="暂无缓存日志" :visual-size="60" size="compact" />
+                    <ArtEmptyState
+                      title="暂无缓存日志"
+                      description="执行缓存操作后可查看调试记录。"
+                      :visual-size="60"
+                      size="compact"
+                    />
                   </div>
                   <div v-else class="flex flex-col gap-1">
                     <div
@@ -702,7 +707,7 @@
       },
       // 排除 apiParams 中的属性
       excludeParams: ['daterange'],
-      // 自定义分页字段映射，未设置时将使用全局配置 tableConfig.ts 中的 paginationKey
+      // 自定义分页字段映射，未设置时使用全局 table-config.ts 的 paginationKey
       // paginationKey: {
       //   current: 'pageNum',
       //   size: 'pageSize'

@@ -44,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -127,18 +129,19 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (!state.task) return false
+      await transferWorkflowTask({
+        taskId: state.task.id,
+        assigneeUserId: form.data.assigneeUserId,
+        reason: form.data.reason.trim()
+      })
+      emit('success')
+      return true
+    } catch (error) {
+      notifyFriendlyError(error, '审批转交失败，请刷新待办后重试', 'warning')
       return false
     }
-    if (!state.task) return false
-    await transferWorkflowTask({
-      taskId: state.task.id,
-      assigneeUserId: form.data.assigneeUserId,
-      reason: form.data.reason.trim()
-    })
-    emit('success')
-    return true
   }
 
   async function handleOpen(task: Api.Workflow.WorkflowTaskRecord): Promise<void> {

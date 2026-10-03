@@ -8,6 +8,7 @@ import {
   type AiCashVoucherStatementCandidate
 } from '../_shared/ai-cash-voucher-ocr-contract.ts'
 import { createVisionOcrHandler } from '../_shared/ai-vision-ocr-runtime.ts'
+import { authorizeAttachmentOcrImages } from '../_shared/ai-attachment-tenant-scope.ts'
 
 interface CashVoucherInput {
   direction: AiCashVoucherDirection
@@ -46,6 +47,7 @@ const handler = createVisionOcrHandler({
   entityType: 'tms_cash_transaction',
   entityTable: 'tms_cash_transaction',
   envPrefix: 'CASH_VOUCHER_OCR',
+  authorizeImageUrls: authorizeAttachmentOcrImages,
   defaultPrompt,
   defaultMaxTokens: 3000,
   expectedShape: {

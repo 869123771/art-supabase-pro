@@ -37,6 +37,10 @@
       >
         <slot />
 
+        <template v-if="$slots.loading" #loading>
+          <slot name="loading" />
+        </template>
+
         <template v-if="$slots['empty-action']" #empty-action>
           <slot name="empty-action" />
         </template>
@@ -54,6 +58,10 @@
       @retry="emit('retry')"
     >
       <slot />
+
+      <template v-if="$slots.loading" #loading>
+        <slot name="loading" />
+      </template>
 
       <template v-if="$slots['empty-action']" #empty-action>
         <slot name="empty-action" />

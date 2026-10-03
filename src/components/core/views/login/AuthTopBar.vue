@@ -95,7 +95,7 @@
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
   import { themeAnimation } from '@/utils/ui/animation'
   import { languageOptions } from '@/locales'
-  import { LanguageEnum } from '@/enums/appEnum'
+  import { LanguageEnum } from '@/enums/app-enum'
   import AppConfig from '@/config'
   import { useWebsiteConfig } from '@/hooks'
 

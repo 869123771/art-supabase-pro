@@ -109,7 +109,7 @@
   } from '@/components/core/forms/upload-model-utils'
   import ResourceListItem = Api.DataCenter.Resources.ResourceListItem
   import { uploadAttachment } from '@/api/attachments'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 
   defineOptions({ name: 'ArtUploadImage', inheritAttrs: false })
 
@@ -635,13 +635,13 @@
     }
   }
 
-  :global([data-box-mode='shadow-mode']) .preview-action {
+  :global(html[data-box-mode='shadow-mode'] .art-upload .preview-action) {
     --preview-action-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-color) 28%, transparent);
 
     border-color: transparent;
   }
 
-  :global([data-box-mode='border-mode']) .preview-action {
+  :global(html[data-box-mode='border-mode'] .art-upload .preview-action) {
     border-color: rgb(255 255 255 / 48%);
   }
 

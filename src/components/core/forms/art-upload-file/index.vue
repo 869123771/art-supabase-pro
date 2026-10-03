@@ -159,7 +159,7 @@
   import { isAcceptedFileType } from '@/utils/file/accept'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 
   defineOptions({ name: 'ArtUploadFile', inheritAttrs: false })
 

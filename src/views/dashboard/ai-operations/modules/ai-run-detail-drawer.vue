@@ -6,6 +6,7 @@
       :error="loadError"
       :empty="!detail"
       empty-text="暂无 AI 运行详情"
+      empty-description="请从运行记录中重新选择，或刷新后重试。"
       @retry="retryLoad"
     >
       <div v-if="detail" class="ai-run-detail">

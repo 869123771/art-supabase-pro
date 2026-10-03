@@ -120,6 +120,7 @@
       :error="page.error"
       :empty="!configuration || configuration.fields.length === 0"
       empty-text="暂无可配置的敏感字段"
+      empty-description="请先为当前应用配置需要管理的敏感字段。"
       @retry="retryLoad"
     >
       <ArtSectionCard
@@ -352,7 +353,7 @@
   import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { formatWithDayjs } from '@/utils/time'
   import { resolveTenantWorkspaceId } from '@/utils/tenant-scope-context'

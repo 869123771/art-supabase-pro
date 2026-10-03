@@ -117,7 +117,7 @@
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import { formatWithDayjs } from '@/utils/time'
-  import { pageInfoHandler } from '@utils/table/tableUtils'
+  import { pageInfoHandler } from '@utils/table/table-utils'
   import { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -127,7 +127,7 @@
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import TreeUtils from '@/utils/tree'
   import OrganizationScopeFilter from '../shared/organization-scope-filter.vue'
   import MasterDataDeleteGuard, {

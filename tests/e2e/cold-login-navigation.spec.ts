@@ -49,7 +49,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
     if (roleComponentAssetPattern.test(request.url())) {
       roleComponentRequests.push(request.url())
     }
-    if (/bootstrapHostedApplications(?:-|\.ts)/.test(pathname)) {
+    if (/bootstrap-hosted-applications(?:-|\.ts)/.test(pathname)) {
       hostedApplicationRequests.push(request.url())
     }
     if (!request.url().includes('supabase.co')) return

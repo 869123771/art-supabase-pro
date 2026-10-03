@@ -4,8 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 import type { Plugin, ResolvedConfig } from 'vite'
 
 const ASSET_MANIFEST = 'flyfish-viewer-assets.json'
-const RETRYABLE_COPY_ERROR_CODES = new Set(['EACCES', 'EBUSY', 'EPERM'])
-const MAX_COPY_ATTEMPTS = 6
+const RETRYABLE_FS_ERROR_CODES = new Set(['EACCES', 'EBUSY', 'EPERM', 'UNKNOWN'])
+const MAX_FS_ATTEMPTS = 6
 
 interface FileViewerAssetManifest {
   assets?: unknown[]
@@ -63,26 +63,34 @@ async function filesAreEqual(source: string, target: string): Promise<boolean> {
   }
 }
 
-async function copyFileWithRetry(source: string, target: string): Promise<void> {
-  await mkdir(path.dirname(target), { recursive: true })
-
-  for (let attempt = 1; attempt <= MAX_COPY_ATTEMPTS; attempt += 1) {
+async function retryTransientFsOperation<T>(
+  operation: () => Promise<T>,
+  failureMessage: string
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
     try {
-      await copyFile(source, target)
-      return
+      return await operation()
     } catch (error) {
       const shouldRetry =
         isNodeError(error) &&
-        Boolean(error.code && RETRYABLE_COPY_ERROR_CODES.has(error.code)) &&
-        attempt < MAX_COPY_ATTEMPTS
+        Boolean(error.code && RETRYABLE_FS_ERROR_CODES.has(error.code)) &&
+        attempt < MAX_FS_ATTEMPTS
 
       if (!shouldRetry) {
-        throw new Error(`复制 File Viewer 构建资源失败：${target}`, { cause: error })
+        throw new Error(failureMessage, { cause: error })
       }
 
       await delay(100 * 2 ** (attempt - 1))
     }
   }
+}
+
+async function copyFileWithRetry(source: string, target: string): Promise<void> {
+  await mkdir(path.dirname(target), { recursive: true })
+  await retryTransientFsOperation(
+    () => copyFile(source, target),
+    `复制 File Viewer 构建资源失败：${target}`
+  )
 }
 
 async function writeFileIfChanged(target: string, content: Buffer): Promise<boolean> {
@@ -94,7 +102,10 @@ async function writeFileIfChanged(target: string, content: Buffer): Promise<bool
   }
 
   await mkdir(path.dirname(target), { recursive: true })
-  await writeFile(target, content)
+  await retryTransientFsOperation(
+    () => writeFile(target, content),
+    `写入 File Viewer 构建清单失败：${target}`
+  )
   return true
 }
 

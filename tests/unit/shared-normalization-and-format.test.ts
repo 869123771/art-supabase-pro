@@ -10,6 +10,7 @@ import { formatTenantLabel } from '../../src/utils/tenant-display'
 import {
   createDateTimeFormatter,
   formatCnyCurrencyValue,
+  formatCurrencyValue,
   formatDateTimeValue,
   formatPercentValue
 } from '../../src/utils/ui/format'
@@ -28,6 +29,8 @@ test('shared form normalizers preserve database nullability semantics', () => {
 
 test('shared UI formatters keep repeated display policies consistent', () => {
   assert.equal(formatCnyCurrencyValue(null), '¥0.00')
+  assert.equal(formatCurrencyValue(1234.5, 'USD', 'en-US'), '$1,234.50')
+  assert.equal(formatCurrencyValue('invalid'), 'invalid')
   assert.equal(formatPercentValue(null), '--')
   assert.equal(formatPercentValue(12.34), '12.3%')
   assert.equal(formatDateTimeValue(null), '--')

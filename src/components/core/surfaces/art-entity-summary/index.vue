@@ -141,15 +141,6 @@
       margin-bottom: var(--art-space-4);
     }
 
-    :global([data-box-mode='border-mode']) & {
-      box-shadow: none;
-    }
-
-    :global([data-box-mode='shadow-mode']) & {
-      border-color: transparent;
-      box-shadow: var(--art-card-shadow-xs);
-    }
-
     @media (width <= 720px) {
       grid-template-columns: 40px minmax(0, 1fr);
 
@@ -163,5 +154,14 @@
         justify-content: flex-start;
       }
     }
+  }
+
+  :global(html[data-box-mode='border-mode'] .art-entity-summary) {
+    box-shadow: none;
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .art-entity-summary) {
+    border-color: transparent;
+    box-shadow: var(--art-card-shadow-xs);
   }
 </style>

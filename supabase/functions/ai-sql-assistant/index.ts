@@ -96,8 +96,13 @@ function integerValue(value: unknown, fallback: number, min: number, max: number
 }
 
 function trimMetadata(metadata: SqlAiGenerateRequest['metadata'] | undefined, context: string) {
-  const tables = Array.isArray(metadata?.tables) ? metadata.tables : []
   const normalizedContext = context.toLowerCase()
+  const tables = (Array.isArray(metadata?.tables) ? metadata.tables : []).filter((table) => {
+    const schema = stringValue(table.tableSchema, 64).toLowerCase()
+    return !schema.startsWith('backup_') || normalizedContext.includes(schema)
+  })
+  const isPermissionQuery = /角色|权限|菜单|role|permission|menu/i.test(context)
+  const permissionTables = new Set(['sys_user', 'sys_role', 'sys_role_menu', 'sys_menu'])
   const rankedTables = tables
     .map((table, index) => {
       const tableSchema = stringValue(table.tableSchema, 64)
@@ -105,8 +110,12 @@ function trimMetadata(metadata: SqlAiGenerateRequest['metadata'] | undefined, co
       const qualifiedName = `${tableSchema}.${tableName}`.toLowerCase()
       const nameParts = tableName.toLowerCase().split('_').filter((part) => part.length >= 3)
       const score =
+        (isPermissionQuery && tableSchema === 'public' && permissionTables.has(tableName)
+          ? 200
+          : 0) +
         (normalizedContext.includes(qualifiedName) ? 100 : 0) +
         (normalizedContext.includes(tableName.toLowerCase()) ? 60 : 0) +
+        (tableSchema === 'public' ? 10 : 0) +
         nameParts.reduce(
           (total, part) => total + (normalizedContext.includes(part) ? 8 : 0),
           0
@@ -122,7 +131,10 @@ function trimMetadata(metadata: SqlAiGenerateRequest['metadata'] | undefined, co
   )
 
   return {
-    schemas: (metadata?.schemas ?? []).map((item) => stringValue(item, 64)).filter(Boolean).slice(0, 8),
+    schemas: (metadata?.schemas ?? [])
+      .map((item) => stringValue(item, 64))
+      .filter((schema) => schema && (!schema.startsWith('backup_') || normalizedContext.includes(schema.toLowerCase())))
+      .slice(0, 8),
     availableTables: tables
       .map((table) => {
         const schema = stringValue(table.tableSchema, 64)
@@ -209,6 +221,7 @@ function parseAiPayload(content: string): ParsedSqlPayload {
 
 function classifyProviderError(errorText: string, status: number): string {
   if (/insufficient_quota/i.test(errorText) || status === 402) return 'insufficient_quota'
+  if (status === 410) return 'model_retired'
   if (
     /invalid api key|incorrect api key|authentication|unauthorized/i.test(errorText) ||
     status === 401 ||
@@ -230,6 +243,7 @@ function providerErrorMessage(code: string): string {
     insufficient_quota: 'AI 服务额度不足，请检查服务商账户。',
     invalid_api_key: 'AI 服务密钥无效，请检查 Edge Function Secrets。',
     model_not_found: '当前模型不可用，请在 AI 配置中心切换模型。',
+    model_retired: '当前模型已下线，请在 AI 配置中心选择并测速可用模型。',
     provider_rate_limited: 'AI 服务商请求过于频繁，请稍后重试。',
     provider_timeout: 'AI 服务响应超时，请稍后重试或在 AI 配置中心调整超时策略。',
     provider_unreachable: '暂时无法连接 AI 服务，请稍后重试。',
@@ -480,6 +494,8 @@ Deno.serve(async (req) => {
       isPlatformSuper
         ? '当前用户是平台超级管理员，可以按需求生成查询或写入 SQL；涉及写入时必须在 warnings 中明确风险。'
         : '当前用户是普通用户，只允许生成单条只读 SQL，且必须以 SELECT、SHOW、VALUES 或 TABLE 开头；禁止 WITH、EXPLAIN、DML、DDL、事务控制和任何写入操作。',
+      `SQL 控制台通过服务端管理连接执行查询。current_user 是数据库角色，auth.uid() 在此执行路径中不代表当前登录用户。若需求涉及当前登录用户，以服务端认证的 auth_user_id '${user.id}' 过滤 public.sys_user.auth_user_id；当前用户所属租户 ID 为 '${appUser.tenant_id}'。`,
+      '本系统的用户角色可能直接保存在 public.sys_user.user_roles（角色编号文本数组）；不要假定 public.sys_user_tenant 一定有记录。查询角色权限时，按 sys_role.role_code 关联 user_roles，再按同一租户关联 public.sys_role_menu 和 public.sys_menu；不要误用备份 schema。',
       '固定输出协议：只返回 JSON 对象，sql 为纯 SQL 字符串，summary 为一句中文说明，warnings 为中文字符串数组。'
     ].join('\n')
     const userPrompt = JSON.stringify({

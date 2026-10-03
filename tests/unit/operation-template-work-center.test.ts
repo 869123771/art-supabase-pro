@@ -52,8 +52,9 @@ test('score sum preserves two decimal business precision', () => {
 })
 
 test('center import preserves named staffing and policy and rejects silent downgrades', () => {
+  const tenantId = 'tenant-a'
   const refs = {
-    departments: [{ id: 'department', code: 'D01' }],
+    departments: [{ id: 'department', code: 'D01', tenantId }],
     centers: [{ id: 'main', code: 'WC0' }],
     people: [{ id: 'person', employeeNo: 'P01' }],
     defaults: createCenterPolicy()
@@ -69,12 +70,20 @@ test('center import preserves named staffing and policy and rejects silent downg
     自动报工: '自定义时间',
     自定义报工时间: '20:30'
   }
-  const [result] = parseCenterImport([row], refs)
+  const [result] = parseCenterImport([row], refs, tenantId)
+  assert.equal(result.tenantId, tenantId)
   assert.deepEqual(result.personIds, ['person'])
   assert.equal(result.mainCenterId, 'main')
   assert.equal(result.policy.reportTime, '20:30')
   assert.equal(result.policy.reportMode, '非生产工位')
-  assert.throws(() => parseCenterImport([{ ...row, 人员工号: 'unknown' }], refs), /人员工号/)
-  assert.throws(() => parseCenterImport([{ ...row, 报工: '未知值' }], refs), /报工选项/)
-  assert.throws(() => parseCenterImport([{ ...row, 自定义报工时间: '25:00' }], refs), /HH:mm/)
+  assert.throws(
+    () => parseCenterImport([{ ...row, 人员工号: 'unknown' }], refs, tenantId),
+    /人员工号/
+  )
+  assert.throws(() => parseCenterImport([{ ...row, 报工: '未知值' }], refs, tenantId), /报工选项/)
+  assert.throws(
+    () => parseCenterImport([{ ...row, 自定义报工时间: '25:00' }], refs, tenantId),
+    /HH:mm/
+  )
+  assert.throws(() => parseCenterImport([row], refs, 'tenant-b'), /所属产线编码/)
 })

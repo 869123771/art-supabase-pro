@@ -34,7 +34,7 @@ test('only known lazy capability styles are excluded from application CSS totals
 
 test('SQL console keeps Monaco limited to the workers it actually uses', () => {
   const sqlSetupSource = readFileSync(
-    new URL('../../src/utils/monacoSqlSetup.ts', import.meta.url),
+    new URL('../../src/utils/monaco-sql-setup.ts', import.meta.url),
     'utf8'
   )
 
@@ -47,7 +47,7 @@ test('SQL console keeps Monaco limited to the workers it actually uses', () => {
 test('application shell imports focused system APIs instead of the management barrel', () => {
   const shellSources = [
     '../../src/router/core/MenuProcessor.ts',
-    '../../src/store/modules/tenantScope.ts',
+    '../../src/store/modules/tenant-scope.ts',
     '../../src/hooks/core/useWebsiteConfig.ts',
     '../../src/hooks/core/system-param/read-system-param.ts',
     '../../src/utils/application-navigation.ts'
@@ -92,14 +92,14 @@ test('startup modules avoid the all-utils barrel and defer dictionary queries', 
 test('the public entry defers hosted application views until authenticated route registration', () => {
   const entrySource = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8')
   const guardSource = readFileSync(
-    new URL('../../src/router/guards/beforeEach.ts', import.meta.url),
+    new URL('../../src/router/guards/before-each.ts', import.meta.url),
     'utf8'
   )
 
-  assert.doesNotMatch(entrySource, /import ['"]\.\/bootstrapHostedApplications['"]/)
+  assert.doesNotMatch(entrySource, /import ['"]\.\/bootstrap-hosted-applications['"]/)
   assert.match(
     entrySource,
-    /loadHostedApplications: \(\) => import\(['"]\.\/bootstrapHostedApplications['"]\)/
+    /loadHostedApplications: \(\) => import\(['"]\.\/bootstrap-hosted-applications['"]\)/
   )
   assert.match(guardSource, /loadHostedApplications\?\.\(\)/)
   assert.match(guardSource, /routeRegistry \?\?= new RouteRegistry\(router\)/)
@@ -116,5 +116,5 @@ test('upgrade changelog stays out of the startup dependency graph', () => {
   )
 
   assert.doesNotMatch(upgradeSource, /import \{ upgradeLogList \} from/)
-  assert.match(upgradeSource, /await import\(['"]@\/mock\/upgrade\/changeLog['"]\)/)
+  assert.match(upgradeSource, /await import\(['"]@\/mock\/upgrade\/change-log['"]\)/)
 })

@@ -757,15 +757,15 @@
     max-width: 100vw;
   }
 
-  :global([data-box-mode='border-mode']) .recognition-runner__sidebar,
-  :global([data-box-mode='border-mode']) .recognition-runner__workspace-head,
-  :global([data-box-mode='border-mode']) .recognition-runner__context {
+  :global(html[data-box-mode='border-mode'] .recognition-runner__sidebar),
+  :global(html[data-box-mode='border-mode'] .recognition-runner__workspace-head),
+  :global(html[data-box-mode='border-mode'] .recognition-runner__context) {
     box-shadow: none;
   }
 
-  :global([data-box-mode='shadow-mode']) .recognition-runner__switcher button:hover,
-  :global([data-box-mode='shadow-mode']) .recognition-runner__switcher button:focus-visible,
-  :global([data-box-mode='shadow-mode']) .recognition-runner__switcher button.is-active {
+  :global(html[data-box-mode='shadow-mode'] .recognition-runner__switcher button:hover),
+  :global(html[data-box-mode='shadow-mode'] .recognition-runner__switcher button:focus-visible),
+  :global(html[data-box-mode='shadow-mode'] .recognition-runner__switcher button.is-active) {
     box-shadow: 0 7px 20px color-mix(in srgb, var(--theme-color) 10%, transparent);
   }
 

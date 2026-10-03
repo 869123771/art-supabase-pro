@@ -56,6 +56,7 @@
           <ArtAsyncState
             :empty="!data.featureQuality.length"
             empty-text="当前周期暂无 AI 运行数据"
+            empty-description="开始使用 AI 能力后，这里会汇总各能力的运行质量。"
             :empty-image-size="64"
             :min-height="220"
           >
@@ -101,6 +102,7 @@
           <ArtAsyncState
             :empty="!data.feedbackQueue.length"
             empty-text="当前周期没有负面反馈，继续关注评价覆盖率是否足够。"
+            empty-description="继续关注评价覆盖率，确保质量指标具有代表性。"
             :empty-image-size="64"
             :min-height="220"
           >

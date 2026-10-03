@@ -575,18 +575,18 @@
     }
   }
 
-  :global([data-box-mode='border-mode']) .exception-page__panel {
+  :global(html[data-box-mode='border-mode'] .exception-page__panel) {
     border-color: var(--art-card-border);
     box-shadow: none;
   }
 
-  :global([data-box-mode='shadow-mode']) .exception-page__panel {
+  :global(html[data-box-mode='shadow-mode'] .exception-page__panel) {
     border-color: transparent;
     box-shadow: 0 26px 70px rgb(18 27 51 / 10%);
   }
 
-  :global(.dark[data-box-mode='shadow-mode']) .exception-page__panel,
-  :global(.dark [data-box-mode='shadow-mode']) .exception-page__panel {
+  :global(html.dark[data-box-mode='shadow-mode'] .exception-page__panel),
+  :global(html.dark [data-box-mode='shadow-mode'] .exception-page__panel) {
     box-shadow: 0 26px 70px rgb(0 0 0 / 34%);
   }
 

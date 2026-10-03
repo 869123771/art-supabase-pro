@@ -18,6 +18,7 @@
       :error="error"
       :empty="!loading && !error && !items.length"
       empty-text="暂无项目助手会话"
+      empty-description="发起一次项目助手对话后，可在这里继续查看。"
       min-height="320px"
       @retry="emit('retry')"
     >

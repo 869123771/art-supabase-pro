@@ -76,7 +76,9 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import {
     fetchAiFeedback,
     submitAiFeedback,
@@ -112,20 +114,16 @@
     rules: FormRules<FeedbackFormModel>
   }
 
-  interface FormExpose {
-    validate: () => Promise<boolean | void>
-    clearValidate: () => void
-  }
-
   const props = withDefaults(defineProps<Props>(), {
     contextLabel: '',
     compact: false
   })
   const emit = defineEmits<{ submitted: [record: AiFeedbackRecord] }>()
   const dialogRef = ref<ArtDialogExpose<Record<string, never>>>()
-  const formRef = ref<FormExpose>()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
+  let feedbackDialogRunId = ''
 
   const createInitialForm = (): FeedbackFormModel => ({
     issueType: '',
@@ -203,6 +201,9 @@
       if (props.runId !== requestedRunId) return
       state.record = record
       state.rating = record?.rating ?? null
+    } catch (error) {
+      if (props.runId === requestedRunId)
+        notifyFriendlyError(error, 'AI 评价状态加载失败，请刷新页面后重试')
     } finally {
       if (props.runId === requestedRunId) state.loading = false
     }
@@ -210,21 +211,27 @@
 
   async function submitPositive(): Promise<void> {
     if (!props.runId || state.submitting) return
+    const submittedRunId = props.runId
     state.submitting = 1
     try {
       const record = await submitAiFeedback({
-        runId: props.runId,
+        runId: submittedRunId,
         rating: 1,
         contextLabel: props.contextLabel
       })
+      if (props.runId !== submittedRunId) return
       applyRecord(record)
       ElMessage.success('感谢反馈，已纳入 AI 质量评估')
+    } catch (error) {
+      if (props.runId === submittedRunId) notifyFriendlyError(error, '评价提交失败，请稍后重试')
     } finally {
-      state.submitting = null
+      if (props.runId === submittedRunId) state.submitting = null
     }
   }
 
   async function openNegativeFeedback(): Promise<void> {
+    if (!props.runId) return
+    feedbackDialogRunId = props.runId
     const correction = state.record?.correction
     Object.assign(form.model, {
       issueType: correction?.issueType ?? '',
@@ -251,24 +258,32 @@
 
   async function submitNegative(): Promise<boolean> {
     if (!props.runId) return false
+    if (props.runId !== feedbackDialogRunId) {
+      ElMessage.warning('AI 结果已切换，请重新打开反馈表单')
+      return false
+    }
+    const submittedRunId = props.runId
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       state.submitting = -1
       const record = await submitAiFeedback({
-        runId: props.runId,
+        runId: submittedRunId,
         rating: -1,
         issueType: form.model.issueType || null,
         comment: form.model.comment,
         correctAnswer: form.model.correctAnswer,
         contextLabel: props.contextLabel
       })
+      if (props.runId !== submittedRunId) return false
       applyRecord(record)
       ElMessage.success('改进意见已提交，可在 AI 运营中心跟踪处理')
       return true
-    } catch {
+    } catch (error) {
+      if (props.runId === submittedRunId)
+        notifyFriendlyError(error, '改进意见提交失败，请检查内容后重试')
       return false
     } finally {
-      state.submitting = null
+      if (props.runId === submittedRunId) state.submitting = null
     }
   }
 
@@ -289,7 +304,10 @@
 
   watch(
     () => props.runId,
-    (runId) => void loadFeedback(runId),
+    (runId, previousRunId) => {
+      if (runId !== previousRunId) resetState()
+      void loadFeedback(runId)
+    },
     { immediate: true }
   )
 

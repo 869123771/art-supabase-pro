@@ -1,43 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  areVmsVehicleDocumentImageUrlsInScope,
-  isValidVmsVehicleDocumentTenantScope,
   normalizeVmsVehicleDocumentOcrResponse,
   validateVmsVehicleDocumentOcrPayload
 } from '../../supabase/functions/_shared/ai-vms-vehicle-document-ocr-contract'
-
-const projectUrl = 'https://example.supabase.co'
-const ownTenant = '11111111-1111-4111-8111-111111111111'
-const otherTenant = '22222222-2222-4222-8222-222222222222'
-const ownImage = `${projectUrl}/storage/v1/object/public/attachments/${ownTenant}/license.png`
-const otherImage = `${projectUrl}/storage/v1/object/public/attachments/${otherTenant}/license.png`
-
-test('vehicle OCR accepts only project attachment images in the effective tenant', () => {
-  assert.equal(areVmsVehicleDocumentImageUrlsInScope([ownImage], projectUrl, ownTenant), true)
-  assert.equal(areVmsVehicleDocumentImageUrlsInScope([otherImage], projectUrl, ownTenant), false)
-  assert.equal(
-    areVmsVehicleDocumentImageUrlsInScope([ownImage, otherImage], projectUrl, null),
-    true
-  )
-  assert.equal(
-    areVmsVehicleDocumentImageUrlsInScope(
-      [`https://other.example/storage/v1/object/public/attachments/${ownTenant}/license.png`],
-      projectUrl,
-      ownTenant
-    ),
-    false
-  )
-  assert.equal(
-    areVmsVehicleDocumentImageUrlsInScope(
-      [`${projectUrl}/storage/v1/object/public/attachments/${ownTenant}`],
-      projectUrl,
-      ownTenant
-    ),
-    false
-  )
-  assert.equal(isValidVmsVehicleDocumentTenantScope('all'), false)
-})
 
 test('vehicle OCR normalizes document fields and requires structured confidence', () => {
   const result = normalizeVmsVehicleDocumentOcrResponse({

@@ -222,7 +222,7 @@
     }
   }
 
-  :global([data-box-mode='shadow-mode']) .art-button-table {
+  :global(html[data-box-mode='shadow-mode'] .art-button-table) {
     --art-table-button-border-color: transparent;
     --art-table-button-hover-border-color: transparent;
     --art-table-button-rest-shadow: 0 3px 8px

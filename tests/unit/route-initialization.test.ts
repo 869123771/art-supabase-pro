@@ -8,7 +8,7 @@ import {
   RouteInitializationTimeoutError,
   resolveRouteInitializationTarget,
   runRouteInitializationStage
-} from '../../src/router/guards/routeInitialization'
+} from '../../src/router/guards/route-initialization'
 
 test('route initialization keeps a cold-start-safe default timeout budget', () => {
   assert.equal(ROUTE_INITIALIZATION_STAGE_TIMEOUT_MS, 30_000)

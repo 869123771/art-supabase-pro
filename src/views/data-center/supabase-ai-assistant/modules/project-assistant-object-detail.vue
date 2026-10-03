@@ -119,6 +119,7 @@
           <ArtAsyncState
             :empty="!detail?.ddl"
             empty-text="当前对象没有可显示的定义"
+            empty-description="可切换到字段或关系信息继续查看。"
             full-height
             min-height="0"
           >
@@ -166,6 +167,7 @@
             :error="errors.relationships"
             :empty="!loading.relationships && !errors.relationships && !relationships.length"
             empty-text="没有关联此外键的记录"
+            empty-description="当前对象没有可查看的关联记录。"
             full-height
             min-height="0"
             @retry="emit('retry', selectedObject)"

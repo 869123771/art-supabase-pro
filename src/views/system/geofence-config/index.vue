@@ -1077,12 +1077,12 @@
     }
   }
 
-  :global([data-box-mode='border-mode']) .geofence-config-page__overview-card:hover {
+  :global(html[data-box-mode='border-mode'] .geofence-config-page__overview-card:hover) {
     border-color: color-mix(in srgb, var(--theme-color) 38%, var(--art-card-border));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 16%, transparent);
   }
 
-  :global([data-box-mode='shadow-mode']) .geofence-config-page__overview-card:hover {
+  :global(html[data-box-mode='shadow-mode'] .geofence-config-page__overview-card:hover) {
     border-color: transparent;
     box-shadow: 0 8px 22px color-mix(in srgb, var(--theme-color) 12%, transparent);
   }

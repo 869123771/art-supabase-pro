@@ -73,7 +73,7 @@
       @opened="handleDialogOpened"
       @closed="handleDialogClosed"
     >
-      <div class="art-data-select-dialog__body">
+      <div class="art-data-select-dialog__body" :style="compactTableBodyStyle">
         <div
           class="art-data-select-dialog__layout"
           :class="[
@@ -394,6 +394,7 @@
               <ArtEmptyState
                 v-if="!draftRows.length"
                 title="暂未选择数据"
+                description="从左侧列表选择需要关联的记录。"
                 :visual-size="68"
                 size="compact"
               />
@@ -446,7 +447,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import TreeUtils from '@/utils/tree'
   import { storeToRefs } from 'pinia'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
   import type {
     ArtDataSelectEmits,
@@ -528,6 +529,18 @@
     children: navigationChildrenKey.value
   }))
   const shouldShowSelectedPanel = computed(() => props.showSelectedPanel ?? props.multiple)
+  const compactTableBodyStyle = computed(() => {
+    if (
+      props.mode !== 'table' ||
+      props.showPagination ||
+      props.navigation ||
+      shouldShowSelectedPanel.value
+    )
+      return undefined
+    const rowCount = tableRows.value.length
+    if (rowCount > 6) return undefined
+    return { height: `${rowCount ? Math.max(220, 118 + rowCount * 62) : 300}px` }
+  })
   const treeUtils = computed(
     () => new TreeUtils({ childrenKey: props.childrenKey, deepClone: false })
   )

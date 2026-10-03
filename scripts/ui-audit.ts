@@ -64,6 +64,7 @@ interface TemplateNode {
   props?: Array<{
     type: number
     name?: string
+    arg?: { content?: string }
     value?: { content?: string }
   }>
   children?: TemplateNode[]
@@ -118,6 +119,50 @@ function findRawTitledCards(file: string, content: string): number[] {
 
   visit(descriptor.template.ast as TemplateNode)
   return offsets
+}
+
+function findMissingEmptyDescriptions(
+  file: string,
+  content: string
+): Array<{ offset: number; rule: string }> {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+
+  const findings: Array<{ offset: number; rule: string }> = []
+  const visit = (node: TemplateNode): void => {
+    if (
+      node.type === 1 &&
+      (node.tag === 'ArtSectionCard' ||
+        node.tag === 'ArtAsyncState' ||
+        node.tag === 'ArtEmptyState' ||
+        node.tag === 'ArtPageShell')
+    ) {
+      const propNames = new Set(
+        node.props?.map((prop) => (prop.type === 6 ? prop.name : prop.arg?.content)) ?? []
+      )
+      const hasDescription = propNames.has('empty-description') || propNames.has('emptyDescription')
+      if (node.tag === 'ArtEmptyState') {
+        if (!propNames.has('description')) {
+          findings.push({
+            offset: node.loc?.start.offset ?? 0,
+            rule: 'content/empty-state-needs-next-step'
+          })
+        }
+      } else if (propNames.has('empty') && !hasDescription) {
+        findings.push({
+          offset: node.loc?.start.offset ?? 0,
+          rule:
+            node.tag === 'ArtSectionCard'
+              ? 'content/section-empty-needs-next-step'
+              : 'content/empty-state-needs-next-step'
+        })
+      }
+    }
+    node.children?.forEach(visit)
+  }
+
+  visit(descriptor.template.ast as TemplateNode)
+  return findings
 }
 
 function findDirectBusinessFormTables(file: string, content: string): number[] {
@@ -175,6 +220,10 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
   }
 
   if (path.extname(file) === '.vue') {
+    findMissingEmptyDescriptions(file, content).forEach(({ offset, rule }) => {
+      addFinding(offset, rule)
+    })
+
     for (const match of content.matchAll(/\bv-loading(?::[\w-]+)?(?:\s*=|\s|>)/g)) {
       if (match.index == null || excerptAt(content, match.index).includes('data-ui-audit-allow')) {
         continue
@@ -211,7 +260,8 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
     const rawErrorPatterns = [
       /\bString\(\s*(?:error|err)\s*\)/g,
       /\bJSON\.stringify\(\s*(?:error|err)\b[^)]*\)/g,
-      /\berror\s+instanceof\s+Error\s*\?\s*error\.message\b/g
+      /\berror\s+instanceof\s+Error\s*\?\s*error\.message\b/g,
+      /\bElMessage\.(?:error|warning|info|success)\s*\(\s*(?:error|err)\.message\b/g
     ]
     rawErrorPatterns.forEach((pattern) => {
       for (const match of content.matchAll(pattern)) {
@@ -239,6 +289,12 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       addFinding(match.index, name)
     }
   })
+
+  if (['.vue', '.scss', '.css'].includes(path.extname(file))) {
+    for (const match of content.matchAll(/:global\((?:[^()]|\([^)]*\))*\)\s+(?=[.#&[:\w])/g)) {
+      if (match.index != null) addFinding(match.index, 'styles/global-selector-must-be-complete')
+    }
+  }
 
   if (path.extname(file) === '.vue') {
     for (const match of content.matchAll(/<(?:ElEmpty|el-empty)\b/g)) {

@@ -14,15 +14,15 @@ import {
   fetchAccessibleApplications,
   fetchCurrentUserMenus
 } from '@/api/system-manage/application-access'
-import { asyncRoutes } from '../routes/asyncRoutes'
-import { RoutesAlias } from '../routesAlias'
+import { asyncRoutes } from '../routes/async-routes'
+import { RoutesAlias } from '../routes-alias'
 import { formatMenuTitle } from '@/utils/router'
 import {
   APPLICATION_CODES,
   currentApplication,
   resolveHostedApplicationCodes
 } from '@/config/application'
-import { buildApplicationMenuTree, flattenStandaloneApplicationMenu } from './applicationMenu'
+import { buildApplicationMenuTree, flattenStandaloneApplicationMenu } from './application-menu'
 
 export class MenuProcessor {
   /**

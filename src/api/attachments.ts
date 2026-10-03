@@ -1,7 +1,7 @@
 import { useSupabase } from '@/hooks'
 import { calcFileHash, formatSize } from '@/utils/file'
 import { useUserStore } from '@/store/modules/user'
-import { useTenantScopeStore } from '@/store/modules/tenantScope'
+import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { resolveTenantWriteTargetId } from '@/utils/tenant-scope-context'
 import { mapWithConcurrency } from '@/utils/async'
 import dayjs from 'dayjs'
@@ -35,7 +35,7 @@ export async function uploadAttachment(
     explicitTenantId: requestedTenantId,
     effectiveTenantId: useTenantScopeStore().effectiveTenantId,
     actorTenantId: tenantId,
-    isPlatformSuper
+    canWriteToOtherTenant: isPlatformSuper
   })
 
   // 统一成数组

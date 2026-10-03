@@ -47,6 +47,11 @@ module.exports = {
       {
         ignoreAtRules: [
           'apply',
+          'custom-variant',
+          'forward',
+          'source',
+          'theme',
+          'utility',
           'use',
           'mixin',
           'include',
@@ -56,6 +61,7 @@ module.exports = {
           'else',
           'for',
           'while',
+          'return',
           'reference'
         ]
       }
@@ -65,6 +71,11 @@ module.exports = {
       {
         ignoreAtRules: [
           'apply',
+          'custom-variant',
+          'forward',
+          'source',
+          'theme',
+          'utility',
           'use',
           'mixin',
           'include',
@@ -74,6 +85,7 @@ module.exports = {
           'else',
           'for',
           'while',
+          'return',
           'reference'
         ]
       }

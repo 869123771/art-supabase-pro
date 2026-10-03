@@ -812,7 +812,7 @@
     );
   }
 
-  :global(.dark) .art-work-tab--google {
+  :global(html.dark .art-work-tab--google) {
     --work-tab-google-bg: var(--default-box-color);
   }
 

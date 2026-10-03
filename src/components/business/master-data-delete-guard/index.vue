@@ -1,11 +1,15 @@
 <template>
   <ArtDialog ref="dialogRef">
-    <ArtAsyncState
-      v-if="inspectionError"
-      :error="inspectionError"
-      error-title="关联信息加载失败"
-      @retry="retryInspection"
-    />
+    <div v-if="inspectionError" class="master-delete-guard__error" role="alert">
+      <span class="master-delete-guard__error-icon" aria-hidden="true">
+        <ArtSvgIcon icon="ri:shield-cross-line" />
+      </span>
+      <div>
+        <strong>关联资料未完成核验，删除已停止</strong>
+        <p>{{ inspectionError }}</p>
+        <small>请重试；若问题持续，请联系管理员核对关联资料读取权限。</small>
+      </div>
+    </div>
     <div v-else class="master-delete-guard">
       <div class="master-delete-guard__lead">
         <div>
@@ -17,7 +21,7 @@
           <span v-if="currentOptions?.resourceType"
             >系统不会自动删除运单、合同、财务、审批或维修历史。</span
           >
-          <span v-else>系统不会自动解除已生效的 BOM、工单或其他业务引用。</span>
+          <span v-else>系统不会自动删除或解除关联业务记录。</span>
         </div>
         <ElTag type="warning" effect="light">共 {{ dependencies.length }} 条关联</ElTag>
       </div>
@@ -54,7 +58,7 @@
           <div class="master-delete-guard__records">
             <div
               v-for="record in group.records"
-              :key="record.recordId"
+              :key="`${record.resourceId}:${record.recordId}`"
               class="master-delete-guard__record"
             >
               <ElCheckbox
@@ -106,9 +110,7 @@
         <span v-if="currentOptions?.resourceType"
           >处理页面会携带主数据 ID 和关联记录 ID，并在打开后自动过滤。</span
         >
-        <span v-else
-          >请核对关联记录编号；可清理的旧草稿需明确勾选，其他记录请到对应业务页面处理。</span
-        >
+        <span v-else>请核对关联记录编号与状态，处理后重新检查。</span>
       </div>
     </div>
 
@@ -117,7 +119,7 @@
         <span v-if="safeRecordCount">
           已选择 {{ selectedRecordIds.length }} / {{ safeRecordCount }} 个安全项
         </span>
-        <span v-else-if="inspectionError">关联信息加载失败，请重试</span>
+        <span v-else-if="inspectionError">校验失败时不会删除业务记录</span>
         <span v-else>当前关联均属于需保留或先处理的业务记录</span>
         <div class="master-delete-guard__footer-actions">
           <ElButton @click="api.handleClose()">关闭</ElButton>
@@ -153,7 +155,6 @@
   import { Loading } from '@element-plus/icons-vue'
   import { ElMessage, type MessageHandler, type CheckboxValueType } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
-  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { financeRouteNames } from '@/router/business-paths'
@@ -583,7 +584,7 @@
         {},
         {
           title: inspectionError.value ? '删除检查未完成' : `暂时无法删除${options.resourceLabel}`,
-          size: 'md',
+          size: inspectionError.value ? 'sm' : 'md',
           contentMaxHeight: '68vh',
           loading: false,
           showCancelButton: false,
@@ -772,6 +773,55 @@
     display: grid;
     gap: 12px;
     min-width: 0;
+
+    &__error {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px;
+      background: var(--el-color-danger-light-9);
+      border: 1px solid var(--el-color-danger-light-8);
+      border-radius: var(--el-border-radius-base);
+
+      > div {
+        min-width: 0;
+      }
+
+      strong,
+      p,
+      small {
+        display: block;
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      strong {
+        color: var(--el-text-color-primary);
+      }
+
+      p {
+        margin-top: 6px;
+        color: var(--el-color-danger-dark-2);
+      }
+
+      small {
+        margin-top: 8px;
+        color: var(--el-text-color-secondary);
+      }
+    }
+
+    &__error-icon {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      font-size: 19px;
+      color: var(--el-color-danger);
+      background: var(--el-bg-color);
+      border-radius: var(--el-border-radius-base);
+    }
 
     &__lead {
       display: flex;

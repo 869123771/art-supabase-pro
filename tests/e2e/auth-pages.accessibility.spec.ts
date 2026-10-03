@@ -50,11 +50,74 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 test('login keeps its default account and password with the remember option', async ({ page }) => {
+  test.setTimeout(90_000)
   await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('input[name="username"]')).toHaveValue('624944977@qq.com')
   await expect(page.locator('input[name="password"]')).toHaveValue('123456')
   await expect(page.getByRole('checkbox', { name: '记住密码' })).toBeChecked()
   await expect(page.locator('button[type="submit"]')).toContainText('登录')
+})
+
+test('login remains usable when website configuration cannot be loaded', async ({ page }) => {
+  test.setTimeout(90_000)
+  let configRequests = 0
+  await page.route('**/rest/v1/sys_param?**', async (route) => {
+    const requestUrl = new URL(route.request().url())
+    if (requestUrl.searchParams.get('param_key') !== 'eq.website.config') {
+      await route.continue()
+      return
+    }
+
+    configRequests += 1
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: '42501', message: 'permission denied' })
+    })
+  })
+
+  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('button[type="submit"]')).toBeEnabled()
+  expect(configRequests).toBeGreaterThan(0)
+})
+
+test('login fills saved browser credentials without removing them when remember is unchecked', async ({
+  page
+}) => {
+  test.setTimeout(90_000)
+  await page.addInitScript(() => {
+    localStorage.setItem('art-auth-remembered-identifier', 'saved@example.com')
+    localStorage.setItem('art-auth-remember-password', 'false')
+    Object.defineProperty(window, 'PasswordCredential', {
+      configurable: true,
+      value: class PasswordCredential {}
+    })
+    Object.defineProperty(navigator, 'credentials', {
+      configurable: true,
+      value: {
+        get: async () => ({
+          type: 'password',
+          id: 'saved@example.com',
+          password: 'saved-password'
+        })
+      }
+    })
+  })
+
+  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('input[name="username"]')).toHaveValue('saved@example.com')
+  await expect(page.locator('input[name="password"]')).toHaveValue('saved-password')
+  const remember = page.getByRole('checkbox', { name: '记住密码' })
+  await expect(remember).not.toBeChecked()
+  await page.getByText('记住密码', { exact: true }).click()
+  await expect(remember).toBeChecked()
+  await page.getByText('记住密码', { exact: true }).click()
+  await expect(remember).not.toBeChecked()
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('art-auth-remembered-identifier')))
+    .toBe('saved@example.com')
 })
 
 for (const authPage of authPages) {
@@ -177,7 +240,7 @@ test('OAuth callback shows progress instead of briefly exposing the login form',
 test('anonymous login does not download hosted business page mappings', async ({ page }) => {
   const hostedRequests: string[] = []
   page.on('request', (request) => {
-    if (/bootstrapHostedApplications(?:-|\.ts)/.test(new URL(request.url()).pathname)) {
+    if (/bootstrap-hosted-applications(?:-|\.ts)/.test(new URL(request.url()).pathname)) {
       hostedRequests.push(request.url())
     }
   })

@@ -174,6 +174,7 @@
                     v-else
                     class="screen-empty-state"
                     title="暂无已归属车间的设备"
+                    description="请先为设备关联车间，再查看设备分布。"
                     size="compact"
                     :visual-size="64"
                   />
@@ -274,6 +275,7 @@
                     v-else
                     class="screen-empty-state"
                     title="当前没有未闭环故障工单"
+                    description="故障工单均已闭环，请继续关注设备状态。"
                     size="compact"
                     :visual-size="64"
                   />
@@ -321,6 +323,7 @@
                     v-else
                     class="screen-empty-state"
                     title="暂无待执行保养任务"
+                    description="当前保养计划没有待执行任务。"
                     size="compact"
                     :visual-size="64"
                   />

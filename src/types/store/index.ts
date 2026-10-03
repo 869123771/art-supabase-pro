@@ -24,7 +24,7 @@ import type { AppRouteRecord } from '@/types/router'
  * @module types/store/index
  */
 
-import { MenuThemeEnum, SystemThemeEnum } from '@/enums/appEnum'
+import { MenuThemeEnum, SystemThemeEnum } from '@/enums/app-enum'
 import { LocationQueryRaw } from 'vue-router'
 
 /** 工作标签页视觉风格 */

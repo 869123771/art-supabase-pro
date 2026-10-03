@@ -56,6 +56,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import {
     fetchScmReceiptPlacementBin,
     fetchScmReceiptPlacementBins,
@@ -146,7 +147,8 @@
       )
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '入库库位保存失败，请检查仓库、物料和库位后重试')
       return false
     }
   }

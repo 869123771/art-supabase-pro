@@ -130,6 +130,7 @@
           <ArtAsyncState
             :empty="!overview.data.quality.fieldQuality.length"
             empty-text="完成一次 AI 填单并保存后，将显示字段质量"
+            empty-description="保存 AI 填单结果后，可在此查看字段准确率与纠错趋势。"
             :empty-image-size="58"
             :min-height="0"
             class="ai-operations__field-state"
@@ -243,6 +244,7 @@
               <ArtAsyncState
                 :empty="!featureInventory.length"
                 empty-text="暂无可用 AI 能力"
+                empty-description="请联系平台管理员启用所需能力。"
                 :empty-image-size="54"
                 :min-height="250"
               >

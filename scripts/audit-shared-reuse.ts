@@ -20,6 +20,7 @@ const projectRoot = process.cwd()
 const helperName =
   /^(normalize|format|parse|build|to|is|has|map|optional|required|resolve|sanitize|coerce|ensure)[A-Z_]/
 const supportedExtensions = new Set(['.ts', '.tsx', '.vue'])
+const utilityFileName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.(?:test|spec|d))?\.tsx?$/
 const canonicalDeclarations = new Map<string, string>([
   ['normalizeNonNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableText', 'src/utils/form/normalize.ts'],
@@ -153,6 +154,13 @@ for (const entry of moduleEntries.filter((item) => item.isDirectory())) {
 for (const file of files) {
   const content = await readFile(file, 'utf8')
   const relative = relativeFile(file)
+  if (relative.startsWith('src/utils/') && !utilityFileName.test(path.basename(file))) {
+    findings.push({
+      file: relative,
+      rule: 'utility-file-name',
+      detail: '共享工具文件请使用小写连字符命名；测试和声明文件保留标准后缀。'
+    })
+  }
   if (/\.trim\(\)\s*\|\|\s*null/.test(content)) {
     findings.push({
       file: relative,

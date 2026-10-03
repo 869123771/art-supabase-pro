@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveCanonicalHashRouterUrl } from '../../src/router/hashHistory'
+import { resolveCanonicalHashRouterUrl } from '../../src/router/hash-history'
 
 const origin = 'http://localhost:3006'
 

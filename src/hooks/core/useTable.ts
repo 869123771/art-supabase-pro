@@ -24,7 +24,7 @@ import {
   TableCache,
   CacheInvalidationStrategy,
   type ApiResponse
-} from '../../utils/table/tableCache'
+} from '../../utils/table/table-cache'
 import {
   type TableError,
   defaultResponseAdapter,
@@ -32,8 +32,8 @@ import {
   updatePaginationFromResponse,
   createSmartDebounce,
   createErrorHandler
-} from '../../utils/table/tableUtils'
-import { tableConfig } from '../../utils/table/tableConfig'
+} from '../../utils/table/table-utils'
+import { tableConfig } from '../../utils/table/table-config'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 // 类型推导工具类型
@@ -788,6 +788,6 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
 }
 
 // 重新导出类型和枚举，方便使用
-export { CacheInvalidationStrategy } from '../../utils/table/tableCache'
-export type { ApiResponse, CacheItem } from '../../utils/table/tableCache'
-export type { BaseRequestParams, TableError } from '../../utils/table/tableUtils'
+export { CacheInvalidationStrategy } from '../../utils/table/table-cache'
+export type { ApiResponse, CacheItem } from '../../utils/table/table-cache'
+export type { BaseRequestParams, TableError } from '../../utils/table/table-utils'

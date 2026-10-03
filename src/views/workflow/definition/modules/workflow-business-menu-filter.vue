@@ -90,7 +90,13 @@
           </template>
         </ElTree>
       </ElScrollbar>
-      <ArtEmptyState v-else title="暂无已接入审批的菜单" size="compact" :visual-size="58" />
+      <ArtEmptyState
+        v-else
+        title="暂无已接入审批的菜单"
+        description="请先在流程目录接入可审批菜单。"
+        size="compact"
+        :visual-size="58"
+      />
     </div>
 
     <footer class="workflow-menu-filter__footer">

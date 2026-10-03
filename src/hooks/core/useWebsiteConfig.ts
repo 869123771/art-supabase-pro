@@ -10,6 +10,8 @@ const websiteConfig = ref<UseWebsiteConfig>(createWebsiteConfigDefaults())
 const loading = ref(false)
 const loaded = ref(false)
 let pendingLoad: Promise<UseWebsiteConfig> | null = null
+let loadVersion = 0
+let lastLoadFailed = false
 
 const mergeWebsiteConfig = (config?: Partial<UseWebsiteConfig> | null): UseWebsiteConfig => {
   const defaults = createWebsiteConfigDefaults()
@@ -74,39 +76,55 @@ const applyWebsiteDocument = (config = websiteConfig.value): void => {
 }
 
 const loadWebsiteConfig = async (force = false): Promise<UseWebsiteConfig> => {
-  if (loaded.value && !force) {
-    return websiteConfig.value
-  }
-
   if (pendingLoad && !force) {
     return pendingLoad
   }
 
+  if (loaded.value && !force && !lastLoadFailed) {
+    return websiteConfig.value
+  }
+
+  const currentLoadVersion = ++loadVersion
   loading.value = true
   pendingLoad = fetchWebsiteConfig()
-    .then(({ data }) => {
-      websiteConfig.value = mergeWebsiteConfig(data)
-      loaded.value = true
-      applyWebsiteDocument()
+    .then(({ data, error }) => {
+      if (error) throw error
+      if (currentLoadVersion === loadVersion) {
+        websiteConfig.value = mergeWebsiteConfig(data)
+        loaded.value = true
+        lastLoadFailed = false
+        applyWebsiteDocument()
+      }
       return websiteConfig.value
     })
     .catch(() => {
-      websiteConfig.value = mergeWebsiteConfig()
-      loaded.value = true
-      applyWebsiteDocument()
+      if (currentLoadVersion === loadVersion) {
+        lastLoadFailed = true
+        if (!loaded.value) {
+          websiteConfig.value = mergeWebsiteConfig()
+          loaded.value = true
+          applyWebsiteDocument()
+        }
+      }
       return websiteConfig.value
     })
     .finally(() => {
-      loading.value = false
-      pendingLoad = null
+      if (currentLoadVersion === loadVersion) {
+        loading.value = false
+        pendingLoad = null
+      }
     })
 
   return pendingLoad
 }
 
 const setWebsiteConfig = (config: UseWebsiteConfig): void => {
+  loadVersion += 1
+  pendingLoad = null
+  loading.value = false
   websiteConfig.value = mergeWebsiteConfig(config)
   loaded.value = true
+  lastLoadFailed = false
   applyWebsiteDocument()
 }
 

@@ -43,6 +43,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -240,8 +242,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -260,7 +263,8 @@
       }
       emit('success', form.id ? 'edit' : 'add')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '租户保存失败，请检查租户信息后重试', 'warning')
       return false
     }
   }

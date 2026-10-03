@@ -25,8 +25,6 @@ import {
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll'
 
-// import { visualizer } from 'rollup-plugin-visualizer'
-
 const normalizeModuleId = (id: string) => id.replace(/\\/g, '/')
 
 const matchPackages = (id: string, packages: string[]) => {
@@ -78,13 +76,62 @@ const getElementPlusStyleDeps = (root: string): string[] => {
     .sort()
 }
 
+// Common controls share one initial stylesheet; less-used controls keep their route CSS.
+const sharedElementPlusStyleComponents = new Set([
+  'alert',
+  'avatar',
+  'badge',
+  'base',
+  'button',
+  'calendar',
+  'card',
+  'checkbox',
+  'checkbox-button',
+  'col',
+  'collapse',
+  'dialog',
+  'date-picker',
+  'descriptions',
+  'dropdown',
+  'form',
+  'icon',
+  'image',
+  'input',
+  'input-number',
+  'message',
+  'overlay',
+  'pagination',
+  'popconfirm',
+  'popover',
+  'progress',
+  'radio',
+  'radio-button',
+  'radio-group',
+  'result',
+  'row',
+  'scrollbar',
+  'segmented',
+  'select',
+  'slider',
+  'skeleton',
+  'space',
+  'splitter',
+  'switch',
+  'table',
+  'tag',
+  'tabs',
+  'text',
+  'time-picker',
+  'timeline',
+  'timeline-item',
+  'tooltip',
+  'tree-select'
+])
+
 const matchElementPlusStyles = (id: string) => {
   const normalizedId = normalizeModuleId(id)
-  return (
-    (normalizedId.includes('/node_modules/element-plus/es/components/') &&
-      normalizedId.includes('/style/')) ||
-    normalizedId.includes('/node_modules/element-plus/theme-chalk/src/')
-  )
+  const match = normalizedId.match(/\/node_modules\/element-plus\/es\/components\/([^/]+)\/style\//)
+  return match !== null && sharedElementPlusStyleComponents.has(match[1])
 }
 
 export default ({ mode }: { mode: string }) => {
@@ -191,8 +238,8 @@ export default ({ mode }: { mode: string }) => {
                 priority: 100
               },
               {
-                // Element Plus theme modules are used across nearly every business route.
-                // Emit them once to avoid repeated CSS and route-level style waterfalls.
+                // Frequently used Element Plus controls load with the shell; other
+                // component styles remain with their routes to limit first-screen CSS.
                 name: 'element-plus-styles',
                 test: matchElementPlusStyles,
                 priority: 95

@@ -24,6 +24,7 @@ export interface PercentValueFormatOptions {
 
 const isEmptyValue = (value: unknown): boolean =>
   value === undefined || value === null || value === ''
+const currencyFormatters = new Map<string, Intl.NumberFormat>()
 
 export function formatNumberValue(value: unknown, locale = 'zh-CN'): string {
   const numberValue = Number(value)
@@ -49,12 +50,19 @@ export function formatCurrencyValue(value: unknown, currency = 'CNY', locale = '
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) return String(value)
 
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(numberValue)
+  const formatterKey = `${locale}\0${currency}`
+  let formatter = currencyFormatters.get(formatterKey)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    currencyFormatters.set(formatterKey, formatter)
+  }
+
+  return formatter.format(numberValue)
 }
 
 /** Format CNY values with the application-wide currency style; blank AI values mean zero. */

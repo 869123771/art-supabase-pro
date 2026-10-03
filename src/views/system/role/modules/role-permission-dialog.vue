@@ -157,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
@@ -373,7 +374,8 @@
 
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '角色权限保存失败，请刷新权限树后重试', 'warning')
       return false
     } finally {
       permissionSaving.value = false

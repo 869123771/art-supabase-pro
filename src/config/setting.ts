@@ -17,11 +17,11 @@
  *    - src/components/core/layouts/art-settings-panel/widget/SettingActions.vue（复制配置和重置配置逻辑）
  *    - src/store/modules/setting.ts（Store 状态定义）
  * 2. 可以通过设置面板的"复制配置"按钮快速生成配置代码
- * 3. 枚举类型的值需要与 src/enums/appEnum.ts 中的定义保持一致
+ * 3. 枚举类型的值需要与 src/enums/app-enum.ts 中的定义保持一致
  */
 
 import AppConfig from '@/config'
-import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/appEnum'
+import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/app-enum'
 import type { BreadcrumbStyle, WorkTabStyle } from '@/types'
 
 /**

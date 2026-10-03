@@ -103,6 +103,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -206,18 +208,19 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (!state.task) return false
+      await actWorkflowTask({
+        taskId: state.task.id,
+        action: state.action,
+        comment: normalizeNullableText(form.comment)
+      })
+      emit('success', state.action)
+      return true
+    } catch (error) {
+      notifyFriendlyError(error, '审批处理失败，请刷新待办后重试', 'warning')
       return false
     }
-    if (!state.task) return false
-    await actWorkflowTask({
-      taskId: state.task.id,
-      action: state.action,
-      comment: normalizeNullableText(form.comment)
-    })
-    emit('success', state.action)
-    return true
   }
 
   async function loadSnapshot(): Promise<void> {

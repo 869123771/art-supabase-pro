@@ -30,6 +30,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -82,14 +84,15 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (!state.instance) return false
+      await cancelWorkflowInstance(state.instance.id, form.data.comment.trim())
+      emit('success')
+      return true
+    } catch (error) {
+      notifyFriendlyError(error, '审批流程终止失败，请刷新后重试', 'warning')
       return false
     }
-    if (!state.instance) return false
-    await cancelWorkflowInstance(state.instance.id, form.data.comment.trim())
-    emit('success')
-    return true
   }
 
   async function handleOpen(instance: Api.Workflow.WorkflowMonitorRecord): Promise<void> {

@@ -26,7 +26,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { TableSizeEnum } from '@/enums/formEnum'
+import { TableSizeEnum } from '@/enums/form-enum'
 
 // 表格
 export const useTableStore = defineStore(

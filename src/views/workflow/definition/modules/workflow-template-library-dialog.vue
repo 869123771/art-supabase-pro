@@ -344,17 +344,6 @@
       align-self: center;
       color: var(--art-gray-400);
     }
-
-    :global([data-box-mode='border-mode']) &__card:hover,
-    :global([data-box-mode='border-mode']) &__card:focus-visible {
-      box-shadow: inset 0 0 0 1px var(--theme-color);
-    }
-
-    :global([data-box-mode='shadow-mode']) &__card:hover,
-    :global([data-box-mode='shadow-mode']) &__card:focus-visible {
-      border-color: transparent;
-      box-shadow: var(--art-themed-action-hover-shadow);
-    }
   }
 
   @media (width <= 780px) {
@@ -384,5 +373,16 @@
         grid-template-columns: 1fr;
       }
     }
+  }
+
+  :global(html[data-box-mode='border-mode'] .workflow-template-library__card:hover),
+  :global(html[data-box-mode='border-mode'] .workflow-template-library__card:focus-visible) {
+    box-shadow: inset 0 0 0 1px var(--theme-color);
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .workflow-template-library__card:hover),
+  :global(html[data-box-mode='shadow-mode'] .workflow-template-library__card:focus-visible) {
+    border-color: transparent;
+    box-shadow: var(--art-themed-action-hover-shadow);
   }
 </style>

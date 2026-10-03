@@ -33,7 +33,7 @@
  *
  * @module utils/sys/upgrade
  */
-import type { UpgradeLog } from '@/mock/upgrade/changeLog'
+import type { UpgradeLog } from '@/mock/upgrade/change-log'
 import { ElNotification } from 'element-plus'
 import { useUserStore } from '@/store/modules/user'
 import { StorageConfig } from '@/utils/storage/storage-config'
@@ -199,7 +199,7 @@ class VersionManager {
     legacyStorage: ReturnType<typeof this.findLegacyStorage>
   ): Promise<void> {
     try {
-      const { upgradeLogList } = await import('@/mock/upgrade/changeLog')
+      const { upgradeLogList } = await import('@/mock/upgrade/change-log')
       if (!upgradeLogList.length) {
         console.warn('[Upgrade] 升级日志列表为空')
         return

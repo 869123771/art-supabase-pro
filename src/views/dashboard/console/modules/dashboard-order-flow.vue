@@ -4,6 +4,7 @@
     :loading="loading"
     :empty="total === 0"
     empty-title="暂无订单流转数据"
+    empty-description="创建订单后可在此查看各状态的流转情况。"
     :min-height="300"
     preserve-content-structure
   >

@@ -51,7 +51,7 @@
   import { formatArtValue } from '@/utils/ui'
   import type { ArtDescriptionItem } from './types'
   import { storeToRefs } from 'pinia'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { filterTenantDimensionDescriptors } from '@/utils/tenant-dimension-visibility'
 
   defineOptions({ name: 'ArtDescriptions' })

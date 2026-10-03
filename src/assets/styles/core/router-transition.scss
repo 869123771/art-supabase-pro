@@ -51,11 +51,17 @@ $fade-easing: transition-config('fade-easing');
 
   @if $direction == 'left' {
     $distance-x: -$distance;
-  } @else if $direction == 'right' {
+  }
+
+  @if $direction == 'right' {
     $distance-x: $distance;
-  } @else if $direction == 'top' {
+  }
+
+  @if $direction == 'top' {
     $distance-y: -$distance;
-  } @else if $direction == 'bottom' {
+  }
+
+  @if $direction == 'bottom' {
     $distance-y: $distance;
   }
 
@@ -93,12 +99,15 @@ $fade-easing: transition-config('fade-easing');
 .slide-left {
   @include slide-transition('left');
 }
+
 .slide-right {
   @include slide-transition('right');
 }
+
 .slide-top {
   @include slide-transition('top');
 }
+
 .slide-bottom {
   @include slide-transition('bottom');
 }

@@ -19,6 +19,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { omit } from 'lodash-es'
@@ -304,8 +306,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -329,7 +332,8 @@
       await userStore.fetchDictList()
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '字典保存失败，请检查名称与层级后重试', 'warning')
       return false
     }
   }

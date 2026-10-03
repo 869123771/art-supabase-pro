@@ -1,7 +1,7 @@
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useTenantScopeStore } from '@/store/modules/tenantScope'
+import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
 import { resolveTenantScopeReadOnly } from '@/utils/tenant-scope-access-policy'
 

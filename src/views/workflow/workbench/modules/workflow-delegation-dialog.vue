@@ -103,6 +103,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
   import type { FormRules, TagProps } from 'element-plus'
@@ -266,20 +268,25 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+      const [startsAt, endsAt] = form.data.period
+      if (!startsAt || !endsAt) return false
+      await createWorkflowDelegation({
+        delegateUserId: form.data.delegateUserId,
+        startsAt: dayjs(startsAt).toISOString(),
+        endsAt: dayjs(endsAt).toISOString(),
+        reason: form.data.reason.trim()
+      })
+    } catch (error) {
+      notifyFriendlyError(error, '审批委托创建失败，请核对时间范围后重试', 'warning')
       return false
     }
-    const [startsAt, endsAt] = form.data.period
-    if (!startsAt || !endsAt) return false
-    await createWorkflowDelegation({
-      delegateUserId: form.data.delegateUserId,
-      startsAt: dayjs(startsAt).toISOString(),
-      endsAt: dayjs(endsAt).toISOString(),
-      reason: form.data.reason.trim()
-    })
     Object.assign(form.data, { delegateUserId: '', period: [], reason: '' })
-    await loadData()
+    try {
+      await loadData()
+    } catch (error) {
+      notifyFriendlyError(error, '审批委托已创建，但列表刷新失败，请稍后刷新', 'warning')
+    }
     emit('success')
     return true
   }

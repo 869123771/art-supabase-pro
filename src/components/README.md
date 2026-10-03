@@ -22,13 +22,17 @@ Shared components are organized by responsibility, not by the page that first ne
 
 `core/others` is legacy only. Do not add a new component there. Move a legacy component only when it is already being materially refactored and the move can be verified without broad unrelated churn.
 
+## Cross-repository import paths
+
+Business modules under `modules/**` also build against a pinned, separately distributed `art-supabase-pro` package. A shared component's source path is therefore part of their integration contract. Before relocating one, verify that the pinned platform package contains the new path, update every module import and dependency pin together, and run the standalone module typechecks. `ArtIconButton` currently stays under `core/widget/art-icon-button` for this reason.
+
 ## `business`: shared domain-aware components
 
 Use `src/components/business` for components reused across pages that understand business records or call exported `src/api/**` functions. They may compose `core` components but must not access transport clients directly.
 
 Examples:
 
-- `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display.
+- `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display. `allowAllTenantRead` enables aggregate search only for platform super administrators in the all-tenant scope; write targets still come from the owning form.
 - `BusinessWorkspaceHeader`: shared business workspace identity and overview metrics.
 - Business record links, history, and permission-aware action surfaces.
 

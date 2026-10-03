@@ -10,6 +10,7 @@
       <ArtAsyncState
         :empty="orders.length === 0"
         empty-text="暂无运输中的运单"
+        empty-description="运单发车后，这里会展示实时运输进度。"
         :empty-image-size="62"
         :min-height="260"
       >

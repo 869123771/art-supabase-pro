@@ -359,19 +359,18 @@
             <div class="mb-3 flex flex-wrap items-center gap-3">
               <strong class="text-sm">序列号</strong>
               <ElButton link type="primary" @click="serialEntryVisible = true">录入序列号</ElButton>
-              <ElButton link type="primary" @click="serialInputRef?.click()">导入序列号</ElButton>
+              <ArtExcelImport
+                accept=".txt,.csv"
+                :parse-excel="false"
+                :button-props="{ link: true, type: 'primary' }"
+                @file-change="importSerials"
+                >导入序列号</ArtExcelImport
+              >
               <ElButton link type="primary" @click="serialViewVisible = true">查看序列号</ElButton>
               <span class="text-xs text-[var(--el-text-color-secondary)]"
                 >已录入 {{ serialList.length }} 个</span
               >
             </div>
-            <input
-              ref="serialInputRef"
-              class="hidden"
-              type="file"
-              accept=".txt,.csv"
-              @change="importSerials"
-            />
           </div>
         </ArtSectionCard>
       </template>
@@ -387,16 +386,26 @@
       label-position="top"
     />
   </ArtDialog>
-  <ArtDialog ref="serialViewDialogRef" size="sm" :show-footer="false"
-    ><ElScrollbar
+  <ArtDialog ref="serialViewDialogRef" size="sm" :show-footer="false">
+    <ArtEmptyState
+      v-if="!serialList.length"
+      size="compact"
+      title="暂无序列号"
+      description="录入或导入序列号后可在这里查看。"
+    />
+    <ElScrollbar
+      v-else
       max-height="24rem"
       class="rounded-xl bg-[var(--el-fill-color-light)] font-mono text-sm whitespace-pre-wrap"
-      ><div class="p-4">{{ serialList.join('\n') || '暂无序列号' }}</div></ElScrollbar
-    ></ArtDialog
-  >
+      ><div class="p-4">{{ serialList.join('\n') }}</div></ElScrollbar
+    >
+  </ArtDialog>
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { parseSerialNumberText } from '@/utils/file/serial-number-text'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import dayjs from 'dayjs'
   import { cloneDeep } from 'lodash-es'
@@ -411,6 +420,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -474,7 +484,6 @@
   const serialEntryDialogRef = ref<ArtDialogExpose>()
   const serialViewDialogRef = ref<ArtDialogExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
-  const serialInputRef = ref<HTMLInputElement>()
   const mode = ref<OpenMode>('create')
   const importIntent = ref(false)
   const currentDocument = shallowRef<WmsPurchaseDocument | null>(null)
@@ -1629,12 +1638,7 @@
       size: params.pageSize
     })
   }
-  const serialList = computed(() =>
-    serialText.value
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter(Boolean)
-  )
+  const serialList = computed(() => parseSerialNumberText(serialText.value))
   const serialEntryVisible = computed({
     get: () => false,
     set: (value: boolean) => {
@@ -1658,12 +1662,18 @@
       if (value) void serialViewDialogRef.value?.handleOpen(undefined, { title: '查看序列号' })
     }
   })
-  async function importSerials(event: Event): Promise<void> {
-    const file = (event.target as HTMLInputElement).files?.[0]
-    if (!file) return
-    serialText.value = (await file.text()).replaceAll(',', '\n')
-    ;(event.target as HTMLInputElement).value = ''
-    ElMessage.success(`已导入 ${serialList.value.length} 个序列号`)
+  async function importSerials(file: File): Promise<void> {
+    try {
+      const serials = parseSerialNumberText(await file.text())
+      if (!serials.length) {
+        ElMessage.warning('文件中没有可用的序列号，请检查文件内容后重试')
+        return
+      }
+      serialText.value = serials.join('\n')
+      ElMessage.success(`已导入 ${serials.length} 个序列号`)
+    } catch (error) {
+      notifyFriendlyError(error, '序列号文件读取失败，请重新选择文件')
+    }
   }
   async function openLine(index: number): Promise<void> {
     editingIndex.value = index
@@ -1841,7 +1851,7 @@
   async function save(): Promise<boolean> {
     if (optionError.value) return false
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (
         isInitial.value &&
         (!selectedOrganization.value?.enabledOn ||
@@ -1885,7 +1895,8 @@
       })
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '采购单据提交失败，请检查填写内容和网络后重试')
       return false
     }
   }

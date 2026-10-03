@@ -1,15 +1,6 @@
-// 定义基础变量
-$bg-animation-color-light: #000;
-$bg-animation-color-dark: #fff;
 $bg-animation-duration: 0.5s;
 
 html {
-  --bg-animation-color: $bg-animation-color-light;
-
-  &.dark {
-    --bg-animation-color: $bg-animation-color-dark;
-  }
-
   // View transition styles
   &::view-transition-old(*) {
     animation: none;
@@ -59,5 +50,5 @@ html {
 
 // body 相关样式
 body {
-  background-color: var(--bg-animation-color);
+  background-color: var(--default-bg-color);
 }

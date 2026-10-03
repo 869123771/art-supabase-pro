@@ -13,17 +13,30 @@
         icon="warning"
         title="无法打开文件预览"
         :sub-title="preview.error"
-      />
+      >
+        <template v-if="preview.canRetry" #extra>
+          <ElButton type="primary" :loading="preview.loading" @click="loadFullRenderer()">
+            重新加载
+          </ElButton>
+        </template>
+      </ElResult>
 
-      <FileViewer v-else-if="preview.file?.url" :url="preview.file.url" :options="viewerOptions" />
+      <FileViewer
+        v-else-if="preview.file?.url && viewerOptions"
+        :url="preview.file.url"
+        :options="viewerOptions"
+      />
+      <div v-else-if="preview.loading" class="art-file-viewer-page__loading" role="status">
+        正在准备文件预览…
+      </div>
     </section>
   </main>
 </template>
 
 <script setup lang="ts">
-  import { ElResult } from 'element-plus'
+  import { ElButton, ElResult } from 'element-plus'
   import { FileViewer, type FileViewerOptions } from '@file-viewer/vue3'
-  import allRenderers from '@file-viewer/preset-all'
+  import { imageRenderer } from '@file-viewer/renderer-image'
   import '@file-viewer/vue3/dist/file-viewer3.css'
   import { getFileExtension } from '@/utils/file'
   import { getFilePreviewTarget, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
@@ -35,21 +48,38 @@
     file?: FilePreviewTarget
     fileType: string
     error: string
+    loading: boolean
+    canRetry: boolean
   }
+
+  const imageExtensions = new Set([
+    'avif',
+    'bmp',
+    'gif',
+    'heic',
+    'heif',
+    'ico',
+    'jpeg',
+    'jpg',
+    'jxl',
+    'png',
+    'svg',
+    'tif',
+    'tiff',
+    'webp'
+  ])
 
   const route = useRoute()
   const { brandName } = useWebsiteConfig()
-  const queryKey = Array.isArray(route.query.key) ? route.query.key[0] : route.query.key
-  const key = typeof queryKey === 'string' ? queryKey : undefined
-  const file = getFilePreviewTarget(key)
-  const preview: PreviewState = {
-    file,
-    fileType: file?.fileType || getFileExtension(file?.name, file?.fileType),
-    error: file ? '' : '预览地址不存在或已过期，请从附件名称重新打开'
-  }
+  const preview = reactive<PreviewState>({
+    file: undefined,
+    fileType: '',
+    error: '',
+    loading: false,
+    canRetry: false
+  })
 
-  const viewerOptions: FileViewerOptions = {
-    preset: allRenderers,
+  const commonViewerOptions: FileViewerOptions = {
     rendererMode: 'replace',
     theme: 'system',
     toolbar: {
@@ -57,6 +87,59 @@
       zoom: true
     }
   }
+  // The image package narrows its handler to HTMLDivElement; the Vue wrapper declares HTMLElement.
+  const imageRenderers = [imageRenderer] as unknown as FileViewerOptions['renderers']
+  const viewerOptions = shallowRef<FileViewerOptions | null>(null)
+  let previewVersion = 0
+
+  async function loadFullRenderer(version = previewVersion): Promise<void> {
+    preview.loading = true
+    preview.error = ''
+    preview.canRetry = false
+    try {
+      const { default: allRenderers } = await import('@file-viewer/preset-all')
+      if (version !== previewVersion) return
+      viewerOptions.value = {
+        ...commonViewerOptions,
+        preset: allRenderers as unknown as FileViewerOptions['preset']
+      }
+    } catch {
+      if (version !== previewVersion) return
+      preview.error = '预览组件加载失败，请检查网络后重试'
+      preview.canRetry = true
+    } finally {
+      if (version === previewVersion) preview.loading = false
+    }
+  }
+
+  watch(
+    () => route.query.key,
+    (queryKey) => {
+      const version = ++previewVersion
+      const key = Array.isArray(queryKey) ? queryKey[0] : queryKey
+      const file = getFilePreviewTarget(typeof key === 'string' ? key : undefined)
+      preview.file = file
+      preview.fileType = file?.fileType || getFileExtension(file?.name, file?.fileType)
+      preview.error = file ? '' : '预览地址不存在或已过期，请从附件名称重新打开'
+      preview.canRetry = false
+      viewerOptions.value = null
+      if (!file?.url) {
+        preview.loading = false
+        return
+      }
+      const isImage =
+        preview.fileType.startsWith('image/') ||
+        imageExtensions.has(preview.fileType) ||
+        imageExtensions.has(getFileExtension(file.name))
+      if (isImage) {
+        viewerOptions.value = { ...commonViewerOptions, renderers: imageRenderers }
+        preview.loading = false
+      } else {
+        void loadFullRenderer(version)
+      }
+    },
+    { immediate: true }
+  )
 
   useTitle(computed(() => `${preview.file?.name || '文件预览'} - ${brandName.value}`))
 </script>
@@ -109,6 +192,13 @@
         width: 100%;
         height: 100%;
       }
+    }
+
+    &__loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--el-text-color-secondary);
     }
 
     @media (width <= 768px) {

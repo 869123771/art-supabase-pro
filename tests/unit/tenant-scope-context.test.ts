@@ -30,7 +30,7 @@ test('tenant-bound workspaces prefer the selected tenant and fall back to the ho
   assert.equal(resolveTenantWorkspaceId(null, null), '')
 })
 
-test('tenant-owned writes use the explicit record tenant and reject ambiguous or forged targets', () => {
+test('tenant-owned writes prefer an explicit target and default to the actor tenant', () => {
   const ownTenantId = '028e6a68-a9db-4055-974c-1e05bfe94b0f'
   const otherTenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
 
@@ -39,7 +39,7 @@ test('tenant-owned writes use the explicit record tenant and reject ambiguous or
       explicitTenantId: otherTenantId,
       effectiveTenantId: null,
       actorTenantId: ownTenantId,
-      isPlatformSuper: true
+      canWriteToOtherTenant: true
     }),
     otherTenantId
   )
@@ -47,7 +47,7 @@ test('tenant-owned writes use the explicit record tenant and reject ambiguous or
     resolveTenantWriteTargetId({
       effectiveTenantId: otherTenantId,
       actorTenantId: ownTenantId,
-      isPlatformSuper: true
+      canWriteToOtherTenant: true
     }),
     otherTenantId
   )
@@ -55,12 +55,16 @@ test('tenant-owned writes use the explicit record tenant and reject ambiguous or
     resolveTenantWriteTargetId({
       effectiveTenantId: ownTenantId,
       actorTenantId: ownTenantId,
-      isPlatformSuper: false
+      canWriteToOtherTenant: false
     }),
     ownTenantId
   )
+  assert.equal(
+    resolveTenantWriteTargetId({ actorTenantId: ownTenantId, canWriteToOtherTenant: true }),
+    ownTenantId
+  )
   assert.throws(
-    () => resolveTenantWriteTargetId({ actorTenantId: ownTenantId, isPlatformSuper: true }),
+    () => resolveTenantWriteTargetId({ canWriteToOtherTenant: true }),
     /请先选择目标租户/
   )
   assert.throws(
@@ -69,12 +73,31 @@ test('tenant-owned writes use the explicit record tenant and reject ambiguous or
         explicitTenantId: otherTenantId,
         effectiveTenantId: ownTenantId,
         actorTenantId: ownTenantId,
-        isPlatformSuper: false
+        canWriteToOtherTenant: false
+      }),
+    /目标租户与当前选择不一致/
+  )
+  assert.throws(
+    () =>
+      resolveTenantWriteTargetId({
+        explicitTenantId: otherTenantId,
+        effectiveTenantId: ownTenantId,
+        actorTenantId: ownTenantId,
+        canWriteToOtherTenant: true
+      }),
+    /目标租户与当前选择不一致/
+  )
+  assert.throws(
+    () =>
+      resolveTenantWriteTargetId({
+        explicitTenantId: otherTenantId,
+        actorTenantId: ownTenantId,
+        canWriteToOtherTenant: false
       }),
     /只能操作当前账号所属租户/
   )
   assert.throws(
-    () => resolveTenantWriteTargetId({ explicitTenantId: '../other', isPlatformSuper: true }),
+    () => resolveTenantWriteTargetId({ explicitTenantId: '../other', canWriteToOtherTenant: true }),
     /目标租户无效/
   )
 })
@@ -214,8 +237,24 @@ test('platform table reads discard legacy tenant filters but preserve explicit f
     'https://example.supabase.co/rest/v1/sys_role?tenant_id=eq.target&enabled=eq.true'
   )
   for (const table of [
+    'hr_candidate',
+    'hr_competency',
+    'hr_employee_competency',
+    'hr_employee_contract',
+    'hr_employee_qualification',
+    'hr_personnel_change',
+    'hr_position_competency',
+    'hr_position_headcount',
+    'hr_recruitment_requisition',
+    'hr_training_enrollment',
+    'hr_training_plan',
     'sys_user',
     'mdm_master_group',
+    'mdm_equipment',
+    'pmis_department_setting',
+    'pmis_plan',
+    'pmis_repair_task',
+    'pmis_task',
     'scm_order_target_document',
     'wms_purchase_document_list'
   ]) {

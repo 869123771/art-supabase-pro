@@ -4,11 +4,27 @@ export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
+  'hr_candidate',
+  'hr_competency',
+  'hr_employee_competency',
+  'hr_employee_contract',
+  'hr_employee_qualification',
+  'hr_personnel_change',
+  'hr_position_competency',
+  'hr_position_headcount',
+  'hr_recruitment_requisition',
+  'hr_training_enrollment',
+  'hr_training_plan',
   'mdm_master_group',
+  'mdm_equipment',
   'mdm_production_department',
   'mdm_production_personnel',
   'mdm_work_center',
   'mdm_work_center_defaults',
+  'pmis_department_setting',
+  'pmis_plan',
+  'pmis_repair_task',
+  'pmis_task',
   'scm_order_target_document',
   'sys_attachment',
   'sys_document_number_rule',
@@ -123,17 +139,24 @@ export const resolveTenantWorkspaceId = (
   homeTenantId?: string | null
 ): string => effectiveTenantId?.trim() || homeTenantId?.trim() || ''
 
-/** Resolve a tenant-owned write without falling back to the platform tenant in all-tenant mode. */
+/** Resolve a tenant-owned write; all-tenant creates default to the actor's home tenant. */
 export const resolveTenantWriteTargetId = (options: {
   explicitTenantId?: string | null
   effectiveTenantId?: string | null
   actorTenantId?: string | null
-  isPlatformSuper: boolean
+  canWriteToOtherTenant: boolean
 }): string => {
-  const targetTenantId = options.explicitTenantId?.trim() || options.effectiveTenantId?.trim()
+  const targetTenantId =
+    options.explicitTenantId?.trim() ||
+    options.effectiveTenantId?.trim() ||
+    options.actorTenantId?.trim()
   if (!targetTenantId) throw new Error('请先选择目标租户')
   if (!UUID_PATTERN.test(targetTenantId)) throw new Error('目标租户无效，请重新选择')
-  if (!options.isPlatformSuper && targetTenantId !== options.actorTenantId) {
+  const selectedTenantId = options.effectiveTenantId?.trim()
+  if (selectedTenantId && targetTenantId !== selectedTenantId) {
+    throw new Error('目标租户与当前选择不一致，请切换租户后重试')
+  }
+  if (!options.canWriteToOtherTenant && targetTenantId !== options.actorTenantId) {
     throw new Error('只能操作当前账号所属租户的数据')
   }
   return targetTenantId

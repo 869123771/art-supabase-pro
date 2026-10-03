@@ -1647,15 +1647,6 @@
         background: color-mix(in srgb, var(--theme-color) 8%, var(--el-bg-color));
       }
     }
-
-    :global([data-box-mode='border-mode']) &__node.is-selected {
-      box-shadow: inset 0 0 0 1px var(--theme-color);
-    }
-
-    :global([data-box-mode='shadow-mode']) &__node.is-selected {
-      border-color: transparent;
-      box-shadow: var(--art-themed-action-active-shadow);
-    }
   }
 
   @media (width <= 1100px) {
@@ -1682,5 +1673,14 @@
         border-left: 0;
       }
     }
+  }
+
+  :global(html[data-box-mode='border-mode'] .workflow-canvas-editor__node.is-selected) {
+    box-shadow: inset 0 0 0 1px var(--theme-color);
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .workflow-canvas-editor__node.is-selected) {
+    border-color: transparent;
+    box-shadow: var(--art-themed-action-active-shadow);
   }
 </style>

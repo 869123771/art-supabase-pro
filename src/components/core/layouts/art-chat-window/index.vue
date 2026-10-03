@@ -42,7 +42,7 @@
           >
             <ArtIconButton
               :icon="isExpanded ? 'dashicons:fullscreen-exit-alt' : 'dashicons:fullscreen-alt'"
-              :aria-label="isExpanded ? '退出放大' : '放大对话'"
+              :label="isExpanded ? '退出放大' : '放大对话'"
               class="art-ai-assistant__header-button"
               @click="toggleExpanded"
             />
@@ -50,7 +50,7 @@
           <ArtTooltip v-if="isProjectMode" content="打开 Supabase AI 工作台" placement="bottom">
             <ArtIconButton
               icon="ri:dashboard-line"
-              aria-label="打开 Supabase AI 工作台"
+              label="打开 Supabase AI 工作台"
               class="art-ai-assistant__header-button"
               @click="openProjectWorkbench"
             />
@@ -58,7 +58,7 @@
           <ArtTooltip content="新建对话" placement="bottom">
             <ArtIconButton
               icon="ri:chat-new-line"
-              aria-label="新建对话"
+              label="新建对话"
               class="art-ai-assistant__header-button"
               @click="resetConversation"
             />
@@ -66,7 +66,7 @@
           <ArtTooltip content="关闭" placement="bottom">
             <ArtIconButton
               icon="ri:close-line"
-              :aria-label="`关闭 ${assistantTitle}`"
+              :label="`关闭 ${assistantTitle}`"
               class="art-ai-assistant__header-button"
               @click="api.handleClose()"
             />

@@ -32,6 +32,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import { formatMenuTitle } from '@/utils/router'
   import type { AppRouteRecord } from '@/types/router'
@@ -97,7 +99,7 @@
 
   const emit = defineEmits<Emits>()
   const dialogRef = ref<ArtDialogExpose<MenuDialogOpenData>>()
-  const formRef = ref()
+  const formRef = ref<InstanceType<typeof ArtForm>>()
 
   const userStore = useUserStore()
   const { getDictMap } = storeToRefs(userStore)
@@ -524,9 +526,9 @@
     if (!formRef.value) return false
 
     try {
-      await formRef.value.validate()
-    } catch {
-      ElMessage.error('表单校验失败，请检查输入')
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '菜单表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -574,7 +576,8 @@
       }
       emit('submit', { ...form.value })
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '菜单保存失败，请检查层级与排序后重试', 'warning')
       return false
     }
   }

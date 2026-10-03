@@ -154,7 +154,7 @@
   } from '@/components/business/business-workspace-header/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
-  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { pageInfoHandler } from '@/utils/table/table-utils'
   import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'

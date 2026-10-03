@@ -83,7 +83,7 @@
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import type { ApiResponse } from '@/utils/table/tableCache'
+  import type { ApiResponse } from '@/utils/table/table-cache'
 
   import { formatWithDayjs } from '@/utils/time'
   import {

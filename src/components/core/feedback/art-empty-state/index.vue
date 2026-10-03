@@ -203,18 +203,31 @@
     }
   }
 
-  :global(html.dark) .art-empty-state {
-    &__halo {
-      opacity: 0.3;
-    }
+  :global(html.dark .art-empty-state__halo) {
+    opacity: 0.9;
+    fill: color-mix(in srgb, var(--el-color-primary) 18%, var(--default-box-color));
+  }
 
-    &__card.is-front,
-    &__search {
-      filter: drop-shadow(0 8px 16px rgb(0 0 0 / 28%));
-    }
+  :global(html.dark .art-empty-state__card.is-back) {
+    fill: var(--el-fill-color);
+    stroke: var(--el-border-color);
+  }
 
-    &__dot {
-      opacity: 0.72;
-    }
+  :global(html.dark .art-empty-state__card.is-front),
+  :global(html.dark .art-empty-state__search) {
+    filter: drop-shadow(0 8px 16px rgb(0 0 0 / 28%));
+    fill: var(--art-gray-300);
+  }
+
+  :global(html.dark .art-empty-state__card.is-front) {
+    stroke: var(--art-gray-500);
+  }
+
+  :global(html.dark .art-empty-state__icon-bg) {
+    fill: var(--el-color-primary-light-7);
+  }
+
+  :global(html.dark .art-empty-state__dot) {
+    opacity: 0.72;
   }
 </style>

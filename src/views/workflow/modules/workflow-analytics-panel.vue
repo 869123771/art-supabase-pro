@@ -40,6 +40,7 @@
           class="workflow-analytics__trend"
           :empty="!recentDaily.length"
           empty-title="当前周期暂无发起记录"
+          empty-description="调整统计周期，或在发起审批后查看每日趋势。"
           preserve-content-structure
         >
           <template #header

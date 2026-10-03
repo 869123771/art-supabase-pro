@@ -768,28 +768,43 @@
     }
   }
 
-  :global([data-box-mode='border-mode'])
-    .organization-page
-    :deep(.organization-tree-row .el-table__expand-icon:hover),
-  :global([data-box-mode='border-mode'])
-    .organization-page
-    :deep(.organization-tree-row .el-table__expand-icon:focus-visible) {
+  :global(
+    html[data-box-mode='border-mode']
+      .organization-page
+      .organization-tree-row
+      .el-table__expand-icon:hover
+  ),
+  :global(
+    html[data-box-mode='border-mode']
+      .organization-page
+      .organization-tree-row
+      .el-table__expand-icon:focus-visible
+  ) {
     border-color: color-mix(in srgb, var(--theme-color) 48%, var(--el-border-color));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 20%, transparent);
   }
 
-  :global([data-box-mode='shadow-mode'])
-    .organization-page
-    :deep(.organization-tree-row .el-table__expand-icon) {
+  :global(
+    html[data-box-mode='shadow-mode']
+      .organization-page
+      .organization-tree-row
+      .el-table__expand-icon
+  ) {
     border-color: transparent;
   }
 
-  :global([data-box-mode='shadow-mode'])
-    .organization-page
-    :deep(.organization-tree-row .el-table__expand-icon:hover),
-  :global([data-box-mode='shadow-mode'])
-    .organization-page
-    :deep(.organization-tree-row .el-table__expand-icon:focus-visible) {
+  :global(
+    html[data-box-mode='shadow-mode']
+      .organization-page
+      .organization-tree-row
+      .el-table__expand-icon:hover
+  ),
+  :global(
+    html[data-box-mode='shadow-mode']
+      .organization-page
+      .organization-tree-row
+      .el-table__expand-icon:focus-visible
+  ) {
     border-color: transparent;
     box-shadow: 0 4px 12px color-mix(in srgb, var(--theme-color) 18%, transparent);
   }

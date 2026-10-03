@@ -1,11 +1,10 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import {
-  areVmsVehicleDocumentImageUrlsInScope,
   compareVmsVehicleDocumentOcrPayloads,
-  isValidVmsVehicleDocumentTenantScope,
   normalizeVmsVehicleDocumentOcrResponse,
   validateVmsVehicleDocumentOcrPayload
 } from '../_shared/ai-vms-vehicle-document-ocr-contract.ts'
+import { authorizeAttachmentOcrImages } from '../_shared/ai-attachment-tenant-scope.ts'
 import { createVisionOcrHandler } from '../_shared/ai-vision-ocr-runtime.ts'
 
 const defaultPrompt = [
@@ -28,22 +27,7 @@ const handler = createVisionOcrHandler({
   strictProvider: true,
   requiredPermission: 'VehicleArchive:Ocr',
   allowReview: false,
-  authorizeImageUrls: async ({
-    userClient,
-    appUser,
-    imageUrls,
-    requestedTenantId,
-    supabaseUrl
-  }) => {
-    const { data: isPlatformSuper, error } = await userClient.rpc('current_is_super')
-    if (error || typeof isPlatformSuper !== 'boolean') return false
-    if (isPlatformSuper && !isValidVmsVehicleDocumentTenantScope(requestedTenantId)) return false
-    return areVmsVehicleDocumentImageUrlsInScope(
-      imageUrls,
-      supabaseUrl,
-      isPlatformSuper ? requestedTenantId : appUser.tenant_id
-    )
-  },
+  authorizeImageUrls: authorizeAttachmentOcrImages,
   defaultPrompt,
   defaultMaxTokens: 1800,
   expectedShape: {

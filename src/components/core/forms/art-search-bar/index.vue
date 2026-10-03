@@ -4,6 +4,7 @@
     v-model="modelValue"
     root-class="art-search-bar art-card-xs"
     :items="items"
+    tenant-scope-mode="read"
     :span="span"
     :gutter="gutter"
     :label-position="labelPosition"

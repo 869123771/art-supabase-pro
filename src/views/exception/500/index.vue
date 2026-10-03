@@ -24,8 +24,8 @@
 <script setup lang="ts">
   import imgUrl from '@imgs/svg/500.svg'
   import { recoverCurrentAuthSession } from '@/api/auth'
-  import { resetRouteInitializationForRetry } from '@/router/guards/beforeEach'
-  import { resolveRouteInitializationTarget } from '@/router/guards/routeInitialization'
+  import { resetRouteInitializationForRetry } from '@/router/guards/before-each'
+  import { resolveRouteInitializationTarget } from '@/router/guards/route-initialization'
   import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Exception500' })

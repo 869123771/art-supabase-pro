@@ -4,6 +4,12 @@
       <el-splitter v-model="splitRatio" layout="vertical">
         <el-splitter-panel>
           <div class="sql-editor-section">
+            <div v-if="metadataError" class="sql-editor-section__metadata-alert" role="status">
+              <span>{{ metadataError }}。SQL 仍可执行；自动补全和 AI SQL 暂不可用。</span>
+              <el-button link type="primary" :loading="metadataLoading" @click="preloadMetadata">
+                重试加载
+              </el-button>
+            </div>
             <Editor
               ref="editorRef"
               v-model="sqlCode"
@@ -31,9 +37,12 @@
                 <ArtTooltip content="AI 写 SQL (Ctrl/Cmd + I)" placement="top" :offset="8">
                   <ArtIconButton
                     @click="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
-                    icon="ri-robot-2-line"
-                    class="!size-6.5"
-                  />
+                    label="AI 写 SQL"
+                  >
+                    <template #icon
+                      ><ElIcon aria-hidden="true"><Cpu /></ElIcon
+                    ></template>
+                  </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip
                   v-if="!executing"
@@ -41,25 +50,32 @@
                   placement="top"
                   :offset="8"
                 >
-                  <ArtIconButton
-                    @click="() => handleExecute()"
-                    icon="ri-play-line"
-                    class="!size-6.5"
-                  />
+                  <ArtIconButton @click="() => handleExecute()" label="执行 SQL">
+                    <template #icon
+                      ><ElIcon aria-hidden="true"><VideoPlay /></ElIcon
+                    ></template>
+                  </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip v-else content="执行中" placement="top" :offset="8">
-                  <ArtIconButton
-                    @click="() => handleExecute()"
-                    icon="ri-loader-2-line"
-                    :loading="executing"
-                    class="size-6.5!"
-                  />
+                  <ArtIconButton @click="() => handleExecute()" label="执行中" :loading="executing">
+                    <template #icon
+                      ><ElIcon aria-hidden="true"><Loading /></ElIcon
+                    ></template>
+                  </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip content="格式化 SQL (Ctrl/Cmd + Shift + F)" placement="top" :offset="8">
-                  <ArtIconButton @click="handleFormat" icon="ri-magic-line" class="size-6.5!" />
+                  <ArtIconButton @click="handleFormat" label="格式化 SQL">
+                    <template #icon
+                      ><ElIcon aria-hidden="true"><MagicStick /></ElIcon
+                    ></template>
+                  </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip content="清空" placement="top" :offset="8">
-                  <ArtIconButton @click="handleClear" icon="ri-close-line" class="size-6.5!" />
+                  <ArtIconButton @click="handleClear" label="清空 SQL">
+                    <template #icon
+                      ><ElIcon aria-hidden="true"><Close /></ElIcon
+                    ></template>
+                  </ArtIconButton>
                 </ArtTooltip>
               </div>
             </div>
@@ -136,21 +152,23 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
-  import { useMemoize } from '@vueuse/core'
+  import { computed, onMounted, ref } from 'vue'
+  import { Close, Cpu, Loading, MagicStick, VideoPlay } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { executeSql, fetchDatabaseMetadata, generateSqlByAi } from '@/api/data-center'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { registerSqlMetadata } from '@/utils/monaco-sql-setup'
   import Editor from './modules/editor.vue'
   import ResultTable from './modules/result-table.vue'
   import {
     buildCaretDiagnostic,
     parseSqlErrorLocation,
     type SqlErrorLocation
-  } from '@/utils/sqlWorkbench'
+  } from '@/utils/sql-workbench'
 
   interface EditorInstance {
     format: () => Promise<void>
@@ -182,7 +200,40 @@
   const splitRatio = ref(0.6)
   const editorRef = ref<EditorInstance | null>(null)
   const aiDialogRef = ref<ArtDialogExpose>()
-  const getMetadata = useMemoize(fetchDatabaseMetadata)
+  const metadataLoading = ref(false)
+  const metadataError = ref<string | null>(null)
+  let metadataPromise: Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> | null = null
+  const getMetadata = (): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> => {
+    if (metadataPromise) return metadataPromise
+    metadataLoading.value = true
+    metadataPromise = fetchDatabaseMetadata()
+      .then((metadata) => {
+        registerSqlMetadata(metadata)
+        metadataError.value = null
+        return metadata
+      })
+      .catch((error: unknown) => {
+        metadataPromise = null
+        metadataError.value = getFriendlySupabaseErrorMessage(
+          error,
+          '数据库结构加载失败，请稍后重试'
+        )
+        throw error
+      })
+      .finally(() => {
+        metadataLoading.value = false
+      })
+    return metadataPromise
+  }
+  const preloadMetadata = (): void => {
+    void getMetadata().catch(() => {
+      // 错误保留在可重试提示中，SQL 编辑与执行仍可继续。
+    })
+  }
+  onMounted(() => {
+    registerSqlMetadata({ schemas: [], tables: [], columns: [], functions: [], foreignKeys: [] })
+    preloadMetadata()
+  })
   const sqlErrorLocation = ref<SqlErrorLocation | null>(null)
 
   const tabs = ref({
@@ -256,7 +307,7 @@
 
   const openAiDialog = (mode: 'generate' | 'fix' = 'generate') => {
     // 用户填写提示词时并行预取 schema，生成按钮不再额外串行等待元数据。
-    void getMetadata()
+    preloadMetadata()
     aiDialog.value.mode = mode
     aiDialog.value.summary = ''
 
@@ -323,13 +374,20 @@
         )
       }
       return true
-    } catch {
+    } catch (error) {
+      ElMessage.error(
+        metadataError.value || getFriendlySupabaseErrorMessage(error, 'AI SQL 生成失败，请稍后重试')
+      )
       return false
     }
   }
 </script>
 
 <style scoped lang="scss">
+  .sql-console-page {
+    height: var(--art-full-height);
+  }
+
   .sql-console-container {
     width: 100%;
     height: 100%;
@@ -344,6 +402,25 @@
       width: 100%;
       height: 100%;
       min-height: 0;
+
+      &__metadata-alert {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--el-text-color-regular);
+        background: var(--el-color-warning-light-9);
+        border-bottom: 1px solid var(--el-color-warning-light-5);
+
+        > span {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+      }
     }
   }
 

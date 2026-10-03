@@ -84,7 +84,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useCommon } from '@/hooks/core/useCommon'
-  import { resolveRouteInitializationTarget } from '@/router/guards/routeInitialization'
+  import { resolveRouteInitializationTarget } from '@/router/guards/route-initialization'
   import { useUserStore } from '@/store/modules/user'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
@@ -444,13 +444,13 @@
     }
   }
 
-  :global([data-box-mode='shadow-mode']) .art-permission-guard__panel {
+  :global(html[data-box-mode='shadow-mode'] .art-permission-guard__panel) {
     border-color: transparent;
     box-shadow: 0 22px 60px rgb(18 27 51 / 10%);
   }
 
-  :global(.dark[data-box-mode='shadow-mode']) .art-permission-guard__panel,
-  :global(.dark [data-box-mode='shadow-mode']) .art-permission-guard__panel {
+  :global(html.dark[data-box-mode='shadow-mode'] .art-permission-guard__panel),
+  :global(html.dark [data-box-mode='shadow-mode'] .art-permission-guard__panel) {
     box-shadow: 0 22px 60px rgb(0 0 0 / 32%);
   }
 

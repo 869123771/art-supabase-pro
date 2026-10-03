@@ -20,6 +20,7 @@
         v-if="reminders.length === 0"
         class="fleet-risk__empty"
         title="当前无风险提醒"
+        description="车辆风险出现时会在此展示，请继续关注车队状态。"
         size="compact"
         :visual-size="64"
       />

@@ -108,7 +108,7 @@
 
 <script setup lang="tsx">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import { createFriendlySupabaseError } from '@/utils/supabase'
+  import { createFriendlySupabaseError, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { storeToRefs } from 'pinia'
   import type { ColumnOption } from '@/types'
@@ -245,12 +245,22 @@
       </small>
     </div>
   )
-  const createErrorCell = (row: CallbackRow) => (
-    <div class={{ 'workflow-callback-outbox__error-cell': true, 'is-empty': !row.lastError }}>
-      <strong>{row.lastErrorCode || (row.status === 'succeeded' ? '投递成功' : '--')}</strong>
-      <small title={row.lastError || ''}>{row.lastError || '暂无异常信息'}</small>
-    </div>
-  )
+  const createErrorCell = (row: CallbackRow) => {
+    const message = row.lastError
+      ? getFriendlySupabaseErrorMessage(
+          { code: row.lastErrorCode, message: row.lastError },
+          '业务状态回写未完成，请核查业务单据后重试'
+        )
+      : '暂无异常信息'
+    return (
+      <div class={{ 'workflow-callback-outbox__error-cell': true, 'is-empty': !row.lastError }}>
+        <strong>
+          {row.status === 'succeeded' ? '投递成功' : row.lastError ? '回写未完成' : '等待投递'}
+        </strong>
+        <small title={message}>{message}</small>
+      </div>
+    )
+  }
 
   const columns: ColumnOption<CallbackRow>[] = [
     {
@@ -670,12 +680,6 @@
       min-width: 0;
     }
 
-    :global([data-box-mode='shadow-mode']) &__metric:hover,
-    :global([data-box-mode='shadow-mode']) &__metric:focus-visible,
-    :global([data-box-mode='shadow-mode']) &__metric.is-active {
-      border-color: transparent;
-    }
-
     @media screen and (width <= 900px) {
       &__metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -716,5 +720,11 @@
         transition: none;
       }
     }
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .workflow-callback-outbox__metric:hover),
+  :global(html[data-box-mode='shadow-mode'] .workflow-callback-outbox__metric:focus-visible),
+  :global(html[data-box-mode='shadow-mode'] .workflow-callback-outbox__metric.is-active) {
+    border-color: transparent;
   }
 </style>

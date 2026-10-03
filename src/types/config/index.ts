@@ -23,7 +23,7 @@
  * @module types/config/index
  */
 
-import { MenuTypeEnum, SystemThemeEnum } from '@/enums/appEnum'
+import { MenuTypeEnum, SystemThemeEnum } from '@/enums/app-enum'
 import { MenuThemeType, SystemThemeTypes } from '@/types/store'
 
 export type ApiProvider = 'supabase' | 'java'

@@ -16,6 +16,7 @@
           <ArtTooltip content="重新读取远端模型目录" placement="bottom">
             <ArtIconButton
               icon="ri:refresh-line"
+              label="重新读取远端模型目录"
               :loading="catalog.loading"
               @click="refreshModelCatalog"
             />
@@ -91,6 +92,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, type FormRules } from 'element-plus'
@@ -437,11 +440,12 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       await updateAiFeatureConfig(createPayload())
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, 'AI 运行配置保存失败，请核对配置后重试', 'warning')
       return false
     }
   }

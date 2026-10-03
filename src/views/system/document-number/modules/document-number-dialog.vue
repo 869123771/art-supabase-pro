@@ -117,6 +117,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
@@ -280,8 +282,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
     if (!formModel.id) return false
@@ -298,7 +301,8 @@
       })
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '编号规则保存失败，请检查模板后重试', 'warning')
       return false
     }
   }

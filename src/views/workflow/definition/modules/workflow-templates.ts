@@ -2,7 +2,7 @@ import { cloneDeep } from 'lodash-es'
 import { getWorkflowBusinessContract } from '../../modules/workflow-business-contracts'
 
 export type WorkflowTemplateCategory =
-  'all' | 'finance' | 'transport' | 'vehicle' | 'safety' | 'hr' | 'general'
+  'all' | 'finance' | 'transport' | 'vehicle' | 'safety' | 'hr' | 'scm' | 'general'
 
 export interface WorkflowTemplateDefinition {
   key: string
@@ -22,6 +22,16 @@ export interface WorkflowTemplateCategoryOption {
 }
 
 const templateDefinitions: WorkflowTemplateDefinition[] = [
+  {
+    key: 'scm-sales-quotation',
+    name: '销售报价审批',
+    description: '按报价金额、项目、客户和产品分类审核销售报价；通过后自动汇总报价项分类。',
+    category: 'scm',
+    businessType: 'scm_sales_quotation',
+    icon: 'ri:file-list-3-line',
+    tone: 'primary',
+    nodeNames: ['销售负责人审核']
+  },
   {
     key: 'custom',
     name: '创建自定义审批',
@@ -152,6 +162,7 @@ export const workflowTemplateCategories: WorkflowTemplateCategoryOption[] = [
   { key: 'vehicle', label: '车辆管理' },
   { key: 'safety', label: '安全生产' },
   { key: 'hr', label: '人力资源' },
+  { key: 'scm', label: '供应链管理' },
   { key: 'general', label: '通用审批' }
 ]
 

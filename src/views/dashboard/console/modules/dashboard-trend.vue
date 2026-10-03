@@ -4,6 +4,7 @@
     :loading="loading"
     :empty="data.orderCount === 0"
     empty-title="暂无订单趋势数据"
+    empty-description="切换统计周期，或在开单后查看趋势。"
     :min-height="300"
     preserve-content-structure
   >

@@ -1,0 +1,1 @@
+async function e(e){return e?await e.validate(()=>void 0)===!0:!1}export{e as t};

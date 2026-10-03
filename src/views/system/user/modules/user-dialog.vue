@@ -28,6 +28,7 @@
       />
 
       <ArtForm
+        tenant-scope-mode="manual"
         ref="formRef"
         v-model="formData"
         :items="formItems"
@@ -73,6 +74,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import { cloneDeep, omit } from 'lodash-es'
@@ -563,8 +566,9 @@
     if (!formRef.value) return false
 
     try {
-      await formRef.value.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -601,7 +605,8 @@
         emit('success', 'edit')
       }
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '用户保存失败，请检查账号信息后重试', 'warning')
       return false
     }
   }

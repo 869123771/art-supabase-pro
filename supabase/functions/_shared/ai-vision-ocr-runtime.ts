@@ -5,6 +5,7 @@ import { extractAiProviderJson, extractAiProviderText } from './ai-provider-json
 import { loadAiRuntimeConfig } from './ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from './ai-prompt-template.ts'
 import { normalizeOcrRawText } from './ai-ocr-text.ts'
+import { authorizeAiArtifactReview } from './ai-attachment-tenant-scope.ts'
 
 export interface VisionOcrReviewRequest {
   action?: 'analyze' | 'review'
@@ -25,8 +26,10 @@ export interface VisionOcrNormalizedResult {
 
 export interface VisionOcrRuntimeContext<TInput, TResult extends VisionOcrNormalizedResult> {
   admin: SupabaseClient
+  userClient: SupabaseClient
   appUser: { tenant_id: string; user_email: string }
   userId: string
+  tenantId: string
   input: TInput
   result: TResult
 }
@@ -49,7 +52,7 @@ export interface VisionOcrConfig<TInput, TResult extends VisionOcrNormalizedResu
     imageUrls: string[]
     requestedTenantId: string | null
     supabaseUrl: string
-  }) => Promise<boolean>
+  }) => Promise<boolean | { tenantId: string }>
   defaultPrompt: string
   expectedShape: Record<string, unknown>
   defaultMaxTokens?: number
@@ -269,9 +272,8 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
 
         const { data: artifact, error: artifactError } = await admin
           .from('ai_artifact_review')
-          .select('id,proposed_payload')
+          .select('id,tenant_id,proposed_payload')
           .eq('id', artifactId)
-          .eq('tenant_id', appUser.tenant_id)
           .eq('auth_user_id', user.id)
           .eq('feature', config.feature)
           .eq('artifact_type', config.artifactType)
@@ -281,12 +283,22 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         if (!artifact) {
           return json({ code: 'artifact_not_found', message: '识别记录不存在或已反馈' }, 404)
         }
+        if (
+          !(await authorizeAiArtifactReview({
+            userClient,
+            appUser,
+            requestedTenantId: req.headers.get('x-art-tenant-scope'),
+            artifactTenantId: artifact.tenant_id
+          }))
+        ) {
+          return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
+        }
 
         const { data: entity, error: entityError } = await admin
           .from(config.entityTable)
           .select('id')
           .eq('id', entityId)
-          .eq('tenant_id', appUser.tenant_id)
+          .eq('tenant_id', artifact.tenant_id)
           .maybeSingle()
         if (entityError) throw entityError
         if (!entity) return json({ code: 'entity_not_found', message: '关联业务记录不存在' }, 404)
@@ -332,9 +344,8 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       if (!imageUrls.length) {
         return json({ code: 'invalid_input', message: config.labels.invalidImages }, 400)
       }
-      if (
-        config.authorizeImageUrls &&
-        !(await config.authorizeImageUrls({
+      const imageAuthorization = config.authorizeImageUrls
+        ? await config.authorizeImageUrls({
           admin,
           userClient,
           appUser,
@@ -342,15 +353,26 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
           imageUrls,
           requestedTenantId: req.headers.get('x-art-tenant-scope'),
           supabaseUrl
-        }))
-      ) {
+        })
+        : true
+      if (!imageAuthorization) {
         return json({ code: 'forbidden', message: config.labels.forbidden }, 403)
       }
+      const tenantId =
+        typeof imageAuthorization === 'object'
+          ? imageAuthorization.tenantId
+          : appUser.tenant_id
+      const scopedUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          headers: { Authorization: authHeader, 'x-art-tenant-scope': tenantId }
+        },
+        auth: { autoRefreshToken: false, persistSession: false }
+      })
       const input = config.parseInput(body)
 
       const sharedModel = Deno.env.get('OPENAI_MODEL') || Deno.env.get('AI_MODEL') || 'gpt-4.1-mini'
       const model = Deno.env.get(`AI_${config.envPrefix}_MODEL`) || sharedModel
-      const runtimeConfig = await loadAiRuntimeConfig(admin, appUser.tenant_id, config.feature, {
+      const runtimeConfig = await loadAiRuntimeConfig(admin, tenantId, config.feature, {
         enabled: true,
         provider: 'openai_compatible',
         model,
@@ -416,7 +438,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         return json({ code: 'rate_limited', message: config.labels.rateLimited }, 429)
       }
 
-      const prompt = await loadPublishedAiPrompt(admin, appUser.tenant_id, config.feature, {
+      const prompt = await loadPublishedAiPrompt(admin, tenantId, config.feature, {
         content: config.defaultPrompt,
         version: runtimeConfig.promptVersion
       })
@@ -447,7 +469,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         .from('ai_run')
         .insert({
           auth_user_id: user.id,
-          tenant_id: appUser.tenant_id,
+          tenant_id: tenantId,
           feature: config.feature,
           model: resolvedModel,
           prompt_version: prompt.version,
@@ -629,8 +651,10 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const proposedPayload = config.proposedPayload(result)
       const runtimeContext = {
         admin,
+        userClient: scopedUserClient,
         appUser,
         userId: user.id,
+        tenantId,
         input,
         result
       }
@@ -638,7 +662,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
       const { data: thresholdRow } = await admin
         .from('ai_ocr_quality_threshold')
         .select('review_confidence_threshold')
-        .eq('tenant_id', appUser.tenant_id)
+        .eq('tenant_id', tenantId)
         .eq('feature', config.feature)
         .maybeSingle()
       const reviewConfidenceThreshold = Number(thresholdRow?.review_confidence_threshold ?? 0.82)
@@ -648,7 +672,7 @@ export function createVisionOcrHandler<TInput, TResult extends VisionOcrNormaliz
         .insert({
           ai_run_id: run.id,
           auth_user_id: user.id,
-          tenant_id: appUser.tenant_id,
+          tenant_id: tenantId,
           feature: config.feature,
           artifact_type: config.artifactType,
           proposed_payload: proposedPayload,

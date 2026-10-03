@@ -7,6 +7,8 @@ import {
   getFriendlySupabaseErrorMessage,
   isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
+  markErrorAsUserNotified,
+  wasErrorUserNotified,
   normalizeSupabaseFunctionError
 } from '../../src/utils/supabase'
 
@@ -19,6 +21,14 @@ test('converts AuthApiError class instances into a friendly login message', () =
   const error = new AuthApiErrorFixture('Invalid login credentials')
 
   assert.equal(getFriendlySupabaseErrorMessage(error), '邮箱或密码错误，请重新输入')
+})
+
+test('does not report a wrapped provider error twice', () => {
+  const providerError = markErrorAsUserNotified(new Error('当前账号没有此操作权限'))
+  const workflowError = new Error('保存未完成', { cause: providerError })
+
+  assert.equal(wasErrorUserNotified(workflowError), true)
+  assert.equal(wasErrorUserNotified(new Error('本地校验失败')), false)
 })
 
 test('uses stable Supabase and Postgres error codes before technical messages', () => {

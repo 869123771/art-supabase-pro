@@ -85,6 +85,7 @@
       :error="error"
       :empty="!loading && !error && !objects.length"
       empty-text="没有匹配的项目对象"
+      empty-description="调整搜索条件或切换对象类型后重试。"
       full-height
       min-height="0"
       @retry="emit('refresh')"

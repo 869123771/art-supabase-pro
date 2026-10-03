@@ -4,7 +4,7 @@ import type { AppRouteRecord } from '../../src/types/router'
 import {
   buildApplicationMenuTree,
   flattenStandaloneApplicationMenu
-} from '../../src/router/core/applicationMenu'
+} from '../../src/router/core/application-menu'
 
 const vmsMenu: AppRouteRecord[] = [
   {

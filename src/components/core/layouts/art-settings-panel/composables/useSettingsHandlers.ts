@@ -1,6 +1,6 @@
 import { useSettingStore } from '@/store/modules/setting'
 import { storeToRefs } from 'pinia'
-import type { ContainerWidthEnum } from '@/enums/appEnum'
+import type { ContainerWidthEnum } from '@/enums/app-enum'
 import type { BreadcrumbStyle, WorkTabStyle } from '@/types'
 
 /**

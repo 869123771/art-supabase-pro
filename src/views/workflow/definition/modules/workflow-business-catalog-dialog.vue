@@ -111,7 +111,11 @@
                   </footer>
                 </article>
               </section>
-              <ArtEmptyState v-else title="当前菜单下暂无已接入审批的业务" />
+              <ArtEmptyState
+                v-else
+                title="当前菜单下暂无已接入审批的业务"
+                description="请先在业务目录接入审批对象。"
+              />
 
               <section class="workflow-catalog__boundary art-card-xs">
                 <span><ArtSvgIcon icon="ri:flow-chart" /></span>
@@ -170,23 +174,29 @@
       businessTypes.length === workflowBusinessContracts.length ? [] : businessTypes
   }
 
-  function domainIcon(domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'): string {
+  function domainIcon(
+    domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr' | 'scm'
+  ): string {
     return {
       transport: 'ri:truck-line',
       finance: 'ri:money-cny-circle-line',
       master_data: 'ri:database-2-line',
       safety: 'ri:shield-check-line',
-      hr: 'ri:team-line'
+      hr: 'ri:team-line',
+      scm: 'ri:shopping-bag-3-line'
     }[domain]
   }
 
-  function domainLabel(domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'): string {
+  function domainLabel(
+    domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr' | 'scm'
+  ): string {
     return {
       transport: '运输业务',
       finance: '财务业务',
       master_data: '基础资料',
       safety: '安全管理',
-      hr: '人力资源'
+      hr: '人力资源',
+      scm: '供应链管理'
     }[domain]
   }
 

@@ -30,7 +30,7 @@
             </span>
             <span class="tenant-scope-switcher__item-copy">
               <strong>全部租户</strong>
-              <small>跨租户查看与管理，新增时明确所属租户</small>
+              <small>跨租户查看；新增默认归属平台租户</small>
             </span>
             <ArtSvgIcon
               v-if="isAllTenants"
@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 
   defineOptions({ name: 'PlatformTenantScopeSwitcher' })
 

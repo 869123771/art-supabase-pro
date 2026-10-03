@@ -17,7 +17,7 @@
 }
 
 // 处理移动端组件兼容性
-@media screen and (max-width: 640px) {
+@media screen and (width <= 640px) {
   * {
     cursor: default !important;
   }
@@ -40,15 +40,11 @@
 
 // 色弱模式
 .color-weak {
-  filter: invert(80%);
   -webkit-filter: invert(80%);
+  filter: invert(80%);
 }
 
-#noop {
-  display: none;
-}
-
-// 涓婚浜や簰琛ㄩ潰锛氬悓鏃惰窡闅忕郴缁熶富棰樿壊涓庣洅瀛愭牱寮?
+// 主题交互表面随系统主题色与盒子模式切换
 :root,
 [data-box-mode='border-mode'] {
   --art-themed-action-hover-shadow: inset 0 0 0 1px
@@ -61,8 +57,8 @@
     var(--art-card-border)
   );
   --art-themed-action-focus-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 28%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 45%, transparent),
+    0 0 0 2px var(--art-action-color, var(--theme-color));
   --art-layout-surface-shadow: none;
   --art-modal-surface-border: var(--art-card-border);
   --art-modal-surface-shadow: none;
@@ -75,7 +71,7 @@
     color-mix(in srgb, var(--art-action-color, var(--theme-color)) 22%, transparent);
   --art-themed-action-active-border: transparent;
   --art-themed-action-focus-shadow:
-    0 0 0 3px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 14%, transparent),
+    0 0 0 2px var(--art-action-color, var(--theme-color)),
     0 6px 16px color-mix(in srgb, var(--art-action-color, var(--theme-color)) 18%, transparent);
   --art-layout-surface-shadow: var(--art-layout-shadow);
   --art-modal-surface-border: transparent;
@@ -92,8 +88,8 @@
   // 语言切换按钮菜单样式优化
   .lang-btn-item {
     .el-dropdown-menu__item {
-      padding-left: 13px !important;
       padding-right: 6px !important;
+      padding-left: 13px !important;
       margin-bottom: 3px !important;
     }
 
@@ -104,13 +100,13 @@
     }
 
     .menu-txt {
-      min-width: 60px;
       display: block;
+      min-width: 60px;
     }
 
     i {
-      font-size: 10px;
       margin-left: 10px;
+      font-size: 10px;
     }
   }
 }
@@ -142,14 +138,8 @@
     border: 1px solid var(--art-card-border) !important;
   }
 
-  .art-card {
-    @include art-card-base(var(--art-card-border));
-  }
-
-  .art-card-sm {
-    @include art-card-base(var(--art-card-border));
-  }
-
+  .art-card,
+  .art-card-sm,
   .art-card-xs {
     @include art-card-base(var(--art-card-border));
   }
@@ -159,18 +149,15 @@
 [data-box-mode='shadow-mode'] {
   .page-content,
   .art-table-card {
-    box-shadow: var(--art-card-shadow-xs) !important;
     border: 1px solid var(--art-gray-200) !important;
+    box-shadow: var(--art-card-shadow-xs) !important;
   }
 
   .layout-sidebar {
     border-right: 1px solid var(--art-card-border) !important;
   }
 
-  .art-card {
-    @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm));
-  }
-
+  .art-card,
   .art-card-sm {
     @include art-card-base(var(--art-gray-200), var(--art-card-shadow-sm));
   }
@@ -184,23 +171,23 @@
 .el-full-screen {
   position: fixed;
   top: 0;
-  left: 0;
   right: 0;
-  width: 100vw !important;
-  height: 100% !important;
+  left: 0;
   z-index: 2300;
-  margin-top: 0;
-  padding: 15px;
   box-sizing: border-box;
-  background-color: var(--default-box-color);
   display: flex;
   flex-direction: column;
+  width: 100vw !important;
+  height: 100% !important;
+  padding: 15px;
+  margin-top: 0;
+  background-color: var(--default-box-color);
 }
 
 // 表格卡片
 .art-table-card {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   margin-top: 12px;
   border-radius: var(--art-surface-radius) !important;
@@ -214,12 +201,12 @@
 // 容器全高
 .art-full-height {
   box-sizing: border-box;
-  height: var(--art-full-height);
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  height: var(--art-full-height);
+  min-height: 0;
 
-  @media (max-width: 640px) {
+  @media (width <= 640px) {
     height: auto;
   }
 }
@@ -246,8 +233,8 @@
   }
 
   &.art-badge-dual {
-    right: 5px;
     top: 5px;
+    right: 5px;
     bottom: auto;
   }
 }
@@ -260,10 +247,10 @@
   bottom: 0;
   min-width: 20px;
   height: 18px;
-  line-height: 17px;
   padding: 0 5px;
   margin: auto;
   font-size: 10px;
+  line-height: 17px;
   color: #fff;
   text-align: center;
   background: #fd4e4e;
@@ -291,10 +278,10 @@
 .art-loading-fix {
   position: fixed !important;
   inset: 0 !important;
+  box-sizing: border-box;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-sizing: border-box;
   width: auto !important;
   height: auto !important;
   margin: 0 !important;
@@ -507,7 +494,7 @@
 }
 
 // 去除移动端点击背景色
-@media screen and (max-width: 1180px) {
+@media screen and (width <= 1180px) {
   * {
     -webkit-tap-highlight-color: transparent;
   }

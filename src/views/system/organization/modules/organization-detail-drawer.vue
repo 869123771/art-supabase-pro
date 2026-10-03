@@ -169,7 +169,12 @@
               </div>
             </article>
           </div>
-          <ArtEmptyState v-else title="当前组织角色尚未配置菜单权限" :visual-size="96" />
+          <ArtEmptyState
+            v-else
+            title="当前组织角色尚未配置菜单权限"
+            description="为组织角色配置菜单权限后，可在此查看。"
+            :visual-size="96"
+          />
         </ElTabPane>
       </ElTabs>
     </div>

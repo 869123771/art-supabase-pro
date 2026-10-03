@@ -93,6 +93,7 @@
       :error="page.error"
       :empty="!workspace"
       empty-text="暂无提醒配置"
+      empty-description="请刷新页面重试，或先创建提醒规则。"
       @retry="loadWorkspace"
     >
       <div v-if="workspace" class="notification-reminder-page__content">
@@ -258,7 +259,7 @@
     testNotificationChannel
   } from '@/api/notification-reminder'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { resolveTenantWorkspaceId } from '@/utils/tenant-scope-context'
   import NotificationRuleDialog from './modules/notification-rule-dialog.vue'

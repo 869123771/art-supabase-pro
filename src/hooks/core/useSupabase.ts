@@ -11,6 +11,7 @@ import {
   getFriendlySupabaseErrorMessage,
   isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
+  markErrorAsUserNotified,
   normalizeSupabaseFunctionError
 } from '@/utils/supabase'
 import {
@@ -201,12 +202,19 @@ export function useSupabase() {
       )
       if (referenceContext && referenceHandled)
         mittBus.emit('deleteReferenceBlocked', referenceContext)
-      if ((showMessage || showErrorMessage) && !sessionFailureHandled && !referenceHandled) {
+      const showErrorToast =
+        (showMessage || showErrorMessage) && !sessionFailureHandled && !referenceHandled
+      if (showErrorToast) {
         ElMessage.error(message)
       }
       if (breakReturn) {
-        if (referenceHandled) throw new DeleteReferenceBlockedError(error)
-        throw new Error(message, { cause: error })
+        if (referenceHandled) {
+          throw markErrorAsUserNotified(new DeleteReferenceBlockedError(error))
+        }
+        const reportedError = new Error(message, { cause: error })
+        throw showErrorToast || sessionFailureHandled
+          ? markErrorAsUserNotified(reportedError)
+          : reportedError
       }
       return {
         data: null,
@@ -224,7 +232,10 @@ export function useSupabase() {
         ElMessage.error(message)
       }
       if (breakReturn) {
-        throw new Error(message)
+        const noAffectedError = new Error(message)
+        throw showMessage || showErrorMessage
+          ? markErrorAsUserNotified(noAffectedError)
+          : noAffectedError
       }
       return {
         data: null,

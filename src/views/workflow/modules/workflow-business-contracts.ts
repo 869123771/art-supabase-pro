@@ -8,7 +8,7 @@ export interface WorkflowBusinessContract {
   businessType: string
   label: string
   menuName: string
-  domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr'
+  domain: 'transport' | 'finance' | 'master_data' | 'safety' | 'hr' | 'scm'
   riskLevel: 'high' | 'medium'
   owner: string
   fields: Api.Workflow.WorkflowContextField[]
@@ -16,6 +16,23 @@ export interface WorkflowBusinessContract {
 }
 
 const contracts: Record<string, WorkflowBusinessContract> = {
+  scm_sales_quotation: {
+    businessType: 'scm_sales_quotation',
+    label: '销售报价单',
+    menuName: 'ScmSalesQuotationDoc',
+    domain: 'scm',
+    riskLevel: 'medium',
+    owner: '销售报价',
+    fields: [
+      { key: 'quotationNo', label: '报价单号', valueType: 'text' },
+      { key: 'projectId', label: '项目', valueType: 'text', referenceType: 'business' },
+      { key: 'productCategory', label: '报价产品分类', valueType: 'text' },
+      { key: 'quantity', label: '数量', valueType: 'number' },
+      { key: 'totalAmount', label: '总价', valueType: 'number' },
+      { key: 'customerId', label: '客户', valueType: 'text', referenceType: 'business' }
+    ],
+    routePath: () => '/scm/sales-quotation/sales-quotation'
+  },
   generic: {
     businessType: 'generic',
     label: '通用审批',

@@ -82,6 +82,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { FormRules } from 'element-plus'
@@ -96,7 +98,7 @@
   import { renderDocumentNumber, validateDocumentNumberTemplate } from '@/utils/document-number'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { areTenantCreateTargetsInScope } from '@/utils/tenant-scope-access-policy'
   import type { AppRouteRecord } from '@/types/router'
 
@@ -217,7 +219,7 @@
           options: form.tenantOptions
         },
         description: tenantScopeStore.isAllTenants
-          ? '一次保存即可批量配置；已有租户规则会更新，缺失的会自动创建。'
+          ? '默认配置当前平台租户；可增加其他租户，一次保存后统一生效。'
           : isPlatformSuper.value
             ? '当前只配置顶部所选租户；切换范围后请重新打开。'
             : '当前账号只能配置所属租户。'
@@ -377,6 +379,21 @@
         label: `${tenant.tenantName}（${tenant.tenantCode}）`,
         value: String(tenant.id)
       }))
+    if (tenantScopeStore.isAllTenants) {
+      const homeTenantId = userStore.getUserInfo.tenantId
+      if (homeTenantId) {
+        if (!form.tenantOptions.some((option) => option.value === homeTenantId)) {
+          const homeTenant = userStore.getUserInfo.tenant
+          form.tenantOptions.unshift({
+            label: homeTenant
+              ? `${homeTenant.tenantName}（${homeTenant.tenantCode}）`
+              : '平台管理员租户',
+            value: homeTenantId
+          })
+        }
+        form.data.tenantIds = [homeTenantId]
+      }
+    }
     if (!tenantScopeStore.isAllTenants && selectedTenantId) {
       if (!form.tenantOptions.some((option) => option.value === selectedTenantId)) {
         form.tenantOptions = [
@@ -396,8 +413,9 @@
 
   const handleSubmit = async (): Promise<boolean> => {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
     const scene = selectedScene.value
@@ -432,8 +450,8 @@
       ElMessage.success(`批量配置完成：新建 ${created} 个，更新 ${updated} 个租户规则`)
       emit('success')
       return true
-    } catch {
-      ElMessage.error('编号规则配置失败，请检查当前租户范围后重试')
+    } catch (error) {
+      notifyFriendlyError(error, '编号规则配置失败，请检查当前租户范围后重试')
       return false
     }
   }
@@ -564,6 +582,13 @@
       &__summary {
         display: none;
       }
+    }
+  }
+
+  @media (width <= 600px) {
+    .number-rule-create__form :deep(.art-form .el-row > .el-col) {
+      flex: 0 0 100%;
+      max-width: 100%;
     }
   }
 </style>

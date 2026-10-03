@@ -3,6 +3,7 @@
     <ArtEmptyState
       v-if="!taskGroups.length"
       title="流程尚未生成审批任务"
+      description="启动审批后，待办任务会在此按节点展示。"
       size="compact"
       :visual-size="72"
     />
@@ -497,18 +498,6 @@
       border-top: 1px dashed var(--el-border-color-lighter);
       border-radius: 0;
     }
-
-    :global([data-box-mode='border-mode']) &__members article:focus-within,
-    :global([data-box-mode='border-mode']) &__members article:hover {
-      border-color: var(--theme-color);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 45%, transparent);
-    }
-
-    :global([data-box-mode='shadow-mode']) &__members article:focus-within,
-    :global([data-box-mode='shadow-mode']) &__members article:hover {
-      border-color: transparent;
-      box-shadow: 0 7px 18px color-mix(in srgb, var(--theme-color) 15%, transparent);
-    }
   }
 
   @media (width <= 760px) {
@@ -544,5 +533,17 @@
         }
       }
     }
+  }
+
+  :global(html[data-box-mode='border-mode'] .workflow-task-board__members article:focus-within),
+  :global(html[data-box-mode='border-mode'] .workflow-task-board__members article:hover) {
+    border-color: var(--theme-color);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-color) 45%, transparent);
+  }
+
+  :global(html[data-box-mode='shadow-mode'] .workflow-task-board__members article:focus-within),
+  :global(html[data-box-mode='shadow-mode'] .workflow-task-board__members article:hover) {
+    border-color: transparent;
+    box-shadow: 0 7px 18px color-mix(in srgb, var(--theme-color) 15%, transparent);
   }
 </style>

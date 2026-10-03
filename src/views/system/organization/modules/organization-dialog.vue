@@ -28,6 +28,7 @@
       />
 
       <ArtForm
+        tenant-scope-mode="manual"
         ref="formRef"
         v-model="form"
         :items="formItems"
@@ -43,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import type { FormRules } from 'element-plus'
   import { cloneDeep } from 'lodash-es'
@@ -407,8 +410,9 @@
   const handleSubmit = async (): Promise<boolean> => {
     if (!formRef.value) return false
     try {
-      await formRef.value.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -421,7 +425,8 @@
       }
       emit('success', dialogType.value)
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '组织保存失败，请检查层级与名称后重试', 'warning')
       return false
     }
   }

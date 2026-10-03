@@ -1,4 +1,5 @@
 @import 'tailwindcss' source('../../..');
+
 @source '../../../../modules/art-supabase-fms/src';
 @source '../../../../modules/art-supabase-hr/src';
 @source '../../../../modules/art-supabase-mdm/src';
@@ -9,12 +10,13 @@
 @source '../../../../modules/art-supabase-tms/src';
 @source '../../../../modules/art-supabase-vms/src';
 @source '../../../../modules/art-supabase-wms/src';
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ==================== Light Mode Variables ==================== */
 :root {
   /* Base Colors */
-  --art-color: #ffffff;
+  --art-color: #fff;
   --theme-color: var(--main-color);
 
   /* Theme Colors - OKLCH Format */
@@ -46,14 +48,13 @@
   --art-gray-900: #323251;
 
   /* Border Colors */
-  --art-card-border: rgba(0, 0, 0, 0.08);
-
+  --art-card-border: rgb(0 0 0 / 8%);
   --default-border: #e2e8ee;
   --default-border-dashed: #dbdfe9;
 
   /* Background Colors */
   --default-bg-color: #fafbfc;
-  --default-box-color: #ffffff;
+  --default-box-color: #fff;
 
   /* Hover Color */
   --art-hover-color: #edeff0;
@@ -119,7 +120,7 @@
 /* ==================== Dark Mode Variables ==================== */
 .dark {
   /* Base Colors */
-  --art-color: #000000;
+  --art-color: #000;
 
   /* Gray Scale - Dark Mode */
   --art-gray-100: #110f0f;
@@ -133,9 +134,8 @@
   --art-gray-900: #e3e3e8;
 
   /* Border Colors */
-  --art-card-border: rgba(255, 255, 255, 0.08);
-
-  --default-border: rgba(255, 255, 255, 0.1);
+  --art-card-border: rgb(255 255 255 / 8%);
+  --default-border: rgb(255 255 255 / 10%);
   --default-border-dashed: #363843;
 
   /* Background Colors */
@@ -238,13 +238,13 @@
 
   /* Transition Utilities */
   .tad-200 {
-    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
     transition-duration: 200ms;
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   }
 
   .tad-300 {
-    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
     transition-duration: 300ms;
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   }
 
   /* Border Utilities */

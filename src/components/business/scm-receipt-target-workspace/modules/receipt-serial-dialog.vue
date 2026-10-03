@@ -34,6 +34,8 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { setScmReceiptLineSerials, type ScmReceiptTargetLine } from '@/api/scm-receipt-target'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
 
   interface Context {
     documentNo: string
@@ -71,7 +73,7 @@
 
   async function submit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (!context.value) return false
       if (
         expectedQuantity.value % 1 !== 0 ||
@@ -84,7 +86,8 @@
       await setScmReceiptLineSerials(context.value.line.id, parsedSerials.value)
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '收料 SN 保存失败，请检查件数、编码和权限后重试')
       return false
     }
   }

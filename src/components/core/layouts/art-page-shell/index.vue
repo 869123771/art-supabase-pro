@@ -14,6 +14,7 @@
       :retryable="retryable"
       :empty="empty"
       :empty-text="emptyText"
+      :empty-description="emptyDescription"
       :full-height="fullHeight"
       :min-height="minHeight"
       @retry="emit('retry')"
@@ -43,6 +44,7 @@
       retryable?: boolean
       empty?: boolean
       emptyText?: string
+      emptyDescription?: string
       fullHeight?: boolean
       constrained?: boolean
       minHeight?: string | number
@@ -55,6 +57,7 @@
       retryable: true,
       empty: false,
       emptyText: '暂无数据',
+      emptyDescription: '请调整筛选条件或刷新页面后重试。',
       fullHeight: false,
       constrained: false,
       minHeight: 240

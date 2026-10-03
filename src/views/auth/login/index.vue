@@ -273,7 +273,7 @@
   const identifierInputRef = ref<InstanceType<typeof ElInput>>()
   const passwordInputRef = ref<InstanceType<typeof ElInput>>()
   const rememberPasswordPreference = readRememberPasswordPreference()
-  const rememberedIdentifier = rememberPasswordPreference ? readRememberedIdentifier() : ''
+  const rememberedIdentifier = readRememberedIdentifier()
 
   const formData = reactive({
     account: '',
@@ -356,13 +356,16 @@
   onMounted(() => {
     void initializeLoginPage()
     if (rememberedIdentifier && !finishingOAuth.value) void restoreBrowserPassword()
+    void nextTick(syncBrowserAutofill)
+    window.addEventListener('pageshow', syncBrowserAutofill)
   })
+
+  onUnmounted(() => window.removeEventListener('pageshow', syncBrowserAutofill))
 
   watch(
     () => formData.rememberPassword,
     (rememberPassword) => {
       writeRememberPasswordPreference(rememberPassword)
-      if (!rememberPassword) writeRememberedIdentifier('')
     }
   )
 
@@ -371,7 +374,6 @@
     const password = await readBrowserPassword(rememberedIdentifier)
     if (
       password &&
-      formData.rememberPassword &&
       formData.identifier === rememberedIdentifier &&
       formData.password === initialPassword
     ) {
@@ -491,10 +493,10 @@
     try {
       await signInWithAuthChannel(channel, redirectTo)
     } catch (error) {
-      oauthError.value =
-        error instanceof Error && error.message
-          ? error.message
-          : `${channel.label}登录暂时不可用，请稍后重试`
+      oauthError.value = getFriendlySupabaseErrorMessage(
+        error,
+        `${channel.label}登录暂时不可用，请稍后重试`
+      )
     } finally {
       oauthLoadingKey.value = ''
     }
@@ -507,8 +509,7 @@
     try {
       await signInWithAuthChannel(feishuQrChannel.value, feishuQrRedirectTo.value)
     } catch (error) {
-      oauthError.value =
-        error instanceof Error && error.message ? error.message : '飞书登录暂时不可用，请稍后重试'
+      oauthError.value = getFriendlySupabaseErrorMessage(error, '飞书登录暂时不可用，请稍后重试')
     } finally {
       oauthLoadingKey.value = ''
     }
@@ -558,8 +559,6 @@
             ElMessage.warning('浏览器未能保存密码，可在浏览器的密码管理器中手动保存')
           }
         })
-      } else {
-        writeRememberedIdentifier('')
       }
 
       await completeAuthenticatedLogin(tokens)

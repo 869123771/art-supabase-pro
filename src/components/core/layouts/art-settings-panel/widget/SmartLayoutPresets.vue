@@ -64,7 +64,7 @@
 <script setup lang="ts">
   import { ElMessage } from 'element-plus'
   import { storeToRefs } from 'pinia'
-  import { ContainerWidthEnum, MenuThemeEnum, MenuTypeEnum } from '@/enums/appEnum'
+  import { ContainerWidthEnum, MenuThemeEnum, MenuTypeEnum } from '@/enums/app-enum'
   import { useSettingStore } from '@/store/modules/setting'
   import type { WorkTabStyle } from '@/types'
   import { useSettingsState } from '../composables/useSettingsState'

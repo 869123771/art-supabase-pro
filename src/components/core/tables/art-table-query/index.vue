@@ -289,18 +289,19 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useTable } from '@/hooks/core/useTable'
-  import type { ApiResponse } from '@/utils/table/tableCache'
+  import type { ApiResponse } from '@/utils/table/table-cache'
   import {
     defaultResponseAdapter,
     extractTableData,
     type TableError
-  } from '@/utils/table/tableUtils'
+  } from '@/utils/table/table-utils'
   import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
   import { useCrossPageSelection } from './use-cross-page-selection'
   import { useRoute } from 'vue-router'
   import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { getFriendlySupabaseErrorMessage, wasErrorUserNotified } from '@/utils/supabase'
   import {
     filterTenantDimensionDescriptors,
     isTenantDimensionDescriptor
@@ -588,6 +589,11 @@
     ) => void | Promise<void>
     /** Excel 导入失败回调，仅 type=import 时生效 */
     onImportError?: (error: Error, ctx: ArtTableQueryHeaderActionContext) => void | Promise<void>
+    /** 文件解析成功后，转换、提交或刷新失败时的自定义处理；默认显示可读错误。 */
+    onImportSubmitError?: (
+      error: Error,
+      ctx: ArtTableQueryHeaderActionContext
+    ) => void | Promise<void>
     /** 确认框内容；delete 默认启用确认框 */
     content?: ArtTableQueryHeaderActionContent
     /** 权限标识，会透传给 v-auth */
@@ -737,6 +743,7 @@
   const showSearchBar = defineModel<boolean>('showSearchBar', { default: true })
   const showTableToolbar = defineModel<boolean>('showTableToolbar', { default: false })
   const focusMode = defineModel<boolean>('focusMode', { default: false })
+  const importPending = ref(false)
   const initialSearchModel = ref<Record<string, unknown>>({})
   const rootRef = ref<HTMLElement>()
   const tableRef = ref<ArtTableExpose | null>(null)
@@ -1152,7 +1159,9 @@
 
   const getHeaderActionButtonProps = (action: ArtTableQueryHeaderAction) => ({
     ...(getHeaderActionDefault(action)?.buttonProps ?? {}),
-    ...(action.buttonProps ?? {})
+    ...(action.buttonProps ?? {}),
+    loading:
+      Boolean(action.buttonProps?.loading) || (action.type === 'import' && importPending.value)
   })
 
   const getSelectionActionButtonProps = (action: ArtTableQueryHeaderAction) => {
@@ -1163,7 +1172,9 @@
       size: 'small' as const,
       ...(getHeaderActionDefault(action)?.buttonProps ?? {}),
       ...contextualButtonProps,
-      ...(action.buttonProps ?? {})
+      ...(action.buttonProps ?? {}),
+      loading:
+        Boolean(action.buttonProps?.loading) || (action.type === 'import' && importPending.value)
     }
   }
 
@@ -1178,7 +1189,9 @@
     const ctx = createHeaderActionContext(action, undefined, scope)
     const disabled = typeof action.disabled === 'function' ? action.disabled(ctx) : action.disabled
     return (
-      !!disabled || (isHeaderActionSelectionRequired(action) && selectedRows.value.length === 0)
+      !!disabled ||
+      (action.type === 'import' && importPending.value) ||
+      (isHeaderActionSelectionRequired(action) && selectedRows.value.length === 0)
     )
   }
 
@@ -1343,25 +1356,47 @@
     data: Array<Record<string, unknown>>,
     scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): Promise<void> => {
+    if (importPending.value) return
+    importPending.value = true
     const ctx = createHeaderActionContext(action, undefined, scope)
-    emit('header-action-click', action, ctx)
-    const rows =
-      action.importApi || action.importTransformer || action.importColumns
-        ? await resolveImportRows(action, data, ctx)
-        : data
+    let submitted = false
+    try {
+      emit('header-action-click', action, ctx)
+      const rows =
+        action.importApi || action.importTransformer || action.importColumns
+          ? await resolveImportRows(action, data, ctx)
+          : data
 
-    if (action.importApi) {
-      if (!rows.length) {
-        ElMessage.warning('未读取到可导入的数据')
-        return
+      if (action.importApi) {
+        if (!rows.length) {
+          ElMessage.warning('未读取到可导入的数据')
+          return
+        }
+        await action.importApi(rows as Array<TableQueryRecord>, ctx)
+        submitted = true
+        if (isManaged.value) {
+          await managedTable.refreshCreate()
+        }
       }
-      await action.importApi(rows as Array<TableQueryRecord>, ctx)
-      if (isManaged.value) {
-        await managedTable.refreshCreate()
+
+      await action.onImportSuccess?.(rows, ctx)
+    } catch (error) {
+      const fallback = submitted
+        ? '导入已提交，但界面更新失败，请刷新查看结果'
+        : '导入失败，请检查数据后重试'
+      const importError = error instanceof Error ? error : new Error(fallback)
+      try {
+        if (action.onImportSubmitError) {
+          await action.onImportSubmitError(importError, ctx)
+        } else if (!wasErrorUserNotified(importError)) {
+          ElMessage.error(getFriendlySupabaseErrorMessage(importError, fallback))
+        }
+      } catch (handlerError) {
+        ElMessage.error(getFriendlySupabaseErrorMessage(handlerError, '导入失败，请稍后重试'))
       }
+    } finally {
+      importPending.value = false
     }
-
-    await action.onImportSuccess?.(rows, ctx)
   }
 
   const handleHeaderActionImportError = async (
@@ -1369,7 +1404,15 @@
     error: Error,
     scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
   ): Promise<void> => {
-    await action.onImportError?.(error, createHeaderActionContext(action, undefined, scope))
+    try {
+      if (action.onImportError) {
+        await action.onImportError(error, createHeaderActionContext(action, undefined, scope))
+      } else {
+        ElMessage.error('导入文件解析失败，请检查文件后重试')
+      }
+    } catch (handlerError) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(handlerError, '导入文件解析失败，请重试'))
+    }
   }
 
   const handleHeaderActionClick = async (

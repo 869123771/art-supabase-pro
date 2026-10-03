@@ -28,6 +28,7 @@
       />
 
       <ArtForm
+        tenant-scope-mode="manual"
         ref="formRef"
         v-model="form"
         :items="formItems"
@@ -43,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import type { FormRules } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -310,8 +313,9 @@
     if (!formRef.value) return false
 
     try {
-      await formRef.value.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -325,7 +329,8 @@
       }
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '角色保存失败，请检查权限与租户后重试', 'warning')
       return false
     }
   }

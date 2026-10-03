@@ -10,7 +10,6 @@
       <ArtResourcePanel
         v-model="model"
         :show-action="false"
-        include-platform-tenant
         show-copy-actions
         show-paste-upload
         show-rename-action

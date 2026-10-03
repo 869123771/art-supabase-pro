@@ -63,8 +63,7 @@
       <ArtIconButton
         class="switch-btn size-10"
         icon="ri:arrow-left-right-fill"
-        aria-label="切换双栏菜单显示模式"
-        title="切换双栏菜单显示模式"
+        label="切换双栏菜单显示模式"
         @click="toggleDualMenuMode"
       />
     </div>
@@ -147,7 +146,7 @@
 
 <script setup lang="ts">
   import { useSettingStore } from '@/store/modules/setting'
-  import { MenuThemeEnum, MenuTypeEnum, MenuWidth } from '@/enums/appEnum'
+  import { MenuThemeEnum, MenuTypeEnum, MenuWidth } from '@/enums/app-enum'
   import { useMenuStore } from '@/store/modules/menu'
   import { isIframe } from '@/utils/navigation'
   import { startMenuJump } from '@/utils/navigation'

@@ -245,7 +245,7 @@
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import { useTableStore } from '@/store/modules/table'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTableHeight } from '@/hooks/core/useTableHeight'

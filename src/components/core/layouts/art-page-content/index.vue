@@ -51,7 +51,7 @@
   import { ElScrollbar } from 'element-plus'
   import { useAutoLayoutHeight } from '@/hooks/core/useLayoutHeight'
   import { useSettingStore } from '@/store/modules/setting'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useWorktabStore } from '@/store/modules/worktab'
 
   defineOptions({ name: 'ArtPageContent' })

@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { fetchRecordDeleteDependencies } from '@/api/master-data-delete'
 import type { DeleteReferenceContext } from '@/utils/supabase/delete-reference'
 import type {
@@ -38,7 +39,7 @@ export function recordDeleteGuardOptions(
         ...row,
         createdAt: row.createdAt ?? '',
         dependencyCode: row.sourceTable,
-        recordStatus: formatReferenceStatus(row.recordStatus),
+        recordStatus: formatReferenceStatus(row.recordStatus) || '状态待核对',
         cleanupAllowed: false
       }))
     }
@@ -49,13 +50,18 @@ export function useRecordDeleteGuard(table: string, resourceLabel: string) {
   const deleteGuardRef = ref<{
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }>()
-  const inspectDeleteReferences = (resources: MasterDataDeleteResource[]) =>
-    deleteGuardRef.value?.inspect(
+  const inspectDeleteReferences = (resources: MasterDataDeleteResource[]) => {
+    if (!deleteGuardRef.value) {
+      ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
+      return Promise.resolve(true)
+    }
+    return deleteGuardRef.value.inspect(
       recordDeleteGuardOptions(
         { table, ids: resources.map((row) => row.id) },
         resourceLabel,
         resources
       )
-    ) ?? Promise.resolve(true)
+    )
+  }
   return { deleteGuardRef, inspectDeleteReferences }
 }

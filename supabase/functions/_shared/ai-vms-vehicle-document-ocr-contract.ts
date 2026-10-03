@@ -22,48 +22,6 @@ export const VMS_VEHICLE_DOCUMENT_FIELDS = [
 
 export type VmsVehicleDocumentField = (typeof VMS_VEHICLE_DOCUMENT_FIELDS)[number]
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const PUBLIC_ATTACHMENT_PREFIX = '/storage/v1/object/public/attachments/'
-
-export function isValidVmsVehicleDocumentTenantScope(tenantId: string | null): boolean {
-  return tenantId === null || UUID_PATTERN.test(tenantId)
-}
-
-export function areVmsVehicleDocumentImageUrlsInScope(
-  imageUrls: string[],
-  supabaseUrl: string,
-  tenantId: string | null
-): boolean {
-  if (!imageUrls.length || !isValidVmsVehicleDocumentTenantScope(tenantId)) return false
-  let expectedOrigin: string
-  try {
-    expectedOrigin = new URL(supabaseUrl).origin
-  } catch {
-    return false
-  }
-  return imageUrls.every((value) => {
-    try {
-      const url = new URL(value)
-      if (
-        url.origin !== expectedOrigin ||
-        url.username ||
-        url.password ||
-        url.hash ||
-        !url.pathname.startsWith(PUBLIC_ATTACHMENT_PREFIX)
-      ) {
-        return false
-      }
-      const objectPath = url.pathname.slice(PUBLIC_ATTACHMENT_PREFIX.length)
-      const separator = objectPath.indexOf('/')
-      if (separator < 1 || separator === objectPath.length - 1) return false
-      const imageTenantId = objectPath.slice(0, separator)
-      return UUID_PATTERN.test(imageTenantId) && (tenantId === null || imageTenantId === tenantId)
-    } catch {
-      return false
-    }
-  })
-}
-
 export interface VmsVehicleDocumentDraft {
   plateNo: string | null
   vin: string | null

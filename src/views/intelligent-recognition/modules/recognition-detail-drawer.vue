@@ -6,6 +6,7 @@
       :error="loadError"
       :empty="!detail.data"
       empty-text="识别记录不存在或无权查看"
+      empty-description="请返回识别列表重新选择，或刷新后重试。"
       @retry="retryLoad"
     >
       <div v-if="detail.data" :key="detail.data.id" class="recognition-detail">
@@ -96,7 +97,13 @@
             <small v-else>需人工核对</small>
           </article>
         </div>
-        <ArtEmptyState v-else title="暂无可展示的结构化字段" size="compact" :visual-size="72" />
+        <ArtEmptyState
+          v-else
+          title="暂无可展示的结构化字段"
+          description="请检查原始内容，或重新运行识别。"
+          size="compact"
+          :visual-size="72"
+        />
 
         <ArtSectionTitle class="recognition-detail__section">运行与审计</ArtSectionTitle>
         <ArtDescriptions :data="auditData" :items="auditItems" :columns="2" />

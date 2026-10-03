@@ -14,6 +14,10 @@ import { extractAiProviderJson, extractAiProviderText } from '../_shared/ai-prov
 import { loadAiRuntimeConfig } from '../_shared/ai-runtime-config.ts'
 import { loadPublishedAiPrompt } from '../_shared/ai-prompt-template.ts'
 import { normalizeOcrRawText } from '../_shared/ai-ocr-text.ts'
+import {
+  authorizeAiArtifactReview,
+  authorizeAttachmentOcrImages
+} from '../_shared/ai-attachment-tenant-scope.ts'
 
 const FEATURE = 'invoice_ocr'
 const ARTIFACT_TYPE = 'tms_invoice_draft'
@@ -46,7 +50,7 @@ interface InvoiceOcrRequest {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-art-tenant-scope',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
@@ -158,6 +162,10 @@ Deno.serve(async (req) => {
     if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
       return json({ code: 'forbidden', message: '当前账号无权使用发票识别' }, 403)
     }
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
 
     const body = (await req.json()) as InvoiceOcrRequest
     const action = body.action ?? 'analyze'
@@ -183,9 +191,8 @@ Deno.serve(async (req) => {
 
       const { data: artifact, error: artifactError } = await admin
         .from('ai_artifact_review')
-        .select('id,proposed_payload')
+        .select('id,tenant_id,proposed_payload')
         .eq('id', artifactId)
-        .eq('tenant_id', appUser.tenant_id)
         .eq('auth_user_id', user.id)
         .eq('feature', FEATURE)
         .eq('artifact_type', ARTIFACT_TYPE)
@@ -194,12 +201,22 @@ Deno.serve(async (req) => {
       if (artifactError) throw artifactError
       if (!artifact)
         return json({ code: 'artifact_not_found', message: '识别记录不存在或已反馈' }, 404)
+      if (
+        !(await authorizeAiArtifactReview({
+          userClient,
+          appUser,
+          requestedTenantId: req.headers.get('x-art-tenant-scope'),
+          artifactTenantId: artifact.tenant_id
+        }))
+      ) {
+        return json({ code: 'forbidden', message: '当前租户无权复核该发票识别记录' }, 403)
+      }
 
       const { data: invoice, error: invoiceError } = await admin
         .from('tms_invoice')
         .select('id')
         .eq('id', entityId)
-        .eq('tenant_id', appUser.tenant_id)
+        .eq('tenant_id', artifact.tenant_id)
         .maybeSingle()
       if (invoiceError) throw invoiceError
       if (!invoice) return json({ code: 'invoice_not_found', message: '已保存发票不存在' }, 404)
@@ -242,12 +259,23 @@ Deno.serve(async (req) => {
       .slice(0, 3)
     const direction = body.direction === 'input' ? 'input' : 'output'
     if (!imageUrls.length) return json({ code: 'invalid_input', message: '请先上传发票图片' }, 400)
+    const imageAuthorization = await authorizeAttachmentOcrImages({
+      userClient,
+      appUser,
+      imageUrls,
+      requestedTenantId: req.headers.get('x-art-tenant-scope'),
+      supabaseUrl
+    })
+    if (!imageAuthorization) {
+      return json({ code: 'forbidden', message: '只能识别当前租户的发票附件' }, 403)
+    }
+    const targetTenantId = imageAuthorization.tenantId
 
     const compatibleBaseUrl = (Deno.env.get('AI_BASE_URL') || 'https://api.openai.com/v1').replace(
       /\/$/,
       ''
     )
-    const runtimeConfig = await loadAiRuntimeConfig(admin, appUser.tenant_id, FEATURE, {
+    const runtimeConfig = await loadAiRuntimeConfig(admin, targetTenantId, FEATURE, {
       enabled: true,
       provider: 'openai_compatible',
       model: getProviderModel(compatibleBaseUrl),
@@ -320,7 +348,7 @@ Deno.serve(async (req) => {
       return json({ code: 'rate_limited', message: 'AI 发票识别次数已达到限额，请稍后重试' }, 429)
     }
 
-    const publishedPrompt = await loadPublishedAiPrompt(admin, appUser.tenant_id, FEATURE, {
+    const publishedPrompt = await loadPublishedAiPrompt(admin, targetTenantId, FEATURE, {
       content: DEFAULT_PROMPT,
       version: runtimeConfig.promptVersion
     })
@@ -331,7 +359,7 @@ Deno.serve(async (req) => {
       .from('ai_run')
       .insert({
         auth_user_id: user.id,
-        tenant_id: appUser.tenant_id,
+        tenant_id: targetTenantId,
         feature: FEATURE,
         model: resolvedModel,
         prompt_version: publishedPrompt.version,
@@ -623,7 +651,7 @@ Deno.serve(async (req) => {
       .insert({
         ai_run_id: run.id,
         auth_user_id: user.id,
-        tenant_id: appUser.tenant_id,
+        tenant_id: targetTenantId,
         feature: FEATURE,
         artifact_type: ARTIFACT_TYPE,
         proposed_payload: normalized.invoice,

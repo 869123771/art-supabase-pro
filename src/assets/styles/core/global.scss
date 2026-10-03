@@ -1,40 +1,40 @@
 @font-face {
   font-family: 'HarmonyOS Sans';
-  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Regular.ttf') format('truetype');
+  font-style: normal;
   font-weight: 400;
-  font-style: normal;
+  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Regular.woff2') format('woff2');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'HarmonyOS Sans';
-  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Medium.ttf') format('truetype');
+  font-style: normal;
   font-weight: 500;
-  font-style: normal;
+  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Medium.woff2') format('woff2');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'HarmonyOS Sans';
-  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Semibold.ttf') format('truetype');
+  font-style: normal;
   font-weight: 600;
-  font-style: normal;
+  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Semibold.woff2') format('woff2');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'HarmonyOS Sans';
-  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Bold.ttf') format('truetype');
+  font-style: normal;
   font-weight: 700;
-  font-style: normal;
+  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Bold.woff2') format('woff2');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'HarmonyOS Sans';
-  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Black.ttf') format('truetype');
-  font-weight: 800;
   font-style: normal;
+  font-weight: 800;
+  src: url('@/assets/fonts/HarmonyOS_Sans/HarmonyOS_Sans_Black.woff2') format('woff2');
   font-display: swap;
 }
 

@@ -28,7 +28,7 @@
   import { initializeTheme } from './hooks/core/useTheme'
   import { useWebsiteConfig } from './hooks'
   import i18n from './locales'
-  import { LanguageEnum } from './enums/appEnum'
+  import { LanguageEnum } from './enums/app-enum'
 
   const userStore = useUserStore()
   const GlobalReferenceFeedback = defineAsyncComponent(

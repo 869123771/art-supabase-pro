@@ -17,14 +17,12 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted } from 'vue'
+  import { computed } from 'vue'
   import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
   import { ElMessage } from 'element-plus'
   import VueMonacoEditor from '@guolao/vue-monaco-editor'
-  import { fetchDatabaseMetadata } from '@/api/data-center'
-  import { registerSqlMetadata } from '@/utils/monacoSqlSetup'
   import { useSettingStore } from '@/store/modules/setting'
-  import type { SqlErrorLocation } from '@/utils/sqlWorkbench'
+  import type { SqlErrorLocation } from '@/utils/sql-workbench'
 
   const props = withDefaults(
     defineProps<{
@@ -220,15 +218,6 @@
     focus: () => editorInstance?.focus(),
     clearErrorMarkers,
     applyErrorMarker
-  })
-
-  onMounted(async () => {
-    try {
-      const metadata = await fetchDatabaseMetadata()
-      registerSqlMetadata(metadata)
-    } catch (error) {
-      console.error('Failed to load database metadata:', error)
-    }
   })
 </script>
 

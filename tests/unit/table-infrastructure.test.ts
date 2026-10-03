@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TableCache } from '../../src/utils/table/tableCache'
-import { createSmartDebounce, defaultResponseAdapter } from '../../src/utils/table/tableUtils'
+import { TableCache } from '../../src/utils/table/table-cache'
+import {
+  createErrorHandler,
+  createSmartDebounce,
+  defaultResponseAdapter
+} from '../../src/utils/table/table-utils'
+
+test('table errors keep diagnostics while showing a readable message', () => {
+  const handleError = createErrorHandler()
+  const technicalError = new Error('relation missing in PostgREST')
+  const tableError = handleError(technicalError, '获取表格数据失败')
+
+  assert.equal(tableError.code, 'Error')
+  assert.equal(tableError.message, '获取表格数据失败，请刷新后重试')
+  assert.equal(tableError.details, technicalError)
+  assert.equal(handleError(new Error('站点编码重复'), '获取表格数据失败').message, '站点编码重复')
+})
 
 test('cache enforces capacity and evicts least recent rather than least frequent entries', () => {
   const cache = new TableCache<number>(1000, 2)

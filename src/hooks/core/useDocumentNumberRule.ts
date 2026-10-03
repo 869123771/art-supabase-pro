@@ -1,5 +1,5 @@
 import { fetchDocumentNumberRulesByKeys } from '@/api/document-number'
-import { useTenantScopeStore } from '@/store/modules/tenantScope'
+import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { resolveTenantReadTargetId } from '@/utils/tenant-scope-access-policy'
 
 export function useDocumentNumberRule(

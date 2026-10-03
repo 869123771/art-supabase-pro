@@ -50,13 +50,17 @@
   }>()
 
   const fileInputRef = ref<HTMLInputElement>()
-  const isDisabled = computed(() => props.disabled || Boolean(props.buttonProps?.loading))
+  const isParsing = ref(false)
+  const isDisabled = computed(
+    () => props.disabled || isParsing.value || Boolean(props.buttonProps?.loading)
+  )
 
   const openFilePicker = (): void => {
     if (!isDisabled.value) fileInputRef.value?.click()
   }
 
   const handleFileChange = async (event: Event): Promise<void> => {
+    if (isParsing.value) return
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return
@@ -70,6 +74,7 @@
       raw: rawFile
     }
 
+    isParsing.value = true
     try {
       if (!props.parseExcel) {
         emit('file-change', rawFile, uploadFile)
@@ -78,9 +83,13 @@
       const results = await importExcelFile(rawFile)
       emit('import-success', results, rawFile, uploadFile)
     } catch (error) {
-      emit('import-error', error as Error)
+      emit(
+        'import-error',
+        error instanceof Error ? error : new Error('导入文件解析失败', { cause: error })
+      )
     } finally {
       input.value = ''
+      isParsing.value = false
     }
   }
 </script>

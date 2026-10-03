@@ -75,7 +75,7 @@
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
-  import { pageInfoHandler } from '@/utils/table/tableUtils'
+  import { pageInfoHandler } from '@/utils/table/table-utils'
   import { formatWithDayjs } from '@/utils/time'
   import SystemParamDialog from './modules/system-param-dialog.vue'
 

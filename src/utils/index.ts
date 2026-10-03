@@ -29,11 +29,8 @@ export * from './http'
 // 表单相关
 export * from './form'
 
-// socket 相关
-export * from './socket'
-
-//时间相关
+// 时间相关
 export * from './time'
 
-//文件相关
+// 文件相关
 export * from './file'

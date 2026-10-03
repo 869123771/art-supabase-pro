@@ -98,7 +98,13 @@
         </ElTree>
       </ElScrollbar>
 
-      <ArtEmptyState v-else title="暂无已接入编号的菜单" size="compact" :visual-size="58" />
+      <ArtEmptyState
+        v-else
+        title="暂无已接入编号的菜单"
+        description="请先在编号规则中接入业务菜单。"
+        size="compact"
+        :visual-size="58"
+      />
     </div>
 
     <footer class="number-menu-filter__footer">

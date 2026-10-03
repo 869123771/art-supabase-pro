@@ -13,6 +13,7 @@
       <ArtAsyncState
         :empty="orders.length === 0"
         empty-text="暂无订单数据"
+        empty-description="创建首笔订单后，这里会显示最新进展。"
         :empty-image-size="62"
         :min-height="190"
       >

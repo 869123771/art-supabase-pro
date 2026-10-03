@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-  import { MenuTypeEnum } from '@/enums/appEnum'
+  import { MenuTypeEnum } from '@/enums/app-enum'
   import { useSettingStore } from '@/store/modules/setting'
 
   defineOptions({ name: 'AppLayout' })

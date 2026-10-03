@@ -46,6 +46,7 @@
       :error="state.error"
       :empty="!state.data.features.length"
       empty-text="暂无 OCR 质量样本；完成识别并人工确认后将自动累计"
+      empty-description="完成识别与人工确认后，可在此查看准确率和纠错情况。"
       :min-height="240"
       @retry="loadData"
     >

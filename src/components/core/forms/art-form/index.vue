@@ -7,6 +7,7 @@
       'art-form px-4 pb-0 pt-4 md:px-4 md:pt-4',
       { 'art-form--custom-layout': customLayout },
       { 'art-form--overlay-focus': overlayFocus?.focusMode.value },
+      { 'art-form--expanded': enableExpand && isExpanded },
       rootClass
     ]"
   >
@@ -347,7 +348,7 @@
 
   const { width } = useWindowSize()
   const { t } = useI18n()
-  const { effectiveTenantId, shouldExposeTenantField, isTenantScopeItem } =
+  const { effectiveTenantId, defaultWriteTenantId, shouldExposeTenantField, isTenantScopeItem } =
     useTenantScopeFormPolicy()
   const isMobile = computed(() => width.value < 500)
 
@@ -518,6 +519,8 @@
   > {
     /** 表单数据 */
     items?: FormItem[]
+    /** 租户字段用途：业务录入与查询跟随顶部范围，系统归属管理可显式开放选择 */
+    tenantScopeMode?: 'write' | 'read' | 'manual'
     /** 每列的宽度（基于 24 格布局） */
     span?: number
     /** 表单控件间隙 */
@@ -564,6 +567,7 @@
 
   const props = withDefaults(defineProps<ArtFormProps>(), {
     items: () => [],
+    tenantScopeMode: 'write',
     span: 6,
     gutter: 12,
     labelPosition: 'top',
@@ -1160,7 +1164,9 @@
   const filteredFormItems = computed(() => {
     return props.items.filter(
       (item) =>
-        (shouldExposeTenantField.value || !isTenantScopeItem(item)) && !isFormItemHidden(item)
+        (!isTenantScopeItem(item) ||
+          (props.tenantScopeMode === 'manual' && shouldExposeTenantField.value)) &&
+        !isFormItemHidden(item)
     )
   })
 
@@ -1168,9 +1174,14 @@
     const tenantItem = props.items.find(isTenantScopeItem)
     if (!tenantItem) return
 
-    const tenantId = effectiveTenantId.value
-    if (!tenantId) return
-    if (getFieldValue(tenantItem.key) !== tenantId) {
+    const tenantId =
+      effectiveTenantId.value ||
+      (props.tenantScopeMode !== 'read' && !getFieldValue(tenantItem.key)
+        ? defaultWriteTenantId.value
+        : null)
+    if (props.tenantScopeMode === 'read' && !tenantId) {
+      if (getFieldValue(tenantItem.key)) setFieldValue(tenantItem.key, '', tenantItem)
+    } else if (tenantId && getFieldValue(tenantItem.key) !== tenantId) {
       setFieldValue(tenantItem.key, tenantId, tenantItem)
     }
   }
@@ -1305,7 +1316,13 @@
   )
 
   watch(
-    () => [effectiveTenantId.value, props.items.some(isTenantScopeItem), getFieldValue('tenantId')],
+    () => [
+      effectiveTenantId.value,
+      defaultWriteTenantId.value,
+      props.tenantScopeMode,
+      props.items.some(isTenantScopeItem),
+      getFieldValue('tenantId')
+    ],
     syncTenantScopeField,
     { immediate: true }
   )

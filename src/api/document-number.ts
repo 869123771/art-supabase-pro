@@ -1,6 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
-import { useTenantScopeStore } from '@/store/modules/tenantScope'
+import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { getDocumentNumberPeriodKey, renderDocumentNumber } from '@/utils/document-number'
 import { applyFilters } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'

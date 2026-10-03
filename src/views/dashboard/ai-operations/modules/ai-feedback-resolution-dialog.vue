@@ -44,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import dayjs from 'dayjs'
   import { ElMessage, type FormRules } from 'element-plus'
   import type { ComputedRef } from 'vue'
@@ -188,7 +190,7 @@
   async function handleSubmit(): Promise<boolean> {
     if (!current.value) return false
     try {
-      await formRef.value?.validate()
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
       await updateAiFeedbackResolution({
         feedbackId: current.value.feedbackId,
         status: form.model.status,
@@ -198,7 +200,8 @@
       ElMessage.success(isClosingStatus.value ? '反馈问题已关闭' : '处理进度已保存')
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '反馈处理进度保存失败，请稍后重试', 'warning')
       return false
     }
   }

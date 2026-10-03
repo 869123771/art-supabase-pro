@@ -9,7 +9,7 @@
       :empty="!state.instances.length"
       empty-text="暂无审批记录"
       empty-description="业务提交审批后，各轮流程和处理意见会完整保留在这里。"
-      :min-height="320"
+      :min-height="minHeight"
       @retry="loadHistory"
     >
       <div class="workflow-business-history__content">
@@ -150,10 +150,14 @@
 
   defineOptions({ name: 'WorkflowBusinessHistory' })
 
-  const props = defineProps<{
-    businessType: string
-    businessId: string
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      businessType: string
+      businessId: string
+      minHeight?: number
+    }>(),
+    { minHeight: 320 }
+  )
 
   const state = reactive<{
     loading: boolean

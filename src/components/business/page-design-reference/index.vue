@@ -155,6 +155,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { getClipboardFiles } from '@/utils/file/clipboard'
   import { StorageConfig } from '@/utils/storage/storage-config'
@@ -436,8 +437,9 @@
             )
           )
         }
-      } catch {
+      } catch (error) {
         await Promise.allSettled(uploadedImages.map((image) => removeUiDesignReferenceImage(image)))
+        notifyFriendlyError(error, '参考图片上传失败，请检查图片后重试')
         return false
       }
 
@@ -461,7 +463,8 @@
       if (cleanupFailed) ElMessage.warning('参考已保存，但有历史图片文件未能完全清理')
       ElMessage.success('设计参考已保存，AI 将参考当前路由的整个模块')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '设计参考保存失败，请稍后重试')
       return false
     }
   }
@@ -475,7 +478,8 @@
       state.reference = null
       ElMessage.success('已取消当前路由的设计参考')
       await api.handleClose(true)
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, '取消设计参考失败，请稍后重试')
       return
     } finally {
       api.setConfirmLoading(false)

@@ -1,11 +1,11 @@
 import type { App } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { staticRoutes } from './routes/staticRoutes'
+import { staticRoutes } from './routes/static-routes'
 import { configureNProgress } from '@/utils/router'
-import { setupBeforeEachGuard } from './guards/beforeEach'
-import { setupAfterEachGuard } from './guards/afterEach'
-import { setupRouteErrorRecovery } from './guards/errorRecovery'
-import { normalizeHashRouterBase } from './hashHistory'
+import { setupBeforeEachGuard } from './guards/before-each'
+import { setupAfterEachGuard } from './guards/after-each'
+import { setupRouteErrorRecovery } from './guards/error-recovery'
+import { normalizeHashRouterBase } from './hash-history'
 
 normalizeHashRouterBase(import.meta.env.BASE_URL)
 

@@ -13,6 +13,7 @@
       :error="state.error"
       :empty="!state.detail"
       empty-text="未找到审批实例"
+      empty-description="请返回审批列表重新选择实例，或刷新后重试。"
       :min-height="420"
       @retry="loadDetail"
     >

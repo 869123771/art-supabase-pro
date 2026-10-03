@@ -172,7 +172,7 @@ function resolveModelProfile(id: string): ModelProfile {
       benchmarkable: true
     }
   }
-  if (/(code|coder|starcoder|codestral|codellama)/i.test(id)) {
+  if (/(code|coder|starcoder|codestral|codellama|gemma-4)/i.test(id)) {
     return {
       kind: 'text',
       capability: '代码与 SQL',
@@ -399,6 +399,12 @@ function createProviderBenchmarkError(
   status: number,
   providerMessage: string
 ): ProviderBenchmarkError {
+  if (status === 410) {
+    return new ProviderBenchmarkError(
+      'model_retired',
+      '当前模型的在线端点已下线，请选择其他模型并测速'
+    )
+  }
   if (status === 401 || status === 403) {
     return new ProviderBenchmarkError(
       'provider_auth_failed',

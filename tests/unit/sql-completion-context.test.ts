@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { extractSqlAliases, getSqlCompletionContext } from '../../src/utils/sqlWorkbench'
+import { extractSqlAliases, getSqlCompletionContext } from '../../src/utils/sql-workbench'
 
 test('SQL completion recognizes table, schema, column and alias prefixes', () => {
   assert.deepEqual(getSqlCompletionContext('SELECT * FROM pub', 17), {

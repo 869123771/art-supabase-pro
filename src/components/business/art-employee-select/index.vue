@@ -5,8 +5,8 @@
     :selected-data="selectedData"
     :api-fn="fetchEmployees"
     :columns="columns"
-    :placeholder="resolvedTenantId ? placeholder : '请先选择目标租户'"
-    :disabled="disabled || !resolvedTenantId"
+    :placeholder="canFetchEmployees ? placeholder : '请先选择目标租户'"
+    :disabled="disabled || !canFetchEmployees"
     :clearable="clearable"
     row-key="id"
     :label-key="getEmployeeLabel"
@@ -50,7 +50,7 @@
     DataSelectKey,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     fetchEmployeeSelectorList,
     type EmployeeIntegrationItem
@@ -64,6 +64,8 @@
     modelValues?: string[]
     selectedData?: EmployeeIntegrationItem[]
     tenantId?: string
+    /** Allow the platform super administrator to search across tenants in the all-tenant scope. */
+    allowAllTenantRead?: boolean
     title?: string
     subtitle?: string
     placeholder?: string
@@ -81,6 +83,7 @@
     modelValues: () => [],
     selectedData: () => [],
     tenantId: '',
+    allowAllTenantRead: false,
     title: '选择员工',
     subtitle: '按姓名、工号、组织或岗位检索员工档案',
     placeholder: '请选择员工',
@@ -108,6 +111,13 @@
   )
   const { effectiveTenantId } = storeToRefs(tenantScopeStore)
   const resolvedTenantId = computed(() => props.tenantId || effectiveTenantId.value || '')
+  const canFetchEmployees = computed(
+    () =>
+      Boolean(resolvedTenantId.value) ||
+      (props.allowAllTenantRead &&
+        tenantScopeStore.isPlatformScope &&
+        tenantScopeStore.isAllTenants)
+  )
   const employeeMaintenanceActions = [
     {
       label: '去维护员工花名册',
@@ -190,7 +200,7 @@
   }
 
   const fetchEmployees = async (params: DataSelectFetchParams) => {
-    if (!resolvedTenantId.value) return { data: [], total: 0 }
+    if (!canFetchEmployees.value) return { data: [], total: 0 }
     const from = Math.max((params.page - 1) * params.pageSize, 0)
     const result = await (props.apiFn ?? fetchEmployeeSelectorList)({
       tenantId: resolvedTenantId.value,

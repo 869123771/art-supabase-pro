@@ -6,6 +6,27 @@ interface ErrorDetails {
 }
 
 const DEFAULT_ERROR_MESSAGE = '操作未完成，请稍后重试'
+const USER_NOTIFIED = Symbol('user-notified')
+
+type UserNotifiedError = Error & { [USER_NOTIFIED]?: true }
+
+/** 标记共享响应层已经提示过的异常，避免上层再弹一次相同错误。 */
+export function markErrorAsUserNotified(error: Error): Error {
+  const notifiedError = error as UserNotifiedError
+  notifiedError[USER_NOTIFIED] = true
+  return error
+}
+
+export function wasErrorUserNotified(error: unknown): boolean {
+  const seen = new Set<unknown>()
+  let current = error
+  while (current instanceof Error && !seen.has(current)) {
+    if ((current as UserNotifiedError)[USER_NOTIFIED] === true) return true
+    seen.add(current)
+    current = current.cause
+  }
+  return false
+}
 
 const ERROR_CODE_MESSAGES: Record<string, string> = {
   invalid_credentials: '邮箱或密码错误，请重新输入',

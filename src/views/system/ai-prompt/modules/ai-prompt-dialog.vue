@@ -77,6 +77,8 @@
 </template>
 
 <script setup lang="ts">
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import type { FormRules } from 'element-plus'
   import type { ComputedRef } from 'vue'
@@ -296,8 +298,9 @@
 
   async function handleSubmit(): Promise<boolean> {
     try {
-      await formRef.value?.validate()
-    } catch {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+    } catch (error) {
+      notifyFriendlyError(error, '表单校验未完成，请稍后重试', 'warning')
       return false
     }
 
@@ -307,7 +310,8 @@
       else await createAiPromptDraft(payload)
       emit('success')
       return true
-    } catch {
+    } catch (error) {
+      notifyFriendlyError(error, 'Prompt 草稿保存失败，请稍后重试', 'warning')
       return false
     }
   }

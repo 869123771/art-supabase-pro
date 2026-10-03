@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-Dycu6R4Q.js";import{t as r}from"./domain-command-screen-BcIVU4u1.js";var i=e({name:`AiSafetyCommand`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`ai-safety`}))}});export{i as default};

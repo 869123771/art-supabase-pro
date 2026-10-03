@@ -65,6 +65,11 @@
   padding-top: var(--art-space-4);
 }
 
+// 在占满工作区的列表里，让空状态位于剩余表格区域中央。
+:deep(.art-table-card > .el-card__body > .art-table.is-empty > .el-table) {
+  min-height: 100%;
+}
+
 :deep(.art-table-card:not(.has-table-header) .art-table > .el-table) {
   margin-top: 0;
 }
@@ -118,15 +123,15 @@
     flex: 1;
     min-width: 0;
   }
+}
 
-  :global([data-box-mode='border-mode']) & {
-    border-color: color-mix(in srgb, var(--theme-color) 32%, var(--el-border-color-lighter));
-    box-shadow: inset 3px 0 0 var(--theme-color);
-  }
+:global(html[data-box-mode='border-mode'] .art-table-query__command-bar.has-selection) {
+  border-color: color-mix(in srgb, var(--theme-color) 32%, var(--el-border-color-lighter));
+  box-shadow: inset 3px 0 0 var(--theme-color);
+}
 
-  :global([data-box-mode='shadow-mode']) & {
-    box-shadow: 0 7px 18px color-mix(in srgb, var(--theme-color) 14%, transparent);
-  }
+:global(html[data-box-mode='shadow-mode'] .art-table-query__command-bar.has-selection) {
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--theme-color) 14%, transparent);
 }
 
 .art-table-query__selection-bar {

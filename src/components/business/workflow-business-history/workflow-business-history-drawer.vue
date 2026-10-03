@@ -14,6 +14,7 @@
       v-if="target.businessType && target.businessId"
       :business-type="target.businessType"
       :business-id="target.businessId"
+      :min-height="180"
     />
   </ArtDrawer>
 </template>

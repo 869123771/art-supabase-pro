@@ -148,6 +148,7 @@
           subtitle="展示 search、reset、refresh、分页、header action、缓存命中和行拖拽等回调。"
           :empty="!eventLogs.length"
           empty-title="暂无事件"
+          empty-description="操作上方表格后，相关事件会显示在这里。"
           min-height="420px"
         >
           <template #actions>
@@ -186,7 +187,7 @@
     ArtTableQueryTableProps
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import type { ApiResponse } from '@/utils/table/tableCache'
+  import type { ApiResponse } from '@/utils/table/table-cache'
 
   defineOptions({ name: 'TableQueryWidget' })
 

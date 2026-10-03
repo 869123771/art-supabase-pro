@@ -21,24 +21,6 @@
         </el-segmented>
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2">
-        <el-select
-          v-if="needsUploadTenantChoice"
-          v-model="selectedUploadTenantId"
-          filterable
-          clearable
-          :loading="tenantScopeStore.loading"
-          :no-data-text="tenantScopeStore.loadError || '暂无可选租户'"
-          placeholder="先选择上传租户"
-          aria-label="资源所属租户"
-          class="w-full md:w-[220px]"
-        >
-          <el-option
-            v-for="tenant in uploadTenantOptions"
-            :key="tenant.id"
-            :label="tenant.tenantName"
-            :value="tenant.id"
-          />
-        </el-select>
         <el-input
           v-model="queryParams.originName"
           placeholder="搜索此分类下的资源"
@@ -219,7 +201,7 @@
                 @change="handleFile($event, btn)"
               />
               <ArtTooltip
-                :content="activeUploadTenantId ? btn.label : '请先选择上传租户'"
+                :content="activeUploadTenantId ? btn.label : '当前账号缺少租户信息'"
                 placement="top"
                 :show-after="300"
                 :offset="10"
@@ -257,9 +239,9 @@
   import { ElMessage, ElScrollbar } from 'element-plus'
   import { deleteResource, fetchGetResourceList, renameResource } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
-  import { useTenantScopeStore } from '@/store/modules/tenantScope'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
-  import { pageInfoHandler } from '@utils/table/tableUtils'
+  import { pageInfoHandler } from '@utils/table/table-utils'
   import { openFilePreview } from '@/hooks/core/useFilePreview'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatSize } from '@/utils/file'
@@ -280,7 +262,6 @@
     showCopyActions: false,
     showPasteUpload: false,
     showRenameAction: false,
-    includePlatformTenant: false,
     pageSize: 30,
     dbClickConfirm: false
   })
@@ -295,27 +276,15 @@
   const resourceStore = useResourceStore()
   const tenantScopeStore = useTenantScopeStore()
   const userStore = useUserStore()
-  const selectedUploadTenantId = ref('')
-  const uploadTenantOptions = computed(() => {
-    const platformTenantId = userStore.getUserInfo.tenantId
-    if (!props.includePlatformTenant || !userStore.isPlatformSuper || !platformTenantId) {
-      return tenantScopeStore.tenantOptions
-    }
-    return [
-      { id: platformTenantId, tenantName: '平台租户（超级管理员）' },
-      ...tenantScopeStore.tenantOptions
-    ]
-  })
-  const needsUploadTenantChoice = computed(
-    () => tenantScopeStore.isAllTenants && !props.resourceTenantId
-  )
   const activeUploadTenantId = computed(
     () =>
       props.resourceTenantId ||
-      (tenantScopeStore.isAllTenants
-        ? selectedUploadTenantId.value
-        : tenantScopeStore.effectiveTenantId) ||
+      tenantScopeStore.effectiveTenantId ||
+      userStore.getUserInfo.tenantId ||
       ''
+  )
+  const readTenantId = computed(
+    () => props.resourceTenantId || tenantScopeStore.effectiveTenantId || undefined
   )
   const { confirmDelete, promptText } = useArtFeedback()
   interface MasterDataDeleteGuardExpose {
@@ -1029,7 +998,7 @@
     btn: Api.DataCenter.Resources.Button
   ): Promise<void> {
     if (!btn.upload || uploading.value) return
-    if (!activeUploadTenantId.value) throw new Error('请先选择资源所属租户')
+    if (!activeUploadTenantId.value) throw new Error('当前账号缺少租户信息，请刷新后重试')
     prepareUploadProgress(files)
     uploading.value = true
     try {
@@ -1137,7 +1106,7 @@
       const params = {
         originName,
         suffix,
-        tenantId: activeUploadTenantId.value || undefined,
+        tenantId: readTenantId.value,
         from,
         to
       }
@@ -1154,16 +1123,13 @@
     }
   }
 
-  watch(activeUploadTenantId, () => {
+  watch(readTenantId, () => {
     selectedKeys.value = []
     queryParams.value.page = 1
     void handleGetResourceList()
   })
 
-  onMounted(() => {
-    if (tenantScopeStore.isAllTenants) void tenantScopeStore.loadTenantOptions()
-    void handleGetResourceList()
-  })
+  onMounted(() => void handleGetResourceList())
 </script>
 
 <style scoped lang="scss">

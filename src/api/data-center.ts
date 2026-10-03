@@ -24,46 +24,65 @@ const dictTypeTreeUtils = new TreeUtils({
 })
 
 interface MetadataPayload {
-  schemas?: string[]
-  columns?: MetadataColumnRow[]
+  schemas: string[]
+  columns: MetadataColumnRow[]
   functions?: MetadataFunctionRow[]
 }
 
 interface MetadataColumnRow {
-  tableSchema?: string
-  tableName?: string
-  columnName?: string
-  dataType?: string
-  isNullable?: string
-  ordinalPosition?: number
+  tableSchema: string
+  tableName: string
+  columnName: string
+  dataType: string
+  isNullable: string
+  ordinalPosition: number
 }
 
 interface MetadataFunctionRow {
-  routineSchema?: string
-  routineName?: string
-  returnType?: string
+  routineSchema: string
+  routineName: string
+  returnType: string
 }
 
-interface ForeignKeyRow {
-  sourceSchema?: string
-  source_schema?: string
-  sourceTable?: string
-  source_table?: string
-  sourceColumn?: string
-  source_column?: string
-  targetSchema?: string
-  target_schema?: string
-  targetTable?: string
-  target_table?: string
-  targetColumn?: string
-  target_column?: string
-  constraintName?: string
-  constraint_name?: string
+function isMetadataColumnRow(value: unknown): value is MetadataColumnRow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  return (
+    typeof row.tableSchema === 'string' &&
+    typeof row.tableName === 'string' &&
+    typeof row.columnName === 'string' &&
+    typeof row.dataType === 'string' &&
+    typeof row.isNullable === 'string' &&
+    typeof row.ordinalPosition === 'number'
+  )
+}
+
+function isMetadataFunctionRow(value: unknown): value is MetadataFunctionRow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  return (
+    typeof row.routineSchema === 'string' &&
+    typeof row.routineName === 'string' &&
+    typeof row.returnType === 'string'
+  )
+}
+
+function isMetadataPayload(payload: unknown): payload is MetadataPayload {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false
+  const value = payload as Record<string, unknown>
+  return (
+    Array.isArray(value.schemas) &&
+    value.schemas.every((schema) => typeof schema === 'string') &&
+    Array.isArray(value.columns) &&
+    value.columns.every(isMetadataColumnRow) &&
+    (value.functions === undefined ||
+      (Array.isArray(value.functions) && value.functions.every(isMetadataFunctionRow)))
+  )
 }
 
 function normalizeMetadataPayload(data: unknown): MetadataPayload | null {
   const payload = Array.isArray(data) ? data[0] : data
-  return payload && typeof payload === 'object' ? (payload as MetadataPayload) : null
+  return isMetadataPayload(payload) ? payload : null
 }
 
 // 字典目录与类型列表
@@ -436,87 +455,62 @@ export async function deleteResource(params: Api.DataCenter.Resources.ResourceLi
  * 这样前端才能做 JOIN 自动推断。
  */
 export async function fetchDatabaseMetadata(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
-  try {
-    const [{ data, error }, foreignKeys] = await Promise.all([
-      invokeSupabaseFunctionWithSessionRecovery('execute-sql-with-columns', {
-        body: { action: 'metadata' }
-      }),
-      fetchForeignKeysMetadata()
-    ])
+  const [{ data, error }, foreignKeys] = await Promise.all([
+    invokeSupabaseFunctionWithSessionRecovery('execute-sql-with-columns', {
+      body: { action: 'metadata' }
+    }),
+    fetchForeignKeysMetadata()
+  ])
 
-    if (error || !data) {
-      const fallback = await fetchMetadataFromInformationSchema()
-      return { ...fallback, foreignKeys }
+  if (error) throw new Error('数据库结构加载失败，请稍后重试', { cause: error })
+  if (!data) throw new Error('数据库结构服务未返回数据，请稍后重试')
+
+  const payload = normalizeMetadataPayload(data)
+  if (!payload) throw new Error('数据库结构响应格式异常，请联系管理员')
+  const schemas = payload.schemas
+
+  const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = payload.columns.map((c) => ({
+    tableSchema: c.tableSchema,
+    tableName: c.tableName,
+    columnName: c.columnName,
+    dataType: c.dataType,
+    isNullable: c.isNullable,
+    ordinalPosition: c.ordinalPosition
+  }))
+
+  // 以后端 columns 为准重建 table 结构，保证表和列始终同步。
+  const tablesMap = new Map<string, Api.DataCenter.SqlConsole.TableMetadata>()
+  columns.forEach((col) => {
+    const key = `${col.tableSchema}.${col.tableName}`
+    if (!tablesMap.has(key)) {
+      tablesMap.set(key, {
+        tableSchema: col.tableSchema,
+        tableName: col.tableName,
+        columns: []
+      })
     }
-
-    const payload = normalizeMetadataPayload(data)
-    const schemas: string[] = payload?.schemas ?? []
-
-    const columns: Api.DataCenter.SqlConsole.ColumnMetadata[] = (payload?.columns ?? []).map(
-      (c) => ({
-        tableSchema: c.tableSchema || '',
-        tableName: c.tableName || '',
-        columnName: c.columnName || '',
-        dataType: c.dataType || '',
-        isNullable: c.isNullable || 'YES',
-        ordinalPosition: c.ordinalPosition || 0
-      })
-    )
-
-    // 以后端 columns 为准重建 table 结构，保证表和列始终同步。
-    const tablesMap = new Map<string, Api.DataCenter.SqlConsole.TableMetadata>()
-    columns.forEach((col) => {
-      const key = `${col.tableSchema}.${col.tableName}`
-      if (!tablesMap.has(key)) {
-        tablesMap.set(key, {
-          tableSchema: col.tableSchema,
-          tableName: col.tableName,
-          columns: []
-        })
-      }
-      tablesMap.get(key)!.columns.push({
-        name: col.columnName,
-        dataType: col.dataType,
-        isNullable: col.isNullable === 'YES'
-      })
+    tablesMap.get(key)!.columns.push({
+      name: col.columnName,
+      dataType: col.dataType,
+      isNullable: col.isNullable === 'YES'
     })
-    const tables: Api.DataCenter.SqlConsole.TableMetadata[] = Array.from(tablesMap.values())
+  })
+  const tables: Api.DataCenter.SqlConsole.TableMetadata[] = Array.from(tablesMap.values())
 
-    const functions: Api.DataCenter.SqlConsole.FunctionMetadata[] = (payload?.functions ?? []).map(
-      (f) => ({
-        routineSchema: f.routineSchema || '',
-        routineName: f.routineName || '',
-        returnType: f.returnType || ''
-      })
-    )
+  const functions: Api.DataCenter.SqlConsole.FunctionMetadata[] = (payload.functions ?? []).map(
+    (f) => ({
+      routineSchema: f.routineSchema,
+      routineName: f.routineName,
+      returnType: f.returnType
+    })
+  )
 
-    return {
-      schemas,
-      columns,
-      tables,
-      functions,
-      foreignKeys
-    }
-  } catch (error) {
-    console.error('Failed to fetch database metadata:', error)
-    return {
-      schemas: ['public'],
-      columns: [],
-      tables: [],
-      functions: [],
-      foreignKeys: []
-    }
-  }
-}
-
-// RPC 不可用时的兜底返回，至少不让前端提示链路崩掉。
-async function fetchMetadataFromInformationSchema(): Promise<Api.DataCenter.SqlConsole.DatabaseMetadata> {
   return {
-    schemas: ['public'],
-    columns: [],
-    tables: [],
-    functions: [],
-    foreignKeys: []
+    schemas,
+    columns,
+    tables,
+    functions,
+    foreignKeys
   }
 }
 
@@ -524,40 +518,57 @@ async function fetchMetadataFromInformationSchema(): Promise<Api.DataCenter.SqlC
 async function fetchForeignKeysMetadata(): Promise<Api.DataCenter.SqlConsole.ForeignKeyMetadata[]> {
   const relationQuery = `
     SELECT
-      tc.table_schema AS source_schema,
-      tc.table_name AS source_table,
-      kcu.column_name AS source_column,
-      ccu.table_schema AS target_schema,
-      ccu.table_name AS target_table,
-      ccu.column_name AS target_column,
-      tc.constraint_name
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-      ON tc.constraint_name = kcu.constraint_name
-      AND tc.table_schema = kcu.table_schema
-    JOIN information_schema.constraint_column_usage ccu
-      ON ccu.constraint_name = tc.constraint_name
-      AND ccu.constraint_schema = tc.constraint_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY'
-      AND tc.table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
-    ORDER BY tc.table_schema, tc.table_name, tc.constraint_name
+      source_ns.nspname AS source_schema,
+      source_table.relname AS source_table,
+      source_column.attname AS source_column,
+      target_ns.nspname AS target_schema,
+      target_table.relname AS target_table,
+      target_column.attname AS target_column,
+      relation.conname AS constraint_name
+    FROM pg_catalog.pg_constraint relation
+    JOIN pg_catalog.pg_class source_table ON source_table.oid = relation.conrelid
+    JOIN pg_catalog.pg_namespace source_ns ON source_ns.oid = source_table.relnamespace
+    JOIN pg_catalog.pg_class target_table ON target_table.oid = relation.confrelid
+    JOIN pg_catalog.pg_namespace target_ns ON target_ns.oid = target_table.relnamespace
+    JOIN LATERAL unnest(relation.conkey, relation.confkey)
+      AS column_pair(source_attnum, target_attnum) ON true
+    JOIN pg_catalog.pg_attribute source_column
+      ON source_column.attrelid = source_table.oid
+      AND source_column.attnum = column_pair.source_attnum
+    JOIN pg_catalog.pg_attribute target_column
+      ON target_column.attrelid = target_table.oid
+      AND target_column.attnum = column_pair.target_attnum
+    WHERE relation.contype = 'f'
+      AND source_ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+    ORDER BY source_ns.nspname, source_table.relname, relation.conname
   `
 
   const { data, error } = await executeSql({ query: relationQuery })
-  const rows = data?.rows as ForeignKeyRow[] | undefined
-  if (error || !rows) {
-    return []
+  const rows = data?.rows
+  if (error) throw new Error('数据库关联关系加载失败，请稍后重试', { cause: error })
+  if (data?.status !== 'ok' || !Array.isArray(rows)) {
+    throw new Error('数据库关联关系服务未返回有效数据，请稍后重试')
   }
 
-  return rows.map((item) => ({
-    sourceSchema: item.sourceSchema || item.source_schema || '',
-    sourceTable: item.sourceTable || item.source_table || '',
-    sourceColumn: item.sourceColumn || item.source_column || '',
-    targetSchema: item.targetSchema || item.target_schema || '',
-    targetTable: item.targetTable || item.target_table || '',
-    targetColumn: item.targetColumn || item.target_column || '',
-    constraintName: item.constraintName || item.constraint_name || ''
-  }))
+  return rows.map((item) => {
+    const readField = (camelCase: string, snakeCase: string): string => {
+      const value = item[camelCase] ?? item[snakeCase]
+      if (typeof value !== 'string' || !value) {
+        throw new Error('数据库关联关系响应格式异常，请联系管理员')
+      }
+      return value
+    }
+
+    return {
+      sourceSchema: readField('sourceSchema', 'source_schema'),
+      sourceTable: readField('sourceTable', 'source_table'),
+      sourceColumn: readField('sourceColumn', 'source_column'),
+      targetSchema: readField('targetSchema', 'target_schema'),
+      targetTable: readField('targetTable', 'target_table'),
+      targetColumn: readField('targetColumn', 'target_column'),
+      constraintName: readField('constraintName', 'constraint_name')
+    }
+  })
 }
 
 // SQL 执行入口，调用现有 Edge Function 并保留原始错误给编辑器做定位。

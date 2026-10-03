@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
   import { prepareFeishuQrLogin } from '@/api/auth'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
   interface FeishuQrInstance {
     matchOrigin: (origin: string) => boolean
@@ -162,8 +163,7 @@
       status.value = 'ready'
     } catch (error) {
       if (disposed || currentGeneration !== generation) return
-      errorMessage.value =
-        error instanceof Error && error.message ? error.message : '飞书二维码加载失败，请稍后重试'
+      errorMessage.value = getFriendlySupabaseErrorMessage(error, '飞书二维码加载失败，请稍后重试')
       status.value = 'error'
     }
   }
