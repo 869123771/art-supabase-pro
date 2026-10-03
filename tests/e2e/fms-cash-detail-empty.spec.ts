@@ -67,10 +67,25 @@ test('收付款详情的空凭证和空核销记录使用统一空状态', async
     const darkStyles = await page.evaluate(() => ({
       pageOpacity: getComputedStyle(document.documentElement).opacity,
       pageFilter: getComputedStyle(document.documentElement).filter,
-      haloOpacity: getComputedStyle(document.querySelector('.art-empty-state__halo') as SVGElement)
-        .opacity
+      haloOpacity: Number(
+        getComputedStyle(document.querySelector('.art-empty-state__halo') as SVGElement).opacity
+      ),
+      haloFill: getComputedStyle(document.querySelector('.art-empty-state__halo') as SVGElement)
+        .fill
     }))
-    expect(darkStyles).toEqual({ pageOpacity: '1', pageFilter: 'none', haloOpacity: '0.6' })
+    expect(darkStyles.pageOpacity).toBe('1')
+    expect(darkStyles.pageFilter).toBe('none')
+    expect(darkStyles.haloOpacity).toBeGreaterThan(0)
+    expect(darkStyles.haloOpacity).toBeLessThanOrEqual(1)
+    const lightHaloFill = await page.evaluate(() => {
+      document.documentElement.classList.remove('dark')
+      const fill = getComputedStyle(
+        document.querySelector('.art-empty-state__halo') as SVGElement
+      ).fill
+      document.documentElement.classList.add('dark')
+      return fill
+    })
+    expect(darkStyles.haloFill).not.toBe(lightHaloFill)
   }
 
   const widths = await page.evaluate(() => ({

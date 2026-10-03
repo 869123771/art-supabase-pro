@@ -1,4 +1,3 @@
-import http from '@/utils/http'
 import TreeUtils, { type TreeNode } from '@/utils/tree'
 
 const regionTreeUtils = new TreeUtils({ childrenKey: 'children' })
@@ -16,13 +15,10 @@ export async function fetchRegionOptions(): Promise<RegionOption[]> {
   if (regionOptionsCache) return regionOptionsCache
   regionOptionsPromise ??= (async () => {
     try {
-      const response = await http.get<unknown>({
-        url: REGION_SOURCE_URL,
-        skipAuth: true,
-        skipResponseWrapper: true,
-        showErrorMessage: false
-      })
-      regionOptionsCache = regionTreeUtils.normalizeTreeData<RegionOption>(response)
+      const response = await fetch(REGION_SOURCE_URL)
+      if (!response.ok) throw new Error(`行政区划资源请求失败 (${response.status})`)
+      const data: unknown = await response.json()
+      regionOptionsCache = regionTreeUtils.normalizeTreeData<RegionOption>(data)
       return regionOptionsCache
     } catch (error) {
       throw new Error('行政区划数据加载失败，请稍后重试', { cause: error })
