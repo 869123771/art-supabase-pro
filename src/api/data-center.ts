@@ -86,7 +86,7 @@ function normalizeMetadataPayload(data: unknown): MetadataPayload | null {
 }
 
 // 字典目录与类型列表
-export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTypeItem> = {}) {
+export async function fetchDictionaryTypeList(params: Partial<Api.DataCenter.DictTypeItem> = {}) {
   const { name } = params
   const specs = [{ col: 'name', op: 'ilike', val: name ? `%${name}%` : undefined }]
 
@@ -101,7 +101,7 @@ export async function fetchGetDictTypeList(params: Partial<Api.DataCenter.DictTy
 }
 
 /** 获取可配置为级联上级的启用字典类型。 */
-export async function fetchGetDictionaryTypeOptions(params: { excludeId?: string } = {}) {
+export async function fetchDictionaryTypeOptions(params: { excludeId?: string } = {}) {
   let query = supabase
     .from('sys_dict_type')
     .select('id, name, code, cascade_parent_type_id')
@@ -120,7 +120,7 @@ export async function fetchGetDictionaryTypeOptions(params: { excludeId?: string
  * 获取可作为上级节点的字典目录树。
  * 编辑目录时排除当前目录及其后代，避免形成循环层级。
  */
-export async function fetchGetDictDirectoryTree(params: { excludeId?: string } = {}) {
+export async function fetchDictionaryDirectoryTree(params: { excludeId?: string } = {}) {
   const response = await responseHandle<Api.DataCenter.DictTypeItem[]>(
     () =>
       supabase
@@ -200,7 +200,7 @@ export async function saveDictTypeTreeOrder(
 }
 
 // 根据类型 ID 查询字典项
-export async function fetchGetDictListByTypeId(
+export async function fetchDictionaryListByTypeId(
   params: Partial<Api.DataCenter.DictListItem> &
     Api.Common.CommonSearchParams & { recordId?: string }
 ) {
@@ -233,7 +233,7 @@ export async function fetchDictTypeIdByDictionaryId(id: string): Promise<string 
 }
 
 // 字典项列表
-export async function fetchGetDictList(): Promise<QueryResult<DictionaryWithType[]>> {
+export async function fetchDictionaryList(): Promise<QueryResult<DictionaryWithType[]>> {
   return await fetchAllRangePages<DictionaryWithType>(
     ({ from, to }) => {
       const query = supabase
@@ -271,7 +271,7 @@ export async function fetchGetDictList(): Promise<QueryResult<DictionaryWithType
 }
 
 /** 按字典类型编码精确加载启用项，供业务页面按需补齐持久化字典缓存。 */
-export async function fetchGetDictListByTypeCode(
+export async function fetchDictionaryListByTypeCode(
   dictCode: string
 ): Promise<QueryResult<DictionaryWithType[]>> {
   return await responseHandle<DictionaryWithType[]>(
@@ -362,7 +362,7 @@ export async function editDict(params: Api.DataCenter.DictListItem) {
 }
 
 // 资源列表
-export async function fetchGetResourceList(
+export async function fetchResourceList(
   params: Api.DataCenter.Resources.ResourceSearchParams & { tenantId?: string }
 ) {
   const { originName = '', suffix = '', tenantId, from = 0, to = 9 } = params

@@ -22,9 +22,9 @@
       </ElResult>
 
       <FileViewer
-        v-else-if="preview.file?.url && viewerOptions"
+        v-else-if="preview.file?.url && themedViewerOptions"
         :url="preview.file.url"
-        :options="viewerOptions"
+        :options="themedViewerOptions"
       />
       <div v-else-if="preview.loading" class="art-file-viewer-page__loading" role="status">
         正在准备文件预览…
@@ -41,6 +41,7 @@
   import { getFileExtension } from '@/utils/file'
   import { getFilePreviewTarget, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
   import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
+  import { useSettingStore } from '@/store/modules/setting'
 
   defineOptions({ name: 'ArtFileViewerPage' })
 
@@ -70,6 +71,7 @@
   ])
 
   const route = useRoute()
+  const settingStore = useSettingStore()
   const { brandName } = useWebsiteConfig()
   const preview = reactive<PreviewState>({
     file: undefined,
@@ -81,7 +83,6 @@
 
   const commonViewerOptions: FileViewerOptions = {
     rendererMode: 'replace',
-    theme: 'system',
     toolbar: {
       position: 'bottom-right',
       zoom: true
@@ -90,6 +91,11 @@
   // The image package narrows its handler to HTMLDivElement; the Vue wrapper declares HTMLElement.
   const imageRenderers = [imageRenderer] as unknown as FileViewerOptions['renderers']
   const viewerOptions = shallowRef<FileViewerOptions | null>(null)
+  const themedViewerOptions = computed<FileViewerOptions | null>(() =>
+    viewerOptions.value
+      ? { ...viewerOptions.value, theme: settingStore.isDark ? 'dark' : 'light' }
+      : null
+  )
   let previewVersion = 0
 
   async function loadFullRenderer(version = previewVersion): Promise<void> {

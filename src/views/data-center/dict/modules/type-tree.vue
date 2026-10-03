@@ -205,7 +205,7 @@
   import TreeUtils, { TreeDataError } from '@/utils/tree'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
-  import { deleteDictType, fetchGetDictTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
+  import { deleteDictType, fetchDictionaryTypeList, saveDictTypeTreeOrder } from '@/api/data-center'
   import DictTypeDialog from './dict-type-dialog.vue'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
@@ -871,7 +871,7 @@
     const currentKey = treeRef.value?.getCurrentKey()
     Object.assign(tree, { loading: true, error: '' })
     try {
-      const { data = [], error } = await fetchGetDictTypeList()
+      const { data = [], error } = await fetchDictionaryTypeList()
       if (sequence !== loadSequence) return
       if (error) throw error
       tree.data = treeUtils.listToTree(

@@ -130,8 +130,8 @@
     fetchDocumentNumberRuleStats,
     fetchDocumentNumberSceneList
   } from '@/api/document-number'
-  import { fetchGetEnableMenuList } from '@/api/system-manage'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { fetchMenuCatalog } from '@/api/system-manage'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -484,7 +484,7 @@
 
   const loadTenantOptions = async (): Promise<void> => {
     if (!isPlatformSuper.value) return
-    const { data } = await fetchGetEnableTenantList()
+    const { data } = await fetchEnabledTenantList()
     tenantOptions.value = (data ?? []).map((tenant) => ({
       label: `${tenant.tenantName}（${tenant.tenantCode}）`,
       value: String(tenant.id)
@@ -492,7 +492,7 @@
   }
 
   const loadMenuTree = async (): Promise<void> => {
-    const { data } = await fetchGetEnableMenuList()
+    const { data } = await fetchMenuCatalog()
     menuTree.value = treeUtils.listToTree((data ?? []).filter((menu) => menu.type !== 'button'))
   }
 

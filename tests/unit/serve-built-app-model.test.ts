@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { resolve } from 'node:path'
+import { parse, resolve } from 'node:path'
 import test from 'node:test'
 import {
   extractBuildBase,
@@ -39,7 +39,16 @@ test('path and asset guards reject traversal and normalize separators', () => {
   const root = resolve('docs')
   assert.equal(isPathWithinRoot(root, resolve(root, 'assets/app.js')), true)
   assert.equal(isPathWithinRoot(root, resolve(root, '../secret.txt')), false)
+  assert.equal(isPathWithinRoot(root, root), true)
+  assert.equal(isPathWithinRoot(root, resolve(root, '..notes')), true)
+  assert.equal(isPathWithinRoot(root, resolve(root, '../docs-other/app.js')), false)
   assert.equal(isAssetPath('assets/app.js'), true)
   assert.equal(isAssetPath('assets\\app.js'), true)
   assert.equal(isAssetPath('index.html'), false)
+})
+
+test('path guard rejects a different Windows drive', { skip: process.platform !== 'win32' }, () => {
+  const root = resolve('docs')
+  const otherDrive = parse(root).root.toUpperCase().startsWith('C:') ? 'D:' : 'C:'
+  assert.equal(isPathWithinRoot(root, `${otherDrive}\\outside\\app.js`), false)
 })

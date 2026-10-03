@@ -350,7 +350,7 @@
     fetchFieldPermissionResources,
     saveFieldPermissions
   } from '@/api/field-permission'
-  import { fetchGetRoleList, fetchGetUserList } from '@/api/system-manage'
+  import { fetchRoleList, fetchUserList } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
@@ -692,8 +692,8 @@
 
       const [resourceResult, roleResult, userResult] = await Promise.all([
         fetchFieldPermissionResources(),
-        fetchGetRoleList({ tenantId, enabled: true, from: 0, to: 999 }),
-        fetchGetUserList({ tenantId, status: '1', from: 0, to: 999 })
+        fetchRoleList({ tenantId, enabled: true, from: 0, to: 999 }),
+        fetchUserList({ tenantId, status: '1', from: 0, to: 999 })
       ])
 
       const catalogError = resourceResult.error ?? roleResult.error ?? userResult.error

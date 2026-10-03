@@ -7,6 +7,7 @@ import { toNextDayStartUTC, toStartOfDayUTC } from '@/utils/time/format'
 import { omit } from 'lodash-es'
 import TreeUtils from '@/utils/tree'
 import { resolveTenantScopeId } from '@/utils/tenant-scope-context'
+import { mapWithConcurrency } from '@/utils/async'
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
 const organizationTreeUtils = new TreeUtils({
@@ -53,7 +54,7 @@ interface UserEmployeeReferencePayload {
 }
 
 // 获取用户列表
-export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
+export async function fetchUserList(params: Api.SystemManage.UserSearchParams) {
   const {
     id,
     tenantId,
@@ -159,7 +160,7 @@ export async function fetchGetUserList(params: Api.SystemManage.UserSearchParams
   return response
 }
 
-export async function fetchGetOrganizationList(
+export async function fetchOrganizationList(
   params: Api.SystemManage.OrganizationSearchParams = {}
 ) {
   const { keyword, tenantId, organizationType, status, recordId } = params
@@ -184,7 +185,7 @@ export async function fetchGetOrganizationList(
   }
 }
 
-export async function fetchGetOrganizationDetail(id: string) {
+export async function fetchOrganizationDetail(id: string) {
   return await responseHandle<Api.SystemManage.OrganizationListItem | null>(
     () =>
       supabase
@@ -198,10 +199,10 @@ export async function fetchGetOrganizationDetail(id: string) {
   )
 }
 
-export async function fetchGetOrganizationTree(
+export async function fetchOrganizationTree(
   params: Api.SystemManage.OrganizationSearchParams = {}
 ) {
-  const response = await fetchGetOrganizationList(params)
+  const response = await fetchOrganizationList(params)
   const records = response.data ?? []
   return {
     ...response,
@@ -213,7 +214,7 @@ export async function fetchGetOrganizationTree(
 }
 
 /** Organization selectors need hierarchy and identity, not the management page's aggregate counts. */
-export async function fetchGetOrganizationOptionsTree(
+export async function fetchOrganizationOptionsTree(
   params: Pick<Api.SystemManage.OrganizationSearchParams, 'tenantId' | 'status'> = {},
   options: { showErrorMessage?: boolean } = {}
 ) {
@@ -241,7 +242,7 @@ export async function fetchGetOrganizationOptionsTree(
   }
 }
 
-export async function fetchGetEnableOrganizationTree(
+export async function fetchEnabledOrganizationTree(
   params: {
     tenantId?: string
     excludeId?: string
@@ -251,7 +252,7 @@ export async function fetchGetEnableOrganizationTree(
     return { data: [], error: null }
   }
 
-  const response = await fetchGetOrganizationOptionsTree({
+  const response = await fetchOrganizationOptionsTree({
     tenantId: params.tenantId,
     status: '1'
   })
@@ -266,15 +267,15 @@ export async function fetchGetEnableOrganizationTree(
 }
 
 /** Flat enabled organizations for business forms that select a stock owner. */
-export async function fetchGetEnableOrganizationOptionsList(tenantId?: string) {
-  const response = await fetchGetOrganizationOptionsTree({ tenantId, status: '1' })
+export async function fetchEnabledOrganizationOptionsList(tenantId?: string) {
+  const response = await fetchOrganizationOptionsTree({ tenantId, status: '1' })
   return {
     ...response,
     data: organizationTreeUtils.treeToList(response.data ?? [])
   }
 }
 
-export async function fetchGetUserOrganizationTree(params: { tenantId?: string } = {}) {
+export async function fetchUserOrganizationTree(params: { tenantId?: string } = {}) {
   let query = supabase
     .from('mdm_organization')
     .select(
@@ -319,7 +320,7 @@ export async function fetchGetUserOrganizationTree(params: { tenantId?: string }
   }
 }
 
-export async function fetchGetRoleOrganizationTree(params: { tenantId?: string } = {}) {
+export async function fetchRoleOrganizationTree(params: { tenantId?: string } = {}) {
   let query = supabase
     .from('mdm_organization')
     .select(
@@ -363,7 +364,7 @@ export async function fetchGetRoleOrganizationTree(params: { tenantId?: string }
   }
 }
 
-export async function fetchGetEnableOrganizationUserList(params: { tenantId?: string } = {}) {
+export async function fetchEnabledOrganizationUserList(params: { tenantId?: string } = {}) {
   if (!params?.tenantId) {
     return { data: [], error: null }
   }
@@ -624,7 +625,7 @@ export async function assignUserRoles(params: {
 }
 
 // 获取所有用户可分配的角色
-export async function fetchGetEnableRoleList(params: { tenantId?: string } = {}) {
+export async function fetchEnabledRoleList(params: { tenantId?: string } = {}) {
   const { tenantId } = params
 
   if (!tenantId) {
@@ -642,7 +643,7 @@ export async function fetchGetEnableRoleList(params: { tenantId?: string } = {})
 }
 
 // 获取角色列表
-export async function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams) {
+export async function fetchRoleList(params: Api.SystemManage.RoleSearchParams) {
   const {
     tenantId,
     organizationId,
@@ -756,8 +757,8 @@ export async function getCurrentRoleMenus(params: { id: string }) {
   )
 }
 
-// 获取有用的菜单列表
-export async function fetchGetEnableMenuList() {
+// 获取完整菜单目录，供角色授权与业务配置选择使用。
+export async function fetchMenuCatalog() {
   return await fetchAllRangePages<AppRouteRecord>(
     ({ from, to }) =>
       responseHandle<AppRouteRecord[]>(
@@ -816,7 +817,7 @@ async function fetchMenuRows(
 }
 
 // 菜单管理默认只加载一级节点；搜索和定向定位保留全局查询能力。
-export async function fetchGetMenuList(params: MenuListParams, signal?: AbortSignal) {
+export async function fetchMenuList(params: MenuListParams, signal?: AbortSignal) {
   const hasGlobalFilter = Boolean(params.name?.trim() || params.path?.trim() || params.recordId)
   return await fetchMenuRows(
     params,
@@ -829,7 +830,7 @@ export async function fetchGetMenuList(params: MenuListParams, signal?: AbortSig
 }
 
 // 展开树节点时只查询直属子节点。
-export async function fetchGetMenuChildren(parentId: string) {
+export async function fetchMenuChildren(parentId: string) {
   return await fetchMenuRows(
     {},
     {
@@ -840,7 +841,7 @@ export async function fetchGetMenuChildren(parentId: string) {
 }
 
 // 排序、编辑和级联删除等低频操作仍需要完整树，按需加载而不是随页面初始化加载。
-export async function fetchGetAllMenuList() {
+export async function fetchAllMenuList() {
   return await fetchMenuRows({})
 }
 
@@ -864,7 +865,7 @@ async function deleteMenuRows(ids: string[]) {
 }
 
 /*新增菜单*/
-export async function addRMenu(params: AppRouteRecord) {
+export async function addMenu(params: AppRouteRecord) {
   return await responseHandle(() => supabase.from('sys_menu').insert(keysToSnakeDeep(params)), {
     showMessage: true
   })
@@ -886,10 +887,8 @@ export async function editMenu(params: AppRouteRecord) {
 }
 
 export async function saveMenuSort(params: Array<{ id: string; sort: number }>) {
-  const results = await Promise.all(
-    params.map(({ id, ...data }) =>
-      supabase.from('sys_menu').update(keysToSnakeDeep(data), { count: 'exact' }).eq('id', id)
-    )
+  const results = await mapWithConcurrency(params, 3, async ({ id, ...data }) =>
+    supabase.from('sys_menu').update(keysToSnakeDeep(data), { count: 'exact' }).eq('id', id)
   )
 
   const error = results.find((result) => result.error)?.error

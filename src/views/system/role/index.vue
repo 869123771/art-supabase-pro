@@ -103,7 +103,7 @@
   import { useMediaQuery } from '@vueuse/core'
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { deleteRole, fetchGetRoleList, fetchGetRoleOrganizationTree } from '@/api/system-manage'
+  import { deleteRole, fetchRoleList, fetchRoleOrganizationTree } from '@/api/system-manage'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -547,7 +547,7 @@
     const { roleName, roleCode, description, enabled, startTime, endTime } =
       searchParams as RoleSearchParams
     const { from, to } = pageInfoHandler(pagination)
-    return await fetchGetRoleList({
+    return await fetchRoleList({
       tenantId: selectedTenantId.value || undefined,
       organizationIds: selectedOrganizationIds.value,
       organizationUnassigned: selectedOrganizationKey.value === UNASSIGNED_ORGANIZATION_KEY,
@@ -566,7 +566,7 @@
   const loadOrganizationTree = async (): Promise<void> => {
     organizationFilterLoading.value = true
     try {
-      const response = await fetchGetRoleOrganizationTree({
+      const response = await fetchRoleOrganizationTree({
         tenantId: selectedTenantId.value || undefined
       })
       organizationTree.value = response.data ?? []

@@ -9,17 +9,17 @@ const zoneId = '1b36951f-7564-4c4a-a88f-cc2d41645c5e'
 const binId = 'ed276e75-d9d4-4742-a667-d758731d15f8'
 const materialId = 'c08915d0-75c9-43b3-9c7d-359e0009f106'
 const pages = [
-  ['MdmStockMovementType', 'movement-type', 'movement-type', '出入库类型'],
-  ['MdmWarehouseDefinition', 'warehouse-definition', 'warehouse', '仓库定义'],
-  ['MdmSupplyChainCodeRule', 'supply-chain-code-rule', 'configuration', '供应链编码规则'],
-  ['MdmOutboundRule', 'outbound-rule', 'configuration', '出库规则配置'],
-  ['MdmWarehouseZone', 'zone', 'zone', '库区管理'],
-  ['MdmWarehouseBin', 'bin', 'bin', '库位管理'],
-  ['MdmWarehouseBin3d', 'bin-3d', 'bin-3d', '立体库位'],
-  ['MdmInventoryBatch', 'batch', 'batch', '库存批次'],
-  ['MdmInventoryReservation', 'reservation', 'reservation', '库存预留'],
-  ['MdmInventoryPackage', 'package', 'package', '垛包管理'],
-  ['MdmInventorySerial', 'serial', 'serial', '序列号']
+  ['MdmStockMovementType', 'movement-type', '出入库类型'],
+  ['MdmWarehouseDefinition', 'warehouse-definition', '仓库定义'],
+  ['MdmSupplyChainCodeRule', 'supply-chain-code-rule', '供应链编码规则'],
+  ['MdmOutboundRule', 'outbound-rule', '出库规则配置'],
+  ['MdmWarehouseZone', 'zone', '库区管理'],
+  ['MdmWarehouseBin', 'bin', '库位管理'],
+  ['MdmWarehouseBin3d', 'bin-3d', '立体库位'],
+  ['MdmInventoryBatch', 'batch', '库存批次'],
+  ['MdmInventoryReservation', 'reservation', '库存预留'],
+  ['MdmInventoryPackage', 'package', '垛包管理'],
+  ['MdmInventorySerial', 'serial', '序列号']
 ] as const
 
 const meta = (title: string) => ({ title, roles: ['R_SUPER'], is_enable: true, is_hide: false })
@@ -284,12 +284,12 @@ function inventoryMenu() {
         type: 'folder',
         sort: 1,
         meta: meta('库存主数据'),
-        children: pages.map(([name, path, component, title], index) => ({
+        children: pages.map(([name, path, title], index) => ({
           id: `wms-test-${name}`,
           parentId: folderId,
           name,
           path,
-          component: `/mdm/inventory/${component}`,
+          component: `/mdm/inventory-master/${path}`,
           type: 'menu',
           sort: index,
           meta: meta(title),
@@ -678,6 +678,29 @@ async function installFixtures(page: Page): Promise<void> {
   )
 }
 
+async function expectSceneFooterLayout(page: Page): Promise<void> {
+  const [frame, legend, hint] = await Promise.all([
+    page.locator('.scene-frame').boundingBox(),
+    page.locator('.scene-legend').boundingBox(),
+    page.locator('.scene-hint').boundingBox()
+  ])
+  expect(frame).not.toBeNull()
+  expect(legend).not.toBeNull()
+  expect(hint).not.toBeNull()
+  for (const box of [legend!, hint!]) {
+    expect(box.x).toBeGreaterThanOrEqual(frame!.x)
+    expect(box.x + box.width).toBeLessThanOrEqual(frame!.x + frame!.width + 1)
+    expect(box.y).toBeGreaterThanOrEqual(frame!.y)
+    expect(box.y + box.height).toBeLessThanOrEqual(frame!.y + frame!.height + 1)
+  }
+  const separated =
+    legend!.x + legend!.width <= hint!.x ||
+    hint!.x + hint!.width <= legend!.x ||
+    legend!.y + legend!.height <= hint!.y ||
+    hint!.y + hint!.height <= legend!.y
+  expect(separated, '货架图例与操作提示不能重叠').toBe(true)
+}
+
 test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
   test.setTimeout(540_000)
   if (process.env.WMS_E2E_VIEWPORT === '2048') {
@@ -691,7 +714,7 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
   const selectedPages = process.env.WMS_E2E_PAGE
     ? pages.filter(([, path]) => path === process.env.WMS_E2E_PAGE)
     : pages
-  for (const [, path, , title] of selectedPages) {
+  for (const [, path, title] of selectedPages) {
     if (path === 'reservation') {
       await page.route('**/rest/v1/rpc/wms_work_order_options_secure', (route) =>
         route.fulfill({
@@ -746,6 +769,7 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     if (path === 'bin-3d') {
       await expect(page.getByRole('navigation', { name: '货架库区导航' })).toBeVisible()
       await expect(page.locator('canvas.rack-scene__canvas')).toBeVisible()
+      await expectSceneFooterLayout(page)
       const sceneFrame = await page.locator('.scene-frame').boundingBox()
       const sceneCanvas = await page.locator('canvas.rack-scene__canvas').boundingBox()
       expect(sceneFrame).not.toBeNull()
@@ -759,6 +783,9 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
       if ((page.viewportSize()?.width ?? 0) <= 640) {
         await page.locator('canvas.rack-scene__canvas').scrollIntoViewIfNeeded()
         await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-mobile-scene.png') })
+        await page.locator('.scene-footer').scrollIntoViewIfNeeded()
+        await expect(page.locator('.scene-footer')).toBeInViewport({ ratio: 1 })
+        await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-mobile-footer.png') })
       }
       await page.getByRole('button', { name: '间距设置' }).click()
       await page.locator('.el-slider__button-wrapper').first().press('ArrowRight')
@@ -789,6 +816,7 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
         await expect
           .poll(async () => (await detailPanel.boundingBox())?.width ?? 0)
           .toBeGreaterThan(beforeWidth + 40)
+        await expectSceneFooterLayout(page)
         await page.screenshot({ path: join(visualDir, 'mdm-bin-3d-detail-expanded.png') })
         const expandedHandle = await detailSplitter
           .locator('.el-splitter-bar')

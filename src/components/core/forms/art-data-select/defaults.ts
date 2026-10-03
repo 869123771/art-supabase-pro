@@ -24,6 +24,7 @@ export const dataSelectDefaults = {
   showSearch: true,
   clearable: true,
   disabled: false,
+  loading: false,
   reserveSelected: true,
   treeCheckStrictly: true,
   maxTagCount: 2,

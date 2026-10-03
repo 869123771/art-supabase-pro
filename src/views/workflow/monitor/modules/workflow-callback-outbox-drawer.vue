@@ -8,8 +8,28 @@
           <p>审批结果先可靠入队，回写失败自动重试；死信需核对业务单据后人工补偿。</p>
         </div>
         <div class="workflow-callback-outbox__intro-meta">
-          <ElTag :type="unresolvedCount ? 'warning' : 'success'" effect="plain" round>
-            {{ unresolvedCount ? `${unresolvedCount} 条待处理` : '队列运行正常' }}
+          <ElTag
+            :type="
+              state.error
+                ? 'danger'
+                : state.loading
+                  ? 'info'
+                  : unresolvedCount
+                    ? 'warning'
+                    : 'success'
+            "
+            effect="plain"
+            round
+          >
+            {{
+              state.error
+                ? '队列状态暂不可用'
+                : state.loading
+                  ? '正在检查队列'
+                  : unresolvedCount
+                    ? `${unresolvedCount} 条待处理`
+                    : '队列运行正常'
+            }}
           </ElTag>
           <small>{{ isPlatformSuper ? '平台全局队列' : '本租户只读' }}</small>
         </div>
@@ -305,18 +325,26 @@
     }
   ]
 
+  let requestId = 0
+  onBeforeUnmount(() => {
+    requestId += 1
+  })
+
   async function loadData(): Promise<void> {
+    const currentRequestId = ++requestId
     state.loading = true
     state.error = null
     try {
       const fetchStatus = state.status === 'unresolved' ? null : state.status || null
       const result = await fetchWorkflowCallbackOutbox(fetchStatus, 100)
+      if (currentRequestId !== requestId) return
       state.items = result.items
       Object.assign(state.summary, result.summary)
     } catch (error) {
+      if (currentRequestId !== requestId) return
       state.error = createFriendlySupabaseError(error, '业务回调队列加载失败，请稍后重试')
     } finally {
-      state.loading = false
+      if (currentRequestId === requestId) state.loading = false
     }
   }
 

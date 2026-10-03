@@ -1,4 +1,5 @@
 import type { ColInfo } from '@/vendor/sheetjs/xlsx.mjs'
+import { ElMessage } from 'element-plus'
 import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
 
 export type ExcelCellValue = string | number | boolean | null | undefined | Date
@@ -256,7 +257,11 @@ export const downloadBlob = (blob: Blob, filename: string): void => {
 }
 
 export const viewAttachment = (file: FileActionTarget): void => {
-  openFilePreview(file)
+  const result = openFilePreview(file)
+  if (result === 'missing-url') ElMessage.warning('附件没有可用的预览地址')
+  if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
+  if (result === 'storage-unavailable')
+    ElMessage.warning('无法保存预览信息，请检查浏览器的本站存储权限后重试')
 }
 
 export const downloadAttachment = (file: FileActionTarget): void => {

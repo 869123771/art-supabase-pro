@@ -131,8 +131,8 @@
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchGetEnableMenuList } from '@/api/system-manage'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { fetchMenuCatalog } from '@/api/system-manage'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import TreeUtils from '@/utils/tree'
   import {
     deleteWorkflowDefinition,
@@ -253,7 +253,7 @@
         key: 'tenantId',
         type: 'select',
         hidden: !isPlatformSuper.value,
-        api: fetchGetEnableTenantList,
+        api: fetchEnabledTenantList,
         resultField: 'data',
         valueField: 'id',
         labelFn: (tenant) => `${tenant.tenantName}（${tenant.tenantCode}）`,
@@ -379,7 +379,7 @@
   }
 
   async function loadMenuTree(): Promise<void> {
-    const { data } = await fetchGetEnableMenuList()
+    const { data } = await fetchMenuCatalog()
     menuTree.value = treeUtils.listToTree((data ?? []).filter((menu) => menu.type !== 'button'))
   }
 
@@ -844,12 +844,6 @@
     :deep(.workflow-definition__tenant-cell small) {
       font-size: 12px;
       color: var(--art-gray-600);
-    }
-
-    :deep(.workflow-definition__actions) {
-      display: flex;
-      gap: 2px;
-      align-items: center;
     }
   }
 

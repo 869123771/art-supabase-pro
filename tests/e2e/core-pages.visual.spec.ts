@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { prepareAppearance } from './support/appearance'
 
 interface VisualPage {
   name: string
@@ -92,19 +93,6 @@ async function scrollMainContentToBottom(page: Page): Promise<void> {
   await page.waitForTimeout(200)
 }
 
-async function applyVisualMode(page: Page, projectName: string): Promise<void> {
-  await page.evaluate(
-    ({ dark, boxMode }) => {
-      document.documentElement.classList.toggle('dark', dark)
-      document.documentElement.dataset.boxMode = boxMode
-    },
-    {
-      dark: projectName.includes('dark'),
-      boxMode: projectName.includes('shadow') ? 'shadow-mode' : 'border-mode'
-    }
-  )
-}
-
 for (const visualPage of visualPages) {
   test(`${visualPage.name} 布局稳定`, async ({ page }, testInfo) => {
     test.setTimeout(120_000)
@@ -112,12 +100,20 @@ for (const visualPage of visualPages) {
     page.on('pageerror', (error) => pageErrors.push(error.message))
 
     await page.clock.setFixedTime(VISUAL_TEST_TIME)
+    const dark = testInfo.project.name.includes('dark')
+    const boxBorderMode = !testInfo.project.name.includes('shadow')
+    await prepareAppearance(page, { theme: dark ? 'dark' : 'light', boxBorderMode })
     await page.goto(`/#${visualPage.path}`, { waitUntil: 'domcontentloaded' })
     await expect(page).not.toHaveURL(/#\/auth\/login/)
 
     await waitForPageReady(page, visualPage.root)
     await dismissSettingGuide(page)
-    await applyVisualMode(page, testInfo.project.name)
+    if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
+    else await expect(page.locator('html')).not.toHaveClass(/dark/)
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-box-mode',
+      boxBorderMode ? 'border-mode' : 'shadow-mode'
+    )
     await expectNoHorizontalOverflow(page)
     await resetScrollPositions(page)
 

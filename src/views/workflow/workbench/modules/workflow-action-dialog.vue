@@ -143,7 +143,7 @@
     snapshotLoading: false,
     snapshotError: null
   })
-  const form = reactive({ comment: '' })
+  const form = ref({ comment: '' })
   let snapshotRequestId = 0
 
   const formItems = computed<FormItem[]>(() => [
@@ -213,7 +213,7 @@
       await actWorkflowTask({
         taskId: state.task.id,
         action: state.action,
-        comment: normalizeNullableText(form.comment)
+        comment: normalizeNullableText(form.value.comment)
       })
       emit('success', state.action)
       return true
@@ -257,7 +257,7 @@
       snapshotLoading: false,
       snapshotError: null
     } satisfies ActionDialogState)
-    form.comment = ''
+    form.value.comment = ''
   }
 
   async function handleOpen(
@@ -271,7 +271,7 @@
     state.snapshot = null
     state.snapshotLoading = true
     state.snapshotError = null
-    form.comment = ''
+    form.value.comment = ''
     await dialogRef.value?.handleOpen(undefined, {
       title: state.platformOverride
         ? action === 'approve'

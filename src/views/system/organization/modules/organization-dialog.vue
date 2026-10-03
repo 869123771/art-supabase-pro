@@ -56,10 +56,10 @@
   import {
     addOrganization,
     editOrganization,
-    fetchGetEnableOrganizationTree,
-    fetchGetEnableOrganizationUserList
+    fetchEnabledOrganizationTree,
+    fetchEnabledOrganizationUserList
   } from '@/api/system-manage'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
 
@@ -187,7 +187,7 @@
       type: 'select',
       span: 24,
       hidden: !canSelectTenant.value,
-      api: fetchGetEnableTenantList,
+      api: fetchEnabledTenantList,
       resultField: 'data',
       labelField: 'tenantName',
       valueField: 'id',
@@ -204,7 +204,7 @@
       key: 'parentId',
       type: 'treeSelect',
       span: 24,
-      api: fetchGetEnableOrganizationTree,
+      api: fetchEnabledOrganizationTree,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.tenantId, excludeId: form.id }),
       resultField: 'data',
@@ -275,7 +275,7 @@
       key: 'leaderUserId',
       type: 'userSelect',
       span: 24,
-      api: fetchGetEnableOrganizationUserList,
+      api: fetchEnabledOrganizationUserList,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.tenantId }),
       resultField: 'data',

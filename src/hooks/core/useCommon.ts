@@ -17,6 +17,7 @@
 import { computed } from 'vue'
 import { useMenuStore } from '@/store/modules/menu'
 import { useSettingStore } from '@/store/modules/setting'
+import { getScrollBehavior } from '@/utils/ui/scroll'
 
 export function getPageScrollContainer(): HTMLElement | null {
   return (
@@ -64,7 +65,7 @@ export function useCommon() {
     if (scrollContainer) {
       scrollContainer.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: getScrollBehavior()
       })
     }
   }
@@ -79,7 +80,7 @@ export function useCommon() {
     if (scrollContainer) {
       scrollContainer.scrollTo({
         top,
-        behavior: smooth ? 'smooth' : 'auto'
+        behavior: getScrollBehavior(smooth)
       })
     }
   }

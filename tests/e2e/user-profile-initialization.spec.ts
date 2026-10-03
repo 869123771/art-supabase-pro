@@ -40,7 +40,7 @@ test('cancelled profile initialization does not continue after slow claims verif
   const result = await page.evaluate(async () => {
     const authPath = '/src/api/auth.ts'
     const pluginPath = '/src/plugins/supabase.ts'
-    const { fetchGetUserInfo } = await import(/* @vite-ignore */ authPath)
+    const { fetchCurrentUserInfo } = await import(/* @vite-ignore */ authPath)
     const { supabase } = await import(/* @vite-ignore */ pluginPath)
     const originalClaims = supabase.auth.getClaims
     const originalSession = supabase.auth.getSession
@@ -62,12 +62,12 @@ test('cancelled profile initialization does not continue after slow claims verif
     try {
       const cancelledBeforeStart = new AbortController()
       cancelledBeforeStart.abort()
-      const beforeStart = await fetchGetUserInfo(cancelledBeforeStart.signal).then(
+      const beforeStart = await fetchCurrentUserInfo(cancelledBeforeStart.signal).then(
         () => 'resolved',
         (error: Error) => error.name
       )
       const controller = new AbortController()
-      const pending = fetchGetUserInfo(controller.signal).then(
+      const pending = fetchCurrentUserInfo(controller.signal).then(
         () => 'resolved',
         (error: Error) => error.name
       )
@@ -110,17 +110,36 @@ test('permission service failure is not cached as a successful user profile and 
       const storePath = '/src/store/modules/user.ts'
       const { supabase } = await import(/* @vite-ignore */ pluginPath)
       const { useUserStore } = await import(/* @vite-ignore */ storePath)
-      const { fetchGetUserInfo } = await import(/* @vite-ignore */ apiPath)
+      const { fetchCurrentUserInfo } = await import(/* @vite-ignore */ apiPath)
       const store = useUserStore()
       const before = JSON.stringify(store.info)
       const originalClaims = supabase.auth.getClaims
+      const originalSession = supabase.auth.getSession
       supabase.auth.getClaims = async () => ({
         data: { claims: { sub: 'probe-auth-user' } },
         error: null
       })
+      supabase.auth.getSession = async () => ({
+        data: {
+          session: {
+            access_token: 'isolated-profile-token',
+            refresh_token: 'isolated-profile-refresh',
+            expires_in: 3600,
+            token_type: 'bearer',
+            user: {
+              id: 'probe-auth-user',
+              aud: 'authenticated',
+              app_metadata: {},
+              user_metadata: {},
+              created_at: '2026-10-03T00:00:00Z'
+            }
+          }
+        },
+        error: null
+      })
       try {
         await store.fetchUserInfo()
-        const response = await fetchGetUserInfo()
+        const response = await fetchCurrentUserInfo()
         return { status: 'ready', platformSuper: response.data?.platformSuper }
       } catch (error) {
         return {
@@ -130,6 +149,7 @@ test('permission service failure is not cached as a successful user profile and 
         }
       } finally {
         supabase.auth.getClaims = originalClaims
+        supabase.auth.getSession = originalSession
       }
     })
   expect(await runProfile()).toMatchObject({

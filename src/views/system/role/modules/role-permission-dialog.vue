@@ -169,11 +169,7 @@
   import { omit, uniq } from 'lodash-es'
   import { useDebounceFn } from '@vueuse/core'
   import type { AppRouteRecord } from '@/types'
-  import {
-    fetchGetEnableMenuList,
-    getCurrentRoleMenus,
-    saveRoleMenuList
-  } from '@/api/system-manage'
+  import { fetchMenuCatalog, getCurrentRoleMenus, saveRoleMenuList } from '@/api/system-manage'
 
   type RoleListItem = Api.SystemManage.RoleListItem
   type TreeKey = string | number
@@ -317,7 +313,7 @@
     Object.assign(loadState, { loading: true, error: false, ready: false })
     try {
       const [menuResult, roleMenuResult] = await Promise.all([
-        fetchGetEnableMenuList(),
+        fetchMenuCatalog(),
         getCurrentRoleMenus({ id: roleId })
       ])
       if (!isCurrentLoad()) return

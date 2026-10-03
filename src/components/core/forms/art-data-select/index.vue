@@ -198,7 +198,7 @@
               :aria-busy="loading"
             >
               <ArtOverlayLoading
-                v-if="loading"
+                v-if="loading && (mode === 'tree' || loadError)"
                 loading
                 overlay
                 text="正在加载可选数据…"
@@ -216,10 +216,13 @@
                 v-else-if="mode === 'table'"
                 ref="tableRef"
                 :data="tableRows"
+                :loading="loading"
+                loading-overlay
                 :pagination="false"
                 :show-table-header="false"
                 :row-key="getTableRowKey"
                 height="100%"
+                empty-height="100%"
                 :empty-text="emptyText"
                 :row-class-name="getTableRowClassName"
                 :highlight-current-row="!multiple"
@@ -254,7 +257,7 @@
                   <template #default="{ row }">
                     <ElCheckbox
                       :model-value="isDraftSelected(row)"
-                      :disabled="isRowDisabled(row)"
+                      :disabled="loading || !!loadError || isRowDisabled(row)"
                       @click.stop
                       @change="() => setSingle(row)"
                     />
@@ -477,7 +480,8 @@
   const navigationTreeRef = ref<InstanceType<typeof ElTree>>()
   const dialogRef = ref<ArtDialogExpose<void>>()
   const dialogSizePresets: readonly ArtDialogSize[] = ['sm', 'md', 'lg', 'xl', 'full']
-  const loading = ref(false)
+  const requestLoading = ref(false)
+  const loading = computed(() => requestLoading.value || props.loading)
   const loadError = shallowRef<Error | null>(null)
   const isOpen = ref(false)
   // This generation also owns selection synchronization and dialog-close invalidation;
@@ -636,7 +640,8 @@
     return !!get(row, props.disabledKey)
   }
 
-  const isRowSelectable = (row: DataSelectRecord) => !isRowDisabled(row)
+  const isRowSelectable = (row: DataSelectRecord) =>
+    !loading.value && !loadError.value && !isRowDisabled(row)
   const isDraftSelected = (row: DataSelectRecord) => draftKeys.value.includes(getRowKey(row))
 
   const getTableRowClassName = ({ row }: { row: DataSelectRecord }) => {
@@ -789,7 +794,7 @@
 
   const loadData = async () => {
     const generation = ++loadGeneration
-    loading.value = true
+    requestLoading.value = true
     loadError.value = null
     try {
       if (props.apiFn) {
@@ -828,7 +833,7 @@
       loadError.value = new Error('请检查网络连接后重新加载，已选内容会保留。', { cause })
       emit('load-error', cause)
     } finally {
-      if (generation === loadGeneration) loading.value = false
+      if (generation === loadGeneration) requestLoading.value = false
     }
   }
 
@@ -873,7 +878,7 @@
   const invalidateLoad = () => {
     ++loadGeneration
     isOpen.value = false
-    loading.value = false
+    requestLoading.value = false
   }
 
   onBeforeUnmount(invalidateLoad)
@@ -1010,7 +1015,7 @@
       ++loadGeneration
       // The dialog can remain visible while its tenant/source-specific loader changes.
       if (isOpen.value) handleSearch()
-      else loading.value = false
+      else requestLoading.value = false
     }
   )
 

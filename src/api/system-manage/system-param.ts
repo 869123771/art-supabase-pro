@@ -8,7 +8,7 @@ type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-export async function fetchGetSystemParamList(params: SystemParamSearchParams) {
+export async function fetchSystemParamList(params: SystemParamSearchParams) {
   const { keyword = '', groupCode, paramType, enabled, builtin, from = 0, to = 9 } = params
   const specs = [
     { col: 'group_code', op: 'eq', val: groupCode },

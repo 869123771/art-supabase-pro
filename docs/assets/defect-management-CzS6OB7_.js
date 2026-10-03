@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./defect-management-CrXuxaTd.js";var i=e({name:`MesDefectManagement`,__name:`index`,setup(e){return(e,i)=>(n(),t(r))}});export{i as default};

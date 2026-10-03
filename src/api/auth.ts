@@ -388,7 +388,7 @@ export async function resetPassword(params: Api.Auth.ResetPwdParams) {
  * 获取用户信息
  * @returns 用户信息
  */
-export async function fetchGetUserInfo(signal?: AbortSignal): Promise<CurrentUserInfoResult> {
+export async function fetchCurrentUserInfo(signal?: AbortSignal): Promise<CurrentUserInfoResult> {
   signal?.throwIfAborted()
   // 让 Supabase 从自身会话中取令牌，以便 SDK 在验证前自动刷新即将过期的会话。
   // 显式传入 Pinia 中持久化的 JWT 会跳过这个刷新步骤，导致刷新页面后误进 500。

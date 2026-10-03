@@ -419,6 +419,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getScrollBehavior } from '@/utils/ui/scroll'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { ElMessage, type FormRules } from 'element-plus'
   import { cloneDeep, isEqual, omit } from 'lodash-es'
@@ -754,7 +755,7 @@
     page.activeSection = key
     const scrollContainer = getPageScrollContainer()
     if (!scrollContainer) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      target.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' })
       return
     }
 
@@ -763,7 +764,7 @@
     const scrollMarginTop = Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0
     scrollContainer.scrollTo({
       top: Math.max(scrollContainer.scrollTop + targetTop - containerTop - scrollMarginTop, 0),
-      behavior: 'smooth'
+      behavior: getScrollBehavior()
     })
   }
 

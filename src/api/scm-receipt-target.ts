@@ -1,4 +1,5 @@
 import { useSupabase } from '@/hooks'
+import { fetchAllRangePages } from '@/utils/supabase/pagination'
 
 export type ScmReceiptTargetKind = 'inbound' | 'asset_payable'
 export type ScmReceiptTargetStatus = 'draft' | 'confirmed' | 'approved'
@@ -42,6 +43,10 @@ export interface ScmReceiptTargetLine {
   serialNos: string[]
   serialManagementEnabled?: boolean
   amount: number
+}
+
+export interface ScmReceiptTargetListLine extends ScmReceiptTargetLine {
+  targetDocumentId: string
 }
 
 export interface ScmReceiptTargetQuery {
@@ -140,6 +145,30 @@ export async function fetchScmReceiptTargetLines(targetId: string) {
   }
 }
 
+export async function fetchScmReceiptTargetLinesForDocuments(
+  documentIds: string[]
+): Promise<ScmReceiptTargetListLine[]> {
+  const lines: ScmReceiptTargetListLine[] = []
+  for (let offset = 0; offset < documentIds.length; offset += 100) {
+    const ids = documentIds.slice(offset, offset + 100)
+    const result = await fetchAllRangePages<ScmReceiptTargetListLine>(({ from, to }) =>
+      responseHandle<ScmReceiptTargetListLine[]>(
+        () =>
+          supabase
+            .from('scm_receipt_target_line')
+            .select('id,target_document_id,source_line_id,line_snapshot,serial_nos,amount')
+            .in('target_document_id', ids)
+            .order('created_at')
+            .range(from, to),
+        { breakReturn: true, showErrorMessage: true, errorMessage: '目标单据明细加载失败' }
+      )
+    )
+    if (result.error) throw result.error
+    lines.push(...(result.data ?? []))
+  }
+  return lines
+}
+
 export async function setScmReceiptLineSerials(lineId: string, serialNos: string[]) {
   await responseHandle(
     () =>
@@ -171,18 +200,22 @@ export async function fetchScmReceiptPlacementWarehouse(tenantId: string, wareho
 }
 
 export async function fetchScmReceiptPlacementBins(tenantId: string, warehouseId: string) {
-  const { data } = await responseHandle<ScmReceiptPlacementBin[]>(
-    () =>
-      supabase
-        .from('mdm_warehouse_bin')
-        .select('id,warehouse_id,bin_code,bin_name,supports_serial')
-        .eq('tenant_id', tenantId)
-        .eq('warehouse_id', warehouseId)
-        .eq('status', 'available')
-        .order('bin_code')
-        .range(0, 999),
-    { breakReturn: true, showErrorMessage: true, errorMessage: '可用库位加载失败，请重试' }
+  const { data, error } = await fetchAllRangePages<ScmReceiptPlacementBin>(({ from, to }) =>
+    responseHandle<ScmReceiptPlacementBin[]>(
+      () =>
+        supabase
+          .from('mdm_warehouse_bin')
+          .select('id,warehouse_id,bin_code,bin_name,supports_serial')
+          .eq('tenant_id', tenantId)
+          .eq('warehouse_id', warehouseId)
+          .eq('status', 'available')
+          .order('bin_code')
+          .order('id')
+          .range(from, to),
+      { breakReturn: true, showErrorMessage: true, errorMessage: '可用库位加载失败，请重试' }
+    )
   )
+  if (error) throw error
   return data ?? []
 }
 

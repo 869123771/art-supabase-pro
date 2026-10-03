@@ -43,7 +43,7 @@ import { useMenuStore } from './menu'
 import { StorageConfig } from '@/utils/storage/storage-config'
 import type { DictMap } from '@/types/store'
 
-import { fetchGetUserInfo, logout } from '@/api/auth'
+import { fetchCurrentUserInfo, logout } from '@/api/auth'
 import { groupBy } from 'lodash-es'
 import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
 import { isDictionaryCacheFresh } from './dictionary-cache-policy'
@@ -261,7 +261,7 @@ export const useUserStore = defineStore(
     }
 
     const fetchUserInfo = async (signal?: AbortSignal): Promise<boolean> => {
-      const { data, error, session } = await fetchGetUserInfo(signal)
+      const { data, error, session } = await fetchCurrentUserInfo(signal)
       signal?.throwIfAborted()
       if (error) {
         throw new Error('用户资料加载失败', { cause: error })
@@ -291,8 +291,8 @@ export const useUserStore = defineStore(
 
       const loadVersion = dictCacheVersion
       const request = (async () => {
-        const { fetchGetDictList } = await import('@/api/data-center')
-        const { data, error } = await fetchGetDictList()
+        const { fetchDictionaryList } = await import('@/api/data-center')
+        const { data, error } = await fetchDictionaryList()
         if (error) throw error
         if (!data || loadVersion !== dictCacheVersion) return
 
@@ -322,8 +322,8 @@ export const useUserStore = defineStore(
 
       const loadVersion = dictCacheVersion
       const request = (async () => {
-        const { fetchGetDictListByTypeCode } = await import('@/api/data-center')
-        const { data, error } = await fetchGetDictListByTypeCode(dictCode)
+        const { fetchDictionaryListByTypeCode } = await import('@/api/data-center')
+        const { data, error } = await fetchDictionaryListByTypeCode(dictCode)
         if (error) throw error
         if (loadVersion !== dictCacheVersion) return
 

@@ -77,6 +77,8 @@ export interface ArtDataSelectProps {
   mode?: DataSelectMode
   multiple?: boolean
   data?: DataSelectRecord[]
+  /** Loading state for data fetched by the caller instead of apiFn. */
+  loading?: boolean
   apiFn?: DataSelectApiFn
   columns?: DataSelectColumn[]
   title?: string

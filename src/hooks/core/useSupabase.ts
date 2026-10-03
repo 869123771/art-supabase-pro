@@ -1,3 +1,9 @@
+import {
+  isPlainObjectRecord,
+  keysToCamelDeep,
+  keysToCamelShallow,
+  keysToSnakeDeep
+} from '@/utils/supabase/key-transform'
 import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'
@@ -24,7 +30,7 @@ export type SupabaseAction = 'select' | 'insert' | 'update' | 'delete' | 'rpc'
 export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的维护权限'
 
 /**
- * Options for runQuery
+ * Options for responseHandle
  */
 export interface RunQueryOptions {
   showMessage?: boolean // 是否显示提示，默认 false
@@ -57,76 +63,12 @@ interface QueryResponse {
 type QueryFactory = () => PromiseLike<QueryResponse>
 
 export function useSupabase() {
-  /** convert snake_case string to camelCase */
-  const toCamel = (s: string) => s.replace(/_([a-z0-9])/g, (_, c) => (c ? c.toUpperCase() : ''))
-
-  /** convert camelCase or PascalCase to snake_case */
-  const toSnake = (s: string) =>
-    s
-      .replace(/([A-Z])/g, '_$1')
-      .replace(/^_/, '')
-      .toLowerCase()
-
-  function isPlainObject(x: unknown): x is Record<string, unknown> {
-    return x !== null && typeof x === 'object' && x.constructor === Object
-  }
-
-  // Key conversion preserves values but TypeScript cannot derive the transformed key shape.
-  // Keep the unavoidable generic assertion at this single serialization boundary.
-  function asKeyTransformResult<T>(value: unknown): T {
-    return value as T
-  }
-
-  /** Recursively convert object keys to camelCase */
-  function keysToCamelDeep<T>(obj: unknown): T {
-    if (Array.isArray(obj)) {
-      return asKeyTransformResult<T>(obj.map(keysToCamelDeep))
-    }
-    if (isPlainObject(obj)) {
-      const res: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(obj)) {
-        res[toCamel(k)] = keysToCamelDeep(v)
-      }
-      return asKeyTransformResult<T>(res)
-    }
-    return asKeyTransformResult<T>(obj)
-  }
-
-  /** Only convert top-level object keys to camelCase */
-  function keysToCamelShallow<T>(obj: unknown): T {
-    if (Array.isArray(obj)) {
-      return asKeyTransformResult<T>(obj)
-    }
-    if (isPlainObject(obj)) {
-      const res: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(obj)) {
-        res[toCamel(k)] = v
-      }
-      return asKeyTransformResult<T>(res)
-    }
-    return asKeyTransformResult<T>(obj)
-  }
-
-  /** Recursively convert object keys to snake_case */
-  function keysToSnakeDeep<T>(obj: T): T {
-    if (Array.isArray(obj)) {
-      return asKeyTransformResult<T>(obj.map(keysToSnakeDeep))
-    }
-    if (isPlainObject(obj)) {
-      const res: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(obj)) {
-        res[toSnake(k)] = keysToSnakeDeep(v)
-      }
-      return asKeyTransformResult<T>(res)
-    }
-    return asKeyTransformResult<T>(obj)
-  }
-
   /**
-   * 通用 query wrapper：可单独导入使用
+   * 通用查询包装器：从 useSupabase 获取后使用。
    * 用法：
-   *   import { runQuery } from '@/composables/useSupabase'
-   *   const { data, error } = await runQuery<MyType[]>(supabase.from('sys_user').select(), { showMessage: true })
+   *   import { useSupabase } from '@/hooks/core/useSupabase'
+   *   const { responseHandle } = useSupabase()
+   *   const { data, error } = await responseHandle<MyType[]>(() => supabase.from('sys_user').select())
    */
 
   async function responseHandle<T = unknown>(
@@ -187,8 +129,8 @@ export function useSupabase() {
       }
       const normalizedError = await normalizeSupabaseFunctionError(error)
       const responseBody = responseJson ?? (normalizedError !== error ? normalizedError : undefined)
-      const responseError = isPlainObject(responseBody) ? responseBody : undefined
-      const queryError = isPlainObject(error) ? error : undefined
+      const responseError = isPlainObjectRecord(responseBody) ? responseBody : undefined
+      const queryError = isPlainObjectRecord(error) ? error : undefined
       const message = sessionFailure
         ? SUPABASE_SESSION_EXPIRED_MESSAGE
         : options.formatErrorMessage?.(error, responseBody) ||
@@ -216,14 +158,19 @@ export function useSupabase() {
           ? markErrorAsUserNotified(reportedError)
           : reportedError
       }
-      return {
-        data: null,
-        error: referenceHandled
-          ? new DeleteReferenceBlockedError(error)
-          : returnRawError && responseBody
-            ? keysToCamelDeep(responseBody)
-            : normalizedError
+      const returnedError = referenceHandled
+        ? new DeleteReferenceBlockedError(error)
+        : returnRawError && responseBody
+          ? keysToCamelDeep(responseBody)
+          : normalizedError
+      if (
+        (showErrorToast || sessionFailureHandled || referenceHandled) &&
+        typeof returnedError === 'object' &&
+        returnedError !== null
+      ) {
+        markErrorAsUserNotified(returnedError)
       }
+      return { data: null, error: returnedError }
     }
 
     if (requireAffected && count === 0) {
@@ -237,9 +184,13 @@ export function useSupabase() {
           ? markErrorAsUserNotified(noAffectedError)
           : noAffectedError
       }
+      const noAffectedError = new Error(message)
       return {
         data: null,
-        error: new Error(message)
+        error:
+          showMessage || showErrorMessage
+            ? markErrorAsUserNotified(noAffectedError)
+            : noAffectedError
       }
     }
 

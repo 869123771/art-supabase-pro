@@ -48,7 +48,7 @@ const violations: string[] = []
 checkLargest('单个 JavaScript 文件', javascriptAssets, 7 * MIB)
 checkLargest('普通应用/路由 JavaScript 分包', applicationChunks, 900 * KIB)
 checkLargest('单个 CSS 文件', cssAssets, 360 * KIB)
-// The platform deployment aggregates five independently deployable business repositories.
+// The platform deployment aggregates independently deployable business repositories.
 // Keep the first-screen and per-JS-chunk gates strict, while allowing complete hosted route assets.
 checkLargest('普通页面 CSS 分包', routeCssChunks, 96 * KIB)
 // A format parser is only fetched when its renderer opens. Keep route and optional-tool

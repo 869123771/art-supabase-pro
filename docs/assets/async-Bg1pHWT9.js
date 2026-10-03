@@ -1,0 +1,1 @@
+async function e(e,t,n){if(!Number.isSafeInteger(t)||t<1)throw RangeError(`并发数必须是正安全整数`);if(e.length===0)return[];let r=Math.min(t,e.length),i=Array(e.length),a=0,o=!1,s,c=async()=>{for(;!o&&a<e.length;){let t=a;a+=1;try{i[t]=await n(e[t],t)}catch(e){o||(s=e),o=!0}}};if(await Promise.all(Array.from({length:r},()=>c())),o)throw s;return i}export{e as t};

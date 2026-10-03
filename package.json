@@ -12,6 +12,7 @@
     "src",
     "public",
     "scripts/ui-audit.ts",
+    "scripts/module-vite-config.mjs",
     "scripts/build-log-policy.mjs",
     "scripts/build-log-policy.d.mts"
   ],
@@ -42,7 +43,7 @@
     "snapshot:check": "tsx scripts/generate-ai-project-snapshot.ts --check",
     "ui:audit": "tsx scripts/ui-audit.ts",
     "serve": "tsx scripts/serve-built-app.ts",
-    "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"tests/**/*.{js,mjs,cjs,ts,tsx}\" \"*.{js,mjs,cjs,ts}\"",
+    "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"tests/**/*.{js,mjs,cjs,ts,tsx}\" \"modules/**/src/**/*.{js,mjs,cjs,ts,tsx,vue}\" \"modules/**/scripts/**/*.{js,mjs,cjs,ts,tsx}\" \"modules/**/tests/**/*.{js,mjs,cjs,ts,tsx}\" \"modules/**/vite.config.ts\" \"*.{js,mjs,cjs,ts}\"",
     "typecheck": "node --max-old-space-size=8192 node_modules/vue-tsc/bin/vue-tsc.js --noEmit --pretty false",
     "test:unit": "tsx --test --test-concurrency=1 tests/unit/*.test.ts",
     "test:coverage": "node -e \"require('node:fs').mkdirSync('.artifacts/coverage',{recursive:true})\" && tsx --test --test-concurrency=1 --experimental-test-coverage --test-reporter=dot --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=.artifacts/coverage/lcov.info \"--test-coverage-include=src/**/*.ts\" \"--test-coverage-include=supabase/functions/_shared/*.ts\" \"--test-coverage-include=scripts/*.ts\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80 tests/unit/*.test.ts",
@@ -59,8 +60,8 @@
     "check:ci": "pnpm ui:audit && pnpm reuse:audit && pnpm permissions:audit && pnpm typecheck && pnpm lint && pnpm lint:stylelint && pnpm test:coverage && pnpm snapshot:check && pnpm build && pnpm bundle:check && pnpm test:e2e:auth && pnpm test:e2e:critical && pnpm test:e2e:core",
     "fix": "pnpm lint --fix",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
-    "lint:stylelint": "stylelint \"src/**/*.{css,scss,vue}\"",
-    "lint:stylelint:fix": "stylelint \"src/**/*.{css,scss,vue}\" --fix",
+    "lint:stylelint": "stylelint \"src/**/*.{css,scss,vue}\" \"modules/**/src/**/*.{css,scss,vue}\"",
+    "lint:stylelint:fix": "stylelint \"src/**/*.{css,scss,vue}\" \"modules/**/src/**/*.{css,scss,vue}\" --fix",
     "lint:lint-staged": "lint-staged",
     "git-hooks:install": "husky",
     "commit": "git-cz"

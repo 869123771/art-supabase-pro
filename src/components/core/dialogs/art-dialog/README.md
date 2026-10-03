@@ -338,6 +338,8 @@ dialogRef.value?.handleOpen(user, {
 
 ## ElDialog API 透传
 
+项目默认启用 `appendToBody`、`destroyOnClose`、`draggable`、`alignCenter`、`modal`、`lockScroll`、`showClose`、`closeOnClickModal` 和 `closeOnPressEscape`。这些参数支持组件上显式设置为 `false`；单次打开的 `dialogProps` 可以进一步覆盖。`destroyOnClose=false` 保留底层内容，与业务数据是否重置的 `resetOnClose` 是两个独立设置。
+
 `ArtDialog` 的 SFC Props 类型已继承 `DialogPropsPublic`，所以在模板中使用时，除 `model-value` 外的 `ElDialog` Props 都会有类型提示。`model-value`、`update:model-value` 由命令式 API 接管，不要在业务侧使用。
 
 静态属性可以直接写在组件上：
@@ -366,40 +368,46 @@ dialogRef.value?.handleOpen(data, {
 
 优先级为：组件默认值、静态透传属性、`dialogProps`、`ArtDialogOptions` 中的核心配置。
 
+### 异步操作与重新打开
+
+每次 `handleOpen()` 都建立新的打开批次。前一次打开中的 `onOpen`、`onClose`、`onConfirm` 或原生 `before-close` 回调完成后，不会关闭新记录、解除新记录的提交锁、显示旧错误或聚焦新记录的校验字段。关闭检查和提交期间会阻止重复操作。
+
+这项隔离只管理组件状态；已经发出的业务请求仍可能完成。业务回调应使用传入的 `data` 保存当前记录，并在需要取消网络请求时使用 API 的取消机制。
+
 ### ElDialog Props 完整列表
 
-| 属性                    | 说明                                      |
-| ----------------------- | ----------------------------------------- |
-| `append-to-body`        | 是否插入至 body                           |
-| `append-to`             | 挂载目标，默认 `body`                     |
-| `before-close`          | 关闭前回调；命令式场景优先用 `onClose`    |
-| `destroy-on-close`      | 关闭后销毁内容；`ArtDialog` 默认 `true`   |
-| `close-on-click-modal`  | 点击遮罩关闭                              |
-| `close-on-press-escape` | 按 ESC 关闭                               |
-| `lock-scroll`           | 打开时锁定 body 滚动                      |
-| `modal`                 | 是否显示遮罩                              |
-| `modal-penetrable`      | 遮罩是否穿透                              |
-| `open-delay`            | 打开延迟                                  |
-| `close-delay`           | 关闭延迟                                  |
-| `top`                   | 顶部距离                                  |
-| `modal-class`           | 遮罩 class                                |
-| `header-class`          | header class                              |
-| `body-class`            | body class                                |
-| `footer-class`          | footer class                              |
-| `width`                 | 弹窗宽度；也可用 `ArtDialog.width`        |
-| `z-index`               | 层级                                      |
-| `trap-focus`            | 是否启用焦点陷阱                          |
-| `header-aria-level`     | header aria level                         |
-| `transition`            | 过渡动画                                  |
-| `center`                | header/footer 是否居中                    |
-| `align-center`          | 是否水平垂直居中；`ArtDialog` 默认 `true` |
-| `close-icon`            | 自定义关闭图标                            |
-| `draggable`             | 是否可拖拽；`ArtDialog` 默认 `true`       |
-| `overflow`              | 拖拽是否可超出视口                        |
-| `fullscreen`            | 是否全屏                                  |
-| `show-close`            | 是否显示关闭按钮                          |
-| `title`                 | 标题；也可用 `ArtDialog.title`            |
-| `aria-level`            | aria level                                |
+| 属性                    | 说明                                                    |
+| ----------------------- | ------------------------------------------------------- |
+| `append-to-body`        | 是否插入至 body                                         |
+| `append-to`             | 挂载目标，默认 `body`                                   |
+| `before-close`          | 原生关闭前回调；调用 `done()` 后仍须通过 `onClose` 检查 |
+| `destroy-on-close`      | 关闭后销毁内容；`ArtDialog` 默认 `true`                 |
+| `close-on-click-modal`  | 点击遮罩关闭                                            |
+| `close-on-press-escape` | 按 ESC 关闭                                             |
+| `lock-scroll`           | 打开时锁定 body 滚动                                    |
+| `modal`                 | 是否显示遮罩                                            |
+| `modal-penetrable`      | 遮罩是否穿透                                            |
+| `open-delay`            | 打开延迟                                                |
+| `close-delay`           | 关闭延迟                                                |
+| `top`                   | 顶部距离                                                |
+| `modal-class`           | 遮罩 class                                              |
+| `header-class`          | header class                                            |
+| `body-class`            | body class                                              |
+| `footer-class`          | footer class                                            |
+| `width`                 | 弹窗宽度；也可用 `ArtDialog.width`                      |
+| `z-index`               | 层级                                                    |
+| `trap-focus`            | 是否启用焦点陷阱                                        |
+| `header-aria-level`     | header aria level                                       |
+| `transition`            | 过渡动画                                                |
+| `center`                | header/footer 是否居中                                  |
+| `align-center`          | 是否水平垂直居中；`ArtDialog` 默认 `true`               |
+| `close-icon`            | 自定义关闭图标                                          |
+| `draggable`             | 是否可拖拽；`ArtDialog` 默认 `true`                     |
+| `overflow`              | 拖拽是否可超出视口                                      |
+| `fullscreen`            | 是否全屏                                                |
+| `show-close`            | 是否显示关闭按钮                                        |
+| `title`                 | 标题；也可用 `ArtDialog.title`                          |
+| `aria-level`            | aria level                                              |
 
 ### ElDialog Events
 

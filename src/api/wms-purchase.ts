@@ -463,7 +463,7 @@ export async function fetchWmsPurchaseOptions(
 ): Promise<WmsPurchaseOption[]> {
   const config = {
     mdm_document_type: [
-      'id,tenant_id,document_type_code,document_type_name',
+      'id,tenant_id,menu_ids,is_default,enabled,document_type_code,document_type_name',
       'documentTypeCode',
       'documentTypeName'
     ],
@@ -476,17 +476,39 @@ export async function fetchWmsPurchaseOptions(
     mdm_supplier: ['id,tenant_id,supplier_code,supplier_name', 'supplierCode', 'supplierName'],
     mdm_customer: ['id,tenant_id,customer_code,customer_name', 'customerCode', 'customerName']
   }[table]
-  const { data } = await responseHandle<Record<string, string>[]>(
+  const { data } = await responseHandle<Record<string, unknown>[]>(
     () => supabase.from(table).select(config[0]).eq('tenant_id', tenantId).order('id'),
     readOptions
   )
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    tenantId: row.tenantId,
-    code: row[config[1]] ?? '',
-    name: row[config[2]] ?? '',
-    documentTypeId: row.documentTypeId
-  }))
+  return (data ?? []).map((row) => {
+    const code = row[config[1]]
+    const name = row[config[2]]
+    return {
+      id: typeof row.id === 'string' ? row.id : '',
+      tenantId: typeof row.tenantId === 'string' ? row.tenantId : '',
+      code: typeof code === 'string' ? code : '',
+      name: typeof name === 'string' ? name : '',
+      documentTypeId: typeof row.documentTypeId === 'string' ? row.documentTypeId : undefined,
+      isDefault: row.isDefault === true,
+      enabled: row.enabled === true,
+      menuIds: Array.isArray(row.menuIds)
+        ? row.menuIds.filter((id): id is string => typeof id === 'string')
+        : undefined
+    }
+  })
+}
+
+export async function fetchWmsPurchaseDocumentTypes(
+  tenantId: string,
+  menuName: string
+): Promise<WmsPurchaseOption[]> {
+  const { data: menu } = await responseHandle<{ id: string }>(
+    () => supabase.from('sys_menu').select('id').eq('name', menuName).eq('type', 'menu').single(),
+    readOptions
+  )
+  if (!menu) return []
+  const rows = await fetchWmsPurchaseOptions('mdm_document_type', tenantId)
+  return rows.filter((row) => row.enabled && row.menuIds?.includes(menu.id))
 }
 
 export async function fetchWmsPurchaseWarehouses(

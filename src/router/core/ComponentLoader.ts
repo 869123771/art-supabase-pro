@@ -8,6 +8,7 @@
 
 import { defineComponent, h, type Component } from 'vue'
 import { APPLICATION_CODES, type ApplicationCode } from '@/config/application'
+import { loadPlatformHostRouteModules } from '@/router/core/platform-route-modules'
 
 type AsyncRouteComponent = () => Promise<Component>
 type RouteComponentModule = { default: Component }
@@ -103,13 +104,7 @@ export class ComponentLoader {
   constructor() {
     // 业务模块与局部组件不作为路由入口，避免它们进入动态路由映射和首屏依赖图。
     const isPlatformHost = import.meta.env.VITE_APP_CODE === 'platform'
-    const platformHostModules = isPlatformHost
-      ? import.meta.glob<RouteComponentModule>([
-          '../../views/**/*.vue',
-          '!../../views/**/modules/**/*.vue',
-          '!../../views/**/components/**/*.vue'
-        ])
-      : {}
+    const platformHostModules = isPlatformHost ? loadPlatformHostRouteModules() : {}
     const platformShellModules = import.meta.glob<RouteComponentModule>([
       '../../views/auth/**/*.vue',
       '../../views/exception/**/*.vue',
@@ -170,7 +165,7 @@ export class ComponentLoader {
    * 加载 iframe 组件
    */
   loadIframe(): AsyncRouteComponent {
-    return createCachedRouteLoader(() => import('@/views/outside/Iframe.vue'))
+    return createCachedRouteLoader(() => import('@/views/outside/iframe/index.vue'))
   }
 
   /**

@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./governance-center-7cgRuBPQ.js";var i=e({name:`MdmGoldenRecord`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{"initial-view":`matches`}))}});export{i as default};

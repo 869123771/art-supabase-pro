@@ -33,7 +33,14 @@
           :class="{ 'has-header-actions': $slots['header-actions'] || formCount }"
         >
           <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
-          <span v-else :id="titleId" :class="titleClass">{{ dialogTitle }}</span>
+          <span
+            v-else
+            :id="titleId"
+            :class="titleClass"
+            role="heading"
+            :aria-level="String(dialogBindings.headerAriaLevel ?? '2')"
+            >{{ dialogTitle }}</span
+          >
           <div v-if="hasSubtitle && !isFocusMode" class="art-dialog__subtitle">
             <slot name="subtitle" :data="openData" :api="exposedApi">
               {{ dialogSubtitle }}
@@ -66,7 +73,7 @@
       :height="normalizedContentHeight"
       :max-height="normalizedContentMaxHeight"
       :always="options.scrollbarAlways"
-      :native="false"
+      :native="options.nativeScrollbar"
       class="art-dialog__scrollbar"
       @wheel.capture="handleWheelBoundary"
     >
@@ -186,7 +193,20 @@
     resetOnClose: true,
     closeOnConfirmError: false,
     scrollbarAlways: false,
-    nativeScrollbar: false
+    nativeScrollbar: false,
+    closeOnClickModal: true,
+    closeOnPressEscape: true,
+    showClose: true,
+    lockScroll: true,
+    modal: true,
+    appendToBody: true,
+    destroyOnClose: true,
+    draggable: true,
+    alignCenter: true,
+    center: undefined,
+    overflow: undefined,
+    trapFocus: undefined,
+    modalPenetrable: undefined
   })
 
   const emit = defineEmits<ArtDialogEmits<T>>()
@@ -431,12 +451,41 @@
     delete inheritedAttrs.onCloseAutoFocus
 
     return {
-      alignCenter: true,
-      appendToBody: true,
-      destroyOnClose: true,
-      draggable: true,
+      alignCenter: props.alignCenter,
+      appendToBody: props.appendToBody,
+      destroyOnClose: props.destroyOnClose,
+      draggable: props.draggable,
       ...inheritedAttrs,
+      appendTo: props.appendTo,
+      top: props.top,
+      zIndex: props.zIndex,
+      openDelay: props.openDelay,
+      closeDelay: props.closeDelay,
+      modalClass: props.modalClass,
+      headerClass: props.headerClass,
+      bodyClass: props.bodyClass,
+      footerClass: props.footerClass,
+      closeIcon: props.closeIcon,
+      headerAriaLevel: props.headerAriaLevel,
+      center: props.center,
+      overflow: props.overflow,
+      trapFocus: props.trapFocus,
+      modalPenetrable: props.modalPenetrable,
+      transition: props.transition,
+      closeOnClickModal: props.closeOnClickModal,
+      closeOnPressEscape: props.closeOnPressEscape,
+      showClose: props.showClose,
+      lockScroll: props.lockScroll,
+      modal: props.modal,
       ...runtimeBindings,
+      beforeClose: (done: () => void) =>
+        overlay.handleBeforeClose(
+          done,
+          runtimeBindings.beforeClose ??
+            props.beforeClose ??
+            inheritedAttrs.beforeClose ??
+            inheritedAttrs['before-close']
+        ),
       title: dialogTitle.value,
       width: normalizedDialogWidth.value,
       fullscreen: Boolean(options.value.fullscreen)

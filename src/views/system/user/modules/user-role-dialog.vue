@@ -43,7 +43,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import { cloneDeep } from 'lodash-es'
   import { ElMessage, type FormRules } from 'element-plus'
-  import { assignUserRoles, fetchGetEnableRoleList } from '@/api/system-manage'
+  import { assignUserRoles, fetchEnabledRoleList } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
 
   type UserListItem = Api.SystemManage.UserListItem
@@ -81,7 +81,7 @@
       label: '已分配角色',
       key: 'userRoles',
       type: 'select',
-      api: fetchGetEnableRoleList,
+      api: fetchEnabledRoleList,
       params: {
         tenantId: roleQueryTenantId.value
       },

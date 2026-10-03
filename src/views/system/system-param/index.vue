@@ -69,7 +69,7 @@
   import {
     deleteSystemParam,
     deleteSystemParamBatch,
-    fetchGetSystemParamList,
+    fetchSystemParamList,
     fetchSystemParamStats
   } from '@/api/system-manage/system-param'
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
@@ -261,7 +261,7 @@
       current: params.current,
       size: params.size
     })
-    return fetchGetSystemParamList({
+    return fetchSystemParamList({
       ...params,
       from,
       to

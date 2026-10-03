@@ -89,6 +89,7 @@ const sharedElementPlusStyleComponents = new Set([
   'checkbox-button',
   'col',
   'collapse',
+  'collapse-transition',
   'dialog',
   'date-picker',
   'descriptions',

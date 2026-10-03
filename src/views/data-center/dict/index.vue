@@ -92,7 +92,7 @@
     deleteDict,
     deleteDictBatch,
     fetchDictTypeIdByDictionaryId,
-    fetchGetDictListByTypeId
+    fetchDictionaryListByTypeId
   } from '@/api/data-center'
   import TypeTree from './modules/type-tree.vue'
   import DictDialog from './modules/dict-dialog.vue'
@@ -368,7 +368,7 @@
       })
     }
 
-    return fetchGetDictListByTypeId({
+    return fetchDictionaryListByTypeId({
       typeId: table.currentDictType.id,
       recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined,
       ...params

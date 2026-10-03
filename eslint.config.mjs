@@ -78,7 +78,12 @@ export default [
   // 忽略文件
   // 业务视图和组件只能通过 src/api 的公开入口访问后端，禁止跨越 provider 边界。
   {
-    files: ['src/views/**/*.{ts,tsx,vue}', 'src/components/**/*.{ts,tsx,vue}'],
+    files: [
+      'src/views/**/*.{ts,tsx,vue}',
+      'src/components/**/*.{ts,tsx,vue}',
+      'modules/*/src/views/**/*.{ts,tsx,vue}',
+      'modules/*/src/components/**/*.{ts,tsx,vue}'
+    ],
     rules: {
       'no-restricted-imports': [
         'error',

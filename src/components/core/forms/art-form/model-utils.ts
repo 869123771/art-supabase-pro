@@ -1,5 +1,5 @@
 import { toRaw } from 'vue'
-import { cloneDeep, set, unset } from 'lodash-es'
+import { cloneDeep, isPlainObject, set, unset } from 'lodash-es'
 
 // ArtForm accepts business-owned models, including nested arrays and arbitrary records.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,7 +44,7 @@ export function sanitizeFormValue(value: unknown, options: SanitizeOutputOptions
     return sanitizedArray.length === 0 && options.removeEmptyArray ? undefined : sanitizedArray
   }
 
-  if (value && typeof value === 'object') {
+  if (value && typeof value === 'object' && isPlainObject(toRaw(value))) {
     const sanitizedObject = Object.entries(toRaw(value)).reduce<Record<string, unknown>>(
       (result, [key, item]) => {
         const sanitizedItem = sanitizeFormValue(item, options)
@@ -57,6 +57,9 @@ export function sanitizeFormValue(value: unknown, options: SanitizeOutputOptions
       ? undefined
       : sanitizedObject
   }
+
+  // Date/File 等控件值不是字段字典，不能通过 Object.entries 清洗成空对象。
+  if (value && typeof value === 'object') return value
 
   if (typeof value === 'string') {
     if (options.removeEmptyString && value.trim() === '') return undefined

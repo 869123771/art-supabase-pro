@@ -14,7 +14,6 @@
     </RouterView>
   </ElConfigProvider>
 </template>
-
 <script setup lang="ts">
   import { mittBus } from '@/utils/sys'
   import type { DeleteReferenceContext } from '@/utils/supabase/delete-reference'

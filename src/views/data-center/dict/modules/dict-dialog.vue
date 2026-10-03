@@ -55,7 +55,7 @@
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { cloneDeep, isEmpty, omit } from 'lodash-es'
-  import { addDict, editDict, fetchGetDictListByTypeId } from '@/api/data-center'
+  import { addDict, editDict, fetchDictionaryListByTypeId } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
   import TreeUtils from '@/utils/tree'
@@ -152,7 +152,7 @@
             type: 'treeSelect',
             span: 24,
             description: getParentDescription(),
-            api: fetchGetDictListByTypeId,
+            api: fetchDictionaryListByTypeId,
             immediate: false,
             params: {},
             beforeFetch: () => ({

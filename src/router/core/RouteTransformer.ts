@@ -83,7 +83,7 @@ export class RouteTransformer {
         } as ConvertedRoute
       ]
     } else {
-      // 非顶级（嵌套）iframe：直接使用 Iframe.vue
+      // 非顶级（嵌套）iframe：使用统一外链页面入口。
       targetRoute.component = this.componentLoader.loadIframe()
     }
 

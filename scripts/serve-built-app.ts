@@ -22,7 +22,8 @@ const MIME_TYPES: Record<string, string> = {
   '.ttf': 'font/ttf',
   '.webp': 'image/webp',
   '.woff': 'font/woff',
-  '.woff2': 'font/woff2'
+  '.woff2': 'font/woff2',
+  '.wasm': 'application/wasm'
 }
 
 function readArgument(name: string, fallback: string): string {
@@ -61,6 +62,13 @@ const server = createServer((request, response) => {
       filePath = resolve(filePath, 'index.html')
     }
     if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+      if (
+        isAssetPath(relative(outputDirectory, filePath)) ||
+        Object.hasOwn(MIME_TYPES, extname(filePath).toLowerCase())
+      ) {
+        sendStatus(response, 404, 'Not Found')
+        return
+      }
       filePath = indexFile
     }
 

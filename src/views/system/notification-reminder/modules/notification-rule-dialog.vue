@@ -35,7 +35,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { saveNotificationRule } from '@/api/notification-reminder'
-  import { fetchGetEnableRoleList } from '@/api/system-manage'
+  import { fetchEnabledRoleList } from '@/api/system-manage'
 
   const notificationRecipientsModeOptions = useDictionaryOptions('notificationRecipientsMode')
   const notificationRepeatModeOptions = useDictionaryOptions('notificationRepeatMode')
@@ -228,7 +228,7 @@
       key: 'recipientRoleCodes',
       type: 'select',
       span: 24,
-      api: fetchGetEnableRoleList,
+      api: fetchEnabledRoleList,
       immediate: false,
       params: { tenantId: props.tenantId },
       shouldFetch: (params) => Boolean(params?.tenantId),

@@ -288,7 +288,7 @@
   import type { ColumnOption } from '@/types'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { useTable } from '@/hooks/core/useTable'
+  import { useTable, type TableRequestOptions } from '@/hooks/core/useTable'
   import type { ApiResponse } from '@/utils/table/table-cache'
   import {
     defaultResponseAdapter,
@@ -393,10 +393,6 @@
   // Vue's dynamic slot index signature must accept heterogeneous child-component payloads.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type TableQuerySlotProps = any
-
-  type BivariantAsyncHandler<TParams, TResponse> = {
-    bivarianceHack(params: TParams): Promise<TResponse>
-  }['bivarianceHack']
 
   type BivariantSyncHandler<TParams, TResponse> = {
     bivarianceHack(params: TParams): TResponse
@@ -521,7 +517,9 @@
   export type ArtTableQueryApiFn<
     TParams = TableQueryApiParams,
     TResponse = TableQueryApiResponse
-  > = BivariantAsyncHandler<TParams, TResponse>
+  > = {
+    bivarianceHack(params: TParams, options?: TableRequestOptions): Promise<TResponse>
+  }['bivarianceHack']
   export type ArtTableQueryResponseAdapter<
     TRecord = TableQueryRecord,
     TResponse = TableQueryApiResponse
@@ -744,6 +742,7 @@
   const showTableToolbar = defineModel<boolean>('showTableToolbar', { default: false })
   const focusMode = defineModel<boolean>('focusMode', { default: false })
   const importPending = ref(false)
+  const pendingActionKey = ref<string | null>(null)
   const initialSearchModel = ref<Record<string, unknown>>({})
   const rootRef = ref<HTMLElement>()
   const tableRef = ref<ArtTableExpose | null>(null)
@@ -813,11 +812,11 @@
   const isManaged = computed(() => !!props.apiFn)
   const managedTable = useTable<TableQueryRecord>({
     core: {
-      apiFn: (params: TableQueryRecord) => {
+      apiFn: (params: TableQueryRecord, options?: TableRequestOptions) => {
         if (!props.apiFn) {
           return Promise.resolve({ records: [], total: 0, current: 1, size: 20 })
         }
-        return props.apiFn(params)
+        return props.apiFn(params, options)
       },
       apiParams: {
         current: 1,
@@ -1161,7 +1160,9 @@
     ...(getHeaderActionDefault(action)?.buttonProps ?? {}),
     ...(action.buttonProps ?? {}),
     loading:
-      Boolean(action.buttonProps?.loading) || (action.type === 'import' && importPending.value)
+      Boolean(action.buttonProps?.loading) ||
+      pendingActionKey.value === getHeaderActionKey(action) ||
+      (action.type === 'import' && importPending.value)
   })
 
   const getSelectionActionButtonProps = (action: ArtTableQueryHeaderAction) => {
@@ -1174,7 +1175,9 @@
       ...contextualButtonProps,
       ...(action.buttonProps ?? {}),
       loading:
-        Boolean(action.buttonProps?.loading) || (action.type === 'import' && importPending.value)
+        Boolean(action.buttonProps?.loading) ||
+        pendingActionKey.value === getHeaderActionKey(action) ||
+        (action.type === 'import' && importPending.value)
     }
   }
 
@@ -1190,6 +1193,7 @@
     const disabled = typeof action.disabled === 'function' ? action.disabled(ctx) : action.disabled
     return (
       !!disabled ||
+      pendingActionKey.value !== null ||
       (action.type === 'import' && importPending.value) ||
       (isHeaderActionSelectionRequired(action) && selectedRows.value.length === 0)
     )
@@ -1422,33 +1426,39 @@
   ): Promise<void> => {
     if (isHeaderActionDisabled(action, scope)) return
 
-    const ctx = createHeaderActionContext(action, event, scope)
-
-    if (shouldConfirmHeaderAction(action)) {
-      try {
-        await confirmAction(
-          resolveHeaderActionContent(action, ctx),
-          action.confirmTitle || '操作确认',
-          {
-            type: action.type === 'delete' ? 'warning' : 'info',
-            confirmButtonText: action.type === 'delete' ? '删除' : '确定',
-            cancelButtonText: '取消',
-            confirmButtonType: action.type === 'delete' ? 'danger' : 'primary'
-          }
-        )
-      } catch {
-        return
+    pendingActionKey.value = getHeaderActionKey(action)
+    try {
+      const ctx = createHeaderActionContext(action, event, scope)
+      if (shouldConfirmHeaderAction(action)) {
+        try {
+          await confirmAction(
+            resolveHeaderActionContent(action, ctx),
+            action.confirmTitle || '操作确认',
+            {
+              type: action.type === 'delete' ? 'warning' : 'info',
+              confirmButtonText: action.type === 'delete' ? '删除' : '确定',
+              cancelButtonText: '取消',
+              confirmButtonType: action.type === 'delete' ? 'danger' : 'primary'
+            }
+          )
+        } catch {
+          return
+        }
       }
-    }
-
-    emit('header-action-click', action, ctx)
-    if (action.type === 'export' && !action.onClick) {
-      await handleDefaultExport(action, ctx)
-    } else {
-      await action.onClick?.(ctx)
-    }
-    if (action.type === 'delete') {
-      clearSelectedRows()
+      emit('header-action-click', action, ctx)
+      if (action.type === 'export' && !action.onClick) {
+        await handleDefaultExport(action, ctx)
+      } else {
+        await action.onClick?.(ctx)
+      }
+      if (action.type === 'delete') clearSelectedRows()
+    } catch (error) {
+      if (!wasErrorUserNotified(error)) {
+        console.error('[ArtTableQuery] header action failed', error)
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '操作未完成，请重试'))
+      }
+    } finally {
+      pendingActionKey.value = null
     }
   }
 
@@ -1674,6 +1684,8 @@
     refreshRemove: () => Promise<void>
     /** 查询数据，默认按搜索语义回到第一页。 */
     getData: () => Promise<unknown>
+    /** 立即使当前请求失效；适用于筛选条件改变后的防抖等待阶段。 */
+    cancelRequest: () => void
     /** 清空查询表单模型并重置内部查询参数。 */
     resetSearchParams: () => Promise<void>
     /** 清空当前跨页选择。 */
@@ -1705,6 +1717,7 @@
     refreshUpdate: managedTable.refreshUpdate,
     refreshRemove,
     getData,
+    cancelRequest: managedTable.cancelRequest,
     resetSearchParams,
     clearSelection: clearSelectedRows,
     resetColumns: () => managedTable.resetColumns?.(),

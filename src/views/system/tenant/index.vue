@@ -59,7 +59,7 @@
   import {
     deactivateTenant,
     deactivateTenantBatch,
-    fetchGetTenantList
+    fetchTenantList
   } from '@/api/system-manage/tenant'
   import TenantDialog from './modules/tenant-dialog.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -195,7 +195,7 @@
       current: params.current,
       size: params.size
     })
-    return fetchGetTenantList({
+    return fetchTenantList({
       ...params,
       from,
       to

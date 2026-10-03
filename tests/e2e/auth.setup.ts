@@ -1,3 +1,4 @@
+import { keysToCamelDeep } from '../../src/utils/supabase/key-transform'
 import fs from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -8,18 +9,6 @@ import { readDemoCredentials } from './support/demo-credentials'
 
 const authFile = path.join(process.cwd(), 'playwright', '.auth', 'user.json')
 const packageVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version as string
-
-function keysToCamelDeep(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(keysToCamelDeep)
-  if (!value || typeof value !== 'object') return value
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, entry]) => [
-      key.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase()),
-      keysToCamelDeep(entry)
-    ])
-  )
-}
 
 setup('登录并保存视觉回归会话', async ({ page }) => {
   setup.setTimeout(90_000)
@@ -114,8 +103,8 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
     }
   )
 
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
-  await page.goto('/#/dashboard/console')
+  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/, { timeout: 30_000 })
+  await expect(page.locator('.operations-dashboard').first()).toBeVisible({ timeout: 60_000 })
   await page.context().storageState({ path: authFile })
 })

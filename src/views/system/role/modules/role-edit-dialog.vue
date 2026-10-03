@@ -51,8 +51,8 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { addRole, editRole, fetchGetEnableOrganizationTree } from '@/api/system-manage'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { addRole, editRole, fetchEnabledOrganizationTree } from '@/api/system-manage'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import { uniqueValidator } from '@/utils/form/validator'
   import { useUserStore } from '@/store/modules/user'
 
@@ -188,7 +188,7 @@
       key: 'organizationId',
       type: 'treeSelect',
       span: 24,
-      api: fetchGetEnableOrganizationTree,
+      api: fetchEnabledOrganizationTree,
       immediate: false,
       beforeFetch: () => ({ tenantId: form.tenantId }),
       resultField: 'data',
@@ -337,7 +337,7 @@
 
   const loadTenantOptions = async (): Promise<void> => {
     if (!canSelectTenant.value) return
-    const { data } = await fetchGetEnableTenantList()
+    const { data } = await fetchEnabledTenantList()
     tenantOptions.value = data ?? []
   }
 

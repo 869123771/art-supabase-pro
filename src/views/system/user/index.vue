@@ -116,8 +116,8 @@
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     deactivateUser,
-    fetchGetUserList,
-    fetchGetUserOrganizationTree,
+    fetchUserList,
+    fetchUserOrganizationTree,
     resetUser
   } from '@/api/system-manage'
   import ArtButtonMore, { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
@@ -342,7 +342,7 @@
       current: params.current,
       size: params.size
     })
-    return fetchGetUserList({
+    return fetchUserList({
       ...params,
       tenantId: selectedTenantId.value || undefined,
       organizationIds: selectedOrganizationIds.value,
@@ -355,7 +355,7 @@
   const loadOrganizationTree = async (): Promise<void> => {
     organizationFilterLoading.value = true
     try {
-      const response = await fetchGetUserOrganizationTree({
+      const response = await fetchUserOrganizationTree({
         tenantId: selectedTenantId.value || undefined
       })
       organizationTree.value = response.data ?? []

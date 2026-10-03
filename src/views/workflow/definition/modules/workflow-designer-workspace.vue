@@ -367,7 +367,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import {
     fetchWorkflowDefinitionDetail,
     publishWorkflowDefinition,
@@ -551,7 +551,7 @@
       help: form.data.id
         ? '流程归属租户不可变更；平台超级管理员正在进行跨租户维护。'
         : '流程只服务所选租户，同一流程编码可在不同租户独立配置。',
-      api: fetchGetEnableTenantList,
+      api: fetchEnabledTenantList,
       resultField: 'data',
       valueField: 'id',
       labelFn: (tenant) => `${tenant.tenantName}（${tenant.tenantCode}）`,

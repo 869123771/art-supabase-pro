@@ -44,7 +44,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import { useWindowSize } from '@vueuse/core'
 
-  import { addRMenu, editMenu, saveMenuSort } from '@/api/system-manage'
+  import { addMenu, editMenu, saveMenuSort } from '@/api/system-manage'
   import { useUserStore } from '@/store/modules/user'
   import {
     buildMenuEditOrderUpdates,
@@ -569,7 +569,7 @@
         meta: { ...rest }
       }
       if (id == null) {
-        await addRMenu(params)
+        await addMenu(params)
       } else {
         await editMenu({ ...params, id })
         await saveMenuSort(sortUpdates)

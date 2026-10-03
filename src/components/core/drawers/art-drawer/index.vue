@@ -30,7 +30,14 @@
       <div class="art-drawer__header">
         <div class="art-drawer__header-main">
           <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
-          <span v-else :id="titleId" :class="titleClass">{{ drawerTitle }}</span>
+          <span
+            v-else
+            :id="titleId"
+            :class="titleClass"
+            role="heading"
+            :aria-level="String(drawerBindings.headerAriaLevel ?? '2')"
+            >{{ drawerTitle }}</span
+          >
           <div v-if="hasSubtitle && !isFocusMode" class="art-drawer__subtitle">
             <slot name="subtitle" :data="openData" :api="exposedApi">
               {{ drawerSubtitle }}
@@ -167,7 +174,19 @@
     resetOnClose: true,
     closeOnConfirmError: false,
     scrollbarAlways: false,
-    nativeScrollbar: false
+    nativeScrollbar: false,
+    closeOnClickModal: true,
+    closeOnPressEscape: true,
+    showClose: true,
+    lockScroll: true,
+    modal: true,
+    appendToBody: true,
+    destroyOnClose: true,
+    withHeader: true,
+    resizable: undefined,
+    modalFade: undefined,
+    trapFocus: undefined,
+    modalPenetrable: undefined
   })
 
   const emit = defineEmits<ArtDrawerEmits<T>>()
@@ -374,10 +393,39 @@
     delete inheritedAttrs.onResizeEnd
 
     return {
-      appendToBody: true,
-      destroyOnClose: true,
+      appendToBody: props.appendToBody,
+      destroyOnClose: props.destroyOnClose,
+      withHeader: props.withHeader,
       ...inheritedAttrs,
+      appendTo: props.appendTo,
+      zIndex: props.zIndex,
+      openDelay: props.openDelay,
+      closeDelay: props.closeDelay,
+      modalClass: props.modalClass,
+      headerClass: props.headerClass,
+      bodyClass: props.bodyClass,
+      footerClass: props.footerClass,
+      closeIcon: props.closeIcon,
+      transition: props.transition,
+      headerAriaLevel: props.headerAriaLevel,
+      resizable: props.resizable,
+      modalFade: props.modalFade,
+      trapFocus: props.trapFocus,
+      modalPenetrable: props.modalPenetrable,
+      closeOnClickModal: props.closeOnClickModal,
+      closeOnPressEscape: props.closeOnPressEscape,
+      showClose: props.showClose,
+      lockScroll: props.lockScroll,
+      modal: props.modal,
       ...runtimeBindings,
+      beforeClose: (done: () => void) =>
+        overlay.handleBeforeClose(
+          done,
+          runtimeBindings.beforeClose ??
+            props.beforeClose ??
+            inheritedAttrs.beforeClose ??
+            inheritedAttrs['before-close']
+        ),
       title: String(options.value.title ?? inheritedAttrs.title ?? ''),
       size: normalizedDrawerSize.value,
       direction: options.value.direction ?? inheritedAttrs.direction ?? 'rtl'

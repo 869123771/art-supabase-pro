@@ -70,7 +70,7 @@
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
   import { useUserStore } from '@/store/modules/user'
-  import { deleteOrganization, fetchGetOrganizationTree } from '@/api/system-manage'
+  import { deleteOrganization, fetchOrganizationTree } from '@/api/system-manage'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
   import MasterDataDeleteGuard, {
@@ -380,7 +380,7 @@
     }
   ]
 
-  const fetchTableData = (params: OrganizationSearchParams) => fetchGetOrganizationTree(params)
+  const fetchTableData = (params: OrganizationSearchParams) => fetchOrganizationTree(params)
 
   const getOrganizationActions = (row: Organization): ButtonMoreItem[] => {
     const actions: ButtonMoreItem[] = [

@@ -16,8 +16,8 @@ test('dictionary types load their cascade parent even when the list is filtered'
   const result = await page.evaluate(async () => {
     // This source-provider regression runs against the existing E2E Vite server.
     const modulePath = '/src/api/data-center.ts'
-    const { fetchGetDictTypeList } = await import(/* @vite-ignore */ modulePath)
-    const response = await fetchGetDictTypeList()
+    const { fetchDictionaryTypeList } = await import(/* @vite-ignore */ modulePath)
+    const response = await fetchDictionaryTypeList()
     const rows: Array<{
       id: string
       name: string
@@ -26,7 +26,7 @@ test('dictionary types load their cascade parent even when the list is filtered'
     }> = response.data ?? []
     const child = rows.find((row) => row.cascadeParentTypeId && row.cascadeParentType)
     if (!child) throw new Error('缺少可验证的级联字典类型，不能跳过关联回归')
-    const filtered = await fetchGetDictTypeList({ name: child.name })
+    const filtered = await fetchDictionaryTypeList({ name: child.name })
     const match = filtered.data?.find((row: { id: string }) => row.id === child.id)
     return {
       hasRows: rows.length > 0,

@@ -237,14 +237,13 @@
   import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
   import type { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
   import { ElMessage, ElScrollbar } from 'element-plus'
-  import { deleteResource, fetchGetResourceList, renameResource } from '@/api/data-center'
+  import { deleteResource, fetchResourceList, renameResource } from '@/api/data-center'
   import useResourceStore from '@/store/modules/resource'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import { pageInfoHandler } from '@utils/table/table-utils'
-  import { openFilePreview } from '@/hooks/core/useFilePreview'
+  import { formatSize, viewAttachment } from '@/utils/file'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { formatSize } from '@/utils/file'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useDebounceFn, useTimeoutFn } from '@vueuse/core'
@@ -537,12 +536,11 @@
         select(resource)
       }
       if (item.key === 'view') {
-        const result = openFilePreview({
+        viewAttachment({
           name: resource.originName,
           url: resource.url,
           fileType: resource.suffix
         })
-        if (result === 'blocked') ElMessage.warning('浏览器阻止了新页签，请允许本站打开弹出式窗口')
       }
       if (item.key === 'playMedia') {
         playingResourceKey.value = getResourcePlaybackKey(resource)
@@ -1110,7 +1108,7 @@
         from,
         to
       }
-      const { data, error } = await fetchGetResourceList(params)
+      const { data, error } = await fetchResourceList(params)
       if (requestId !== resourceRequestId) return
       loadError.value = Boolean(error)
       resources.value = data ?? []

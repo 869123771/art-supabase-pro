@@ -30,7 +30,7 @@ test('检验类别弹窗区分字段校验与服务拒绝', async ({ page }, tes
     })
   })
 
-  await page.goto('http://127.0.0.1:3014/tests/e2e/fixtures/inspection-category-feedback.html')
+  await page.goto('/modules/art-supabase-smis/tests/e2e/fixtures/inspection-category-feedback.html')
   await page.getByRole('button', { name: '打开检验类别弹窗' }).click()
   const dialog = page.getByRole('dialog', { name: '新增检验类别' })
   await expect(dialog).toBeVisible()

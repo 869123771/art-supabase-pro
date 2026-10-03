@@ -66,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getScrollBehavior } from '@/utils/ui/scroll'
   import { ref, computed, onMounted, nextTick } from 'vue'
   import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
   import { useThrottleFn } from '@vueuse/core'
@@ -194,7 +195,7 @@
     // 平滑滚动到目标位置
     scrollbarRef.value.wrapRef.scrollTo({
       left: targetScroll,
-      behavior: 'smooth'
+      behavior: getScrollBehavior()
     })
   }
 

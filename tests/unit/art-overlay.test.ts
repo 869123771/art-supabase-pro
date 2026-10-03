@@ -26,6 +26,91 @@ const createOverlay = (
   return overlay
 }
 
+test('native close waits for both the native callback and the project close guard', async () => {
+  const overlay = createOverlay()
+  const events: string[] = []
+  await overlay.handleOpen(
+    {},
+    {
+      onClose: () => {
+        events.push('guard')
+        return true
+      }
+    }
+  )
+  let release: (() => void) | undefined
+  const closed = new Promise<void>((resolve) => {
+    overlay.handleBeforeClose(
+      () => {
+        events.push('closed')
+        resolve()
+      },
+      (done: () => void) => {
+        events.push('native')
+        release = done
+      }
+    )
+  })
+  assert.equal(overlay.visible.value, true)
+  assert.deepEqual(events, ['native'])
+  release?.()
+  await closed
+  assert.equal(overlay.visible.value, false)
+  assert.deepEqual(events, ['native', 'guard', 'closed'])
+})
+
+test('native close cancellation preserves visibility without invoking the project guard', async () => {
+  const overlay = createOverlay()
+  let guardCalls = 0
+  await overlay.handleOpen(
+    {},
+    {
+      onClose: () => {
+        guardCalls += 1
+      }
+    }
+  )
+  overlay.handleBeforeClose(
+    () => assert.fail('cancelled overlay closed'),
+    (done: (cancel?: boolean) => void) => done(true)
+  )
+  assert.equal(overlay.visible.value, true)
+  assert.equal(guardCalls, 0)
+})
+
+test('a rejected project guard prevents the native overlay from beginning its close transition', async () => {
+  const overlay = createOverlay()
+  await overlay.handleOpen({}, { onClose: () => false })
+  overlay.handleBeforeClose(() => assert.fail('blocked overlay closed'))
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.equal(overlay.visible.value, true)
+})
+
+test('native callback failures retain the overlay and reach the shared error boundary', async () => {
+  const errors: unknown[] = []
+  const overlay = createOverlay((error) => errors.push(error))
+  await overlay.handleOpen({})
+  const synchronous = new Error('sync close failure')
+  const asynchronous = new Error('async close failure')
+  overlay.handleBeforeClose(
+    () => assert.fail('failed callback closed overlay'),
+    () => {
+      throw synchronous
+    }
+  )
+  overlay.handleBeforeClose(
+    () => assert.fail('failed callback closed overlay'),
+    async () => {
+      throw asynchronous
+    }
+  )
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.equal(overlay.visible.value, true)
+  assert.deepEqual(errors, [synchronous, asynchronous])
+})
+
 test('closing an overlay invalidates a pending open callback and suppresses its stale error', async () => {
   const errors: unknown[] = []
   const overlay = createOverlay((error) => errors.push(error))
@@ -47,6 +132,26 @@ test('closing an overlay invalidates a pending open callback and suppresses its 
 
   assert.equal(overlay.visible.value, false)
   assert.deepEqual(errors, [])
+})
+
+test('a pending close cannot close a subsequently opened record', async () => {
+  const overlay = createOverlay()
+  let finishClose: ((allowed: boolean) => void) | undefined
+  await overlay.handleOpen(
+    { id: 'first' },
+    {
+      onClose: () =>
+        new Promise<boolean>((resolve) => {
+          finishClose = resolve
+        })
+    }
+  )
+  const closing = overlay.handleClose()
+  await overlay.handleOpen({ id: 'second' })
+  finishClose?.(true)
+  assert.equal(await closing, false)
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.getData().id, 'second')
 })
 
 test('confirm locking prevents duplicate side effects while a submit is pending', async () => {
@@ -71,6 +176,107 @@ test('confirm locking prevents duplicate side effects while a submit is pending'
   assert.equal(second, false)
   assert.equal(await first, true)
   assert.equal(submitCount, 1)
+})
+
+test('confirmation is blocked while closed or explicitly disabled', async () => {
+  const overlay = createOverlay()
+  let submissions = 0
+  const onConfirm = () => {
+    submissions += 1
+  }
+  overlay.setOptions({ onConfirm })
+  assert.equal(await overlay.handleConfirm(), false)
+  await overlay.handleOpen({ id: 'disabled' }, { onConfirm, confirmDisabled: true })
+  assert.equal(await overlay.handleConfirm(), false)
+  assert.equal(submissions, 0)
+  assert.equal(overlay.visible.value, true)
+  overlay.setOptions({ confirmDisabled: false })
+  assert.equal(await overlay.handleConfirm(), true)
+  assert.equal(submissions, 1)
+  assert.equal(await overlay.handleConfirm(), false)
+  assert.equal(submissions, 1)
+})
+
+test('an old submission cannot close a new record or release its submission lock', async () => {
+  const overlay = createOverlay()
+  let finishFirst: (() => void) | undefined
+  let finishSecond: (() => void) | undefined
+  await overlay.handleOpen(
+    { id: 'first' },
+    {
+      onConfirm: () =>
+        new Promise<void>((resolve) => {
+          finishFirst = resolve
+        })
+    }
+  )
+  const first = overlay.handleConfirm()
+  await overlay.handleOpen(
+    { id: 'second' },
+    {
+      onConfirm: () =>
+        new Promise<void>((resolve) => {
+          finishSecond = resolve
+        })
+    }
+  )
+  const second = overlay.handleConfirm()
+  finishFirst?.()
+  assert.equal(await first, false)
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.confirmLoading.value, true)
+  assert.equal(overlay.getData().id, 'second')
+  finishSecond?.()
+  assert.equal(await second, true)
+  assert.equal(overlay.visible.value, false)
+  assert.equal(overlay.confirmLoading.value, false)
+})
+
+test('an old native close callback cannot close a new record', async () => {
+  const overlay = createOverlay()
+  let release: (() => void) | undefined
+  await overlay.handleOpen({ id: 'first' })
+  overlay.handleBeforeClose(
+    () => assert.fail('stale close completed'),
+    (done: () => void) => {
+      release = done
+    }
+  )
+  await overlay.handleOpen({ id: 'second' })
+  release?.()
+  await Promise.resolve()
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.getData().id, 'second')
+})
+
+test('a stale submission failure cannot report errors or focus validation in a new record', async () => {
+  const errors: unknown[] = []
+  let focusRequests = 0
+  const overlay = createOverlay(
+    (error) => errors.push(error),
+    () => {
+      focusRequests += 1
+    }
+  )
+  let rejectSubmit: ((error: Error) => void) | undefined
+  await overlay.handleOpen(
+    { id: 'first' },
+    {
+      closeOnConfirmError: true,
+      onConfirm: () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectSubmit = reject
+        })
+    }
+  )
+  const submitting = overlay.handleConfirm()
+  await overlay.handleOpen({ id: 'second' })
+  rejectSubmit?.(new Error('old submission failed'))
+  assert.equal(await submitting, false)
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.getData().id, 'second')
+  assert.equal(focusRequests, 0)
+  assert.deepEqual(errors, [])
 })
 
 test('invalid confirmation requests field focus and leaves the overlay available for correction', async () => {

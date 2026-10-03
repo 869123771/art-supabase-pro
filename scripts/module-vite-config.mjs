@@ -115,6 +115,10 @@ export async function createModuleViteConfig({
     preview: { host: true, port },
     resolve: {
       alias: {
+        '@/router/core/platform-route-modules': path.join(
+          platformSourceRoot,
+          'router/core/standalone-route-modules.ts'
+        ),
         [`@${appCode}`]: path.join(applicationRoot, 'src'),
         '@': platformSourceRoot,
         '@views': path.join(platformSourceRoot, 'views'),

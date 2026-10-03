@@ -7,8 +7,12 @@ void useAiOrderReferenceMatcher()
   .resolveReferences(
     {
       originStationName: '平台发货站',
-      shippingCustomerName: '平台客户',
-      cargoItems: [{ cargoName: '平台货物' }]
+      shippingCustomerName: new URLSearchParams(location.search).has('no-customer')
+        ? ''
+        : '平台客户',
+      cargoItems: new URLSearchParams(location.search).has('bulk')
+        ? Array.from({ length: 14 }, (_, index) => ({ cargoName: `货物-${index % 7}` }))
+        : [{ cargoName: '平台货物' }]
     },
     platformTenantId,
     true

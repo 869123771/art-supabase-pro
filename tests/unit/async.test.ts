@@ -38,8 +38,29 @@ test('concurrent mapper stops scheduling after failure, retaining the original e
     })
     return item
   })
-  await assert.rejects(result, (error) => error === failure)
+  let settled = false
+  const rejection = assert
+    .rejects(result, (error) => error === failure)
+    .then(() => {
+      settled = true
+    })
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  assert.equal(settled, false, 'must wait for an active request before reporting failure')
   complete()
-  await Promise.resolve()
+  await rejection
   assert.deepEqual(started, [0, 1])
+})
+
+test('concurrent mapper preserves the first failure after other active requests fail', async () => {
+  const failure = new Error('first failure')
+  let rejectSecond!: (error: Error) => void
+  const result = mapWithConcurrency([0, 1, 2], 2, async (item) => {
+    if (item === 0) throw failure
+    return new Promise<number>((_resolve, reject) => {
+      rejectSecond = reject
+    })
+  })
+  const rejection = assert.rejects(result, (error) => error === failure)
+  rejectSecond(new Error('later failure'))
+  await rejection
 })

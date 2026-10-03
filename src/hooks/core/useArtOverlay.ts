@@ -190,6 +190,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
 
   const handleClose = async (force = false): Promise<boolean> => {
     if (closePending.value || !visible.value) return false
+    const sequence = openSequence
     closePending.value = true
 
     try {
@@ -198,46 +199,61 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
         if (canClose === false) return false
       }
 
+      if (sequence !== openSequence || !visible.value) return false
+
       ++openSequence
       visible.value = false
       return true
     } catch (error) {
-      config.emitError(error)
+      if (sequence === openSequence && visible.value) config.emitError(error)
       return false
     } finally {
-      closePending.value = false
+      if (sequence === openSequence || !visible.value) closePending.value = false
     }
   }
 
   const handleConfirm = async (): Promise<boolean> => {
-    if (confirmLoading.value || loading.value || closePending.value) return false
+    if (
+      !visible.value ||
+      options.value.confirmDisabled ||
+      confirmLoading.value ||
+      loading.value ||
+      closePending.value
+    )
+      return false
+    const sequence = openSequence
+    const activeOptions = options.value
 
     config.emitConfirm(openData.value)
-    if (!options.value.onConfirm) {
-      if (options.value.autoClose) await handleClose()
+    if (sequence !== openSequence || !visible.value) return false
+    if (!activeOptions.onConfirm) {
+      if (activeOptions.autoClose) await handleClose()
       return true
     }
 
     confirmLoading.value = true
     try {
-      const result = await options.value.onConfirm(openData.value, config.getApi())
+      const result = await activeOptions.onConfirm?.(openData.value, config.getApi())
+      if (sequence !== openSequence || !visible.value) return false
       if (result === false) {
         await nextTick()
-        config.onConfirmRejected?.()
+        if (sequence === openSequence && visible.value) config.onConfirmRejected?.()
       }
-      if (result !== false && options.value.autoClose) await handleClose()
+      if (result !== false && sequence === openSequence && activeOptions.autoClose)
+        await handleClose()
       return result !== false
     } catch (error) {
+      if (sequence !== openSequence || !visible.value) return false
       config.emitError(error)
-      if (options.value.closeOnConfirmError) {
+      if (activeOptions.closeOnConfirmError) {
         await handleClose(true)
       } else {
         await nextTick()
-        config.onConfirmRejected?.()
+        if (sequence === openSequence && visible.value) config.onConfirmRejected?.()
       }
       return false
     } finally {
-      confirmLoading.value = false
+      if (sequence === openSequence || !visible.value) confirmLoading.value = false
     }
   }
 
@@ -247,6 +263,26 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
       return
     }
     void handleClose()
+  }
+
+  const handleBeforeClose = (done: () => void, nativeBeforeClose?: unknown): void => {
+    const sequence = openSequence
+    const reportError = (error: unknown): void => {
+      if (sequence === openSequence && visible.value) config.emitError(error)
+    }
+    const requestClose = (cancel = false): void => {
+      if (cancel || sequence !== openSequence || !visible.value) return
+      void handleClose().then((allowed) => {
+        if (allowed) done()
+      })
+    }
+    try {
+      if (typeof nativeBeforeClose === 'function') {
+        void Promise.resolve(nativeBeforeClose(requestClose)).catch(reportError)
+      } else requestClose()
+    } catch (error) {
+      reportError(error)
+    }
   }
 
   const handleClosed = () => {
@@ -267,6 +303,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
     handleConfirm,
     handleReset,
     handleModelValueChange,
+    handleBeforeClose,
     handleClosed,
     setLoading,
     setConfirmLoading,

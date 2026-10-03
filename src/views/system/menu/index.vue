@@ -88,9 +88,9 @@
   import { formatWithDayjs } from '@/utils/time'
   import {
     deleteMenu,
-    fetchGetAllMenuList,
-    fetchGetMenuChildren,
-    fetchGetMenuList,
+    fetchAllMenuList,
+    fetchMenuChildren,
+    fetchMenuList,
     type MenuListParams
   } from '@/api/system-manage'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -437,7 +437,7 @@
       recordId: typeof route.query.recordId === 'string' ? route.query.recordId : undefined
     }
 
-    return fetchGetMenuList(query, context?.signal)
+    return fetchMenuList(query, context?.signal)
   }
 
   const responseAdapter = (response: { data: AppRouteRecord[] }): ApiResponse<AppRouteRecord> => {
@@ -457,7 +457,7 @@
     if (completeMenuTreeCache.value) return completeMenuTreeCache.value
     if (!completeMenuTreeLoad) {
       completeMenuTreeLoad = (async () => {
-        const { data, error } = await fetchGetAllMenuList()
+        const { data, error } = await fetchAllMenuList()
         if (error) throw error
         const tree = treeUtils.listToTree(data ?? [], (a, b) => (a.sort ?? 0) - (b.sort ?? 0))
         completeMenuTreeCache.value = tree
@@ -484,7 +484,7 @@
       return
     }
 
-    const { data, error } = await fetchGetMenuChildren(menu.id)
+    const { data, error } = await fetchMenuChildren(menu.id)
     if (error) {
       showMenuTreeLoadError(error)
       resolve([])

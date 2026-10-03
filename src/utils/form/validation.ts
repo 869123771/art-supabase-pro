@@ -1,3 +1,4 @@
+import { getScrollBehavior } from '@/utils/ui/scroll'
 import { nextTick, type Ref } from 'vue'
 
 export interface ValidatableFormRef {
@@ -12,16 +13,19 @@ export function clearFormRefsValidation(formRefs: readonly FormRef[]): void {
   formRefs.forEach((formRef) => formRef.value?.clearValidate())
 }
 
-export function focusFirstInvalidFormField(rootRef: FormRootRef): void {
-  const invalidItem = rootRef.value?.querySelector<HTMLElement>('.el-form-item.is-error')
+export function focusFirstInvalidFormField(
+  rootRef: FormRootRef,
+  selector = '.el-form-item.is-error'
+): void {
+  const invalidItem = rootRef.value?.querySelector<HTMLElement>(selector)
   if (!invalidItem) return
 
-  invalidItem.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  invalidItem.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' })
   invalidItem
     .querySelector<HTMLElement>(
-      'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      'input:not([type="hidden"]):not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"]), button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([type="hidden"]):not([disabled]):not([aria-disabled="true"])'
     )
-    ?.focus()
+    ?.focus({ preventScroll: true })
 }
 
 export async function validateFormRefs(

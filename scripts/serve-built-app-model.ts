@@ -1,4 +1,4 @@
-import { relative } from 'node:path'
+import { isAbsolute, relative } from 'node:path'
 
 export function normalizeBuildBase(value: string): string {
   const trimmed = value.trim()
@@ -25,7 +25,7 @@ export function stripBuildBase(pathname: string, buildBase: string): string {
 
 export function isPathWithinRoot(rootDirectory: string, candidatePath: string): boolean {
   const relativePath = relative(rootDirectory, candidatePath).replaceAll('\\', '/')
-  return relativePath === '' || (!relativePath.startsWith('..') && !relativePath.includes('/../'))
+  return relativePath !== '..' && !relativePath.startsWith('../') && !isAbsolute(relativePath)
 }
 
 export function isAssetPath(relativePath: string): boolean {

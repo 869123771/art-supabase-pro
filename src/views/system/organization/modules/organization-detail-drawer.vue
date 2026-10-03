@@ -187,7 +187,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { fetchGetOrganizationDetail } from '@/api/system-manage'
+  import { fetchOrganizationDetail } from '@/api/system-manage'
 
   type Organization = Api.SystemManage.OrganizationListItem
   type OrganizationMember = Api.SystemManage.OrganizationMember
@@ -280,7 +280,7 @@
     }
 
     try {
-      const response = await fetchGetOrganizationDetail(row.id)
+      const response = await fetchOrganizationDetail(row.id)
       if (response.data) organization.value = response.data
     } finally {
       drawerRef.value?.setLoading(false)

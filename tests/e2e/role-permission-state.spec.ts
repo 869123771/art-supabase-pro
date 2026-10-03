@@ -1,5 +1,8 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { mockApplicationMenus } from './support/menu-rpc'
+import { prepareIsolatedSession } from './support/isolated-session'
+
+test.use({ storageState: { cookies: [], origins: [] } })
 
 const menuId = (index: number) => `permission-fixture-${index}`
 const menus = [
@@ -21,39 +24,9 @@ const menus = [
 
 async function prepare(page: Page, initialMenuIds: string[] = [menuId(0)]) {
   test.setTimeout(120_000)
+  const tenant = await prepareIsolatedSession(page)
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
-  // Isolate dialog regressions from live identity/menu service latency. The
-  // separate virtual-tree integration spec still exercises the real page data.
-  const tenant = { id: 'permission-test-tenant', tenant_code: 'test', tenant_name: '测试租户' }
-  await page.route('**/rest/v1/sys_param?*', (route) => route.fulfill({ json: [] }))
-  await page.route('**/rest/v1/sys_dictionary?*', (route) => route.fulfill({ json: [] }))
-  await page.route('**/rest/v1/sys_user?*', (route) =>
-    route.fulfill({
-      json: {
-        id: 'permission-test-user',
-        user_name: '测试用户',
-        user_email: 'test@example.invalid',
-        status: '1',
-        tenant_id: tenant.id,
-        tenant
-      }
-    })
-  )
-  await page.route('**/auth/v1/user', (route) =>
-    route.fulfill({
-      json: {
-        id: 'permission-test-auth',
-        aud: 'authenticated',
-        role: 'authenticated'
-      }
-    })
-  )
-  await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: true }))
-  await page.route('**/rest/v1/sys_tenant?*', (route) => route.fulfill({ json: [tenant] }))
-  await page.route('**/rest/v1/rpc/get_organization_list_secure', (route) =>
-    route.fulfill({ json: [] })
-  )
   await page.route('**/rest/v1/sys_role?*', (route) =>
     route.fulfill({
       headers: { 'content-range': '0-1/2' },
@@ -176,6 +149,12 @@ test('large permission tree stays bounded through scrolling, search, collapse an
   const viewport = dialog.locator('.role-permission-dialog__tree-viewport')
   const scroll = dialog.locator('.el-tree-virtual-list')
   const outer = dialog.locator('.art-dialog__scrollbar > .el-scrollbar__wrap')
+  await dialog.evaluate(async (element) => {
+    const animations = element
+      .getAnimations({ subtree: true })
+      .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+    await Promise.all(animations.map((animation) => animation.finished.catch(() => undefined)))
+  })
   const metrics = () =>
     viewport.evaluate((element) => ({
       height: element.clientHeight,

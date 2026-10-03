@@ -8,11 +8,11 @@ interface ErrorDetails {
 const DEFAULT_ERROR_MESSAGE = '操作未完成，请稍后重试'
 const USER_NOTIFIED = Symbol('user-notified')
 
-type UserNotifiedError = Error & { [USER_NOTIFIED]?: true }
+type UserNotifiedError = { [USER_NOTIFIED]?: true; cause?: unknown }
 
 /** 标记共享响应层已经提示过的异常，避免上层再弹一次相同错误。 */
-export function markErrorAsUserNotified(error: Error): Error {
-  const notifiedError = error as UserNotifiedError
+export function markErrorAsUserNotified<T extends object>(error: T): T {
+  const notifiedError = error as T & UserNotifiedError
   notifiedError[USER_NOTIFIED] = true
   return error
 }
@@ -20,10 +20,10 @@ export function markErrorAsUserNotified(error: Error): Error {
 export function wasErrorUserNotified(error: unknown): boolean {
   const seen = new Set<unknown>()
   let current = error
-  while (current instanceof Error && !seen.has(current)) {
+  while (typeof current === 'object' && current !== null && !seen.has(current)) {
     if ((current as UserNotifiedError)[USER_NOTIFIED] === true) return true
     seen.add(current)
-    current = current.cause
+    current = (current as UserNotifiedError).cause
   }
   return false
 }

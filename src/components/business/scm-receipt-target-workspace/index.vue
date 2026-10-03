@@ -29,13 +29,25 @@
           showExpand: kind === 'inbound'
         }"
         :table-props="{
-          rowKey: 'id',
+          rowKey: displayMode === 'line' ? 'detailRowId' : 'id',
+          spanMethod: mergeDocumentCells,
           tableLayout: 'fixed',
           emptyText: `暂无${title}`,
           emptyDescription: '从已确认的收料通知单选择明细下推后，会在这里生成草稿。'
         }"
         focusable
-      />
+      >
+        <template #search-displayMode>
+          <ElRadioGroup
+            v-model="displayMode"
+            aria-label="单据列表展示方式"
+            @change="tableRef?.refreshContext()"
+          >
+            <ElRadioButton label="document" value="document">按单据</ElRadioButton>
+            <ElRadioButton label="line" value="line">按明细</ElRadioButton>
+          </ElRadioGroup>
+        </template>
+      </ArtTableQuery>
       <ArtDrawer ref="detailRef" size="lg" :show-footer="false">
         <ArtAsyncState :error="detailError" error-title="单据明细加载失败" @retry="loadDetail">
           <div v-if="activeDocument" class="receipt-target-detail">
@@ -131,6 +143,12 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatCurrencyValue } from '@/utils/ui/format'
+  import {
+    documentGroupSpan,
+    expandDocumentLines,
+    loadAllDocumentPages,
+    paginateDetailRows
+  } from '@/utils/business/document-detail-list'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -140,6 +158,7 @@
   import {
     fetchScmReceiptTargets,
     fetchScmReceiptTargetLines,
+    fetchScmReceiptTargetLinesForDocuments,
     fetchScmReceiptProjectOptions,
     fetchScmReceiptProjectSections,
     setScmReceiptScope,
@@ -147,6 +166,7 @@
     type ScmReceiptTargetDocument,
     type ScmReceiptTargetKind,
     type ScmReceiptTargetLine,
+    type ScmReceiptTargetListLine,
     type ScmReceiptProjectOption,
     type ScmReceiptTargetQuery,
     type ScmReceiptTargetStatus
@@ -189,6 +209,35 @@
   const { isPlatformSuper } = storeToRefs(useUserStore())
   const { effectiveTenantId, tenantOptions } = storeToRefs(useTenantScopeStore())
   const tableRef = ref<ArtTableQueryExpose>()
+  const displayMode = ref<'document' | 'line'>('document')
+  type ReceiptTargetListRow = ScmReceiptTargetDocument & {
+    detailRowId?: string
+    detailLine?: ScmReceiptTargetListLine
+    detailGroupStart?: boolean
+  }
+  const visibleRows = ref<ReceiptTargetListRow[]>([])
+  const lineProperties = new Set([
+    'detailLineNo',
+    'detailMaterialCode',
+    'detailMaterialDescription',
+    'detailQuantity',
+    'detailStockQuantity',
+    'detailStockUnit',
+    'detailWarehouse',
+    'detailBatchNo',
+    'detailAmount'
+  ])
+  function mergeDocumentCells({
+    rowIndex,
+    column
+  }: {
+    rowIndex: number
+    column: { property?: string }
+  }) {
+    return displayMode.value === 'line'
+      ? documentGroupSpan(visibleRows.value, rowIndex, column.property, lineProperties)
+      : ([1, 1] as [number, number])
+  }
   const detailRef = ref<ArtDrawerExpose<ScmReceiptTargetDocument>>()
   const serialDialogRef = ref<InstanceType<typeof ReceiptSerialDialog>>()
   const binDialogRef = ref<InstanceType<typeof ReceiptBinDialog>>()
@@ -207,6 +256,7 @@
   const savingScope = ref(false)
   const search = ref<ScmReceiptTargetQuery>({ keyword: '' })
   const searchItems = computed<SearchFormItem[]>(() => [
+    { label: '展示方式', key: 'displayMode', type: 'text' },
     ...(isPlatformSuper.value && !effectiveTenantId.value
       ? [
           {
@@ -365,11 +415,34 @@
       (status === 'draft' ? '草稿' : status === 'confirmed' ? '已入库' : '已审核')
     )
   }
-  function fetchPage(query: ScmReceiptTargetQuery) {
-    return fetchScmReceiptTargets(props.kind, {
-      ...query,
-      tenantId: effectiveTenantId.value || query.tenantId
-    })
+  async function fetchPage(query: ScmReceiptTargetQuery) {
+    const fetchDocuments = (page: ScmReceiptTargetQuery) =>
+      fetchScmReceiptTargets(props.kind, {
+        ...page,
+        tenantId: effectiveTenantId.value || page.tenantId
+      })
+    if (displayMode.value === 'document') {
+      visibleRows.value = []
+      return fetchDocuments(query)
+    }
+    const documents = await loadAllDocumentPages(fetchDocuments, query)
+    const lines = await fetchScmReceiptTargetLinesForDocuments(
+      documents.map((document) => document.id)
+    )
+    const linesByDocument = new Map<string, ScmReceiptTargetListLine[]>()
+    for (const line of lines) {
+      const group = linesByDocument.get(line.targetDocumentId) || []
+      group.push(line)
+      linesByDocument.set(line.targetDocumentId, group)
+    }
+    const rows = expandDocumentLines(
+      documents,
+      (document) => linesByDocument.get(document.id) || [],
+      (line) => line.id
+    )
+    const result = { ...paginateDetailRows(rows, query.from, query.to), error: null }
+    visibleRows.value = result.data
+    return result
   }
   async function loadDetail(): Promise<void> {
     const row = activeDocument.value
@@ -472,7 +545,7 @@
       /* 用户取消或 API 已提示错误。 */
     }
   }
-  function columnsFactory(): ColumnOption<ScmReceiptTargetDocument>[] {
+  function columnsFactory(): ColumnOption<ReceiptTargetListRow>[] {
     return [
       {
         prop: 'documentNo',
@@ -540,6 +613,75 @@
         minWidth: 180,
         formatter: (row) => row.createdAt?.replace('T', ' ').slice(0, 19) || '—'
       },
+      ...(displayMode.value === 'line'
+        ? [
+            {
+              prop: 'detailLineNo',
+              label: '明细行号',
+              width: 90,
+              formatter: (row: ReceiptTargetListRow) => row.detailLine?.lineSnapshot.lineNo ?? '—'
+            },
+            {
+              prop: 'detailMaterialCode',
+              label: '物料编码',
+              minWidth: 145,
+              formatter: (row: ReceiptTargetListRow) =>
+                row.detailLine?.lineSnapshot.materialCode || '—'
+            },
+            {
+              prop: 'detailMaterialDescription',
+              label: '物料描述',
+              minWidth: 190,
+              formatter: (row: ReceiptTargetListRow) =>
+                row.detailLine?.lineSnapshot.materialDescription || '—'
+            },
+            {
+              prop: 'detailQuantity',
+              label: '数量',
+              width: 105,
+              align: 'right' as const,
+              formatter: (row: ReceiptTargetListRow) => row.detailLine?.lineSnapshot.quantity ?? 0
+            },
+            {
+              prop: 'detailStockQuantity',
+              label: '库存数量',
+              width: 110,
+              align: 'right' as const,
+              formatter: (row: ReceiptTargetListRow) =>
+                row.detailLine?.lineSnapshot.stockQuantity ?? 0
+            },
+            {
+              prop: 'detailStockUnit',
+              label: '库存单位',
+              width: 100,
+              formatter: (row: ReceiptTargetListRow) =>
+                row.detailLine?.lineSnapshot.stockUnit || '—'
+            },
+            {
+              prop: 'detailWarehouse',
+              label: '仓库 / 仓位',
+              minWidth: 160,
+              formatter: (row: ReceiptTargetListRow) =>
+                [row.detailLine?.lineSnapshot.warehouse, row.detailLine?.lineSnapshot.location]
+                  .filter(Boolean)
+                  .join(' / ') || '—'
+            },
+            {
+              prop: 'detailBatchNo',
+              label: '批号',
+              minWidth: 125,
+              formatter: (row: ReceiptTargetListRow) => row.detailLine?.lineSnapshot.batchNo || '—'
+            },
+            {
+              prop: 'detailAmount',
+              label: '明细金额',
+              width: 140,
+              align: 'right' as const,
+              formatter: (row: ReceiptTargetListRow) =>
+                formatCurrencyValue(row.detailLine?.amount ?? 0)
+            }
+          ]
+        : []),
       {
         prop: 'actions',
         label: '操作',

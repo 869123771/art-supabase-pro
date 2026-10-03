@@ -184,13 +184,14 @@
 
       <template #empty>
         <div v-if="loading"></div>
-        <ArtEmptyState
-          v-else
-          :title="emptyText"
-          :description="emptyDescription"
-          :visual-size="92"
-          size="compact"
-        />
+        <slot v-else name="empty">
+          <ArtEmptyState
+            :title="emptyText"
+            :description="emptyDescription"
+            :visual-size="92"
+            size="compact"
+          />
+        </slot>
       </template>
     </ElTable>
 
@@ -495,8 +496,9 @@
   const height = computed(() => {
     // 全屏模式下占满全屏
     if (isFullScreen.value) return '100%'
-    // 空数据且非加载状态时固定高度
-    if (isEmpty.value && !props.loading) return props.emptyHeight
+    // 初次加载也使用稳定的空表格高度，避免未定高容器中的百分比高度反馈。
+    // 加载期间保留业务显式传入的高度。
+    if (isEmpty.value && (!props.loading || !props.height)) return props.emptyHeight
     // 使用传入的高度
     if (props.height) return props.height
     // 默认占满容器高度

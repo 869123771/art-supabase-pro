@@ -93,8 +93,8 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { addDocumentNumberRules, fetchDocumentNumberSceneList } from '@/api/document-number'
-  import { fetchGetEnableMenuList } from '@/api/system-manage'
-  import { fetchGetEnableTenantList } from '@/api/system-manage/tenant'
+  import { fetchMenuCatalog } from '@/api/system-manage'
+  import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import { renderDocumentNumber, validateDocumentNumberTemplate } from '@/utils/document-number'
   import TreeUtils from '@/utils/tree'
   import { useUserStore } from '@/store/modules/user'
@@ -367,8 +367,8 @@
   const initialize = async (): Promise<void> => {
     const [sceneResult, menuResult, tenantResult] = await Promise.all([
       fetchDocumentNumberSceneList(),
-      fetchGetEnableMenuList(),
-      fetchGetEnableTenantList()
+      fetchMenuCatalog(),
+      fetchEnabledTenantList()
     ])
     form.scenes = sceneResult.data ?? []
     form.menus = (menuResult.data ?? []).filter((menu) => menu.type !== 'button')

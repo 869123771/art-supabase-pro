@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fetchGetTenantList } from '@/api/system-manage/tenant'
+import { fetchTenantList } from '@/api/system-manage/tenant'
 import { clearAiProviderCatalogCache } from '@/api/providers/supabase/ai-configuration'
 import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
 import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
@@ -73,7 +73,7 @@ export const useTenantScopeStore = defineStore(
       loading.value = true
       loadError.value = null
       try {
-        const { data, error } = await fetchGetTenantList({ status: '1', from: 0, to: 999 })
+        const { data, error } = await fetchTenantList({ status: '1', from: 0, to: 999 })
         if (error) throw error
 
         const fetchedTenants = (data ?? []).filter(

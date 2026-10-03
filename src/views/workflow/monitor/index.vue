@@ -42,7 +42,7 @@
 
     <section
       class="workflow-monitor__callback-health art-card-xs"
-      :class="{ 'is-attention': callbackIssueCount > 0 }"
+      :class="{ 'is-attention': !!callbackHealth.error || callbackIssueCount > 0 }"
       :aria-busy="callbackHealth.loading"
     >
       <ArtOverlayLoading
@@ -54,10 +54,23 @@
         description=""
       />
       <span
-        ><ArtSvgIcon :icon="callbackIssueCount ? 'ri:error-warning-line' : 'ri:shield-check-line'"
+        ><ArtSvgIcon
+          :icon="
+            callbackHealth.error || callbackIssueCount
+              ? 'ri:error-warning-line'
+              : 'ri:shield-check-line'
+          "
       /></span>
       <div>
-        <strong>{{ callbackIssueCount ? '业务回调需要关注' : '业务回调运行正常' }}</strong>
+        <strong>{{
+          callbackHealth.error
+            ? '回调健康度暂不可用'
+            : callbackHealth.loading
+              ? '正在检查回调健康度'
+              : callbackIssueCount
+                ? '业务回调需要关注'
+                : '业务回调运行正常'
+        }}</strong>
         <p v-if="callbackHealth.error">{{ callbackHealth.error.message }}</p>
         <p v-else>
           待投递 {{ callbackHealth.data.pending }} · 等待重试 {{ callbackHealth.data.retryWait }} ·
@@ -65,6 +78,13 @@
           {{ callbackHealth.data.succeeded }}
         </p>
       </div>
+      <ElButton
+        v-if="callbackHealth.error"
+        plain
+        :disabled="callbackHealth.loading"
+        @click="loadCallbackHealth"
+        >重试健康度检查</ElButton
+      >
       <ElButton
         :type="callbackIssueCount ? 'danger' : 'primary'"
         plain
@@ -437,32 +457,47 @@
     return fetchWorkflowMonitorList({ ...params, from, to })
   }
 
+  let summaryRequestId = 0
+  let callbackRequestId = 0
+
+  onBeforeUnmount(() => {
+    summaryRequestId += 1
+    callbackRequestId += 1
+  })
+
   async function loadSummary(): Promise<void> {
+    const requestId = ++summaryRequestId
     overview.loading = true
     overview.error = null
     try {
-      Object.assign(overview.data, await fetchWorkflowMonitorSummary())
+      const result = await fetchWorkflowMonitorSummary()
+      if (requestId !== summaryRequestId) return
+      Object.assign(overview.data, result)
       overview.loaded = true
     } catch (error) {
+      if (requestId !== summaryRequestId) return
       overview.error = createFriendlySupabaseError(error, '审批运营概览加载失败，请稍后重试')
     } finally {
-      overview.loading = false
+      if (requestId === summaryRequestId) overview.loading = false
     }
   }
 
   async function loadCallbackHealth(): Promise<void> {
+    const requestId = ++callbackRequestId
     callbackHealth.loading = true
     callbackHealth.error = null
     try {
       const result = await fetchWorkflowCallbackOutbox(null, 1)
+      if (requestId !== callbackRequestId) return
       Object.assign(callbackHealth.data, result.summary)
     } catch (error) {
+      if (requestId !== callbackRequestId) return
       callbackHealth.error = createFriendlySupabaseError(
         error,
         '业务回调健康度加载失败，请稍后重试'
       )
     } finally {
-      callbackHealth.loading = false
+      if (requestId === callbackRequestId) callbackHealth.loading = false
     }
   }
 

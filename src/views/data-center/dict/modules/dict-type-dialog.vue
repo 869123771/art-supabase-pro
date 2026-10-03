@@ -30,8 +30,8 @@
   import {
     addDictType,
     editDictType,
-    fetchGetDictDirectoryTree,
-    fetchGetDictionaryTypeOptions
+    fetchDictionaryDirectoryTree,
+    fetchDictionaryTypeOptions
   } from '@/api/data-center'
   import { useUserStore } from '@/store/modules/user'
   import { uniqueValidator } from '@/utils/form/validator'
@@ -139,7 +139,7 @@
         key: 'parentId',
         type: 'cascader',
         span: 24,
-        api: fetchGetDictDirectoryTree,
+        api: fetchDictionaryDirectoryTree,
         params: {
           excludeId: form.editing && form.data.nodeType === 'directory' ? form.data.id : undefined
         },
@@ -170,7 +170,7 @@
         type: 'select',
         span: 24,
         hidden: form.data.nodeType !== 'dictionary',
-        api: fetchGetDictionaryTypeOptions,
+        api: fetchDictionaryTypeOptions,
         immediate: false,
         params: {
           excludeId: form.editing ? form.data.id : undefined

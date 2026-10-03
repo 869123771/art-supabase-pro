@@ -14,7 +14,7 @@
 <script setup lang="ts">
   import { ElLink } from 'element-plus'
   import type { FilePreviewTarget } from '@/hooks/core/useFilePreview'
-  import { previewAttachment } from './preview'
+  import { viewAttachment } from '@/utils/file'
 
   defineOptions({ name: 'ArtAttachmentLink' })
 
@@ -25,7 +25,7 @@
   const displayName = computed(() => props.file.name?.trim() || '未命名附件')
 
   const handlePreview = (): void => {
-    previewAttachment(props.file)
+    viewAttachment(props.file)
   }
 </script>
 

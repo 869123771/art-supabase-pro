@@ -141,6 +141,14 @@ const columnsFactory = (): ColumnOption<Row>[] => [
 />
 ```
 
+### 旧请求与附带状态
+
+内管模式会把 `options.signal` 传给 `apiFn`。新请求开始或组件卸载会使旧信号失效；表格内部忽略过期的列表响应。若业务筛选有防抖等待，在条件改变时同步调用 `tableQueryRef.value?.cancelRequest()`，使旧请求立即失效；防抖结束后再加载新数据。
+
+业务加载函数若同时更新概览、目录树、选项、错误提示或加载状态，必须在更新这些状态前检查 `options?.signal?.aborted`。表格无法撤销业务函数内部已经执行的副作用。`catch` 和 `finally` 中的状态更新同样需要检查，避免旧请求结束新请求的加载状态。
+
+请求选项类型使用 `@/hooks/core/useTable` 导出的 `TableRequestOptions`。后端接口支持取消时继续传递该信号；只检查信号能阻止旧结果更新界面，不能证明底层网络请求已经取消。组件的导出流程等独立调用可能不传选项，加载函数应保留可选参数。
+
 ### 首次不自动请求
 
 ```vue
@@ -172,7 +180,7 @@ const load = () => {
 | `headerActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 工具栏左侧操作按钮配置；勾选后会自动把导出、批量删除和 `selectionRequired` 操作切换到批量命令栏。 |
 | `headerActionsPlacement` | `'table' \| 'workspace'` | 两种 | `'table'` | 普通态非批量操作的位置。`workspace` 需配合 `BusinessTableWorkspaceActions`；进入专注后动作自动回到表格左侧。 |
 | `selectionActions` | `ArtTableQueryHeaderAction[]` | 两种 | `[]` | 显式配置勾选后的批量操作并覆盖自动推导结果；未勾选时不占用空间。 |
-| `apiFn` | `(params: any) => Promise<any>` | 内管 | - | 列表接口函数。传入后启用内管模式。 |
+| `apiFn` | `ArtTableQueryApiFn<TParams, TResponse>` | 内管 | - | 类型化列表接口，接收参数和可选 `TableRequestOptions`。传入后启用内管模式。 |
 | `apiParams` | `Record<string, any>` | 内管 | `{}` | 默认接口参数，会和 `{ current: 1, size: 20 }` 合并。 |
 | `immediate` | `boolean` | 内管 | `true` | 是否挂载后立即请求。 |
 | `excludeParams` | `string[]` | 内管 | `[]` | 请求前从参数中排除的字段。 |
@@ -375,6 +383,7 @@ interface ArtTableQueryExpose {
   refreshUpdate: () => Promise<void>
   refreshRemove: () => Promise<void>
   getData: () => Promise<unknown>
+  cancelRequest: () => void
   resetSearchParams: () => Promise<void>
   clearSelection: () => void
 }
@@ -387,10 +396,13 @@ interface ArtTableQueryExpose {
 | `refreshUpdate()`     | 编辑成功后刷新，默认保留当前页。                             |
 | `refreshRemove()`     | 删除成功后刷新，当前页为空时自动回退上一页，并清空选中状态。 |
 | `getData()`           | 查询语义的数据加载，默认回到第一页。                         |
+| `cancelRequest()`     | 立即使当前请求失效，并取消尚未执行的内部防抖查询。           |
 | `resetSearchParams()` | 外部主动清空查询表单并重置内部查询参数。                     |
 | `clearSelection()`    | 清空当前跨页选择。                                           |
 
 ## headerActions
+
+点击操作会在确认弹窗和异步回调期间锁定表格的操作按钮；当前操作显示加载状态，取消、成功或失败后释放锁。回调应返回实际请求的 Promise，避免提前结束执行状态。共享响应层已提示的错误不会重复弹出，其他错误会显示友好的操作反馈。删除操作仍由业务回调负责关联检查与服务端约束，仅在回调成功后清空勾选。
 
 `headerActions` 用于声明工具栏左侧按钮。标准 CRUD 页优先使用它，不手写 `#header-left`。存在复选框时，组件会在勾选后自动进入批量上下文：普通新增、导入等操作暂时隐藏，导出会显示为“导出选中”，删除和所有 `selectionRequired` 操作进入批量命令栏，取消选择后恢复普通操作。
 

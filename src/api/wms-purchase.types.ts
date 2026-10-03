@@ -16,6 +16,9 @@ export interface WmsPurchaseOption {
   code: string
   tenantId: string
   documentTypeId?: string
+  isDefault?: boolean
+  enabled?: boolean
+  menuIds?: string[]
 }
 
 export interface WmsPurchaseOrganization {

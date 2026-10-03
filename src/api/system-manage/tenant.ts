@@ -6,7 +6,7 @@ type TenantSearchParams = Api.SystemManage.TenantSearchParams
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
-export async function fetchGetTenantList(params: TenantSearchParams) {
+export async function fetchTenantList(params: TenantSearchParams) {
   const { tenantCode, tenantName, status, from = 0, to = 9 } = params
   const specs = [
     { col: 'tenant_code', op: 'ilike', val: tenantCode ? `%${tenantCode}%` : undefined },
@@ -26,7 +26,7 @@ export async function fetchGetTenantList(params: TenantSearchParams) {
   })
 }
 
-export async function fetchGetEnableTenantList() {
+export async function fetchEnabledTenantList() {
   const query = supabase
     .from('sys_tenant')
     .select('id, tenant_code, tenant_name, status, builtin_type')

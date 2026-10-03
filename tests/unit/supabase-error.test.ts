@@ -31,6 +31,15 @@ test('does not report a wrapped provider error twice', () => {
   assert.equal(wasErrorUserNotified(new Error('本地校验失败')), false)
 })
 
+test('preserves raw database error fields while tracking displayed feedback', () => {
+  const rawError = { code: '42501', message: 'permission denied', details: 'restricted record' }
+  assert.equal(wasErrorUserNotified(rawError), false)
+  assert.equal(markErrorAsUserNotified(rawError), rawError)
+  assert.equal(rawError.code, '42501')
+  assert.equal(wasErrorUserNotified(new Error('读取失败', { cause: rawError })), true)
+  assert.equal(wasErrorUserNotified(null), false)
+})
+
 test('uses stable Supabase and Postgres error codes before technical messages', () => {
   assert.equal(
     getFriendlySupabaseErrorMessage({ code: '23505', message: 'duplicate key value' }),
