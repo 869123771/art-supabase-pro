@@ -80,6 +80,9 @@ test('库存主数据布局与库位交互', async ({ page }, testInfo) => {
     })
     await expect(page.locator('.art-page-view:visible').last()).toHaveCSS('opacity', '1')
     await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 30_000 })
+    if (path === 'outbound-rule' || path === 'supply-chain-code-rule') {
+      await expect(page.locator('.el-pagination__total')).toHaveText(/共\s*1\s*条/)
+    }
     await expect(page.locator('.art-overlay-loading.is-loading:visible')).toHaveCount(0, {
       timeout: 30_000
     })

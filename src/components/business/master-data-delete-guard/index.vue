@@ -108,7 +108,7 @@
       <div class="master-delete-guard__notice">
         <i class="ri:information-line" aria-hidden="true" />
         <span v-if="currentOptions?.resourceType"
-          >处理页面会携带主数据 ID 和关联记录 ID，并在打开后自动过滤。</span
+          >处理页面会携带主数据与关联记录定位信息；请在目标页面核对对应记录。</span
         >
         <span v-else>请核对关联记录编号与状态，处理后重新检查。</span>
       </div>

@@ -590,7 +590,7 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
 1. `exportApi`
 2. `exportData`
 3. 当前选中行
-4. `apiFn` 全量拉取，使用 `exportMaxRows`
+4. `apiFn` 每批 500 行读取全部筛选结果，使用 `exportMaxRows` 限制总行数；超限、缺页或响应格式无效时阻止下载。自定义 `responseAdapter` 必须提供真实总数，不能用单页长度代替。
 5. 当前表格数据
 
 默认导出列：

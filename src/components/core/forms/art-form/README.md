@@ -131,6 +131,7 @@
 
 - 业务新增、编辑、审批和配置表单默认使用顶部标签，让标签、控件、说明和校验信息形成稳定的纵向阅读顺序。
 - 两列短表单通常使用 `span="12"`，单列流程表单使用 `span="24"`；长文本、上传和分区标题应独占整行。
+- 手机断点（小于 768px）统一使用单列满宽，避免两列输入框被压缩；平板和桌面保留配置的响应式列宽。
 - 备注、说明、原因、意见等长文本使用 `type: 'textarea'`。该类型默认独占整行、初始 4 行高、限制 300 字并显示字数统计；业务上需要更长内容时只覆盖 `props.maxlength`，不要重复设置高度和统计开关。
 - `ArtSearchBar` 保持紧凑的左右标签布局，适合高频筛选和表格查询，不受 `ArtForm` 顶部标签默认值影响。
 - 只有空间高度明显受限的台账筛选、表格内编辑等高密度场景，才显式设置 `label-position="left"` 或 `label-position="right"`，并同时给出合适的 `label-width`。
@@ -219,6 +220,7 @@
 | `inputTag` | `ElInputTag` | 无 |
 | `number` | `ElInputNumber` | 无 |
 | `select` | `ElSelect` + `ElOption` | `props.options` / `options` / `api` |
+| `selectV2` | `ElSelectV2` 虚拟下拉列表 | `props.options` / `options` / `api`；大列表仅渲染可见选项，复用筛选、清空和空状态规则 |
 | `tagStyleSelect` | `ArtTagStyleSelect` | `props.options` / `options` / `api`；选项右侧显示 Tag 预览 |
 | `segment` | `ElSegmented` | `props.options` / `options` / `api`；默认保持紧凑宽度，需要铺满时显式传入 `props.block` |
 | `switch` | `ElSwitch` | 无 |

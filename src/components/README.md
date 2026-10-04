@@ -54,3 +54,7 @@ Before creating a component, decide in this order:
 4. If no category fits, document the missing responsibility before adding a new top-level category. Do not default to `layouts` or `others`.
 
 Each reusable component keeps its `README.md`, public types, usage contract, and complete loading/empty/error behavior beside the implementation.
+
+## Component names
+
+Keep explicit `defineOptions({ name })` names in PascalCase and unique across the host and all business repositories. A route entry owns the route's component name; its reusable implementation uses a distinct responsibility name such as `MdmOutboundRuleWorkspace`. Keep permission codes tied to the business route. `pnpm ui:audit` checks static component names across repositories and rejects duplicates or invalid names. Missing source directories in optional repositories are skipped; failures while reading existing module sources must fail the audit.

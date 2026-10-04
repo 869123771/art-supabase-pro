@@ -350,7 +350,7 @@
       {
         prop: 'operation',
         label: '操作',
-        width: 142,
+        width: 160,
         fixed: 'right',
         showOverflowTooltip: false,
         formatter: (row: AiPromptTemplate) => (

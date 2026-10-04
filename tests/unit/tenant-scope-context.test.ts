@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { loadAllDocumentPages } from '../../src/utils/business/document-detail-list'
 import {
+  createTenantScopeReadGuard,
   readTenantScopeId,
   readPlatformTenantScopeActive,
   readMutationTenantScopeId,
@@ -178,6 +180,47 @@ test('platform scope state is explicit even when all tenants is selected', () =>
     } else {
       Reflect.deleteProperty(globalThis, 'sessionStorage')
     }
+  }
+})
+
+test('paged reads reject platform scope changes and ignore forged ordinary scope', async () => {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const ownTenant = '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+  const otherTenant = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+  try {
+    for (const mode of ['platform-all', 'platform-selected', 'ordinary-own', 'ordinary-forged']) {
+      const storage = new MemoryStorage()
+      Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage })
+      const platform = mode.startsWith('platform-')
+      writePlatformTenantScopeActive(platform)
+      writeTenantScopeId(mode === 'platform-selected' ? ownTenant : null)
+      if (mode === 'ordinary-forged') storage.setItem(TENANT_SCOPE_STORAGE_KEY, otherTenant)
+      let requests = 0
+      const read = loadAllDocumentPages(
+        async () => {
+          requests += 1
+          if (requests === 1) writeTenantScopeId(otherTenant)
+          return { data: [requests], total: 2 }
+        },
+        {},
+        1
+      )
+      if (platform) {
+        await assert.rejects(read, /租户范围已变化/)
+        assert.equal(requests, 1)
+      } else {
+        assert.deepEqual(await read, [1, 2])
+      }
+    }
+    writePlatformTenantScopeActive(true)
+    writeTenantScopeId(null)
+    const guard = createTenantScopeReadGuard()
+    writeTenantScopeId(otherTenant)
+    writeTenantScopeId(null)
+    assert.throws(guard, /租户范围已变化/)
+  } finally {
+    if (originalDescriptor) Object.defineProperty(globalThis, 'sessionStorage', originalDescriptor)
+    else Reflect.deleteProperty(globalThis, 'sessionStorage')
   }
 })
 

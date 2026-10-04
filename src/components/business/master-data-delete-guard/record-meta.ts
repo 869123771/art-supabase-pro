@@ -36,6 +36,8 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   tms_cash_transaction: { label: '收付款记录', routeName: 'FinanceCashTransaction' },
   tms_expense_payment: { label: '运单费用付款记录' },
   mdm_material: { label: '物料编码' },
+  mdm_document_type: { label: '单据类型', routeName: 'MdmDocumentType' },
+  mdm_business_type: { label: '业务类型', routeName: 'MdmBusinessType' },
   mdm_bom: { label: 'BOM', routeName: 'MdmBomMaintenance' },
   mdm_bom_item: { label: 'BOM 组件', routeName: 'MdmBomMaintenance' },
   mdm_accessory_processing_list: { label: '配件加工清单', routeName: 'MdmAccessoryProcessing' },

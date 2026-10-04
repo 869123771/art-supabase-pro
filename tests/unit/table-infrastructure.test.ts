@@ -4,8 +4,102 @@ import { TableCache } from '../../src/utils/table/table-cache'
 import {
   createErrorHandler,
   createSmartDebounce,
-  defaultResponseAdapter
+  defaultResponseAdapter,
+  loadTableExportRows
 } from '../../src/utils/table/table-utils'
+
+test('table exports page complete filtered results using custom pagination keys', async () => {
+  const query = { keyword: '原筛选', range: ['2026-01-01', '2026-02-01'] }
+  const requests: Record<string, unknown>[] = []
+  const rows = await loadTableExportRows<number>(
+    async (params) => {
+      requests.push(params)
+      query.keyword = '后改筛选'
+      query.range[0] = '2026-03-01'
+      const offset = (Number(params.page) - 1) * Number(params.limit)
+      return {
+        rows: Array.from({ length: Math.min(500, 1001 - offset) }, (_, i) => offset + i),
+        count: 1001
+      }
+    },
+    query,
+    10000,
+    { current: 'page', size: 'limit' }
+  )
+  assert.equal(rows.length, 1001)
+  assert.equal(rows.at(-1), 1000)
+  assert.deepEqual(
+    requests.map(({ page, limit, keyword, range }) => ({ page, limit, keyword, range })),
+    [1, 2, 3].map((page) => ({
+      page,
+      limit: 500,
+      keyword: '原筛选',
+      range: ['2026-01-01', '2026-02-01']
+    }))
+  )
+})
+
+test('table exports without a total continue beyond full pages', async () => {
+  let calls = 0
+  const rows = await loadTableExportRows<number>(
+    async () => {
+      calls++
+      return Array.from({ length: calls === 1 ? 500 : 1 }, (_, i) => i)
+    },
+    {},
+    1000
+  )
+  assert.equal(rows.length, 501)
+  assert.equal(calls, 2)
+})
+
+test('table exports reject malformed envelopes and invalid totals', async () => {
+  for (const response of [null, undefined, {}, { data: null }]) {
+    await assert.rejects(
+      loadTableExportRows(async () => response, {}, 1000),
+      /导出数据格式无效/
+    )
+  }
+  for (const total of [NaN, Infinity, -1, 1.5, '1000']) {
+    await assert.rejects(
+      loadTableExportRows(async () => ({ rows: [1], total }), {}, 1000),
+      /数据总数无效/
+    )
+  }
+  assert.deepEqual(await loadTableExportRows(async () => ({ rows: [], total: 0 }), {}, 1000), [])
+})
+
+test('table exports reject over-limit, incomplete and failed pages', async () => {
+  let calls = 0
+  await assert.rejects(
+    loadTableExportRows(
+      async () => {
+        calls++
+        return { rows: [1], total: 10001 }
+      },
+      {},
+      10000
+    ),
+    /不能超过 10000 行/
+  )
+  assert.equal(calls, 1)
+  await assert.rejects(
+    loadTableExportRows(
+      async ({ current }) => ({
+        rows: current === 1 ? Array.from({ length: 500 }, (_, i) => i) : [],
+        total: 501
+      }),
+      {},
+      1000
+    ),
+    /未完整加载/
+  )
+  const failure = new Error('读取失败')
+  await assert.rejects(
+    loadTableExportRows(async () => ({ error: failure }), {}, 1000),
+    failure
+  )
+})
 
 test('table errors keep diagnostics while showing a readable message', () => {
   const handleError = createErrorHandler()

@@ -3,8 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { templateCompilerOptions } from '@tresjs/core'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { existsSync, readdirSync } from 'node:fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import viteCompression from 'vite-plugin-compression'
 import Components from 'unplugin-vue-components/vite'
@@ -15,6 +15,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
+import { createViteWatchPolicy } from './scripts/vite-watch-policy.mjs'
 import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
 import {
@@ -175,16 +176,7 @@ export default ({ mode }: { mode: string }) => {
     base: VITE_BASE_URL,
     server: {
       port: Number(VITE_PORT),
-      watch: {
-        ignored: [
-          '**/.artifacts/**',
-          '**/.codex/**',
-          '**/.idea/**',
-          `**/${outDir}/**`,
-          '**/dist/**',
-          '**/dist-ssr/**'
-        ]
-      },
+      watch: createViteWatchPolicy(outDir),
       proxy: {
         '/api': {
           target: VITE_API_PROXY_URL,

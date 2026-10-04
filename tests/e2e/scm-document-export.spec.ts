@@ -58,6 +58,7 @@ for (const scenario of [
       document_no: `EXPORT-${String(index).padStart(4, '0')}`,
       document_date: '2026-10-04',
       status: 'draft',
+      details: {},
       subtotal: 2,
       tax_amount: 0,
       total_amount: 2,
@@ -94,9 +95,22 @@ for (const scenario of [
     await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible({
       timeout: 120_000
     })
+    const documentMode = page.locator('.el-radio-button').filter({ hasText: '按单据' })
+    if (!(await documentMode.isVisible())) {
+      await page.getByRole('button', { name: '展开搜索条件', exact: true }).click()
+    }
+    await expect(documentMode).toBeVisible()
     for (const mode of ['按单据', '按明细']) {
       await page.locator('.el-radio-button').filter({ hasText: mode }).click()
       await expect(page.getByRole('radio', { name: mode, exact: true })).toBeChecked()
+      const body = page.locator('.el-table__body-wrapper').first()
+      await expect(body.getByText('EXPORT-0000', { exact: true }).first()).toBeVisible()
+      if (mode === '按明细') {
+        await expect(body.getByText('M-0-0', { exact: true })).toHaveCount(1)
+        await expect(body.getByText('M-9-1', { exact: true })).toHaveCount(1)
+      }
+      await expect(body.locator('tr.el-table__row')).toHaveCount(20)
+      const listBeforeExport = await body.innerText()
       offsets.length = 0
       const downloadPromise = page.waitForEvent('download')
       await page.getByRole('button', { name: '导出', exact: true }).click()
@@ -109,6 +123,22 @@ for (const scenario of [
       expect(sheet.getCell('A2').text).toBe('EXPORT-0000')
       expect(sheet.getCell(`A${sheet.rowCount}`).text).toBe('EXPORT-1000')
       expect(offsets).toContain(1000)
+      if (mode === '按明细') {
+        const materialCodes: string[] = []
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber > 1) materialCodes.push(row.getCell(3).text)
+        })
+        expect(new Set(materialCodes).size).toBe(2002)
+      }
+      await expect.poll(() => body.innerText()).toBe(listBeforeExport)
+      await page.getByRole('button', { name: '下一页', exact: true }).click()
+      await expect(
+        body.getByText(mode === '按单据' ? 'EXPORT-0020' : 'EXPORT-0010', { exact: true }).first()
+      ).toBeVisible()
+      await expect(body.getByText('EXPORT-0000', { exact: true })).toHaveCount(0)
+      await expect(body.locator('tr.el-table__row')).toHaveCount(20)
+      await page.getByRole('button', { name: '上一页', exact: true }).click()
+      await expect(body.getByText('EXPORT-0000', { exact: true }).first()).toBeVisible()
     }
   })
 }

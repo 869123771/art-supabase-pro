@@ -9,6 +9,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import ElementPlus from 'unplugin-element-plus/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { createViteWatchPolicy } from './vite-watch-policy.mjs'
 
 function createSourceTransformPattern(...roots) {
   const rootPattern = roots
@@ -103,6 +104,7 @@ export async function createModuleViteConfig({
 
   return {
     base: env.VITE_BASE_URL || '/',
+    publicDir: path.join(platformRoot, 'public'),
     define: {
       __APP_VERSION__: JSON.stringify(env.VITE_VERSION || '1.0.0'),
       ...exposedEnv
@@ -110,6 +112,7 @@ export async function createModuleViteConfig({
     server: {
       host: true,
       port,
+      watch: createViteWatchPolicy(outDir),
       fs: { allow: [applicationRoot, platformRoot] }
     },
     preview: { host: true, port },

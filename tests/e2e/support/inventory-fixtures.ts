@@ -490,7 +490,7 @@ async function installFixtures(page: Page): Promise<void> {
           update_time: '2026-09-24T08:00:00Z'
         }
       ],
-      headers: { 'content-range': '0-0/1' }
+      headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
     })
   )
   await page.route('**/rest/v1/mdm_supply_chain_code_rule?*', (route) =>
@@ -512,7 +512,7 @@ async function installFixtures(page: Page): Promise<void> {
           update_time: '2026-09-24T08:00:00Z'
         }
       ],
-      headers: { 'content-range': '0-0/1' }
+      headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
     })
   )
   await page.route('**/rest/v1/wms_inventory_batch?*', (route) =>

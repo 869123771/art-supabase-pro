@@ -144,6 +144,7 @@
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
   import { formatCurrencyValue } from '@/utils/ui/format'
+  import { pageInfoHandler } from '@/utils/table/table-utils'
   import {
     documentGroupSpan,
     expandDocumentLines,
@@ -418,7 +419,8 @@
       (status === 'draft' ? '草稿' : status === 'confirmed' ? '已入库' : '已审核')
     )
   }
-  async function fetchPage(query: ScmReceiptTargetQuery) {
+  async function fetchPage(query: ScmReceiptTargetQuery & { current: number; size: number }) {
+    const pageQuery = { ...query, ...pageInfoHandler(query) }
     const fetchDocuments = (page: ScmReceiptTargetQuery) =>
       fetchScmReceiptTargets(props.kind, {
         ...page,
@@ -426,9 +428,9 @@
       })
     if (displayMode.value === 'document') {
       visibleRows.value = []
-      return fetchDocuments(query)
+      return fetchDocuments(pageQuery)
     }
-    const documents = await loadAllDocumentPages(fetchDocuments, query)
+    const documents = await loadAllDocumentPages(fetchDocuments, pageQuery)
     await loadUnitDisplayNames(documents.map((document) => document.tenantId))
     const lines = await fetchScmReceiptTargetLinesForDocuments(
       documents.map((document) => document.id)
@@ -444,7 +446,7 @@
       (document) => linesByDocument.get(document.id) || [],
       (line) => line.id
     )
-    const result = { ...paginateDetailRows(rows, query.from, query.to), error: null }
+    const result = { ...paginateDetailRows(rows, pageQuery.from, pageQuery.to), error: null }
     visibleRows.value = result.data
     return result
   }

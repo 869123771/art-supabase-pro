@@ -1,5 +1,9 @@
 <template>
   <div class="art-full-height workflow-monitor business-workspace-page">
+    <MasterDeleteProcessingNotice
+      :location-ready="false"
+      action-hint="请在当前页面核对关联审批记录，处理完成后返回原页面继续删除。"
+    />
     <BusinessWorkspaceHeader
       density="compact"
       eyebrow="APPROVAL OPERATIONS"
@@ -158,6 +162,7 @@
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'

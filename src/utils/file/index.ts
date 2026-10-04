@@ -1,4 +1,5 @@
 import type { ColInfo } from '@/vendor/sheetjs/xlsx.mjs'
+import { createTenantScopeReadGuard } from '../tenant-scope-context'
 import { ElMessage } from 'element-plus'
 import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
 
@@ -117,10 +118,14 @@ export const exportExcel = async <TRecord extends object>(
   if (!Array.isArray(columns) || !columns.length) {
     throw new Error('没有可导出的列配置')
   }
+  if (!Number.isSafeInteger(maxRows) || maxRows < 1) {
+    throw new RangeError('导出行数上限必须是正安全整数')
+  }
   if (data.length > maxRows) {
     throw new Error(`导出数据不能超过 ${maxRows} 行`)
   }
 
+  const assertTenantScope = createTenantScopeReadGuard()
   onProgress?.(10)
   const [{ default: FileSaver }, XLSX] = await Promise.all([
     import('file-saver'),
@@ -159,6 +164,7 @@ export const exportExcel = async <TRecord extends object>(
   })
 
   onProgress?.(95)
+  assertTenantScope()
   FileSaver.saveAs(blob, buildExcelFilename(filename, filenameSuffix))
   onProgress?.(100)
 }

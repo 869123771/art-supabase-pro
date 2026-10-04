@@ -273,6 +273,7 @@
     ElRate,
     ElSegmented,
     ElSelect,
+    ElSelectV2,
     ElSlider,
     ElSwitch,
     ElTimePicker,
@@ -316,7 +317,8 @@
     textarea: ElInput, // 多行文本框
     inputTag: ElInputTag, // 标签输入框
     number: ElInputNumber, // 数字输入框
-    select: ElSelect, // 选择器
+    select: ElSelect,
+    selectV2: ElSelectV2, // 选择器
     tagStyleSelect: ArtTagStyleSelect, // 标签样式选择器
     segment: ElSegmented, // 分段选择器
     switch: ElSwitch, // 开关
@@ -412,7 +414,7 @@
   export type FormItemComponentProps<TType extends FormItemType = FormItemType> = TType extends
     'radioGroup' | 'checkboxGroup'
     ? FormItemPassThroughProps & FormItemChoiceGroupProps
-    : TType extends 'select' | 'tagStyleSelect' | 'segment' | 'cascader' | 'treeSelect'
+    : TType extends 'select' | 'selectV2' | 'tagStyleSelect' | 'segment' | 'cascader' | 'treeSelect'
       ? FormItemPassThroughProps & FormItemOptionProps
       : TType extends 'divider'
         ? FormItemPassThroughProps & FormItemDividerProps
@@ -717,6 +719,7 @@
     'textarea',
     'inputTag',
     'select',
+    'selectV2',
     'tagStyleSelect',
     'treeSelect',
     'cascader'
@@ -769,6 +772,7 @@
 
   const optionComponentTypes = [
     'select',
+    'selectV2',
     'tagStyleSelect',
     'segment',
     'checkboxGroup',
@@ -920,6 +924,7 @@
     if (
       [
         'select',
+        'selectV2',
         'cascader',
         'treeSelect',
         'date',
@@ -955,6 +960,7 @@
         'autocomplete',
         'inputTag',
         'select',
+        'selectV2',
         'cascader',
         'treeSelect',
         'userSelect',
@@ -968,7 +974,7 @@
       defaults.clearable = true
     }
 
-    if (['select', 'cascader', 'treeSelect', 'userSelect'].includes(itemType)) {
+    if (['select', 'selectV2', 'cascader', 'treeSelect', 'userSelect'].includes(itemType)) {
       defaults.filterable = true
     }
 
@@ -1060,10 +1066,10 @@
     const props = { ...getDefaultComponentProps(item), ...getProps(item) }
     const options = getOptions(item)
 
-    if (['select', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
+    if (['select', 'selectV2', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
       delete props.options
     }
-    if (['cascader', 'segment'].includes(String(item.type))) {
+    if (['selectV2', 'cascader', 'segment'].includes(String(item.type))) {
       props.options = options
     }
     if (String(item.type) === 'tagStyleSelect') {
@@ -1108,7 +1114,7 @@
   }
 
   const hasPickerEmptySlot = (item: FormItem): boolean =>
-    ['select', 'cascader', 'treeSelect'].includes(String(item.type))
+    ['select', 'selectV2', 'cascader', 'treeSelect'].includes(String(item.type))
 
   const getPickerEmptyTitle = (item: FormItem): string => {
     const configured = getProps(item).noDataText

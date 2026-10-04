@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import ExcelJS from 'exceljs'
 import { mockApplicationMenus } from './support/menu-rpc'
 import { prepareIsolatedSession } from './support/isolated-session'
 
@@ -249,6 +250,27 @@ const corsHeaders = {
 
 test.beforeEach(async ({ page }) => {
   await prepareIsolatedSession(page)
+  await page.route('**/rest/v1/sys_dictionary?*', (route) =>
+    route.fulfill({
+      headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' },
+      json: [
+        {
+          id: 'document-status-draft',
+          label: '草稿',
+          value: 'draft',
+          sort: 1,
+          dict_type_table: { code: 'smisDocumentStatus', name: '文档状态' }
+        },
+        {
+          id: 'document-status-published',
+          label: '已发布',
+          value: 'published',
+          sort: 2,
+          dict_type_table: { code: 'smisDocumentStatus', name: '文档状态' }
+        }
+      ]
+    })
+  )
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'smis', name: '测试安全生产', baseUrl: '/', sort: 1 }] })
   )
@@ -272,6 +294,66 @@ test.beforeEach(async ({ page }) => {
     })
   )
 })
+
+for (const incomplete of [false, true]) {
+  test(`文档导出${incomplete ? '拒绝缺失后续页并恢复按钮' : '完整读取超过一万条记录'}`, async ({
+    page
+  }) => {
+    test.setTimeout(180_000)
+    const records = Array.from({ length: 10001 }, (_, index) => ({
+      ...documents[0],
+      id: `export-document-${index}`,
+      title: `导出文档-${String(index).padStart(5, '0')}`
+    }))
+    const offsets: number[] = []
+    await page.route('**/rest/v1/rpc/smis_list_documents_secure', (route) => {
+      const params: { p_from: number; p_to: number; p_purpose: string } = route
+        .request()
+        .postDataJSON()
+      const exporting = params.p_purpose === 'export'
+      if (exporting) offsets.push(params.p_from)
+      return route.fulfill({
+        headers: corsHeaders,
+        json: {
+          records:
+            exporting && incomplete && params.p_from >= 500
+              ? []
+              : records.slice(params.p_from, params.p_to + 1),
+          total: records.length,
+          overview: { total: records.length, published: records.length, draft: 0, scheduled: 0 }
+        }
+      })
+    })
+    await page.goto('#/smis/safety-production/document-center/all-documents', {
+      waitUntil: 'domcontentloaded'
+    })
+    await expect(page.getByRole('heading', { name: '全部文档', exact: true })).toBeVisible({
+      timeout: 60_000
+    })
+    const button = page.getByRole('button', { name: '导出', exact: true })
+    if (incomplete) {
+      const downloads: string[] = []
+      page.on('download', (download) => downloads.push(download.suggestedFilename()))
+      await button.click()
+      await expect(page.getByText('数据未完整加载，请刷新后重试', { exact: true })).toBeVisible()
+      await expect(button).toBeEnabled()
+      expect(offsets).toEqual([0, 500])
+      expect(downloads).toEqual([])
+    } else {
+      const downloadPromise = page.waitForEvent('download')
+      await button.click()
+      const filePath = await (await downloadPromise).path()
+      expect(filePath).not.toBeNull()
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.readFile(filePath!)
+      const sheet = workbook.worksheets[0]
+      expect(sheet.rowCount).toBe(10002)
+      expect(sheet.getCell('A2').text).toBe('导出文档-00000')
+      expect(sheet.getCell('A10002').text).toBe('导出文档-10000')
+      expect(offsets).toContain(10000)
+    }
+  })
+}
 
 test('文档中心旧请求不会覆盖新筛选的概览和列表', async ({ page }) => {
   test.setTimeout(120_000)
@@ -388,6 +470,8 @@ test('文档中心三视图在桌面和窄屏下无页面级溢出', async ({ pa
   })
   await expect(page.locator('.document-center-page')).toBeVisible({ timeout: 45_000 })
   await expect(page.getByRole('heading', { name: '全部文档' })).toBeVisible()
+  const tourDismiss = page.getByRole('button', { name: '知道了', exact: true })
+  if (await tourDismiss.isVisible()) await tourDismiss.click()
   await expect(
     page.getByRole('link', { name: '员工入职与转正管理制度', exact: true })
   ).toBeVisible()
@@ -407,6 +491,9 @@ test('文档中心三视图在桌面和窄屏下无页面级溢出', async ({ pa
     await expect(page.locator('.document-center-page__content')).toHaveClass(
       new RegExp(`is-${viewMode.value}`)
     )
+    await expect(
+      page.locator('.document-center-page__content').getByText('已发布', { exact: true }).first()
+    ).toBeVisible()
     await page.mouse.move(0, 0)
     await page.waitForTimeout(250)
     if (viewMode.value === 'folder') {
@@ -423,8 +510,26 @@ test('文档中心三视图在桌面和窄屏下无页面级溢出', async ({ pa
       const footer = lastCard.locator('footer')
       await footer.scrollIntoViewIfNeeded()
       await expect(footer).toBeInViewport({ ratio: 1 })
+      const jump = page.locator('.document-center-page__folder-pagination .el-pagination__jump')
+      await jump.scrollIntoViewIfNeeded()
+      await expect(jump).toBeInViewport({ ratio: 1 })
+      const paginationOverflow = await page
+        .locator('.document-center-page__folder-pagination')
+        .evaluate((element) => element.scrollWidth - element.clientWidth)
+      expect(paginationOverflow).toBeLessThanOrEqual(1)
       await page.screenshot({
         path: path.join(outputDir, `${testInfo.project.name}-folder-lower.png`),
+        animations: 'disabled'
+      })
+    } else {
+      const lastTitle = page
+        .locator('.document-center-page__table')
+        .getByText(documents[2].title, { exact: true })
+        .first()
+      await lastTitle.scrollIntoViewIfNeeded()
+      await expect(lastTitle).toBeInViewport({ ratio: 1 })
+      await page.screenshot({
+        path: path.join(outputDir, `${testInfo.project.name}-${viewMode.value}-lower.png`),
         animations: 'disabled'
       })
     }

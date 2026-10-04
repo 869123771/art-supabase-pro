@@ -1,6 +1,52 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildExcelFilename, buildExcelRows, downloadBlob } from '../../src/utils/file'
+import {
+  TENANT_SCOPE_MODE_STORAGE_KEY,
+  writeTenantScopeId
+} from '../../src/utils/tenant-scope-context'
+import { buildExcelFilename, buildExcelRows, downloadBlob, exportExcel } from '../../src/utils/file'
+
+test('Excel export rejects a tenant change before saving its generated file', async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const values = new Map<string, string>([[TENANT_SCOPE_MODE_STORAGE_KEY, '1']])
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key)
+    }
+  })
+  try {
+    await assert.rejects(
+      exportExcel({
+        data: [{ name: '测试导出' }],
+        columns: [{ key: 'name', title: '名称' }],
+        onProgress: (progress) => {
+          if (progress === 95) writeTenantScopeId('7529f951-938e-4e2c-ac0d-316c136ae1f9')
+        }
+      }),
+      /租户范围已变化/
+    )
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'sessionStorage', originalStorage)
+    else Reflect.deleteProperty(globalThis, 'sessionStorage')
+  }
+})
+
+test('Excel export rejects invalid row limits and oversized data before loading browser libraries', async () => {
+  const data = [{ name: '第一条' }, { name: '第二条' }]
+  const columns = [{ key: 'name' as const, title: '名称' }]
+  for (const maxRows of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    await assert.rejects(exportExcel({ data, columns, maxRows }), {
+      name: 'RangeError',
+      message: '导出行数上限必须是正安全整数'
+    })
+  }
+  await assert.rejects(exportExcel({ data, columns, maxRows: 1 }), {
+    message: '导出数据不能超过 1 行'
+  })
+})
 
 test('Excel rows preserve column policy and format supported values', () => {
   const rows = buildExcelRows(

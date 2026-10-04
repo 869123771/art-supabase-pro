@@ -4,7 +4,9 @@
       <div class="master-delete-notice__title">
         <ArtSvgIcon icon="ri:links-line" aria-hidden="true" />
         <strong>正在处理“{{ resourceName }}”的删除前置资料</strong>
-        <ElTag type="warning" effect="light" size="small">已精确过滤</ElTag>
+        <ElTag type="warning" effect="light" size="small">
+          {{ props.locationReady ? '已精确过滤' : '定位待完成' }}
+        </ElTag>
       </div>
       <p>{{ props.actionHint }}</p>
     </div>
@@ -24,11 +26,13 @@
   const props = withDefaults(
     defineProps<{
       actionHint?: string
+      locationReady?: boolean
       customerId?: string
       customerName?: string
     }>(),
     {
       actionHint: '当前列表已按关联记录自动过滤。请处理完成后返回原页面继续删除。',
+      locationReady: true,
       customerId: '',
       customerName: ''
     }

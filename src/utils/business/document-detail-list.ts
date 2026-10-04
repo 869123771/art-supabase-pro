@@ -1,3 +1,6 @@
+import { cloneDeep } from 'lodash-es'
+import { createTenantScopeReadGuard } from '../tenant-scope-context'
+
 export interface DocumentPage<T> {
   data?: T[] | null
   total?: number | null
@@ -20,21 +23,28 @@ export async function loadAllDocumentPages<
   batchSize = 500
 ): Promise<TDocument[]> {
   if (!Number.isSafeInteger(batchSize) || batchSize < 1) {
-    throw new RangeError('单据分页大小必须是正安全整数')
+    throw new RangeError('分页大小必须是正安全整数')
   }
+  const filters = cloneDeep(query)
+  const assertTenantScope = createTenantScopeReadGuard()
   const batches: TDocument[][] = []
   let total: number | undefined
   let loaded = 0
   for (let from = 0; ; from += batchSize) {
-    const page = await fetchPage({ ...query, from, to: from + batchSize - 1 })
+    assertTenantScope()
+    const page = await fetchPage({ ...filters, from, to: from + batchSize - 1 })
+    assertTenantScope()
     if (page.error) throw page.error
     if (from === 0 && page.total != null) {
       if (!Number.isSafeInteger(page.total) || page.total < 0) {
-        throw new Error('单据总数无效，请刷新后重试')
+        throw new Error('数据总数无效，请刷新后重试')
       }
       total = page.total
     }
     const rows = page.data ?? []
+    if (total !== undefined && loaded + rows.length > total) {
+      throw new Error('数据总数与记录不一致，请刷新后重试')
+    }
     batches.push(rows)
     loaded += rows.length
     if (total === undefined) {
@@ -42,7 +52,7 @@ export async function loadAllDocumentPages<
     } else {
       if (loaded >= total) return batches.flat()
       if (!rows.length || from + batchSize >= total) {
-        throw new Error('单据数据未完整加载，请刷新后重试')
+        throw new Error('数据未完整加载，请刷新后重试')
       }
     }
   }
@@ -78,8 +88,9 @@ export async function loadAllLinePages<TLine, TQuery extends { current: number; 
   query: TQuery,
   batchSize = 500
 ): Promise<TLine[]> {
+  const filters = cloneDeep(query)
   return loadAllDocumentPages<TLine, { from?: number; to?: number }>(
-    ({ from = 0 }) => fetchPage({ ...query, current: from / batchSize + 1, size: batchSize }),
+    ({ from = 0 }) => fetchPage({ ...filters, current: from / batchSize + 1, size: batchSize }),
     {},
     batchSize
   )

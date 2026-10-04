@@ -9,6 +9,38 @@ import { hostedApplicationSourceDirectories } from './hosted-module-dependencies
 const findings = new Set<string>()
 let checkedFiles = 0
 
+const platformManifest: unknown = JSON.parse(await readFile('package.json', 'utf8'))
+if (!isPlainObjectRecord(platformManifest) || !Array.isArray(platformManifest.files)) {
+  throw new Error('平台 package.json 必须声明发布文件清单')
+}
+const publishedPaths = platformManifest.files.filter(
+  (entry): entry is string => typeof entry === 'string'
+)
+for (const publishedPath of publishedPaths) {
+  if (!publishedPath.startsWith('scripts/') || !publishedPath.endsWith('.mjs')) continue
+  const content = await readFile(publishedPath, 'utf8')
+  const source = ts.createSourceFile(publishedPath, content, ts.ScriptTarget.Latest, true)
+  for (const statement of source.statements) {
+    if (
+      !(ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) ||
+      !statement.moduleSpecifier ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !statement.moduleSpecifier.text.startsWith('.')
+    )
+      continue
+    const dependencyPath = path.posix.normalize(
+      path.posix.join(path.posix.dirname(publishedPath), statement.moduleSpecifier.text)
+    )
+    if (
+      !publishedPaths.some(
+        (entry) => dependencyPath === entry || dependencyPath.startsWith(`${entry}/`)
+      )
+    ) {
+      findings.add(`${publishedPath}: 发布文件清单缺少构建依赖 ${dependencyPath}`)
+    }
+  }
+}
+
 for (const sourceDirectory of Object.values(hostedApplicationSourceDirectories)) {
   const moduleRoot = path.resolve(sourceDirectory, '..')
   const manifest: unknown = JSON.parse(

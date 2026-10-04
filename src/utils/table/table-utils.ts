@@ -43,6 +43,7 @@ import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
 import { isPlainObjectRecord } from '@/utils/type-guards'
 import type { ApiResponse } from './table-cache'
 import { tableConfig } from './table-config'
+import { loadAllLinePages } from '../business/document-detail-list'
 
 // 请求参数基础接口，扩展分页参数
 export interface BaseRequestParams extends Api.Common.PaginationParams {
@@ -79,9 +80,14 @@ function extractNumber(
 }
 
 /** Normalize supported list envelopes with one field policy at both levels. */
-export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => {
-  if (Array.isArray(response)) return { records: response, total: response.length }
-  if (!isPlainObjectRecord(response)) return { records: [], total: 0 }
+const normalizeTableResponse = <T>(response: unknown, inferTotal: boolean): ApiResponse<T> => {
+  if (Array.isArray(response)) {
+    return inferTotal ? { records: response, total: response.length } : { records: response }
+  }
+  if (!isPlainObjectRecord(response)) {
+    if (!inferTotal) throw new Error('导出数据格式无效，请刷新后重试')
+    return { records: [], total: 0 }
+  }
 
   const outer = response
   const direct = extractRecords<T>(outer)
@@ -89,9 +95,27 @@ export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => 
   const source = direct === undefined && nested ? nested : outer
   const records = direct ?? extractRecords<T>(source) ?? []
   const sources = source === outer ? [outer] : [source, outer]
+  if (!inferTotal) {
+    if (direct === undefined && extractRecords<T>(source) === undefined) {
+      throw new Error('导出数据格式无效，请刷新后重试')
+    }
+    for (const candidate of sources) {
+      for (const field of tableConfig.totalFields) {
+        const value = candidate[field]
+        if (
+          value != null &&
+          (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
+        ) {
+          throw new Error('数据总数无效，请刷新后重试')
+        }
+      }
+    }
+  }
   const result: ApiResponse<T> = {
     records,
-    total: extractNumber(sources, tableConfig.totalFields, 0) ?? records.length
+    total:
+      extractNumber(sources, tableConfig.totalFields, 0) ??
+      (inferTotal ? records.length : undefined)
   }
   // Envelope pagination wins over nested pagination, preserving the public contract.
   const paginationSources = source === outer ? [outer] : [outer, source]
@@ -102,12 +126,48 @@ export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => 
   return result
 }
 
+export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> =>
+  normalizeTableResponse<T>(response, true)
+
 /**
  * 从标准化的API响应中提取表格数据
  */
 export const extractTableData = <T>(response: ApiResponse<T>): T[] => {
   const data = response.records || response.data || []
   return Array.isArray(data) ? data : []
+}
+
+/** Export paginated results without treating a page length as the dataset total. */
+export async function loadTableExportRows<T>(
+  fetchPage: (params: Record<string, unknown>) => Promise<unknown>,
+  query: Record<string, unknown>,
+  maxRows: number,
+  paginationKey?: { current?: string; size?: string },
+  adapter?: (response: unknown) => ApiResponse<T>
+): Promise<T[]> {
+  if (!Number.isSafeInteger(maxRows) || maxRows < 1) {
+    throw new RangeError('导出上限必须是正安全整数')
+  }
+  let loaded = 0
+  return loadAllLinePages<T, Record<string, unknown> & { current: number; size: number }>(
+    async ({ current, size, ...filters }) => {
+      const response = await fetchPage({
+        ...filters,
+        [paginationKey?.current || 'current']: current,
+        [paginationKey?.size || 'size']: size
+      })
+      if (isPlainObjectRecord(response) && response.error) throw response.error
+      const page = adapter ? adapter(response) : normalizeTableResponse<T>(response, false)
+      if (page.error) throw page.error
+      const data = extractTableData(page)
+      loaded += data.length
+      if (loaded > maxRows || (page.total !== undefined && page.total > maxRows)) {
+        throw new Error(`导出数据不能超过 ${maxRows} 行，请缩小筛选范围后重试`)
+      }
+      return { data, total: page.total }
+    },
+    { ...query, current: 1, size: 500 }
+  )
 }
 
 /**

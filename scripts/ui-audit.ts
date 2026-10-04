@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { parse as parseSfc } from '@vue/compiler-sfc'
+import ts from 'typescript'
 
 interface Finding {
   file: string
@@ -38,10 +39,12 @@ async function collectModuleUiFiles(): Promise<string[]> {
       .map(async (entry) => {
         const moduleSourceRoot = path.join(modulesRoot, entry.name, 'src')
         try {
-          return await collectFiles(moduleSourceRoot)
-        } catch {
-          return []
+          await stat(moduleSourceRoot)
+        } catch (error) {
+          if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return []
+          throw error
         }
+        return await collectFiles(moduleSourceRoot)
       })
   )
 
@@ -404,15 +407,73 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
 
 const files = await collectFiles(sourceRoot)
 const moduleUiFiles = await collectModuleUiFiles()
+const componentNames = new Map<string, Finding>()
+function checkComponentName(file: string, content: string): Finding[] {
+  if (!file.endsWith('.vue')) return []
+  const { descriptor } = parseSfc(content, { filename: file })
+  const script = descriptor.scriptSetup
+  if (!script) return []
+  const source = ts.createSourceFile(
+    file,
+    script.content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+  const duplicates: Finding[] = []
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'defineOptions'
+    ) {
+      const options = node.arguments[0]
+      if (options && ts.isObjectLiteralExpression(options)) {
+        for (const property of options.properties) {
+          if (
+            !ts.isPropertyAssignment(property) ||
+            !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) ||
+            property.name.text !== 'name' ||
+            !(
+              ts.isStringLiteral(property.initializer) ||
+              ts.isNoSubstitutionTemplateLiteral(property.initializer)
+            )
+          )
+            continue
+          const name = property.initializer.text
+          const offset = script.loc.start.offset + property.getStart(source)
+          const finding: Finding = {
+            file: path.relative(projectRoot, file).replace(/\\/g, '/'),
+            line: lineAt(content, offset),
+            rule: 'naming/unique-component-name',
+            excerpt: name
+          }
+          const previous = componentNames.get(name)
+          if (!/^[A-Z][A-Za-z0-9]*$/.test(name))
+            duplicates.push({ ...finding, rule: 'naming/pascal-case-component-name' })
+          if (previous)
+            duplicates.push({
+              ...finding,
+              excerpt: `${name} also declared at ${previous.file}:${previous.line}`
+            })
+          else componentNames.set(name, finding)
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return duplicates
+}
 const findings = (
   await Promise.all([
     ...files.map(async (file) => {
       const content = await readFile(file, 'utf8')
-      return scanFile(file, content)
+      return [...scanFile(file, content), ...checkComponentName(file, content)]
     }),
     ...moduleUiFiles.map(async (file) => {
       const content = await readFile(file, 'utf8')
-      return scanFile(file, content, true)
+      return [...scanFile(file, content, true), ...checkComponentName(file, content)]
     })
   ])
 ).flat()

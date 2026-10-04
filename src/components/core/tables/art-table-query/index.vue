@@ -293,6 +293,7 @@
   import {
     defaultResponseAdapter,
     extractTableData,
+    loadTableExportRows,
     type TableError
   } from '@/utils/table/table-utils'
   import { exportExcel, mapExcelRowsToRecords, type ExcelColumn } from '@/utils/file'
@@ -1316,15 +1317,13 @@
     if (scopedSelectedRows.length) return scopedSelectedRows
     if (!props.apiFn) return resolvedData.value
 
-    const currentKey = props.paginationKey?.current || 'current'
-    const sizeKey = props.paginationKey?.size || 'size'
-    const response = await props.apiFn({
-      ...searchModel.value,
-      [currentKey]: 1,
-      [sizeKey]: maxRows
-    })
-    const adapter = props.responseAdapter || defaultResponseAdapter
-    return extractTableData(adapter(response))
+    return loadTableExportRows<TableQueryRecord>(
+      props.apiFn,
+      searchModel.value,
+      maxRows,
+      props.paginationKey,
+      props.responseAdapter
+    )
   }
 
   const handleDefaultExport = async (

@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
 import { parse as parseSfc } from '@vue/compiler-sfc'
@@ -54,10 +54,13 @@ async function collectFrontendFiles(): Promise<string[]> {
   for (const entry of moduleEntries.filter((item) => item.isDirectory())) {
     const sourceRoot = path.join(projectRoot, 'modules', entry.name, 'src')
     try {
-      files.push(...(await collectFiles(sourceRoot)))
-    } catch {
+      await stat(sourceRoot)
+    } catch (error) {
       // Some optional repositories intentionally have no frontend source directory.
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') continue
+      throw error
     }
+    files.push(...(await collectFiles(sourceRoot)))
   }
   return files
 }
@@ -206,8 +209,10 @@ for (const entry of moduleEntries.filter((item) => item.isDirectory())) {
         })
       }
     }
-  } catch {
+  } catch (error) {
     // Optional repositories without a TypeScript config are outside this frontend audit.
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') continue
+    throw error
   }
 }
 

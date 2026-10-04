@@ -4,6 +4,7 @@ import { isPlainObjectRecord } from './type-guards'
 export const TENANT_SCOPE_HEADER = 'x-art-tenant-scope'
 export const TENANT_SCOPE_STORAGE_KEY = 'art-platform-tenant-scope-id'
 export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
+let tenantScopeRevision = 0
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
@@ -166,26 +167,47 @@ export const resolveTenantWriteTargetId = (options: {
 
 export const writeTenantScopeId = (tenantId: string | null): void => {
   if (typeof sessionStorage === 'undefined') return
+  const previousTenantId = readTenantScopeId()
   try {
     if (tenantId) {
       sessionStorage.setItem(TENANT_SCOPE_STORAGE_KEY, tenantId)
-      return
+    } else {
+      sessionStorage.removeItem(TENANT_SCOPE_STORAGE_KEY)
     }
-    sessionStorage.removeItem(TENANT_SCOPE_STORAGE_KEY)
   } catch {
     // 浏览器禁用会话存储时退化为当前页面生命周期内的状态。
   }
+  if (readPlatformTenantScopeActive() && previousTenantId !== readTenantScopeId())
+    tenantScopeRevision += 1
 }
 
 export const writePlatformTenantScopeActive = (active: boolean): void => {
   if (typeof sessionStorage === 'undefined') return
+  const previousActive = readPlatformTenantScopeActive()
   try {
     if (active) {
       sessionStorage.setItem(TENANT_SCOPE_MODE_STORAGE_KEY, '1')
-      return
+    } else {
+      sessionStorage.removeItem(TENANT_SCOPE_MODE_STORAGE_KEY)
     }
-    sessionStorage.removeItem(TENANT_SCOPE_MODE_STORAGE_KEY)
   } catch {
     // 浏览器禁用会话存储时退化为当前页面生命周期内的状态。
+  }
+  if (previousActive !== readPlatformTenantScopeActive()) tenantScopeRevision += 1
+}
+
+/** Reject stale client reads; this guard grants no tenant or business permission. */
+export const createTenantScopeReadGuard = (): (() => void) => {
+  const revision = tenantScopeRevision
+  const platformActive = readPlatformTenantScopeActive()
+  const tenantId = platformActive ? readTenantScopeId() : null
+  return () => {
+    if (
+      revision !== tenantScopeRevision ||
+      platformActive !== readPlatformTenantScopeActive() ||
+      (platformActive && tenantId !== readTenantScopeId())
+    ) {
+      throw new Error('租户范围已变化，请刷新后重试')
+    }
   }
 }
