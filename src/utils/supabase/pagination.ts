@@ -11,13 +11,22 @@ interface FetchAllRangePagesOptions {
 
 const DEFAULT_PAGE_SIZE = 500
 
+/** Keep inclusive RPC bounds ordered after clamping the offset to zero. */
+export function buildSupabaseRpcRange(from: number, to: number): { p_from: number; p_to: number } {
+  if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to)) {
+    throw new RangeError('分页范围无效，请刷新后重试')
+  }
+  const start = Math.max(from, 0)
+  return { p_from: start, p_to: Math.max(to, start) }
+}
+
 export async function fetchAllRangePages<T>(
   fetchPage: (range: SupabaseRange) => Promise<QueryResult<T[]>>,
   options: FetchAllRangePagesOptions = {}
 ): Promise<QueryResult<T[]>> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE
 
-  if (!Number.isInteger(pageSize) || pageSize < 1) {
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1) {
     throw new RangeError('Supabase 分页大小必须是正整数')
   }
 
@@ -37,7 +46,7 @@ export async function fetchAllRangePages<T>(
       }
     }
 
-    rows.push(...page.data)
+    for (const row of page.data) rows.push(row)
 
     if (page.data.length < pageSize) {
       return { data: rows, error: null, total: rows.length }

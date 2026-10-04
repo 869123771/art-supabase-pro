@@ -1,3 +1,4 @@
+import { toDateStartTimestamp, toDateEndTimestamp } from '@/utils/time/date-boundary'
 import type { ApiRequestOptions } from '@/types/api/request'
 
 interface SupabaseQueryResponse {
@@ -52,10 +53,13 @@ export const applyDateRange = <TQuery extends SupabaseQueryLike>(
   let nextQuery: SupabaseQueryLike = query
 
   if (startDate) {
-    nextQuery = nextQuery.gte(column, options.startOfDay ? `${startDate}T00:00:00` : startDate)
+    nextQuery = nextQuery.gte(
+      column,
+      options.startOfDay ? toDateStartTimestamp(startDate) : startDate
+    )
   }
   if (endDate) {
-    nextQuery = nextQuery.lte(column, options.endOfDay ? `${endDate}T23:59:59.999` : endDate)
+    nextQuery = nextQuery.lte(column, options.endOfDay ? toDateEndTimestamp(endDate) : endDate)
   }
 
   return nextQuery as TQuery

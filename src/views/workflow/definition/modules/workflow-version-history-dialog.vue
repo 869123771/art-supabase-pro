@@ -164,6 +164,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { saveWorkflowDefinition } from '@/api/workflow'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { diffWorkflowConfigs } from '../../modules/workflow-version-diff'
 
   defineOptions({ name: 'WorkflowVersionHistoryDialog' })
@@ -171,6 +172,7 @@
   const emit = defineEmits<{ (event: 'success'): void }>()
   const dialogRef = ref<ArtDialogExpose>()
   const { confirmAction } = useArtFeedback()
+  const { hasAuth } = useAuth()
   const state = reactive<{
     definition?: Api.Workflow.WorkflowDefinitionRecord
     selectedVersionId: string
@@ -218,6 +220,7 @@
   }
 
   async function restoreSelectedVersion(): Promise<void> {
+    if (!state.canManage || !hasAuth('WorkflowDefinition:Edit')) return
     const definition = state.definition
     const version = selectedVersion.value
     if (!definition || !version) return

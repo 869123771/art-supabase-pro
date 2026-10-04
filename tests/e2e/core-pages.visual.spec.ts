@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { prepareAppearance } from './support/appearance'
+import { blockExternalIconRequests } from './support/icons'
 
 interface VisualPage {
   name: string
@@ -42,22 +43,27 @@ const VISUAL_TEST_TIME = new Date('2026-08-10T10:26:52.000Z')
 async function waitForPageReady(page: Page, rootSelector: string): Promise<Locator> {
   const root = page.locator(rootSelector).first()
   await expect(root).toBeVisible({ timeout: 60_000 })
+  await expect(root.locator('.art-async-state[aria-busy="true"]:visible')).toHaveCount(0, {
+    timeout: 60_000
+  })
+  await expect(root.locator('.art-async-state__skeleton:visible')).toHaveCount(0, {
+    timeout: 60_000
+  })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
+  await page.evaluate(() => document.fonts.ready.then(() => undefined))
+  await expect
+    .poll(() =>
+      page
+        .locator('.art-logo img')
+        .evaluateAll((images) =>
+          images.every(
+            (image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+          )
+        )
+    )
+    .toBe(true)
   await page.waitForTimeout(500)
   return root
-}
-
-async function dismissSettingGuide(page: Page): Promise<void> {
-  const guide = page.locator('.setting-guide')
-  const becameVisible = await guide
-    .waitFor({ state: 'visible', timeout: 2_000 })
-    .then(() => true)
-    .catch(() => false)
-
-  if (becameVisible) {
-    await guide.getByRole('button', { name: '知道了' }).click()
-    await expect(guide).toBeHidden()
-  }
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -98,16 +104,42 @@ for (const visualPage of visualPages) {
     test.setTimeout(120_000)
     const pageErrors: string[] = []
     page.on('pageerror', (error) => pageErrors.push(error.message))
+    const externalIconRequests = await blockExternalIconRequests(page)
 
     await page.clock.setFixedTime(VISUAL_TEST_TIME)
     const dark = testInfo.project.name.includes('dark')
     const boxBorderMode = !testInfo.project.name.includes('shadow')
     await prepareAppearance(page, { theme: dark ? 'dark' : 'light', boxBorderMode })
-    await page.goto(`/#${visualPage.path}`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`#${visualPage.path}`, { waitUntil: 'domcontentloaded' })
     await expect(page).not.toHaveURL(/#\/auth\/login/)
 
     await waitForPageReady(page, visualPage.root)
-    await dismissSettingGuide(page)
+    if (visualPage.name === 'dashboard-console') {
+      await expect(page.locator('.operations-dashboard .dashboard-overview')).toBeVisible({
+        timeout: 60_000
+      })
+      await expect(page.locator('.operations-dashboard .metric-card')).toHaveCount(6)
+    }
+    if (visualPage.name === 'ai-project-planner') {
+      await expect(page.locator('.ai-planner__controls .el-select').last()).toContainText('不限', {
+        timeout: 30_000
+      })
+    }
+    if (visualPage.name === 'table-query-widget') {
+      const allPriorityLabel = page
+        .locator('.table-query-widget .el-segmented__item-label')
+        .filter({ hasText: /^全部$/ })
+        .first()
+      await expect(allPriorityLabel).toBeVisible()
+      const labelWidth = await allPriorityLabel.evaluate((element) => ({
+        content: element.scrollWidth,
+        available: element.clientWidth
+      }))
+      expect(labelWidth.content, '优先级“全部”选项应完整显示').toBeLessThanOrEqual(
+        labelWidth.available
+      )
+    }
+    await expect(page.locator('.setting-guide')).toBeHidden()
     if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
     else await expect(page.locator('html')).not.toHaveClass(/dark/)
     await expect(page.locator('html')).toHaveAttribute(
@@ -116,12 +148,21 @@ for (const visualPage of visualPages) {
     )
     await expectNoHorizontalOverflow(page)
     await resetScrollPositions(page)
+    expect(externalIconRequests, '核心页面不应依赖外部图标服务').toEqual([])
+    expect(pageErrors, `页面出现未捕获错误：\n${pageErrors.join('\n')}`).toEqual([])
 
-    await expect(page).toHaveScreenshot(`${visualPage.name}.png`)
+    const screenshotOptions = {
+      mask: [
+        page.locator('.art-header-bar img[alt="用户头像"]'),
+        page.locator('.website-config-page__header-meta > span:nth-child(2)')
+      ],
+      maskColor: '#808080'
+    }
+    await expect(page).toHaveScreenshot(`${visualPage.name}.png`, screenshotOptions)
 
     if (visualPage.captureLower) {
       await scrollMainContentToBottom(page)
-      await expect(page).toHaveScreenshot(`${visualPage.name}-lower.png`)
+      await expect(page).toHaveScreenshot(`${visualPage.name}-lower.png`, screenshotOptions)
     }
     expect(pageErrors, `页面出现未捕获错误：\n${pageErrors.join('\n')}`).toEqual([])
   })

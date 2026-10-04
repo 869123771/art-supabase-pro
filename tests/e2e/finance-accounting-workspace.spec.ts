@@ -36,7 +36,7 @@ test('财务工作台共享外壳覆盖全部页面且保持响应式稳定', as
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
   for (const workspace of financeWorkspaces) {
-    await page.goto(`/#/fms/${workspace}`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`#/fms/${workspace}`, { waitUntil: 'domcontentloaded' })
     await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/)
 
     const shell = page.locator('.accounting-workspace-shell').first()

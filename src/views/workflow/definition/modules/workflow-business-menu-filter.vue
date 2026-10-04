@@ -54,7 +54,16 @@
         text="正在加载菜单树…"
         description=""
       />
-      <ElScrollbar v-if="filterTree.length">
+      <ArtEmptyState
+        v-if="error"
+        title="业务菜单加载失败"
+        :description="error"
+        size="compact"
+        :visual-size="58"
+      >
+        <ElButton plain type="primary" @click="emit('refresh')">重新加载</ElButton>
+      </ArtEmptyState>
+      <ElScrollbar v-else-if="filterTree.length">
         <ElTree
           ref="treeRef"
           :data="filterTree"
@@ -137,8 +146,13 @@
   }
 
   const props = withDefaults(
-    defineProps<{ data: AppRouteRecord[]; selectedMenuId?: string; loading?: boolean }>(),
-    { selectedMenuId: '', loading: false }
+    defineProps<{
+      data: AppRouteRecord[]
+      selectedMenuId?: string
+      loading?: boolean
+      error?: string
+    }>(),
+    { selectedMenuId: '', loading: false, error: '' }
   )
   const emit = defineEmits<{
     select: [menuId: string, businessTypes: string[], label: string]

@@ -323,7 +323,7 @@
     in_app: { label: '站内通知', description: '顶部通知中心', icon: 'ri:notification-3-line' },
     email: { label: '邮件', description: '邮件服务 API', icon: 'ri:mail-send-line' },
     sms: { label: '手机短信', description: '短信服务网关', icon: 'ri:message-2-line' },
-    dingtalk: { label: '钉钉', description: '群机器人', icon: 'ri:dingtalk-line' },
+    dingtalk: { label: '钉钉', description: '群机器人', icon: 'ri:dingding-line' },
     wecom: { label: '企业微信', description: '群机器人', icon: 'ri:wechat-2-line' }
   }
 

@@ -5,7 +5,7 @@ test('AI 运行明细在非全高页面中显示表格，而不是空白区域',
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/dashboard/ai-operations?section=runs', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/dashboard/ai-operations?section=runs', { waitUntil: 'domcontentloaded' })
 
   const table = page.locator('.ai-operations__table .el-table')
   await expect(table).toBeVisible({ timeout: 60_000 })
@@ -18,7 +18,7 @@ test('AI 运行明细在非全高页面中显示表格，而不是空白区域',
 
 test('查询表格示例的内管与受控表格均不塌缩', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/#/widgets/table-query', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/widgets/table-query', { waitUntil: 'domcontentloaded' })
 
   const tables = page.locator('.table-query-widget .art-table-query .el-table')
   await expect(tables).toHaveCount(2, { timeout: 60_000 })
@@ -32,7 +32,7 @@ test('查询表格示例的内管与受控表格均不塌缩', async ({ page }) 
 
 test('全高用户列表在共享表格布局调整后仍保持可见', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/#/system/user', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/user', { waitUntil: 'domcontentloaded' })
 
   const table = page.locator('.art-table-query .el-table').first()
   await expect(table).toBeVisible({ timeout: 60_000 })

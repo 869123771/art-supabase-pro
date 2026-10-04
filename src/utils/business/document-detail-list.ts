@@ -19,15 +19,33 @@ export async function loadAllDocumentPages<
   query: TQuery,
   batchSize = 500
 ): Promise<TDocument[]> {
-  const first = await fetchPage({ ...query, from: 0, to: batchSize - 1 })
-  if (first.error) throw first.error
-  const documents = [...(first.data ?? [])]
-  for (let from = batchSize; from < (first.total ?? documents.length); from += batchSize) {
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1) {
+    throw new RangeError('单据分页大小必须是正安全整数')
+  }
+  const batches: TDocument[][] = []
+  let total: number | undefined
+  let loaded = 0
+  for (let from = 0; ; from += batchSize) {
     const page = await fetchPage({ ...query, from, to: from + batchSize - 1 })
     if (page.error) throw page.error
-    documents.push(...(page.data ?? []))
+    if (from === 0 && page.total != null) {
+      if (!Number.isSafeInteger(page.total) || page.total < 0) {
+        throw new Error('单据总数无效，请刷新后重试')
+      }
+      total = page.total
+    }
+    const rows = page.data ?? []
+    batches.push(rows)
+    loaded += rows.length
+    if (total === undefined) {
+      if (rows.length < batchSize) return batches.flat()
+    } else {
+      if (loaded >= total) return batches.flat()
+      if (!rows.length || from + batchSize >= total) {
+        throw new Error('单据数据未完整加载，请刷新后重试')
+      }
+    }
   }
-  return documents
 }
 
 export function expandDocumentLines<TDocument extends { id: string }, TLine>(
@@ -60,15 +78,11 @@ export async function loadAllLinePages<TLine, TQuery extends { current: number; 
   query: TQuery,
   batchSize = 500
 ): Promise<TLine[]> {
-  const first = await fetchPage({ ...query, current: 1, size: batchSize })
-  if (first.error) throw first.error
-  const lines = [...(first.data ?? [])]
-  for (let current = 2; (current - 1) * batchSize < (first.total ?? lines.length); current++) {
-    const page = await fetchPage({ ...query, current, size: batchSize })
-    if (page.error) throw page.error
-    lines.push(...(page.data ?? []))
-  }
-  return lines
+  return loadAllDocumentPages<TLine, { from?: number; to?: number }>(
+    ({ from = 0 }) => fetchPage({ ...query, current: from / batchSize + 1, size: batchSize }),
+    {},
+    batchSize
+  )
 }
 
 export function groupDocumentLines<TLine>(

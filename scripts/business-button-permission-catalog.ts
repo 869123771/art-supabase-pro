@@ -32,6 +32,15 @@ const crud = (
 
 export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
   {
+    menuName: 'WorkflowDefinition',
+    buttons: [
+      button('Add', '新建流程'),
+      button('Edit', '编辑流程'),
+      button('Publish', '发布流程'),
+      button('Enable', '启停流程')
+    ]
+  },
+  {
     menuName: 'MdmPurchaseSupplier',
     buttons: [
       ...crud({ view: true, export: true }),
@@ -3032,38 +3041,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('RecentPrice', '获取最近采购价')
     ]
   },
-  {
-    menuName: 'ScmPurchaseInbound',
-    buttons: [
-      button('View', '查看'),
-      button('Add', '新增'),
-      button('Copy', '复制'),
-      button('Edit', '编辑'),
-      button('Delete', '删除'),
-      button('Import', '导入'),
-      button('Export', '导出'),
-      button('Push', '下推'),
-      button('Submit', '提交'),
-      button('Approve', '审核')
-    ]
-  },
-  {
-    menuName: 'ScmPurchaseReturnRequest',
-    buttons: [
-      button('View', '查看'),
-      button('Add', '新增'),
-      button('Copy', '复制'),
-      button('Edit', '编辑'),
-      button('Delete', '删除'),
-      button('Import', '导入'),
-      button('Export', '导出'),
-      button('Push', '下推'),
-      button('Submit', '提交'),
-      button('Approve', '审核')
-    ]
-  },
-  { menuName: 'ScmOutsourceReceipt', buttons: [button('View', '查看'), button('Add', '新增')] },
-  { menuName: 'ScmOutsourceInbound', buttons: [button('View', '查看'), button('Add', '新增')] },
   {
     menuName: 'ScmReceiptNotice',
     buttons: [

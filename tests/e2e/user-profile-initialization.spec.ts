@@ -27,7 +27,7 @@ async function openProbe(page: Page): Promise<void> {
     children: []
   }
   await mockApplicationMenus(page, { platform: [menu] })
-  await page.goto('/#/500?redirect=/', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/500?redirect=/', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '服务暂时开小差' })).toBeVisible({
     timeout: 45_000
   })

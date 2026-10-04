@@ -165,7 +165,7 @@ test('production equipment master keeps the enterprise workspace and dialog visu
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/mdm/engineering/production-equipment', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/engineering/production-equipment', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '生产设备', exact: true })).toBeVisible({
     timeout: 60_000
   })

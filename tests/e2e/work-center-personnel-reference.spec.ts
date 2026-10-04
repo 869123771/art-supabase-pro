@@ -38,7 +38,7 @@ async function openWorkCenter(page: Page) {
   )
   const flat = [root, child, ...buttons]
   await mockApplicationMenus(page, { platform: flat, mdm: flat })
-  await page.goto('/#/mdm/production/work-center', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/production/work-center', { waitUntil: 'domcontentloaded' })
 }
 
 test('work-center people use the minimal RPC and preserve arbitrary range offsets', async ({
@@ -53,7 +53,7 @@ test('work-center people use the minimal RPC and preserve arbitrary range offset
       if (response.status() >= 400) failures.push(response.status())
     }
   })
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('字典目录', { exact: true })).toBeVisible({ timeout: 60_000 })
   const result = await page.evaluate(async () => {
     const modulePath = '/modules/art-supabase-mdm/src/api/modules/workspaces.ts'

@@ -13,7 +13,7 @@ test('全局设计参考紧跟页面刷新，工作区刷新保持在业务按�
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/dashboard/console', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
 
   const header = page.locator('.business-workspace-header').first()
@@ -79,7 +79,7 @@ test('全局固定操作栏保持提示在左、操作在右', async ({ page }) 
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/system/website-config', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/website-config', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
 
   const actionBar = page.locator('.art-sticky-action-bar').first()
@@ -114,7 +114,7 @@ test('全局固定操作栏保持提示在左、操作在右', async ({ page }) 
 
 test('运营工作台显示真实更新时间，并在刷新失败后保留数据和重试入口', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/dashboard/console', { waitUntil: 'domcontentloaded' })
 
   const header = page.locator('.operations-dashboard .business-workspace-header')
   const status = header.locator('.business-workspace-header__tags .el-tag').first()

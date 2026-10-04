@@ -5,7 +5,7 @@ test('菜单权限虚拟树保持稳定高度并独立滚动', async ({ page }) 
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/system/role', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/role', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   await expect(page.locator('.role-page')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })

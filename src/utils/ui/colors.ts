@@ -128,7 +128,7 @@ export function hexToRgb(hexColor: string): number[] {
     throw new Error('Invalid hex color format')
   }
 
-  const cleanHex = hexColor.replace(/^#/, '')
+  const cleanHex = hexColor.trim().replace(/^#/, '')
   let hex = cleanHex
 
   // 处理缩写形式

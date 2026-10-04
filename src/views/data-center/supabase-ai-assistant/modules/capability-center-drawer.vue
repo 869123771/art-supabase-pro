@@ -231,7 +231,7 @@
         title: 'Auth',
         subtitle: '身份认证与用户体系',
         description: '仅聚合分析用户确认率和近期活跃度，不读取身份明细。',
-        icon: 'ri:user-shield-line',
+        icon: 'ri:shield-user-line',
         enabled: data.auth.enabled,
         statusLabel: data.auth.enabled ? '已启用' : '未启用',
         tagType: data.auth.enabled ? 'success' : 'info',

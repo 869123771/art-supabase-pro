@@ -1,9 +1,9 @@
 import {
-  isPlainObjectRecord,
   keysToCamelDeep,
   keysToCamelShallow,
   keysToSnakeDeep
 } from '@/utils/supabase/key-transform'
+import { isPlainObjectRecord } from '@/utils/type-guards'
 import { supabase } from '@/plugins/supabase'
 import { isBoolean } from 'lodash-es'
 import { ElMessage } from 'element-plus'

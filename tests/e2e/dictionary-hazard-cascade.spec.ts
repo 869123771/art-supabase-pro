@@ -67,7 +67,7 @@ async function expectDialogScrollsInternally(page: Page): Promise<void> {
 
 test('隐患三级字典可在数据字典中建立明确的父子关系', async ({ page }) => {
   test.setTimeout(90_000)
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   await expect(page.locator('.dict-page')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
@@ -115,7 +115,7 @@ test('隐患三级字典可在数据字典中建立明确的父子关系', async
 
 test('字典节点弹窗使用通用级联配置和分区布局', async ({ page }) => {
   test.setTimeout(90_000)
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   await expect(page.locator('.dict-page')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })

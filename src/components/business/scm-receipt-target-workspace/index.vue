@@ -129,6 +129,7 @@
   import { ElTag } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
   import { storeToRefs } from 'pinia'
+  import { useUnitDisplayNames } from '@/hooks/core/useUnitDisplayNames'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
@@ -175,6 +176,7 @@
   import ReceiptBinDialog from './modules/receipt-bin-dialog.vue'
 
   defineOptions({ name: 'ScmReceiptTargetWorkspace' })
+  const { loadUnitDisplayNames, unitDisplayName } = useUnitDisplayNames()
   const props = defineProps<{
     kind: ScmReceiptTargetKind
     viewPermission: string
@@ -393,13 +395,14 @@
         { key: 'createdAt', title: '创建时间' }
       ],
       exportData: async () => {
-        const { data } = await fetchScmReceiptTargets(props.kind, {
-          ...search.value,
-          tenantId: effectiveTenantId.value || search.value.tenantId,
-          from: 0,
-          to: 9999
-        })
-        return (data ?? []).map((row) => ({
+        const documents = await loadAllDocumentPages(
+          (page) => fetchScmReceiptTargets(props.kind, page),
+          {
+            ...search.value,
+            tenantId: effectiveTenantId.value || search.value.tenantId
+          }
+        )
+        return documents.map((row) => ({
           ...row,
           sourceNo: row.source?.documentNo || '',
           projectName: row.project?.projectName || '',
@@ -426,6 +429,7 @@
       return fetchDocuments(query)
     }
     const documents = await loadAllDocumentPages(fetchDocuments, query)
+    await loadUnitDisplayNames(documents.map((document) => document.tenantId))
     const lines = await fetchScmReceiptTargetLinesForDocuments(
       documents.map((document) => document.id)
     )
@@ -465,6 +469,7 @@
     }
   }
   async function openDetail(row: ScmReceiptTargetDocument) {
+    await loadUnitDisplayNames([row.tenantId])
     activeDocument.value = row
     activeLines.value = []
     projectSections.value = []
@@ -655,7 +660,7 @@
               label: '库存单位',
               width: 100,
               formatter: (row: ReceiptTargetListRow) =>
-                row.detailLine?.lineSnapshot.stockUnit || '—'
+                unitDisplayName(row.tenantId, row.detailLine?.lineSnapshot.stockUnit)
             },
             {
               prop: 'detailWarehouse',
@@ -773,7 +778,8 @@
       prop: 'stockUnit',
       label: '库存单位',
       minWidth: 95,
-      formatter: (row) => row.lineSnapshot.stockUnit || '—'
+      formatter: (row) =>
+        unitDisplayName(activeDocument.value?.tenantId || '', row.lineSnapshot.stockUnit)
     },
     {
       prop: 'warehouse',

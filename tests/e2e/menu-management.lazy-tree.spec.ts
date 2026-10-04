@@ -48,7 +48,7 @@ test('菜单管理首层与展开请求保持精简且层级正确', async ({ pa
   const rootRequestPromise = page.waitForRequest(
     (request) => isMenuRpcRequest(request) && readMenuRpcPayload(request).p_root_only === true
   )
-  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/menu', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/auth\/login/)
   const rootRequest = await rootRequestPromise
   const rootRows = await readMenuRows(rootRequest)
@@ -101,7 +101,7 @@ test('菜单管理首层与展开请求保持精简且层级正确', async ({ pa
 })
 
 test('菜单新增弹窗先显示，再加载完整菜单树', async ({ page }, testInfo) => {
-  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/menu', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
     timeout: 60_000
   })
@@ -135,7 +135,7 @@ test('菜单新增弹窗先显示，再加载完整菜单树', async ({ page }, 
 })
 
 test('菜单编辑弹窗先显示，再加载完整菜单树', async ({ page }) => {
-  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/menu', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
     timeout: 60_000
   })
@@ -175,7 +175,7 @@ test('菜单编辑弹窗先显示，再加载完整菜单树', async ({ page }) 
 
 test('菜单详情和树形排序先显示，再加载完整菜单树', async ({ page }) => {
   test.setTimeout(90_000)
-  await page.goto('/#/system/menu', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/menu', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '菜单管理', exact: true })).toBeVisible({
     timeout: 60_000
   })

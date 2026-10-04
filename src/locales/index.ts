@@ -25,6 +25,7 @@ import type { I18n, I18nOptions } from 'vue-i18n'
 import { LanguageEnum } from '@/enums/app-enum'
 import { getSystemStorage } from '@/utils/storage'
 import { StorageKeyManager } from '@/utils/storage/storage-key-manager'
+import { isPlainObjectRecord } from '@/utils/type-guards'
 
 // 同步导入语言文件
 import enMessages from './langs/en.json'
@@ -43,14 +44,8 @@ const messages = {
   [LanguageEnum.ZH]: zhMessages
 }
 
-interface LegacySystemStorage {
-  user?: {
-    language?: unknown
-  }
-}
-
 const isLanguage = (value: unknown): value is LanguageEnum =>
-  typeof value === 'string' && Object.values(LanguageEnum).includes(value as LanguageEnum)
+  value === LanguageEnum.ZH || value === LanguageEnum.EN
 
 /**
  * 语言选项列表
@@ -72,9 +67,9 @@ const getDefaultLanguage = (): LanguageEnum => {
     const userStore = localStorage.getItem(storageKey)
 
     if (userStore) {
-      const { language } = JSON.parse(userStore)
-      if (isLanguage(language)) {
-        return language
+      const stored: unknown = JSON.parse(userStore)
+      if (isPlainObjectRecord(stored) && isLanguage(stored.language)) {
+        return stored.language
       }
     }
   } catch (error) {
@@ -83,8 +78,12 @@ const getDefaultLanguage = (): LanguageEnum => {
 
   // 尝试从系统存储中获取语言设置
   try {
-    const sys = getSystemStorage<LegacySystemStorage>()
-    if (isLanguage(sys?.user?.language)) {
+    const sys = getSystemStorage()
+    if (
+      isPlainObjectRecord(sys) &&
+      isPlainObjectRecord(sys.user) &&
+      isLanguage(sys.user.language)
+    ) {
       return sys.user.language
     }
   } catch (error) {

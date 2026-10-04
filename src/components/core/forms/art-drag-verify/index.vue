@@ -7,8 +7,10 @@
     @mousemove="dragMoving"
     @mouseup="dragFinish"
     @mouseleave="dragFinish"
-    @touchmove="dragMoving"
+    @touchstart="onTouchStart"
+    @touchmove="onTouchMove"
     @touchend="dragFinish"
+    @touchcancel="dragFinish"
   >
     <!-- 进度条 -->
     <div
@@ -156,18 +158,18 @@
    */
   const onTouchMove = (e: TouchEvent) => {
     const touch = getTouchPoint(e)
-    if (!touch) return
+    if (!touch || !state.isMoving || props.value) return
 
     moveX = touch.pageX
     moveY = touch.pageY
 
     // 如果横向移动距离大于纵向移动距离，阻止默认行为（防止页面滑动）
     if (Math.abs(moveX - startX) > Math.abs(moveY - startY)) {
-      e.preventDefault()
+      if (e.cancelable) e.preventDefault()
     }
+    dragMoving(e)
   }
 
-  // 全局事件监听器添加
   // 获取数值形式的宽度
   const getNumericWidth = (): number => {
     if (typeof props.width === 'string') {
@@ -196,16 +198,6 @@
       dragVerify.value?.style.setProperty('--width', Math.floor(numericWidth / 2) + 'px')
       dragVerify.value?.style.setProperty('--pwidth', -Math.floor(numericWidth / 2) + 'px')
     })
-
-    // 重复添加事件监听器（确保事件绑定）
-    document.addEventListener('touchstart', onTouchStart)
-    document.addEventListener('touchmove', onTouchMove, { passive: false })
-  })
-
-  // 组件卸载前清理事件监听器
-  onBeforeUnmount(() => {
-    document.removeEventListener('touchstart', onTouchStart)
-    document.removeEventListener('touchmove', onTouchMove)
   })
 
   // 滑块样式计算
@@ -295,7 +287,7 @@
         // 未拖拽到末端，重置位置
         state.isOk = true
         handler.value.style.left = '0'
-        handler.value.style.transition = 'all 0.2s'
+        handler.value.style.transition = 'none'
         progressBar.value.style.width = '0'
         state.isOk = false
       } else {

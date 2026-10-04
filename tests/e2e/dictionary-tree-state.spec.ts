@@ -36,7 +36,7 @@ test('dictionary tree distinguishes invalid hierarchy, loading failure, empty an
           : []
     await route.fulfill({ json: rows })
   })
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
   const panel = page.locator('.dict-tree-panel')
   const errorTitle = panel.getByText('字典目录加载失败', { exact: true })
   const retry = panel.getByRole('button', { name: '重新加载', exact: true })

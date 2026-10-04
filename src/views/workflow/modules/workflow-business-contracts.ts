@@ -16,6 +16,36 @@ export interface WorkflowBusinessContract {
 }
 
 const contracts: Record<string, WorkflowBusinessContract> = {
+  scm_sales_contract: {
+    businessType: 'scm_sales_contract',
+    label: '销售合同',
+    menuName: 'ScmSalesContract',
+    domain: 'scm',
+    riskLevel: 'high',
+    owner: '销售管理',
+    fields: [
+      { key: 'documentNo', label: '合同编号', valueType: 'text' },
+      { key: 'projectId', label: '项目', valueType: 'text', referenceType: 'business' },
+      { key: 'customerId', label: '客户', valueType: 'text', referenceType: 'business' },
+      { key: 'totalAmount', label: '合同金额', valueType: 'number' }
+    ],
+    routePath: () => '/scm/sales-management/sales-contract'
+  },
+  scm_sales_order: {
+    businessType: 'scm_sales_order',
+    label: '销售订单',
+    menuName: 'ScmSalesOrder',
+    domain: 'scm',
+    riskLevel: 'high',
+    owner: '销售管理',
+    fields: [
+      { key: 'documentNo', label: '销售订单号', valueType: 'text' },
+      { key: 'projectId', label: '项目', valueType: 'text', referenceType: 'business' },
+      { key: 'customerId', label: '客户', valueType: 'text', referenceType: 'business' },
+      { key: 'totalAmount', label: '订单金额', valueType: 'number' }
+    ],
+    routePath: () => '/scm/sales-management/sales-order'
+  },
   scm_sales_quotation: {
     businessType: 'scm_sales_quotation',
     label: '销售报价单',

@@ -28,7 +28,7 @@ test('菜单服务故障后，会话有效时重试进入系统主页', async ({
     })
   })
 
-  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/dashboard/console', { waitUntil: 'domcontentloaded' })
 
   await expect(page.getByRole('heading', { name: '服务暂时开小差' })).toBeVisible({
     timeout: 30_000
@@ -49,7 +49,7 @@ test('菜单服务故障后，会话有效时重试进入系统主页', async ({
 test('会话失效时重试会退出并返回登录页', async ({ context, page }) => {
   await context.clearCookies()
   await page.addInitScript(() => window.localStorage.clear())
-  await page.goto('/#/500?redirect=/dashboard/console', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/500?redirect=/dashboard/console', { waitUntil: 'domcontentloaded' })
 
   await page.getByRole('button', { name: '重试进入系统', exact: true }).click()
 
@@ -59,7 +59,7 @@ test('会话失效时重试会退出并返回登录页', async ({ context, page 
 })
 
 test('用户可从服务异常页主动退出并返回登录页', async ({ page }) => {
-  await page.goto('/#/500?redirect=/', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/500?redirect=/', { waitUntil: 'domcontentloaded' })
 
   await page.getByRole('button', { name: '返回登录', exact: true }).click()
 

@@ -36,10 +36,16 @@
         <ElButton :disabled="!form.data.config.nodes.length" @click="openSimulator">
           试运行
         </ElButton>
-        <ElButton :loading="page.saving" :disabled="page.publishing" @click="saveDraft">
+        <ElButton
+          v-if="canSave"
+          :loading="page.saving"
+          :disabled="page.publishing"
+          @click="saveDraft"
+        >
           保存草稿
         </ElButton>
         <ElButton
+          v-if="canSave && hasAuth('WorkflowDefinition:Publish')"
           type="primary"
           :loading="page.publishing"
           :disabled="page.saving"
@@ -367,6 +373,8 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import {
     fetchWorkflowDefinitionDetail,
@@ -439,7 +447,9 @@
   const props = defineProps<{ definitionId?: string; templateKey?: string }>()
   const emit = defineEmits<{ close: []; saved: [definitionId: string] }>()
   const userStore = useUserStore()
-  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap, isPlatformSuper, getUserInfo } = storeToRefs(userStore)
+  const { hasAuth } = useAuth()
+  const tenantScopeStore = useTenantScopeStore()
   const { confirmAction } = useArtFeedback()
   const baseFormRef = ref<FormExpose>()
   const businessTypeSelectRef = ref<SelectExpose>()
@@ -459,6 +469,9 @@
   )
   const businessContract = computed<WorkflowBusinessContract>(() =>
     getWorkflowBusinessContract(form.data.businessType)
+  )
+  const canSave = computed(() =>
+    hasAuth(isEdit.value ? 'WorkflowDefinition:Edit' : 'WorkflowDefinition:Add')
   )
   const contextFields = computed(() => businessContract.value.fields)
   const businessTypeOptions = computed(() => getDictMap.value.workflowBusinessType ?? [])
@@ -546,6 +559,7 @@
     {
       label: '所属租户',
       key: 'tenantId',
+      hidden: !isPlatformSuper.value,
       type: 'select',
       span: 24,
       help: form.data.id
@@ -750,6 +764,7 @@
   }
 
   async function persistDraft(): Promise<string | null> {
+    if (!canSave.value) return null
     if (!(await validateDesigner())) return null
     page.saving = true
     try {
@@ -771,6 +786,7 @@
   }
 
   async function publishVersion(): Promise<void> {
+    if (!canSave.value || !hasAuth('WorkflowDefinition:Publish')) return
     if (!(await validateDesigner())) return
     await confirmAction(
       `发布“${form.data.name || '未命名流程'}”后，新实例会立即使用本次配置，已运行实例仍保留原版本。`,
@@ -804,7 +820,9 @@
 
   function openVersionHistory(): void {
     if (currentDefinition.value) {
-      void versionHistoryRef.value?.handleOpen(currentDefinition.value, { canManage: true })
+      void versionHistoryRef.value?.handleOpen(currentDefinition.value, {
+        canManage: hasAuth('WorkflowDefinition:Edit')
+      })
     }
   }
 
@@ -856,14 +874,21 @@
     activeStep.value = 1
     try {
       await userStore.fetchDictList()
-      if (!isPlatformSuper.value) {
-        page.error = '流程配置仅允许平台超级管理员访问；普通用户可在流程管理中只读查看。'
+      if (
+        !hasAuth(
+          props.definitionId && props.definitionId !== 'new'
+            ? 'WorkflowDefinition:Edit'
+            : 'WorkflowDefinition:Add'
+        )
+      ) {
+        page.error = '当前账号没有流程配置权限，请联系租户管理员授权。'
         return
       }
       if (isEdit.value && props.definitionId) {
         await loadDefinition(props.definitionId)
       } else {
         form.data = createWorkflowTemplateDraft(props.templateKey || 'custom')
+        form.data.tenantId = tenantScopeStore.effectiveTenantId || getUserInfo.value.tenantId
         await nextTick()
         baseFormRef.value?.clearValidate()
       }

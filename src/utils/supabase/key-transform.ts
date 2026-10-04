@@ -1,7 +1,5 @@
-import { isPlainObject, mapKeys, mapValues } from 'lodash-es'
-
-export const isPlainObjectRecord = (value: unknown): value is Record<string, unknown> =>
-  isPlainObject(value)
+import { mapKeys, mapValues } from 'lodash-es'
+import { isPlainObjectRecord } from '../type-guards'
 
 const toCamel = (key: string): string =>
   key.replace(/_([a-z0-9])/g, (_, letter: string) => letter.toUpperCase())

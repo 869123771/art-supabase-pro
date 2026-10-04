@@ -148,7 +148,7 @@ export async function fetchScmReceiptTargetLines(targetId: string) {
 export async function fetchScmReceiptTargetLinesForDocuments(
   documentIds: string[]
 ): Promise<ScmReceiptTargetListLine[]> {
-  const lines: ScmReceiptTargetListLine[] = []
+  const lineBatches: ScmReceiptTargetListLine[][] = []
   for (let offset = 0; offset < documentIds.length; offset += 100) {
     const ids = documentIds.slice(offset, offset + 100)
     const result = await fetchAllRangePages<ScmReceiptTargetListLine>(({ from, to }) =>
@@ -164,9 +164,9 @@ export async function fetchScmReceiptTargetLinesForDocuments(
       )
     )
     if (result.error) throw result.error
-    lines.push(...(result.data ?? []))
+    lineBatches.push(result.data ?? [])
   }
-  return lines
+  return lineBatches.flat()
 }
 
 export async function setScmReceiptLineSerials(lineId: string, serialNos: string[]) {

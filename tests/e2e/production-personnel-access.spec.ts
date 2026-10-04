@@ -65,7 +65,7 @@ test('department workspace remains an organization table and never reads personn
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/mdm/production/department', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/production/department', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '部门 / 产线', exact: true })).toBeVisible({
     timeout: 60_000
   })

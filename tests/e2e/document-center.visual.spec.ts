@@ -319,7 +319,7 @@ test('文档中心旧请求不会覆盖新筛选的概览和列表', async ({ pa
     })
     if (isOld) oldFinished = true
   })
-  await page.goto('/#/smis/safety-production/document-center/all-documents', {
+  await page.goto('#/smis/safety-production/document-center/all-documents', {
     waitUntil: 'domcontentloaded'
   })
   await expect.poll(() => requests, { timeout: 60_000 }).toBe(1)
@@ -383,7 +383,7 @@ test('文档中心旧请求不会覆盖新筛选的概览和列表', async ({ pa
 
 test('文档中心三视图在桌面和窄屏下无页面级溢出', async ({ page }, testInfo) => {
   test.setTimeout(120_000)
-  await page.goto('/#/smis/safety-production/document-center/all-documents', {
+  await page.goto('#/smis/safety-production/document-center/all-documents', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page.locator('.document-center-page')).toBeVisible({ timeout: 45_000 })

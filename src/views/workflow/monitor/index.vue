@@ -215,6 +215,7 @@
 
   const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
   const tableRef = ref<ArtTableQueryExpose>()
+  const route = useRoute()
   const { component: analyticsDialogComponent, load: loadAnalyticsDialog } = useLazyComponent(
     () => import('./modules/workflow-analytics-dialog.vue')
   )
@@ -262,6 +263,13 @@
     await loadInstanceDrawer()
     await instanceDrawerRef.value?.handleOpen(id)
   }
+  watch(
+    () => route.query.recordId,
+    (id) => {
+      if (typeof id === 'string' && route.query.fromMasterDelete === '1') void openInstance(id)
+    },
+    { immediate: true }
+  )
   async function openCancel(row: MonitorRow): Promise<void> {
     await loadCancelDialog()
     await cancelDialogRef.value?.handleOpen(row)

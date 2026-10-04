@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { fetchAllRangePages, type SupabaseRange } from '../../src/utils/supabase/pagination'
+import {
+  buildSupabaseRpcRange,
+  fetchAllRangePages,
+  type SupabaseRange
+} from '../../src/utils/supabase/pagination'
+
+test('RPC ranges remain inclusive and ordered after clamping negative offsets', () => {
+  assert.deepEqual(buildSupabaseRpcRange(20, 39), { p_from: 20, p_to: 39 })
+  assert.deepEqual(buildSupabaseRpcRange(-10, -5), { p_from: 0, p_to: 0 })
+  assert.deepEqual(buildSupabaseRpcRange(-10, 9), { p_from: 0, p_to: 9 })
+  assert.deepEqual(buildSupabaseRpcRange(20, 9), { p_from: 20, p_to: 20 })
+  for (const value of [NaN, Infinity, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => buildSupabaseRpcRange(value, 9), /分页范围无效/)
+    assert.throws(() => buildSupabaseRpcRange(0, value), /分页范围无效/)
+  }
+})
 
 test('collects every range until the final partial page', async () => {
   const source = ['A', 'B', 'C', 'D', 'E']
@@ -46,8 +61,29 @@ test('returns the original page error without exposing partial data', async () =
 })
 
 test('rejects invalid page sizes before querying', async () => {
-  await assert.rejects(
-    fetchAllRangePages(async () => ({ data: [], error: null }), { pageSize: 0 }),
-    /分页大小必须是正整数/
-  )
+  let calls = 0
+  for (const pageSize of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    await assert.rejects(
+      fetchAllRangePages(
+        async () => {
+          calls += 1
+          return { data: [], error: null }
+        },
+        { pageSize }
+      ),
+      /分页大小必须是正整数/
+    )
+  }
+  assert.equal(calls, 0)
+})
+
+test('collects large pages without exceeding the function argument limit', async () => {
+  const data = Array.from({ length: 200_000 }, (_, index) => index)
+  const result = await fetchAllRangePages(async () => ({ data, error: null }), {
+    pageSize: data.length + 1
+  })
+  assert.equal(result.error, null)
+  assert.equal(result.total, data.length)
+  assert.equal(result.data?.[0], 0)
+  assert.equal(result.data?.at(-1), data.length - 1)
 })

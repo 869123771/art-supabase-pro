@@ -13,7 +13,7 @@
       title="审批流程设计"
       description="用版本化配置复用审批能力，发布中的版本保持不可变，所有流转动作完整留痕。"
       icon="ri:git-merge-line"
-      :tags="!isPlatformSuper ? [{ label: '租户只读', type: 'info', effect: 'plain' }] : []"
+      :tags="!canConfigure ? [{ label: '只读', type: 'info', effect: 'plain' }] : []"
     >
       <template #actions>
         <BusinessTableWorkspaceActions :table="tableQueryRef" />
@@ -31,6 +31,7 @@
               :data="menuTree"
               :selected-menu-id="selectedMenuId"
               :loading="menuLoading"
+              :error="menuError"
               @select="handleMenuSelect"
               @refresh="handleMenuRefresh"
             />
@@ -62,9 +63,9 @@
               rowKey: 'id',
               tableLayout: 'fixed',
               emptyText: '暂无审批流程定义',
-              emptyDescription: isPlatformSuper
+              emptyDescription: hasAuth('WorkflowDefinition:Add')
                 ? '可以新建流程，或调整筛选条件后重新查询。'
-                : '当前租户还没有可查看的流程，请联系平台管理员配置。'
+                : '当前租户还没有可查看的流程，请联系管理员配置或授权。'
             }"
             focus-scope-selector=".workflow-definition__workspace"
           />
@@ -98,10 +99,12 @@
         :data="menuTree"
         :selected-menu-id="selectedMenuId"
         :loading="menuLoading"
+        :error="menuError"
         @select="handleDrawerMenuSelect"
         @refresh="handleMenuRefresh"
       />
     </ArtDrawer>
+    <MasterDataDeleteGuard ref="deleteGuardRef" />
   </div>
 </template>
 
@@ -126,12 +129,20 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
+  import MasterDataDeleteGuard, {
+    type MasterDataDeleteGuardOpenOptions
+  } from '@/components/business/master-data-delete-guard/index.vue'
+  import { fetchRecordDeleteDependencies } from '@/api/master-data-delete'
   import { pageInfoHandler } from '@/utils/table/table-utils'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
   import { useUserStore } from '@/store/modules/user'
-  import { fetchMenuCatalog } from '@/api/system-manage'
+  import {
+    fetchAccessibleApplications,
+    fetchCurrentUserMenus
+  } from '@/api/system-manage/application-access'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import TreeUtils from '@/utils/tree'
   import {
@@ -179,6 +190,15 @@
   }
 
   const userStore = useUserStore()
+  const { hasAuth, hasAnyAuth } = useAuth()
+  const canConfigure = computed(() =>
+    hasAnyAuth([
+      'WorkflowDefinition:Add',
+      'WorkflowDefinition:Edit',
+      'WorkflowDefinition:Publish',
+      'WorkflowDefinition:Enable'
+    ])
+  )
   const route = useRoute()
   const router = useRouter()
   const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
@@ -197,15 +217,19 @@
   const catalogRef = ref<CatalogExpose>()
   const templateLibraryRef = ref<TemplateLibraryExpose>()
   const menuDrawerRef = ref<ArtDrawerExpose<Record<string, never>>>()
+  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
   const menuTree = ref<AppRouteRecord[]>([])
   const menuLoading = ref(false)
+  const menuError = ref('')
   const selectedMenuId = ref('')
   const selectedMenuLabel = ref('全部业务')
   const isDesktopMenuLayout = useMediaQuery('(min-width: 1201px)')
   const treeUtils = new TreeUtils({ idKey: 'id', parentKey: 'parentId', childrenKey: 'children' })
   async function openVersionHistory(row: Definition): Promise<void> {
     await loadVersionHistory()
-    await versionHistoryRef.value?.handleOpen(row, { canManage: isPlatformSuper.value })
+    await versionHistoryRef.value?.handleOpen(row, {
+      canManage: hasAuth('WorkflowDefinition:Edit')
+    })
   }
   async function openCatalog(): Promise<void> {
     await loadCatalog()
@@ -265,10 +289,11 @@
       }
     ]),
     headerActions: computed<ArtTableQueryHeaderAction[]>(() =>
-      isPlatformSuper.value
+      hasAuth('WorkflowDefinition:Add')
         ? [
             {
               type: 'add',
+              permission: 'WorkflowDefinition:Add',
               label: '新建流程',
               onClick: () => void openTemplateLibrary()
             }
@@ -347,7 +372,7 @@
         width: 168,
         formatter: (row) => formatWithDayjs(row.updateTime)
       },
-      ...(isPlatformSuper.value
+      ...(canConfigure.value
         ? [
             {
               prop: 'operation',
@@ -359,6 +384,7 @@
                   <ArtButtonTable
                     type="edit"
                     label="编辑流程"
+                    permission="WorkflowDefinition:Edit"
                     onClick={() => openDesigner(row.id)}
                   />
                   <ArtButtonMore
@@ -379,8 +405,18 @@
   }
 
   async function loadMenuTree(): Promise<void> {
-    const { data } = await fetchMenuCatalog()
-    menuTree.value = treeUtils.listToTree((data ?? []).filter((menu) => menu.type !== 'button'))
+    menuError.value = ''
+    const applications = await fetchAccessibleApplications()
+    if (applications.error || !applications.data) throw new Error('业务菜单加载失败，请重试')
+    const result = await fetchCurrentUserMenus(
+      applications.data.map((application) => application.code)
+    )
+    if (result.error || !result.data) throw new Error('业务菜单加载失败，请重试')
+    menuTree.value = treeUtils.listToTree(
+      Object.values(result.data)
+        .flat()
+        .filter((menu) => menu.type !== 'button')
+    )
   }
 
   async function handleMenuSelect(
@@ -415,6 +451,8 @@
           '全部业务'
         )
       }
+    } catch {
+      menuError.value = '请重新加载；若持续失败，请联系管理员核对业务菜单权限。'
     } finally {
       menuLoading.value = false
     }
@@ -463,22 +501,28 @@
     return [
       {
         key: 'publish',
+        auth: 'WorkflowDefinition:Publish',
         label: '发布流程',
         icon: 'ri:send-plane-line',
         disabled: !row.versions?.some((version) => version.status === 'draft')
       },
       {
         key: 'toggle',
+        auth: 'WorkflowDefinition:Enable',
         label: row.status === 'disabled' ? '启用流程' : '停用流程',
         icon: row.status === 'disabled' ? 'ri:play-circle-line' : 'ri:pause-circle-line',
         disabled: row.status === 'draft'
       },
-      {
-        key: 'delete',
-        label: '删除流程',
-        icon: 'ri:delete-bin-line',
-        color: 'var(--el-color-danger)'
-      }
+      ...(isPlatformSuper.value
+        ? [
+            {
+              key: 'delete',
+              label: '删除流程',
+              icon: 'ri:delete-bin-line',
+              color: 'var(--el-color-danger)'
+            }
+          ]
+        : [])
     ]
   }
 
@@ -518,11 +562,40 @@
   }
 
   async function handleDelete(row: Definition): Promise<void> {
+    if (!isPlatformSuper.value) return
+    const options: MasterDataDeleteGuardOpenOptions = {
+      resourceLabel: '审批流程',
+      navigationResource: { type: 'workflow_definition', queryKey: 'definitionId' },
+      resources: [{ id: row.id, label: row.name }],
+      dependencyMeta: {
+        wf_instance: {
+          label: '审批记录',
+          unit: '条',
+          order: 1,
+          description: '已有审批记录的流程需保留历史，请停用流程。',
+          actionLabel: '查看审批记录',
+          routeName: 'WorkflowMonitor'
+        }
+      },
+      fetchDependencies: async (ids) =>
+        (await fetchRecordDeleteDependencies({ table: 'wf_definition', ids })).map((record) => ({
+          ...record,
+          dependencyCode: record.sourceTable,
+          cleanupAllowed: false,
+          createdAt: record.createdAt || ''
+        }))
+    }
+    if (!deleteGuardRef.value || (await deleteGuardRef.value.inspect(options))) return
     const tenantLabel = row.tenant?.tenantName ? `（${row.tenant.tenantName}）` : ''
     await confirmDelete(
       `确定删除“${row.name}”${tenantLabel}吗？只有从未产生审批记录的流程可以删除；已有历史的流程必须停用。`
     )
-    await deleteWorkflowDefinition(row.id)
+    try {
+      await deleteWorkflowDefinition(row.id)
+    } catch (error) {
+      await deleteGuardRef.value.inspect(options)
+      throw error
+    }
     await tableQueryRef.value?.refreshRemove()
   }
 
@@ -534,6 +607,8 @@
     menuLoading.value = true
     try {
       await Promise.all([userStore.fetchDictList(), loadMenuTree()])
+    } catch {
+      menuError.value = '请重新加载；若持续失败，请联系管理员核对业务菜单权限。'
     } finally {
       menuLoading.value = false
     }

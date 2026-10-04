@@ -46,47 +46,47 @@ test.describe('multi-module workspace expansion', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('opens HR workforce risk center', async ({ page }) => {
-    await verifyWorkspace(page, '/#/hr/operations/workforce-risk', '人力风险中心')
+    await verifyWorkspace(page, '#/hr/operations/workforce-risk', '人力风险中心')
   })
 
   test('opens FMS cash forecast', async ({ page }) => {
-    await verifyWorkspace(page, '/#/fms/treasury/cash-forecast', '资金预测')
+    await verifyWorkspace(page, '#/fms/treasury/cash-forecast', '资金预测')
   })
 
   test('opens TMS transport event center', async ({ page }) => {
-    await verifyWorkspace(page, '/#/tms/transport-event', '运输事件中心')
+    await verifyWorkspace(page, '#/tms/transport-event', '运输事件中心')
   })
 
   test('opens HR talent inventory', async ({ page }) => {
-    await verifyWorkspace(page, '/#/hr/talent/talent-inventory', '人才盘点')
+    await verifyWorkspace(page, '#/hr/talent/talent-inventory', '人才盘点')
   })
 
   test('opens FMS receivable aging', async ({ page }) => {
-    await verifyWorkspace(page, '/#/fms/settlement/receivable-aging', '应收账龄')
+    await verifyWorkspace(page, '#/fms/settlement/receivable-aging', '应收账龄')
   })
 
   test('opens TMS route performance', async ({ page }) => {
-    await verifyWorkspace(page, '/#/tms/route-performance', '线路效能')
+    await verifyWorkspace(page, '#/tms/route-performance', '线路效能')
   })
 
   test('opens VMS fleet health center', async ({ page }) => {
-    await verifyWorkspace(page, '/#/vms/fleet-health', '车队健康中心')
+    await verifyWorkspace(page, '#/vms/fleet-health', '车队健康中心')
   })
 
   test('opens TMS capacity planning center', async ({ page }) => {
-    await verifyWorkspace(page, '/#/tms/capacity-planning', '运力容量中心')
+    await verifyWorkspace(page, '#/tms/capacity-planning', '运力容量中心')
   })
 
   test('opens FMS financial exception center', async ({ page }) => {
-    await verifyWorkspace(page, '/#/fms/exception-center', '财务异常中心')
+    await verifyWorkspace(page, '#/fms/exception-center', '财务异常中心')
   })
 
   test('opens HR skill matrix', async ({ page }) => {
-    await verifyWorkspace(page, '/#/hr/talent/skill-matrix', '技能矩阵')
+    await verifyWorkspace(page, '#/hr/talent/skill-matrix', '技能矩阵')
   })
 
   test('filters overdue workflow tasks from the metric card', async ({ page }) => {
-    await page.goto('/#/workflow/workbench')
+    await page.goto('#/workflow/workbench')
     const overdueMetric = page.getByRole('button', { name: /已超时待办/ })
     await expect(overdueMetric).toBeEnabled({ timeout: 60_000 })
     await overdueMetric.click()
@@ -96,7 +96,7 @@ test.describe('multi-module workspace expansion', () => {
   })
 
   test('filters workflow tasks due within 24 hours', async ({ page }) => {
-    await page.goto('/#/workflow/workbench')
+    await page.goto('#/workflow/workbench')
     const dueSoonMetric = page.getByRole('button', { name: /24 小时内到期/ })
     await expect(dueSoonMetric).toBeEnabled({ timeout: 60_000 })
     await dueSoonMetric.click()

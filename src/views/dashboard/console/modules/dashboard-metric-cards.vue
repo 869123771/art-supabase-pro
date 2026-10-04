@@ -26,7 +26,7 @@
         </span>
         <div class="metric-card__copy">
           <p>{{ item.label }}</p>
-          <strong>
+          <strong :title="`${item.value}${item.unit ? ` ${item.unit}` : ''}`">
             {{ item.value }}
             <em v-if="item.unit">{{ item.unit }}</em>
           </strong>

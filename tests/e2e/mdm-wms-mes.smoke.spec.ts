@@ -93,7 +93,7 @@ const mdmMenu: TestMenuNode = {
               parentId: 'test-mdm-organization',
               name: 'MdmOrganizationDirectory',
               path: 'organization-directory',
-              component: '/mdm/catalog',
+              component: '/mdm/governance/organization/organization-directory',
               type: 'menu',
               sort: 1,
               meta: menuMeta('组织机构主数据', 'ri:organization-chart'),
@@ -215,7 +215,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
         }
       })
     })
-    await openWorkspace(page, '/#/mdm/workbench', '治理总览')
+    await openWorkspace(page, '#/mdm/workbench', '治理总览')
     await expect(page.locator('.coverage-ring')).toContainText('50%')
     await expect(page.locator('.coverage-legend')).toContainText('5 条')
     await expect(page.getByText('资料完整率', { exact: true })).toBeVisible()
@@ -251,7 +251,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
           : { json: { domains: [{ key: 'organization', recordCount: 10, attentionCount: 2 }] } }
       )
     })
-    await page.goto('/#/mdm/workbench', { waitUntil: 'domcontentloaded' })
+    await page.goto('#/mdm/workbench', { waitUntil: 'domcontentloaded' })
     const directory = page.locator('.mdm-workbench__directory')
     await expect(directory.getByText('主数据概览加载失败', { exact: true })).toBeVisible({
       timeout: 60_000
@@ -272,7 +272,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
     await page.route('**/rest/v1/rpc/mdm_get_governance_overview_secure', (route) =>
       route.fulfill({ json: { domains } })
     )
-    await page.goto('/#/mdm/workbench', { waitUntil: 'domcontentloaded' })
+    await page.goto('#/mdm/workbench', { waitUntil: 'domcontentloaded' })
     const directory = page.locator('.mdm-workbench__directory')
     const error = directory.getByText('主数据概览加载失败', { exact: true })
     await expect(error).toBeVisible({ timeout: 60_000 })
@@ -302,12 +302,12 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
 
   test('opens the MDM governance workspace and catalog', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
-    await openWorkspace(page, '/#/mdm/workbench', '治理总览')
+    await openWorkspace(page, '#/mdm/workbench', '治理总览')
     await page.screenshot({ path: testInfo.outputPath('mdm-workbench.png'), fullPage: true })
 
     await openWorkspace(
       page,
-      '/#/mdm/governance/organization/organization-directory',
+      '#/mdm/governance/organization/organization-directory',
       '组织机构主数据'
     )
     await expect(page.locator('.catalog-navigator__note')).toContainText('来源系统维护')
@@ -346,7 +346,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
 
   test('opens the WMS workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
-    await openWorkspace(page, '/#/wms/workbench', '仓储运营工作台')
+    await openWorkspace(page, '#/wms/workbench', '仓储运营工作台')
     await expect(page.getByText('暂无可用作业入口', { exact: true })).toBeVisible()
     await expect(page.getByText('SCM 采购与收料', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('wms-workbench.png'), fullPage: true })
@@ -354,7 +354,7 @@ test.describe('MDM, WMS and MES application scaffolds', () => {
 
   test('opens the MES workspace', async ({ page }, testInfo) => {
     await installApplicationMenuMocks(page)
-    await openWorkspace(page, '/#/mes/workbench', '制造执行工作台')
+    await openWorkspace(page, '#/mes/workbench', '制造执行工作台')
     await expect(page.getByText('上线准备', { exact: true })).toBeVisible()
     for (const tag of await page.locator('.readiness-list .el-tag').all()) {
       expect((await tag.boundingBox())!.width).toBeGreaterThanOrEqual(60)

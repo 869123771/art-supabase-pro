@@ -14,7 +14,7 @@
             :style="{ color: menuIconColor }"
           />
         </div>
-        <span class="menu-name">
+        <span class="menu-name" :title="formatMenuTitle(item.meta.title)">
           {{ formatMenuTitle(item.meta.title) }}
         </span>
         <div v-if="item.meta.showBadge" class="art-badge" style="right: 10px" />
@@ -51,11 +51,14 @@
       />
 
       <template #title>
-        <span class="menu-name">
+        <span class="menu-name" :title="formatMenuTitle(item.meta.title)">
           {{ formatMenuTitle(item.meta.title) }}
         </span>
         <div v-if="item.meta.showBadge" class="art-badge" />
-        <div v-if="item.meta.showTextBadge && (menuLevel > 0 || menuOpen)" class="art-text-badge">
+        <div
+          v-if="item.meta.showTextBadge && (menuLevel > 0 || menuOpen)"
+          class="art-text-badge static! m-0! ml-2! shrink-0"
+        >
           {{ item.meta.showTextBadge }}
         </div>
       </template>

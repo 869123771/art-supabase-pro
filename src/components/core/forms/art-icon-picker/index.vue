@@ -11,7 +11,7 @@
     >
       <template #prepend>
         <ArtSvgIcon
-          v-if="isRemixIcon"
+          v-if="isIconName"
           :icon="normalizedModelValue"
           class="art-icon-picker__preview"
         />
@@ -36,9 +36,13 @@
             <ElIcon><Search /></ElIcon>
           </template>
         </ElInput>
-        <div class="art-icon-picker__meta">
-          <ElTag effect="plain" round>Remix Icon</ElTag>
+        <div class="art-icon-picker__meta flex-wrap">
+          <ElTag effect="plain" round>{{ collectionLabel }}</ElTag>
           <span>共 {{ filteredIcons.length }} 个</span>
+          <template v-if="usingLocalIcons">
+            <ElTag type="warning" effect="plain">本地图标</ElTag>
+            <ElButton :loading="loading" @click="loadIcons(true)">加载完整图标库</ElButton>
+          </template>
         </div>
       </div>
 
@@ -46,7 +50,7 @@
         <ArtOverlayLoading
           :loading="loading && !visibleIcons.length"
           text="正在加载图标库"
-          description="正在同步 Remix Icon 图标集合，请稍候"
+          :description="`正在同步 ${collectionLabel} 图标集合，请稍候`"
           min-height="52vh"
         >
           <ElScrollbar ref="scrollbarRef" height="52vh" always @scroll="handleScroll">
@@ -112,11 +116,12 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import { Picture, Search } from '@element-plus/icons-vue'
+  import { listIcons } from '@iconify/vue'
   import type { ScrollbarInstance } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { uniq } from 'lodash-es'
+  import { parseIconCache, parseIconCollectionNames } from './icon-data'
 
   defineOptions({ name: 'ArtIconPicker' })
 
@@ -130,14 +135,6 @@
     disabled?: boolean
     readonly?: boolean
     closeOnSelect?: boolean
-  }
-
-  interface IconifyCollectionResponse {
-    prefix?: string
-    total?: number
-    uncategorized?: string[]
-    categories?: Record<string, string[]>
-    aliases?: Record<string, { parent?: string }>
   }
 
   interface ScrollPayload {
@@ -170,53 +167,12 @@
   const visibleCount = ref(props.pageSize)
   const loading = ref(false)
   const loadError = ref(false)
+  const usingLocalIcons = ref(false)
 
   const CACHE_VERSION = 1
   const CACHE_TTL = 7 * 24 * 60 * 60 * 1000
 
-  const fallbackIcons = [
-    'home-line',
-    'dashboard-line',
-    'menu-line',
-    'settings-3-line',
-    'user-line',
-    'user-settings-line',
-    'team-line',
-    'admin-line',
-    'shield-user-line',
-    'lock-line',
-    'key-line',
-    'folder-line',
-    'folder-open-line',
-    'file-list-3-line',
-    'database-2-line',
-    'table-line',
-    'bar-chart-box-line',
-    'pie-chart-line',
-    'line-chart-line',
-    'search-line',
-    'add-line',
-    'edit-line',
-    'delete-bin-line',
-    'eye-line',
-    'download-line',
-    'upload-line',
-    'notification-3-line',
-    'mail-line',
-    'phone-line',
-    'calendar-line',
-    'time-line',
-    'global-line',
-    'links-line',
-    'terminal-box-line',
-    'code-box-line',
-    'bug-line',
-    'tools-line',
-    'question-line',
-    'information-line',
-    'checkbox-circle-line'
-  ]
-
+  const collectionLabel = computed(() => (props.prefix === 'ri' ? 'Remix Icon' : props.prefix))
   const cacheKey = computed(() => `art-icon-picker:${props.prefix}:v${CACHE_VERSION}`)
 
   const filteredIcons = computed(() => {
@@ -229,8 +185,8 @@
   const visibleIcons = computed(() => filteredIcons.value.slice(0, visibleCount.value))
   const hasMore = computed(() => visibleCount.value < filteredIcons.value.length)
   const normalizedModelValue = computed(() => modelValue.value.trim())
-  const isRemixIcon = computed(() =>
-    /^ri:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(normalizedModelValue.value)
+  const isIconName = computed(() =>
+    /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(normalizedModelValue.value)
   )
 
   watch(keyword, () => {
@@ -238,27 +194,17 @@
     scrollbarRef.value?.setScrollTop(0)
   })
 
-  const normalizeIcons = (names: string[]): string[] => {
-    return uniq(names)
-      .filter(Boolean)
-      .sort((left, right) => left.localeCompare(right))
-      .map((name) => `${props.prefix}:${name}`)
-  }
-
   const readCache = (): string[] | undefined => {
     try {
       const rawCache = localStorage.getItem(cacheKey.value)
       if (!rawCache) return
 
-      const cache = JSON.parse(rawCache) as {
-        expiresAt?: number
-        icons?: string[]
-      }
-      if (!cache.expiresAt || cache.expiresAt < Date.now() || !Array.isArray(cache.icons)) {
+      const icons = parseIconCache(JSON.parse(rawCache), props.prefix, Date.now())
+      if (!icons) {
         localStorage.removeItem(cacheKey.value)
         return
       }
-      return cache.icons
+      return icons
     } catch {
       return
     }
@@ -278,15 +224,6 @@
     }
   }
 
-  const parseCollection = (collection: IconifyCollectionResponse): string[] => {
-    const names = new Set<string>(collection.uncategorized ?? [])
-    Object.values(collection.categories ?? {}).forEach((icons) => {
-      icons.forEach((icon) => names.add(icon))
-    })
-    Object.keys(collection.aliases ?? {}).forEach((icon) => names.add(icon))
-    return normalizeIcons([...names])
-  }
-
   const loadIcons = async (force = false): Promise<void> => {
     if (loading.value || (iconNames.value.length && !force)) return
 
@@ -294,6 +231,7 @@
     if (cachedIcons?.length) {
       iconNames.value = cachedIcons
       loadError.value = false
+      usingLocalIcons.value = false
       return
     }
 
@@ -307,14 +245,16 @@
       })
       if (!response.ok) throw new Error(`Icon collection request failed: ${response.status}`)
 
-      const icons = parseCollection((await response.json()) as IconifyCollectionResponse)
+      const icons = parseIconCollectionNames(await response.json(), props.prefix)
       if (!icons.length) throw new Error('Icon collection is empty')
 
       iconNames.value = icons
+      usingLocalIcons.value = false
       writeCache(icons)
     } catch {
-      iconNames.value = normalizeIcons(fallbackIcons)
+      iconNames.value = listIcons('', props.prefix).sort((left, right) => left.localeCompare(right))
       loadError.value = iconNames.value.length === 0
+      usingLocalIcons.value = iconNames.value.length > 0
     } finally {
       loading.value = false
     }

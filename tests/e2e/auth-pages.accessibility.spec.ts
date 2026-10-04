@@ -51,7 +51,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 
 test('login keeps its default account and password with the remember option', async ({ page }) => {
   test.setTimeout(90_000)
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('input[name="username"]')).toHaveValue('624944977@qq.com')
   await expect(page.locator('input[name="password"]')).toHaveValue('123456')
@@ -77,7 +77,7 @@ test('login remains usable when website configuration cannot be loaded', async (
     })
   })
 
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('button[type="submit"]')).toBeEnabled()
   expect(configRequests).toBeGreaterThan(0)
@@ -106,7 +106,7 @@ test('login fills saved browser credentials without removing them when remember 
     })
   })
 
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('input[name="username"]')).toHaveValue('saved@example.com')
   await expect(page.locator('input[name="password"]')).toHaveValue('saved-password')
   const remember = page.getByRole('checkbox', { name: '记住密码' })
@@ -125,7 +125,7 @@ for (const authPage of authPages) {
     const pageErrors: string[] = []
     page.on('pageerror', (error) => pageErrors.push(error.message))
 
-    await page.goto(`/#${authPage.path}`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`#${authPage.path}`, { waitUntil: 'domcontentloaded' })
     if (authPage.mayBeDisabled && /#\/403$/.test(page.url())) {
       await expect(page.getByRole('heading', { name: '当前账号无法访问' })).toBeVisible()
       return
@@ -145,7 +145,7 @@ for (const authPage of authPages) {
 }
 
 test('login support links have usable hit areas', async ({ page }, testInfo) => {
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible()
 
   for (const name of ['忘记密码', '注册']) {
@@ -185,7 +185,7 @@ test('desktop Feishu login switches the card to an inline QR and back', async ({
       };`
     })
   })
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   const feishuButton = page.getByRole('button', { name: '使用飞书登录' })
   const channelReady = await feishuButton
     .waitFor({ state: 'visible', timeout: 10_000 })
@@ -228,7 +228,7 @@ test('OAuth callback shows progress instead of briefly exposing the login form',
     await route.abort()
   })
 
-  await page.goto('/#/auth/login?auth_action=login&channel=feishu', {
+  await page.goto('#/auth/login?auth_action=login&channel=feishu', {
     waitUntil: 'domcontentloaded'
   })
   await expect(page.getByRole('heading', { name: '正在完成登录' })).toBeVisible()
@@ -245,7 +245,7 @@ test('anonymous login does not download hosted business page mappings', async ({
     }
   })
 
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible()
 
   expect(hostedRequests).toEqual([])
@@ -256,7 +256,7 @@ test('short phone login keeps its header and final controls reachable', async ({
 }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'))
   await page.setViewportSize({ width: 320, height: 700 })
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
 
   const brand = page.locator('.auth-top-bar')
   const form = page.locator('.auth-right-wrap .form')

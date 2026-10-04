@@ -16,14 +16,19 @@ import {
 } from '../../src/utils/ui/format'
 
 test('shared form normalizers preserve database nullability semantics', () => {
+  assert.equal(normalizeNonNullableText(null), '')
+  assert.equal(normalizeNonNullableText(undefined), '')
   assert.equal(normalizeNonNullableText('  '), '')
   assert.equal(normalizeNonNullableText('  说明  '), '说明')
   assert.equal(normalizeNullableText('  '), null)
+  assert.equal(normalizeNullableText(null), null)
   assert.equal(normalizeNullableText('  备注  '), '备注')
   assert.equal(normalizeNullableNumber(''), null)
+  assert.equal(normalizeNullableNumber(null), null)
   assert.equal(normalizeNullableNumber('invalid'), null)
   assert.equal(normalizeNullableNumber('12.5'), 12.5)
   assert.deepEqual(normalizeStringList(undefined), [])
+  assert.deepEqual(normalizeStringList(42), ['42'])
   assert.deepEqual(normalizeStringList([1, 'two']), ['1', 'two'])
 })
 

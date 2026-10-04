@@ -582,7 +582,7 @@
     }
   }
 
-  const handleSetParent = (row: MenuFormData = {} as MenuFormData): void => {
+  const handleSetParent = (row: Pick<MenuFormData, 'id' | 'menuTree'> = {}): void => {
     form.value.parentId = row.id ?? null
     select.value = {
       ...unref(select),
@@ -596,9 +596,9 @@
     originalParentId.value = normalizeMenuParentId(data.row?.parentId)
     originalSort.value = data.row?.sort ?? 1
     handleSetParent({
-      ...(data.parent ?? {}),
+      id: data.parent?.id,
       menuTree: data.menuTree ?? []
-    } as MenuFormData)
+    })
     loadFormData(data.row ?? {}, data.type ?? 'menu')
     select.value.menuTree = filterMenuParentTree(sourceMenuTree.value, form.value.id)
     syncComponentByType()

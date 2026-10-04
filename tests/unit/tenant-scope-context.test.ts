@@ -307,3 +307,28 @@ test('mutation tenant scope is read only from explicit table and supported RPC p
   assert.equal(readMutationTenantScopeId(JSON.stringify({ tenant_id: 'invalid' })), null)
   assert.equal(readMutationTenantScopeId('not-json'), null)
 })
+
+test('bulk mutations select a single explicit tenant and reject ambiguous tenant scopes', () => {
+  const tenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+  const otherTenantId = '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+  assert.equal(
+    readMutationTenantScopeId(JSON.stringify([{ tenant_id: tenantId }, { tenant_id: tenantId }])),
+    tenantId
+  )
+  assert.equal(
+    readMutationTenantScopeId(
+      JSON.stringify([{ tenant_id: tenantId }, { tenant_id: otherTenantId }])
+    ),
+    null
+  )
+  assert.equal(readMutationTenantScopeId('[]'), null)
+  for (const malformed of [null, false, 42, 'tenant', [], [{ tenant_id: tenantId }]]) {
+    assert.equal(readMutationTenantScopeId(JSON.stringify({ p_header: malformed })), null)
+  }
+  assert.equal(
+    readMutationTenantScopeId(
+      JSON.stringify({ p_header: null, p_payload: { tenant_id: tenantId } })
+    ),
+    tenantId
+  )
+})

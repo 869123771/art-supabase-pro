@@ -25,7 +25,7 @@
                 class="recognition-source-gallery__state is-error"
                 aria-label="原始票据加载失败"
               >
-                <ArtSvgIcon icon="ri:image-close-line" />
+                <ArtSvgIcon icon="ri:image-line" />
               </span>
             </template>
           </ElImage>

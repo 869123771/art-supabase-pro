@@ -23,6 +23,26 @@ export interface WorkflowTemplateCategoryOption {
 
 const templateDefinitions: WorkflowTemplateDefinition[] = [
   {
+    key: 'scm-sales-contract',
+    name: '销售合同审批',
+    description: '配置销售合同的审批人员、节点及金额条件，通过后生效。',
+    category: 'scm',
+    businessType: 'scm_sales_contract',
+    icon: 'ri:contract-line',
+    tone: 'primary',
+    nodeNames: ['销售负责人审核']
+  },
+  {
+    key: 'scm-sales-order',
+    name: '销售订单审批',
+    description: '配置销售订单的审批人员、节点及金额条件，通过后生效。',
+    category: 'scm',
+    businessType: 'scm_sales_order',
+    icon: 'ri:shopping-bag-3-line',
+    tone: 'primary',
+    nodeNames: ['销售负责人审核']
+  },
+  {
     key: 'scm-sales-quotation',
     name: '销售报价审批',
     description: '按报价金额、项目、客户和产品分类审核销售报价；通过后自动汇总报价项分类。',
@@ -139,7 +159,7 @@ const templateDefinitions: WorkflowTemplateDefinition[] = [
     description: '覆盖请假、加班、出差、补卡与资料变更等员工申请。',
     category: 'hr',
     businessType: 'hr_self_service_request',
-    icon: 'ri:selfie-line',
+    icon: 'ri:camera-line',
     tone: 'info',
     nodeNames: ['直属负责人审批']
   },

@@ -121,7 +121,7 @@ test('装车出库沿用销售单据查询表格风格', async ({ page }, testIn
       : route.fulfill({ headers: { 'content-range': '*/0' }, json: [] })
   )
 
-  await page.goto('/#/scm/sales-management/loading-outbound', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/scm/sales-management/loading-outbound', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '装车出库', exact: true })).toBeVisible({
     timeout: 90_000
   })

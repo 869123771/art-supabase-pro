@@ -5,7 +5,7 @@ test('普通用户可查看租户配置与平台默认配置合并后的完整 A
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/system/ai-configuration', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/ai-configuration', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'AI 配置中心' })).toBeVisible({
     timeout: 120_000
   })

@@ -76,6 +76,22 @@ export default [
     }
   },
   // 忽略文件
+  {
+    files: ['tests/e2e/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/^\\u002f#/]',
+          message: '哈希路由请使用 #/路径，保留 Playwright baseURL 的部署目录前缀。'
+        },
+        {
+          selector: 'TemplateLiteral > TemplateElement.quasis:first-child[value.raw=/^\\u002f#/]',
+          message: '哈希路由模板请保留 Playwright baseURL 的部署目录前缀。'
+        }
+      ]
+    }
+  },
   // 业务视图和组件只能通过 src/api 的公开入口访问后端，禁止跨越 provider 边界。
   {
     files: [

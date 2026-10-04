@@ -22,6 +22,9 @@ const helperName =
 const supportedExtensions = new Set(['.ts', '.tsx', '.vue'])
 const utilityFileName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.(?:test|spec|d))?\.tsx?$/
 const canonicalDeclarations = new Map<string, string>([
+  ['buildSupabaseRpcRange', 'src/utils/supabase/pagination.ts'],
+  ['toDateStartTimestamp', 'src/utils/time/date-boundary.ts'],
+  ['toDateEndTimestamp', 'src/utils/time/date-boundary.ts'],
   ['normalizeNonNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableNumber', 'src/utils/form/normalize.ts'],
@@ -84,6 +87,63 @@ function collectScriptHelpers(
 ): void {
   const relative = relativeFile(file)
   const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+
+  if (relative.includes('/api/') && !/\.(?:test|spec)\./.test(relative)) {
+    const inspectApiPolicy = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === 'push'
+      ) {
+        for (const argument of node.arguments) {
+          if (!ts.isSpreadElement(argument)) continue
+          let value = argument.expression
+          while (ts.isParenthesizedExpression(value)) value = value.expression
+          if (
+            ts.isBinaryExpression(value) &&
+            value.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+          ) {
+            value = value.left
+          }
+          if (ts.isPropertyAccessExpression(value) && value.name.text === 'data') {
+            findings.push({
+              file: relative,
+              rule: 'spread-query-data',
+              detail: '查询结果不要展开为 push 参数；收集批次后使用 flat，避免大数据量参数溢出。'
+            })
+          }
+        }
+      }
+      if (
+        ts.isPropertyAssignment(node) &&
+        ts.isIdentifier(node.name) &&
+        ['p_from', 'p_to'].includes(node.name.text) &&
+        ts.isCallExpression(node.initializer) &&
+        ts.isPropertyAccessExpression(node.initializer.expression) &&
+        node.initializer.expression.getText(source) === 'Math.max'
+      ) {
+        findings.push({
+          file: relative,
+          rule: 'raw-rpc-range',
+          detail: 'RPC 分页范围请复用主仓 buildSupabaseRpcRange，统一校验和边界顺序。'
+        })
+      }
+      if (
+        ts.isTemplateExpression(node) &&
+        node.head.text === '' &&
+        node.templateSpans.length === 1 &&
+        ['T00:00:00', 'T23:59:59.999'].includes(node.templateSpans[0].literal.text)
+      ) {
+        findings.push({
+          file: relative,
+          rule: 'raw-date-boundary',
+          detail: '无时区日期边界请复用主仓 toDateStartTimestamp 或 toDateEndTimestamp。'
+        })
+      }
+      ts.forEachChild(node, inspectApiPolicy)
+    }
+    inspectApiPolicy(source)
+  }
 
   const add = (name: string, body: ts.Node): void => {
     const canonicalFile = canonicalDeclarations.get(name)

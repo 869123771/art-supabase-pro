@@ -55,7 +55,7 @@ async function installFixtures(page: import('@playwright/test').Page): Promise<v
             parentId: 'test-mes-plan',
             name: 'MesWorkOrder',
             path: 'work-order',
-            component: '/mes/manufacturing',
+            component: '/mes/production-plan/work-order',
             type: 'menu',
             sort: 1,
             meta: { title: '生产工单', roles: ['R_SUPER'], is_enable: true },
@@ -121,7 +121,7 @@ async function installFixtures(page: import('@playwright/test').Page): Promise<v
 test('成品工单在缺少可用成品仓时给出配置提示', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   await installFixtures(page)
-  await page.goto('/#/mes/production-plan/work-order', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mes/production-plan/work-order', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '生产工单', exact: true })).toBeVisible({
     timeout: 120_000
   })

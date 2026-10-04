@@ -1,5 +1,13 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { mockApplicationMenus } from './support/menu-rpc'
+import { prepareAppearance } from './support/appearance'
+
+test.beforeEach(async ({ page }, testInfo) => {
+  await prepareAppearance(page, {
+    theme: testInfo.project.name.includes('dark') ? 'dark' : 'light',
+    boxBorderMode: !testInfo.project.name.includes('shadow')
+  })
+})
 
 async function openDemo(page: Page) {
   // Generic UI tests isolate identity latency; this does not grant real permissions.
@@ -44,8 +52,15 @@ async function openDemo(page: Page) {
     route.fulfill({ json: [{ code: 'platform', name: '测试平台', baseUrl: '/' }] })
   )
   await mockApplicationMenus(page, { platform: [menu] })
-  await page.goto('/#/widgets/data-select', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/widgets/data-select', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('表格多选', { exact: true })).toBeVisible({ timeout: 60_000 })
+  const projectName = test.info().project.name
+  if (projectName.includes('dark')) await expect(page.locator('html')).toHaveClass(/dark/)
+  else await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-box-mode',
+    projectName.includes('shadow') ? 'shadow-mode' : 'border-mode'
+  )
   const guide = page.getByRole('button', { name: '知道了', exact: true })
   if (await guide.isVisible()) await guide.click()
 }

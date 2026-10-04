@@ -169,7 +169,7 @@ test('我的排班清晰展示本人月历与选中日期详情', async ({ page 
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/mdm/production/my-shift-schedule', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/production/my-shift-schedule', { waitUntil: 'domcontentloaded' })
   const schedulePage = page.locator('.my-shift-schedule')
   await expect(schedulePage).toBeVisible({ timeout: 180_000 })
   const themeGuide = page.getByRole('button', { name: '知道了', exact: true })

@@ -101,7 +101,7 @@ test('parameter search uses the shared filter and preserves punctuation in the U
       body: '[]'
     })
   })
-  await page.goto('/#/system/system-param', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/system-param', { waitUntil: 'domcontentloaded' })
   const root = page.locator('.system-param-page')
   await expect(root).toBeVisible({ timeout: 60_000 })
   const guide = page.locator('.setting-guide')

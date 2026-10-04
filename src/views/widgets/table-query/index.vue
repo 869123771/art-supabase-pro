@@ -59,6 +59,7 @@
         >
           <template #search-priority="{ modelValue }">
             <ElSegmented
+              class="[&_.el-segmented\_\_item]:px-0.5!"
               :model-value="modelValue.priority"
               :options="priorityOptions"
               block

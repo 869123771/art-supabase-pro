@@ -276,7 +276,7 @@ test('业务类型与单据类型切换时不会上下并列显示两个路由�
   test.setTimeout(120_000)
 
   await installRouteFixtures(page)
-  await page.goto('/#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.business-type-page')).toBeVisible({ timeout: 90_000 })
 
   const toDocument = await visibleRouteOverlapDuringNavigation(
@@ -303,7 +303,7 @@ test('连续打开客户和物料类型后只保留当前路由视图', async ({
   test.setTimeout(180_000)
 
   await installRouteFixtures(page)
-  await page.goto('/#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.business-type-page')).toBeVisible({ timeout: 90_000 })
 
   const routes = [
@@ -330,7 +330,7 @@ test('快速切换多个非缓存路由后不会留下旧页面', async ({ page 
   test.setTimeout(180_000)
 
   await installRouteFixtures(page)
-  await page.goto('/#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.business-type-page')).toBeVisible({ timeout: 90_000 })
 
   await page.evaluate(async () => {
@@ -362,7 +362,7 @@ test('缓存页面穿过非缓存路由后仍保留原实例', async ({ page }) 
   test.setTimeout(180_000)
 
   await installRouteFixtures(page, new Set(['MdmBusinessType', 'MdmDocumentType']))
-  await page.goto('/#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/mdm/governance/business-type', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.business-type-page')).toBeVisible({ timeout: 90_000 })
   await page.locator('.layout-content > .art-page-view').evaluate((element) => {
     element.setAttribute('data-cache-probe', 'retained')

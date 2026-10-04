@@ -1611,6 +1611,12 @@
 
     .art-data-select-dialog__layout {
       flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .art-data-select-dialog__main {
+      flex: 0 0 320px;
+      min-height: 320px;
     }
 
     .art-data-select-dialog__navigation {

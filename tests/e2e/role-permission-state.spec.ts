@@ -80,7 +80,7 @@ async function prepare(page: Page, initialMenuIds: string[] = [menuId(0)]) {
       json: { code: 'TEST_UNAVAILABLE', message: '测试保存失败' }
     })
   })
-  await page.goto('/#/system/role', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/role', { waitUntil: 'domcontentloaded' })
   const openButtons = page.getByLabel('配置菜单权限', { exact: true })
   await expect(openButtons.first()).toBeVisible({ timeout: 60_000 })
   await page.evaluate(

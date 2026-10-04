@@ -17,7 +17,7 @@ test('员工花名册与新增用户选人入口可用', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/hr/personnel/employee-roster', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/hr/personnel/employee-roster', { waitUntil: 'domcontentloaded' })
   const rosterPage = page.locator('.hr-roster-page')
   await rosterPage.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined)
   test.skip(
@@ -52,7 +52,7 @@ test('员工花名册与新增用户选人入口可用', async ({ page }) => {
   await page.getByRole('button', { name: '取消', exact: true }).click()
   await expect(page).toHaveURL(/#\/hr\/personnel\/employee-roster$/)
 
-  await page.goto('/#/system/user', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/system/user', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.user-page')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
   await page.getByRole('button', { name: '新增用户', exact: true }).click()

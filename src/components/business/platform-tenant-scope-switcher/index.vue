@@ -78,10 +78,13 @@
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { useUserStore } from '@/store/modules/user'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
 
   defineOptions({ name: 'PlatformTenantScopeSwitcher' })
 
   const tenantScopeStore = useTenantScopeStore()
+  const userStore = useUserStore()
   const {
     isPlatformScope,
     isAllTenants,
@@ -107,8 +110,19 @@
     if (visible) void tenantScopeStore.loadTenantOptions()
   }
 
-  onMounted(() => {
-    void tenantScopeStore.loadTenantOptions()
+  const reloadDictionaries = async (): Promise<void> => {
+    try {
+      await userStore.fetchDictList()
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '字典数据加载失败，请刷新页面重试'))
+    }
+  }
+
+  watch(() => tenantScopeStore.revision, reloadDictionaries)
+
+  onMounted(async () => {
+    await tenantScopeStore.loadTenantOptions()
+    await reloadDictionaries()
   })
 </script>
 

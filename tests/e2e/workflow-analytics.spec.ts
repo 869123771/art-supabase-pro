@@ -165,7 +165,7 @@ test.describe('Workflow analytics reuse and request integrity', () => {
       }
       await route.fulfill({ json: analyticsResponse(route, days) })
     })
-    await page.goto('/#/workflow/analytics')
+    await page.goto('#/workflow/analytics')
     await expect(page.getByRole('heading', { name: '审批效能', exact: true })).toBeVisible({
       timeout: 60_000
     })
@@ -207,7 +207,7 @@ test.describe('Workflow analytics reuse and request integrity', () => {
           : { json: analyticsResponse(route, 30, true) }
       )
     )
-    await page.goto('/#/workflow/analytics')
+    await page.goto('#/workflow/analytics')
     await expect(page.getByText('审批运营分析加载失败', { exact: true })).toBeVisible({
       timeout: 60_000
     })
@@ -237,7 +237,7 @@ test.describe('Workflow analytics reuse and request integrity', () => {
     await page.route(endpoint, (route) =>
       route.fulfill({ json: analyticsResponse(route, route.request().postDataJSON().p_days) })
     )
-    await page.goto('/#/workflow/monitor')
+    await page.goto('#/workflow/monitor')
     await expect(page.getByRole('button', { name: '运营分析', exact: true })).toBeVisible({
       timeout: 60_000
     })

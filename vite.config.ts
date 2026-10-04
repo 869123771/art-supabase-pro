@@ -411,7 +411,6 @@ export default ({ mode }: { mode: string }) => {
         'echarts/renderers',
         '@tresjs/core',
         'three',
-        'xlsx',
         'xgplayer',
         'crypto-js',
         'file-saver',

@@ -95,7 +95,7 @@ test('HR organization navigation loads only the fields needed for its tree', asy
     route.fulfill({ json: { positions: [], employees: [], employee_total: 0, truncated: false } })
   )
 
-  await page.goto('/#/hr/personnel/organization-position')
+  await page.goto('#/hr/personnel/organization-position')
   const workspace = page.locator('main')
   await expect(page.getByRole('heading', { name: '组织岗位人员' })).toBeVisible({ timeout: 60_000 })
   await expect(workspace.getByText('测试部门', { exact: true }).first()).toBeVisible()

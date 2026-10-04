@@ -23,12 +23,14 @@ const tenantScopeFetch: typeof fetch = async (input, init) => {
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase()
   const isDataApiRequest = shouldAttachTenantScopeHeader(requestUrl)
-  const shouldNormalizeRead =
-    readPlatformTenantScopeActive() && ['GET', 'HEAD'].includes(requestMethod) && isDataApiRequest
-  const requestBody = init?.body ?? (input instanceof Request ? await input.clone().text() : null)
+  const isPlatformScopeActive = readPlatformTenantScopeActive()
+  const isReadRequest = requestMethod === 'GET' || requestMethod === 'HEAD'
+  const shouldNormalizeRead = isPlatformScopeActive && isReadRequest && isDataApiRequest
   const mutationTenantScopeId =
-    readPlatformTenantScopeActive() && !['GET', 'HEAD'].includes(requestMethod)
-      ? readMutationTenantScopeId(requestBody)
+    isPlatformScopeActive && !isReadRequest && isDataApiRequest
+      ? readMutationTenantScopeId(
+          init?.body ?? (input instanceof Request ? await input.clone().text() : null)
+        )
       : null
   const tenantScopeId = selectedTenantScopeId ?? mutationTenantScopeId
   const normalizedUrl = shouldNormalizeRead

@@ -117,7 +117,7 @@
       name: 'v-model',
       type: 'string',
       defaultValue: "''",
-      desc: '图标值，推荐使用 ri:xxx-line 格式。'
+      desc: '图标值，推荐使用 ri:home-line 格式。'
     },
     { name: 'placeholder', type: 'string', defaultValue: '请选择图标', desc: '输入框占位文本。' },
     { name: 'title', type: 'string', defaultValue: '选择图标', desc: '弹窗标题。' },

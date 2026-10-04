@@ -92,6 +92,15 @@ export class StorageConfig {
     return new RegExp(`^${this.STORAGE_PREFIX}`)
   }
 
+  /** Remove incompatible application caches while preserving login memory and other settings. */
+  static clearVersionedStorage(storage: Storage): void {
+    const pattern = this.createVersionPattern()
+    const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+    for (const key of keys) {
+      if (key !== null && pattern.test(key)) storage.removeItem(key)
+    }
+  }
+
   /**
    * 检查是否为当前版本的键
    */

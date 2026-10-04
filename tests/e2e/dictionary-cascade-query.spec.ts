@@ -12,7 +12,7 @@ test('dictionary types load their cascade parent even when the list is filtered'
       failedDictionaryRequests.push(response.status())
     }
   })
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
   const result = await page.evaluate(async () => {
     // This source-provider regression runs against the existing E2E Vite server.
     const modulePath = '/src/api/data-center.ts'

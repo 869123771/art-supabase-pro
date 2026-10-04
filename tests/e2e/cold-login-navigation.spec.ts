@@ -20,7 +20,7 @@ async function logInFromNewBrowser(
   dashboardTimeout = 90_000
 ): Promise<number> {
   const credentials = readDemoCredentials()
-  if (!alreadyOnLogin) await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  if (!alreadyOnLogin) await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: /^欢迎使用/ })).toBeVisible({
     timeout: 30_000
   })
@@ -70,7 +70,7 @@ test('全新浏览器首次登录后可以立即切换到另一个菜单', async
     timing.failure = request.failure()?.errorText
   })
 
-  await page.goto('/#/auth/login', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   expect(hostedApplicationRequests).toEqual([])
   const loginToDashboardMs = await logInFromNewBrowser(page, true)
   expect(hostedApplicationRequests.length).toBeGreaterThan(0)
@@ -232,7 +232,7 @@ test('工程报价规则在销售报价单录入，项目报价页不再提供�
   test.setTimeout(300_000)
   await logInFromNewBrowser(page, false, 240_000)
 
-  await page.goto('/#/scm/sales-quotation/sales-quotation', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/scm/sales-quotation/sales-quotation', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '销售报价单', exact: true })).toBeVisible({
     timeout: 90_000
   })
@@ -253,7 +253,7 @@ test('工程报价规则在销售报价单录入，项目报价页不再提供�
   await page.screenshot({ path: '.artifacts/playwright/sales-quotation-engineering-form.png' })
 
   await page.keyboard.press('Escape')
-  await page.goto('/#/scm/sales-quotation/project-quotation', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/scm/sales-quotation/project-quotation', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '项目报价', exact: true })).toBeVisible({
     timeout: 90_000
   })

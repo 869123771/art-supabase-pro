@@ -17,7 +17,10 @@ test('file preview renders an image and an expired-link state', async ({ page },
   )
 
   await page.addInitScript(() => {
-    const invalidFile = { url: `${location.origin}/file-preview-test.txt`, fileType: 'txt' }
+    const invalidFile = {
+      url: new URL('file-preview-test.txt', location.href).href,
+      fileType: 'txt'
+    }
     for (const [key, value] of Object.entries({
       expired: JSON.stringify({ file: invalidFile, expiresAt: Date.now() - 1 }),
       malformed: 'invalid-json',
@@ -33,7 +36,7 @@ test('file preview renders an image and an expired-link state', async ({ page },
       'art-file-preview:sample-image',
       JSON.stringify({
         file: {
-          url: `${location.origin}/data/equipment-accessory-demo/safety-valve-photo.png`,
+          url: new URL('data/equipment-accessory-demo/safety-valve-photo.png', location.href).href,
           name: '安全阀照片.png',
           fileType: 'png'
         },
@@ -44,7 +47,7 @@ test('file preview renders an image and an expired-link state', async ({ page },
       'art-file-preview:sample-text',
       JSON.stringify({
         file: {
-          url: `${location.origin}/file-preview-test.txt`,
+          url: new URL('file-preview-test.txt', location.href).href,
           name: '预览测试.txt',
           fileType: 'txt'
         },
@@ -53,7 +56,7 @@ test('file preview renders an image and an expired-link state', async ({ page },
     )
   })
 
-  await page.goto('/#/file-preview?key=sample-image', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/file-preview?key=sample-image', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.art-file-viewer-page__title strong')).toHaveText('安全阀照片.png', {
     timeout: 60_000
   })
@@ -62,11 +65,11 @@ test('file preview renders an image and an expired-link state', async ({ page },
   expect(fullPresetRequests).toHaveLength(0)
   await page.screenshot({ path: testInfo.outputPath('file-preview.png') })
 
-  await page.goto('/#/file-preview?key=sample-text', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/file-preview?key=sample-text', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.art-file-viewer-page__body')).toContainText('文件预览按需加载验证')
 
   for (const key of ['expired', 'malformed', 'missing-expiry', 'invalid-file-type']) {
-    await page.goto(`/#/file-preview?key=${key}`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`#/file-preview?key=${key}`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByText('无法打开文件预览')).toBeVisible()
     await expect(page.getByText('预览地址不存在或已过期，请从附件名称重新打开')).toBeVisible()
     expect(
@@ -87,7 +90,8 @@ for (const theme of ['dark', 'light'] as const) {
         'art-file-preview:theme-image',
         JSON.stringify({
           file: {
-            url: `${location.origin}/data/equipment-accessory-demo/safety-valve-photo.png`,
+            url: new URL('data/equipment-accessory-demo/safety-valve-photo.png', location.href)
+              .href,
             name: '主题验证.png',
             fileType: 'png'
           },
@@ -95,7 +99,7 @@ for (const theme of ['dark', 'light'] as const) {
         })
       )
     })
-    await page.goto('/#/file-preview?key=theme-image', { waitUntil: 'domcontentloaded' })
+    await page.goto('#/file-preview?key=theme-image', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('.art-file-viewer-page__body img').first()).toBeVisible({
       timeout: 60_000
     })

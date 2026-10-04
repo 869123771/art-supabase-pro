@@ -92,6 +92,9 @@ test('cache keys isolate otherwise identical queries by tenant and permission sc
 })
 
 test('response adapter handles null and preserves explicit empty lists and totals', () => {
+  for (const value of [null, undefined, false, 1, 'records', new Date()]) {
+    assert.deepEqual(defaultResponseAdapter(value), { records: [], total: 0 })
+  }
   assert.deepEqual(defaultResponseAdapter({ data: null }), { records: [], total: 0 })
   assert.deepEqual(defaultResponseAdapter({ data: [], total: 12 }), { records: [], total: 12 })
   assert.deepEqual(defaultResponseAdapter({ records: [], total: 12, data: { list: [1] } }), {

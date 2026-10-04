@@ -1,3 +1,6 @@
+import { uniq } from 'lodash-es'
+import { isPlainObjectRecord } from './type-guards'
+
 export const TENANT_SCOPE_HEADER = 'x-art-tenant-scope'
 export const TENANT_SCOPE_STORAGE_KEY = 'art-platform-tenant-scope-id'
 export const TENANT_SCOPE_MODE_STORAGE_KEY = 'art-platform-tenant-scope-active'
@@ -34,13 +37,12 @@ const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
 ])
 
 const tenantIdFromRecord = (value: unknown): string | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const record = value as Record<string, unknown>
+  if (!isPlainObjectRecord(value)) return null
   const candidates = [
-    record.tenant_id,
-    (record.p_header as Record<string, unknown> | undefined)?.tenant_id,
-    (record.p_payload as Record<string, unknown> | undefined)?.tenant_id,
-    (record.p_document as Record<string, unknown> | undefined)?.tenant_id
+    value.tenant_id,
+    ...[value.p_header, value.p_payload, value.p_document].map((record) =>
+      isPlainObjectRecord(record) ? record.tenant_id : undefined
+    )
   ]
   const tenantId = candidates.find(
     (candidate): candidate is string =>
@@ -55,7 +57,7 @@ export const readMutationTenantScopeId = (body: BodyInit | null | undefined): st
   try {
     const payload: unknown = JSON.parse(body)
     if (Array.isArray(payload)) {
-      const tenantIds = [...new Set(payload.map(tenantIdFromRecord).filter(Boolean))]
+      const tenantIds = uniq(payload.map(tenantIdFromRecord).filter(Boolean))
       return tenantIds.length === 1 ? (tenantIds[0] ?? null) : null
     }
     return tenantIdFromRecord(payload)

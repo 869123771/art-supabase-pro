@@ -12,6 +12,32 @@ createApp({
   render: () =>
     h('main', { style: { padding: '24px' } }, [
       h('h1', '共享图标属性验收'),
+      h(
+        'section',
+        { 'aria-label': '本地图标' },
+        [
+          'ri:home-line',
+          'ri:menu-line',
+          'ri:dingding-line',
+          'ri:first-aid-kit-line',
+          'ri:file-check-line',
+          'ri:quill-pen-line',
+          'vaadin:ctrl-a',
+          'dashicons:fullscreen-alt',
+          'iconamoon:arrow-down-2-thin',
+          'fluent:arrow-enter-left-20-filled',
+          'icon-park-outline:auto-width',
+          'ix:width',
+          'solar:double-alt-arrow-right-linear'
+        ].map((name) =>
+          h(ArtSvgIcon, {
+            icon: name,
+            'data-testid': 'offline-icon',
+            width: 24,
+            height: 24
+          })
+        )
+      ),
       h(ArtSvgIcon, {
         icon: 'quality:check',
         'data-testid': 'decorative-icon',

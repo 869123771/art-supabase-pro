@@ -40,6 +40,7 @@
 
 import { debounce } from 'lodash-es'
 import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
+import { isPlainObjectRecord } from '@/utils/type-guards'
 import type { ApiResponse } from './table-cache'
 import { tableConfig } from './table-config'
 
@@ -80,14 +81,11 @@ function extractNumber(
 /** Normalize supported list envelopes with one field policy at both levels. */
 export const defaultResponseAdapter = <T>(response: unknown): ApiResponse<T> => {
   if (Array.isArray(response)) return { records: response, total: response.length }
-  if (!response || typeof response !== 'object') return { records: [], total: 0 }
+  if (!isPlainObjectRecord(response)) return { records: [], total: 0 }
 
-  const outer = response as Record<string, unknown>
+  const outer = response
   const direct = extractRecords<T>(outer)
-  const nested =
-    outer.data && typeof outer.data === 'object' && !Array.isArray(outer.data)
-      ? (outer.data as Record<string, unknown>)
-      : undefined
+  const nested = isPlainObjectRecord(outer.data) ? outer.data : undefined
   const source = direct === undefined && nested ? nested : outer
   const records = direct ?? extractRecords<T>(source) ?? []
   const sources = source === outer ? [outer] : [source, outer]

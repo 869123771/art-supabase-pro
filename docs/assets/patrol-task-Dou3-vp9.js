@@ -1,0 +1,1 @@
+import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./task-workspace-D9-BCPRk.js";var i=e({name:`PmisPatrolTask`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`patrol`,mode:`task`}))}});export{i as default};

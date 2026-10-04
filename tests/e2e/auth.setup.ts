@@ -1,4 +1,5 @@
 import { keysToCamelDeep } from '../../src/utils/supabase/key-transform'
+import { fetchAllRangePages } from '../../src/utils/supabase/pagination'
 import fs from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -36,17 +37,22 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
         .select('*, tenant:sys_tenant!sys_user_tenant_id_fkey(tenant_code, tenant_name)')
         .eq('auth_user_id', session.user.id)
         .single(),
-      authClient
-        .from('sys_dictionary')
-        .select(
-          'id,type_id,code,label,value,sort,color,tag_type,remark,parent_id,cascade_parent_id,dict_type_table:sys_dict_type!inner(code,name)'
-        )
-        .eq('status', '1')
-        .eq('dict_type_table.status', '1')
-        .order('sort', { ascending: true })
+      fetchAllRangePages(async ({ from, to }) => {
+        const { data, error } = await authClient
+          .from('sys_dictionary')
+          .select(
+            'id,type_id,code,label,value,sort,color,tag_type,remark,parent_id,cascade_parent_id,dict_type_table:sys_dict_type!inner(code,name)'
+          )
+          .eq('status', '1')
+          .eq('dict_type_table.status', '1')
+          .order('sort', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+        return { data, error }
+      })
     ])
   expect(userError?.message, 'Supabase 测试账号资料加载失败').toBeUndefined()
-  expect(dictionaryError?.message, 'Supabase 测试字典加载失败').toBeUndefined()
+  expect(dictionaryError, 'Supabase 测试字典加载失败').toBeNull()
 
   const camelUser = keysToCamelDeep(userData) as Record<string, unknown>
   const { id: userId, userEmail: email, ...userInfo } = camelUser
@@ -103,7 +109,7 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
     }
   )
 
-  await page.goto('/#/dashboard/console', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/dashboard/console', { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/, { timeout: 30_000 })
   await expect(page.locator('.operations-dashboard').first()).toBeVisible({ timeout: 60_000 })
   await page.context().storageState({ path: authFile })

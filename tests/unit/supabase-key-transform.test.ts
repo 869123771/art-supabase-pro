@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  isPlainObjectRecord,
   keysToCamelDeep,
   keysToCamelShallow,
   keysToSnakeDeep
 } from '../../src/utils/supabase/key-transform'
+import { isPlainObjectRecord } from '../../src/utils/type-guards'
 
 test('deep key conversion preserves values, arrays and non-record objects', () => {
   const date = new Date('2026-10-03T00:00:00Z')

@@ -7,7 +7,7 @@ test('dictionary root contains directories and MDM dictionaries follow the busin
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  await page.goto('/#/data-center/dict', { waitUntil: 'domcontentloaded' })
+  await page.goto('#/data-center/dict', { waitUntil: 'domcontentloaded' })
 
   const panel = page.locator('.dict-tree-panel')
   const tree = panel.locator('.dict-type-tree__virtual-tree')

@@ -20,7 +20,8 @@ export const prepareAppearance = async (page: Page, appearance: Appearance): Pro
           ...settings,
           systemThemeType: appearance.theme,
           systemThemeMode: appearance.theme,
-          boxBorderMode: appearance.boxBorderMode
+          boxBorderMode: appearance.boxBorderMode,
+          showSettingGuide: false
         })
       )
     }

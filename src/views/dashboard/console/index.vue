@@ -273,7 +273,7 @@
       key: 'today-freight',
       label: '今日运费',
       value: formatCurrencyValue(overview.data.todayFreightAmount, 'CNY', locale.value),
-      hint: '按今日开单金额汇总',
+      hint: '今日开单金额汇总',
       icon: 'ri:money-cny-circle-line',
       tone: 'info',
       route: '/tms/order-list'

@@ -43,7 +43,8 @@
         </div>
       </div>
       <p class="text-xs text-[var(--el-text-color-secondary)]">
-        本行库存数量 {{ quantity }}{{ context?.line.lineSnapshot.stockUnit || '' }}
+        本行库存数量 {{ quantity
+        }}{{ unitDisplayName(context?.tenantId || '', context?.line.lineSnapshot.stockUnit) }}
         <span v-if="context?.line.serialManagementEnabled"> · SN 物料仅可使用支持序列号的库位</span>
       </p>
     </div>
@@ -51,6 +52,8 @@
 </template>
 
 <script setup lang="ts">
+  import { useUnitDisplayNames } from '@/hooks/core/useUnitDisplayNames'
+  const { loadUnitDisplayNames, unitDisplayName } = useUnitDisplayNames()
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -154,6 +157,7 @@
   }
 
   async function handleOpen(data: Context): Promise<void> {
+    await loadUnitDisplayNames([data.tenantId])
     const warehouseId = data.line.lineSnapshot.warehouseId
     if (!warehouseId) {
       ElMessage.warning('来源收料行未指定仓库，请先维护来源单据')

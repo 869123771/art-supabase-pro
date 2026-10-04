@@ -1,3 +1,4 @@
+import { buildSupabaseRpcRange } from '@/utils/supabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 
@@ -47,8 +48,7 @@ export async function fetchEmployeeSelectorList(params: EmployeeSelectorContract
   const result = await responseHandle<EmployeeSelectorContractPayload>(
     () =>
       supabase.rpc('hr_list_employee_selector_secure', {
-        p_from: Math.max(from, 0),
-        p_to: Math.max(to, from),
+        ...buildSupabaseRpcRange(from, to),
         p_tenant_id: tenantId || null,
         p_keyword: normalizeNullableText(keyword)
       }),

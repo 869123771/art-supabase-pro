@@ -26,3 +26,23 @@ test('workflow template drafts are isolated and fail closed by default', () => {
   first.config.nodes[0].name = '已修改'
   assert.equal(second.config.nodes[0].name, '费用审核')
 })
+
+test('sales contracts and orders register the exact menu and authoritative approval fields', () => {
+  for (const [kind, menu, label] of [
+    ['sales_contract', 'ScmSalesContract', '销售合同'],
+    ['sales_order', 'ScmSalesOrder', '销售订单']
+  ]) {
+    const contract = getWorkflowBusinessContract(`scm_${kind}`)
+    assert.equal(contract.menuName, menu)
+    assert.equal(contract.label, label)
+    assert.equal(contract.routePath('id'), `/scm/sales-management/${kind.replaceAll('_', '-')}`)
+    assert.deepEqual(
+      contract.fields.map((field) => field.key),
+      ['documentNo', 'projectId', 'customerId', 'totalAmount']
+    )
+    assert.equal(
+      createWorkflowTemplateDraft(`scm-${kind.replaceAll('_', '-')}`).businessType,
+      contract.businessType
+    )
+  }
+})
