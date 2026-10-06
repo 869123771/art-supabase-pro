@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { registerApplicationViewModules } from '@/router/core/ComponentLoader'
+import { registerApplicationViewModules } from '@/router/core/component-loader'
 
 type HostedRouteComponentModule = { default: Component }
 type HostedIntegrationModule = {

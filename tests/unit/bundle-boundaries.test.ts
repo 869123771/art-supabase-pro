@@ -46,7 +46,7 @@ test('SQL console keeps Monaco limited to the workers it actually uses', () => {
 
 test('application shell imports focused system APIs instead of the management barrel', () => {
   const shellSources = [
-    '../../src/router/core/MenuProcessor.ts',
+    '../../src/router/core/menu-processor.ts',
     '../../src/store/modules/tenant-scope.ts',
     '../../src/hooks/core/useWebsiteConfig.ts',
     '../../src/hooks/core/system-param/read-system-param.ts',
@@ -69,7 +69,7 @@ test('startup modules avoid the all-utils barrel and defer dictionary queries', 
     '../../src/store/modules/setting.ts',
     '../../src/store/modules/menu.ts',
     '../../src/store/modules/user.ts',
-    '../../src/router/core/MenuProcessor.ts',
+    '../../src/router/core/menu-processor.ts',
     '../../src/api/attachments.ts',
     '../../src/api/region-options.ts',
     '../../src/api/unique-field.ts',

@@ -28,7 +28,7 @@
  *
  * @module utils/storage/storage-key-manager
  */
-import { StorageConfig } from '@/utils/storage'
+import { StorageConfig } from './storage-config'
 
 /**
  * 存储键名管理器

@@ -1,12 +1,14 @@
 <template>
   <ArtSectionCard
-    :show-scrollbar="false"
+    :show-scrollbar="loading || Boolean(error) || !groups.length"
     class="master-group-panel"
     :title="title"
     subtitle="选择分组后查看本级及下级数据"
     :loading="loading"
     :error="error"
     :empty="!loading && !error && !groups.length"
+    :empty-visual-size="64"
+    :min-height="140"
     empty-title="尚未建立分组"
     :empty-description="
       managePermission ? '可先建立顶级分组，再逐层补充分组结构。' : '请先在 MDM 主数据中维护分组。'

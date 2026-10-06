@@ -352,8 +352,8 @@ export function getFriendlySupabaseErrorMessage(
     return '删除受阻，请处理弹窗中的关联记录后重试'
   }
 
-  // 业务 RPC 用 23514 报告校验失败；保留其安全的中文原因，避免只显示泛化提示。
-  if (details.codes.includes('23514')) {
+  // 业务 RPC 会用校验或唯一冲突报告业务阻断；保留安全中文原因。
+  if (details.codes.includes('23514') || details.codes.includes('23505')) {
     const businessMessage = details.messages.find(isSafeBusinessMessage)
     if (businessMessage) return businessMessage
   }

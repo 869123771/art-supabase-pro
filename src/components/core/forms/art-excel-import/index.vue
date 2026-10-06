@@ -34,6 +34,7 @@
       icon?: string | Component
       buttonProps?: Record<string, unknown>
       parseExcel?: boolean
+      contextKey?: object | string | number
     }>(),
     {
       accept: '.xlsx, .xls',
@@ -51,6 +52,18 @@
 
   const fileInputRef = ref<HTMLInputElement>()
   const isParsing = ref(false)
+  let parseRequest = 0
+  watch(
+    () => props.contextKey,
+    () => {
+      parseRequest += 1
+      isParsing.value = false
+    },
+    { flush: 'sync' }
+  )
+  onBeforeUnmount(() => {
+    parseRequest += 1
+  })
   const isDisabled = computed(
     () => props.disabled || isParsing.value || Boolean(props.buttonProps?.loading)
   )
@@ -75,21 +88,24 @@
     }
 
     isParsing.value = true
+    const request = ++parseRequest
     try {
       if (!props.parseExcel) {
         emit('file-change', rawFile, uploadFile)
         return
       }
       const results = await importExcelFile(rawFile)
+      if (request !== parseRequest) return
       emit('import-success', results, rawFile, uploadFile)
     } catch (error) {
+      if (request !== parseRequest) return
       emit(
         'import-error',
         error instanceof Error ? error : new Error('导入文件解析失败', { cause: error })
       )
     } finally {
       input.value = ''
-      isParsing.value = false
+      if (request === parseRequest) isParsing.value = false
     }
   }
 </script>

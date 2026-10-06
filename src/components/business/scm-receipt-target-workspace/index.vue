@@ -20,6 +20,7 @@
         :search-items="searchItems"
         :api-fn="fetchPage"
         :columns-factory="columnsFactory"
+        :columns-context-key="displayMode"
         :header-actions="headerActions"
         header-actions-placement="workspace"
         :search-bar-props="{
@@ -29,7 +30,7 @@
           showExpand: kind === 'inbound'
         }"
         :table-props="{
-          rowKey: displayMode === 'line' ? 'detailRowId' : 'id',
+          rowKey: getDocumentDetailRowKey,
           spanMethod: mergeDocumentCells,
           tableLayout: 'fixed',
           emptyText: `暂无${title}`,
@@ -48,9 +49,9 @@
           </ElRadioGroup>
         </template>
       </ArtTableQuery>
-      <ArtDrawer ref="detailRef" size="lg" :show-footer="false">
+      <ArtDrawer ref="detailRef" size="lg" :show-footer="false" @close="closeDetail">
         <ArtAsyncState :error="detailError" error-title="单据明细加载失败" @retry="loadDetail">
-          <div v-if="activeDocument" class="receipt-target-detail">
+          <div v-if="activeDocument" class="receipt-target-detail grid-cols-1">
             <div class="receipt-target-detail__summary">
               <div>
                 <span>{{ title }}单号</span>
@@ -105,6 +106,7 @@
               </span>
             </div>
             <ArtTable
+              class="min-w-0 max-w-full"
               :data="activeLines"
               :columns="lineColumns"
               :pagination="false"
@@ -143,9 +145,10 @@
     ArtTableQueryHeaderAction
   } from '@/components/core/tables/art-table-query/index.vue'
   import type { ColumnOption } from '@/types'
-  import { formatCurrencyValue } from '@/utils/ui/format'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { formatCurrencyValue, formatDateTimeValue } from '@/utils/ui/format'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import {
+    getDocumentDetailRowKey,
     documentGroupSpan,
     expandDocumentLines,
     loadAllDocumentPages,
@@ -420,12 +423,15 @@
     )
   }
   async function fetchPage(query: ScmReceiptTargetQuery & { current: number; size: number }) {
-    const pageQuery = { ...query, ...pageInfoHandler(query) }
-    const fetchDocuments = (page: ScmReceiptTargetQuery) =>
-      fetchScmReceiptTargets(props.kind, {
+    const pageQuery = { ...query, ...buildSupabasePageRange(query) }
+    const fetchDocuments = async (page: ScmReceiptTargetQuery) => {
+      const result = await fetchScmReceiptTargets(props.kind, {
         ...page,
         tenantId: effectiveTenantId.value || page.tenantId
       })
+      if (result.error) throw result.error
+      return result
+    }
     if (displayMode.value === 'document') {
       visibleRows.value = []
       return fetchDocuments(pageQuery)
@@ -450,11 +456,22 @@
     visibleRows.value = result.data
     return result
   }
+  let detailGeneration = 0
+  function closeDetail(): void {
+    detailGeneration++
+    activeDocument.value = undefined
+    activeLines.value = []
+    projectSections.value = []
+    detailError.value = ''
+  }
   async function loadDetail(): Promise<void> {
     const row = activeDocument.value
     if (!row) return
+    const generation = ++detailGeneration
     detailRef.value?.setLoading(true)
     detailError.value = ''
+    activeLines.value = []
+    projectSections.value = []
     try {
       const [{ data }, sections] = await Promise.all([
         fetchScmReceiptTargetLines(row.id),
@@ -462,16 +479,20 @@
           ? fetchScmReceiptProjectSections(row.projectId)
           : Promise.resolve([])
       ])
+      if (generation !== detailGeneration || activeDocument.value?.id !== row.id) return
       activeLines.value = data ?? []
       projectSections.value = sections
     } catch (error) {
-      detailError.value = getFriendlySupabaseErrorMessage(error, '单据明细加载失败，请重试')
+      if (generation === detailGeneration && activeDocument.value?.id === row.id)
+        detailError.value = getFriendlySupabaseErrorMessage(error, '单据明细加载失败，请重试')
     } finally {
-      detailRef.value?.setLoading(false)
+      if (generation === detailGeneration) detailRef.value?.setLoading(false)
     }
   }
   async function openDetail(row: ScmReceiptTargetDocument) {
+    const generation = ++detailGeneration
     await loadUnitDisplayNames([row.tenantId])
+    if (generation !== detailGeneration) return
     activeDocument.value = row
     activeLines.value = []
     projectSections.value = []
@@ -520,9 +541,7 @@
     })
   }
   async function reloadActiveLines(): Promise<void> {
-    if (!activeDocument.value) return
-    const { data } = await fetchScmReceiptTargetLines(activeDocument.value.id)
-    activeLines.value = data ?? []
+    await loadDetail()
   }
   async function saveScope() {
     const document = activeDocument.value
@@ -618,7 +637,7 @@
         prop: 'createdAt',
         label: '创建时间',
         minWidth: 180,
-        formatter: (row) => row.createdAt?.replace('T', ' ').slice(0, 19) || '—'
+        formatter: (row) => formatDateTimeValue(row.createdAt)
       },
       ...(displayMode.value === 'line'
         ? [

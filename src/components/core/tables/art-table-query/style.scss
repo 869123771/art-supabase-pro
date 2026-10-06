@@ -18,6 +18,13 @@
 
   &.is-focus-mode {
     height: 100%;
+
+    // 展开的筛选项可独立滚动，避免在矮窗口中挤掉表格与分页。
+    :deep(.art-search-bar) {
+      flex-shrink: 0;
+      max-height: 40%;
+      overflow-y: auto;
+    }
   }
 }
 
@@ -74,21 +81,17 @@
   margin-top: 0;
 }
 
-.art-table-query__header-left {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: var(--art-space-2);
-  align-items: center;
-  min-width: 0;
-}
-
+.art-table-query__header-left,
 .art-table-query__header-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--art-space-2);
   align-items: center;
   min-width: 0;
+}
+
+.art-table-query__header-left {
+  flex: 1;
 }
 
 .art-table-query__header-top {

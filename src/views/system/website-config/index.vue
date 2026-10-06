@@ -37,7 +37,7 @@
       custom-layout
       :show-reset="false"
       :show-submit="false"
-      @update:model-value="Object.assign(form, $event)"
+      @update:model-value="replaceReactiveModel(form, $event)"
     >
       <div class="website-config-page__body">
         <aside class="website-config-page__nav-panel art-card-xs">
@@ -419,6 +419,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { getScrollBehavior } from '@/utils/ui/scroll'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { ElMessage, type FormRules } from 'element-plus'

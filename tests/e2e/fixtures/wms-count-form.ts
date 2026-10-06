@@ -6,6 +6,7 @@ import { store } from '@/store'
 import { useUserStore } from '@/store/modules/user'
 import type { WmsCountLine } from '../../../modules/art-supabase-wms/src/api/warehouse.types'
 import CountLineDialog from '../../../modules/art-supabase-wms/src/views/count-business/count/modules/count-line-dialog.vue'
+import CountDetailDrawer from '../../../modules/art-supabase-wms/src/views/count-business/count/modules/count-detail-drawer.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -41,10 +42,53 @@ const app = createApp(
   defineComponent({
     setup() {
       const dialog = ref<InstanceType<typeof CountLineDialog>>()
+      const detail = ref<InstanceType<typeof CountDetailDrawer>>()
       const saved = ref(0)
       return () =>
         h('div', [
+          h(
+            'button',
+            {
+              onClick: () =>
+                detail.value?.handleOpen({
+                  projects: [],
+                  plan: {
+                    id: line.planId,
+                    tenantId: line.tenantId,
+                    documentNo: 'COUNT-TIME-001',
+                    warehouseId: 'warehouse-test',
+                    scopeProjectId: null,
+                    scopeConstructionNo: null,
+                    status: new URLSearchParams(location.search).has('counting')
+                      ? 'counting'
+                      : 'posted',
+                    snapshotAt: '2026-10-05T01:02:03Z',
+                    postedAt: '2026-10-05T01:02:03Z',
+                    createdAt: '2026-10-05T01:02:03Z',
+                    remark: null
+                  }
+                })
+            },
+            '打开已记账盘点详情'
+          ),
+          h(CountDetailDrawer, { ref: detail }),
           h('button', { onClick: () => dialog.value?.handleOpen(line) }, '打开测试盘点'),
+          h(
+            'button',
+            {
+              onClick: () =>
+                dialog.value?.handleOpen({
+                  ...line,
+                  expectedQuantity: 0,
+                  material: {
+                    materialCode: 'TEST-SERIAL',
+                    materialName: '测试 SN 盘点物料',
+                    serialManagementEnabled: true
+                  }
+                })
+            },
+            '打开测试 SN 盘点'
+          ),
           h('output', { 'data-testid': 'saved-count' }, saved.value),
           h(CountLineDialog, { ref: dialog, onSuccess: () => (saved.value += 1) })
         ])

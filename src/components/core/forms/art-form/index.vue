@@ -172,6 +172,13 @@
                 </component>
               </slot>
 
+              <ArtAsyncState
+                v-if="asyncErrorMap[item.key]"
+                size="compact"
+                :error="asyncErrorMap[item.key]"
+                error-title="选项加载失败"
+                @retry="fetchOptions(item)"
+              />
               <div v-if="item.description" class="art-form-item__description">
                 <component v-if="typeof item.description !== 'string'" :is="item.description" />
                 <span v-else class="whitespace-pre-line">{{ item.description }}</span>
@@ -210,7 +217,7 @@
                 class="submit-button"
                 @click="handleSubmit"
                 v-ripple
-                :disabled="disabledSubmit"
+                :disabled="disabledSubmit || hasBlockingOptions"
                 :loading="submitLoading"
               >
                 <ElIcon>
@@ -244,7 +251,7 @@
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
-  import { get, unset } from 'lodash-es'
+  import { get, isEqual, unset } from 'lodash-es'
   import {
     inject,
     onMounted,
@@ -300,7 +307,12 @@
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
-  import { calculateResponsiveSpan, type ResponsiveBreakpoint } from '@/utils/form/responsive'
+  import {
+    calculateActionSpan,
+    calculateResponsiveSpan,
+    type ResponsiveBreakpoint
+  } from '@/utils/form/responsive'
+  import { replaceReactiveModel } from '@/utils/form/model'
   import {
     cloneModelValue,
     sanitizeFormValue,
@@ -631,6 +643,17 @@
   const collapsedSectionKeys = ref<Set<string>>(new Set())
   const asyncOptionsMap = ref<Record<string, FormRecord[]>>({})
   const asyncLoadingMap = ref<Record<string, boolean>>({})
+  const asyncErrorMap = shallowRef<Record<string, Error | undefined>>({})
+  const optionRequestVersions: Record<string, number> = {}
+  let optionsActive = true
+  const hasBlockingOptions = computed(() =>
+    visibleFormItems.value.some(
+      (item) =>
+        item.api &&
+        isOptionComponent(item) &&
+        (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key])
+    )
+  )
   const asyncRequestSignatureMap = ref<Record<string, string>>({})
 
   initialModelValue.value = cloneModelValue(modelValue.value)
@@ -679,10 +702,7 @@
     const currentValue = modelValue.value
 
     if (currentValue && typeof currentValue === 'object' && !Array.isArray(currentValue)) {
-      Object.keys(currentValue).forEach((key) => {
-        delete currentValue[key]
-      })
-      Object.assign(currentValue, nextValue)
+      replaceReactiveModel(currentValue, nextValue)
       return
     }
 
@@ -841,27 +861,43 @@
 
   const fetchOptions = async (item: FormItem): Promise<FormRecord[]> => {
     if (!item.api || !isOptionComponent(item)) return getOptions(item)
-
-    let apiParams = cloneModelValue(item.params) as FormRecord | undefined
-    if (item.beforeFetch) {
-      apiParams = await item.beforeFetch(apiParams)
-    }
-
-    if (item.shouldFetch) {
-      const canFetch = await item.shouldFetch(apiParams)
-      if (!canFetch) return getOptions(item)
-    }
-
+    const version = (optionRequestVersions[item.key] ?? 0) + 1
+    optionRequestVersions[item.key] = version
+    const isCurrent = () => optionsActive && optionRequestVersions[item.key] === version
     asyncLoadingMap.value[item.key] = true
+    asyncErrorMap.value = { ...asyncErrorMap.value, [item.key]: undefined }
     try {
+      let apiParams = cloneModelValue(item.params) as FormRecord | undefined
+      if (item.beforeFetch) apiParams = await item.beforeFetch(apiParams)
+      if (!isCurrent()) return []
+      if (item.shouldFetch && !(await item.shouldFetch(apiParams))) {
+        if (isCurrent()) asyncOptionsMap.value[item.key] = []
+        return []
+      }
+      if (!isCurrent()) return []
       const rawResult = await item.api(apiParams)
+      if (!isCurrent()) return []
+      const responseError = get(rawResult, 'error')
+      if (responseError) throw responseError
       const result = item.afterFetch ? await item.afterFetch(rawResult) : rawResult
+      if (!isCurrent()) return []
+      const transformedError = get(result, 'error')
+      if (transformedError) throw transformedError
       const options = normalizeOptions(extractOptionsResult(result, item.resultField), item)
       asyncOptionsMap.value[item.key] = options
       applyAutoSelect(item, options)
       return options
+    } catch (cause) {
+      if (isCurrent()) {
+        asyncOptionsMap.value[item.key] = []
+        asyncErrorMap.value = {
+          ...asyncErrorMap.value,
+          [item.key]: new Error('选项加载失败，请重新加载后再选择', { cause })
+        }
+      }
+      return []
     } finally {
-      asyncLoadingMap.value[item.key] = false
+      if (isCurrent()) asyncLoadingMap.value[item.key] = false
     }
   }
 
@@ -1086,7 +1122,7 @@
         props.apiFn = (params: FormRecord) => {
           const baseParams =
             item.params && typeof item.params === 'object' ? (item.params as FormRecord) : {}
-          return item.api?.({ ...baseParams, ...params } as never)
+          return item.api?.({ ...baseParams, ...params })
         }
       }
       props.rowKey = props.rowKey ?? item.valueField
@@ -1096,6 +1132,10 @@
     }
     if (item.api) {
       props.loading = asyncLoadingMap.value[item.key] || props.loading
+      if (isOptionComponent(item)) {
+        props.disabled =
+          props.disabled || asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key]
+      }
     }
     delete props.optionType
     return props
@@ -1146,11 +1186,9 @@
   }
 
   const getActionColSpan = (breakpoint: ResponsiveBreakpoint): number => {
-    const occupiedSpan = visibleFormItems.value.reduce((total, item) => {
-      return (total + getColSpan(getItemSpan(item), breakpoint)) % 24
-    }, 0)
-
-    return occupiedSpan === 0 ? 24 : 24 - occupiedSpan
+    return calculateActionSpan(
+      visibleFormItems.value.map((item) => getColSpan(getItemSpan(item), breakpoint))
+    )
   }
 
   const isFormItemHidden = (item: FormItem): boolean => {
@@ -1254,7 +1292,7 @@
    * 处理提交事件
    */
   const handleSubmit = () => {
-    if (props.submitLoading || props.disabledSubmit) return
+    if (props.submitLoading || props.disabledSubmit || hasBlockingOptions.value) return
     syncTenantScopeField()
     // 对外只抛出清洗后的结果，避免业务层重复过滤空值。
     emit('submit', getSanitizedOutput())
@@ -1294,7 +1332,10 @@
     loadImmediateOptions()
   })
 
-  onUnmounted(() => unregisterOverlayForm?.())
+  onUnmounted(() => {
+    optionsActive = false
+    unregisterOverlayForm?.()
+  })
 
   watch(
     () =>
@@ -1302,9 +1343,25 @@
         key: item.key,
         hasApi: !!item.api,
         immediate: item.immediate,
-        params: item.params
+        params: cloneModelValue(item.params)
       })),
-    loadImmediateOptions,
+    (nextItems, previousItems) => {
+      for (const previous of previousItems) {
+        const next = nextItems.find((item) => item.key === previous.key)
+        if (next && isEqual(next, previous)) continue
+        const hadRequest = optionRequestVersions[previous.key] !== undefined
+        optionRequestVersions[previous.key] = (optionRequestVersions[previous.key] ?? 0) + 1
+        delete asyncRequestSignatureMap.value[previous.key]
+        delete asyncOptionsMap.value[previous.key]
+        asyncLoadingMap.value[previous.key] = false
+        asyncErrorMap.value = {
+          ...asyncErrorMap.value,
+          [previous.key]:
+            next?.hasApi && hadRequest ? new Error('选项条件已变化，请重新加载后再选择') : undefined
+        }
+      }
+      loadImmediateOptions()
+    },
     { deep: true }
   )
 
@@ -1342,8 +1399,34 @@
 
   defineExpose({
     ref: formInstance,
-    validate: (...args: Parameters<FormInstance['validate']>) =>
-      formInstance.value?.validate(...args),
+    validate: async (...args: Parameters<FormInstance['validate']>) => {
+      if (hasBlockingOptions.value) {
+        const invalidFields = Object.fromEntries(
+          visibleFormItems.value
+            .filter(
+              (item) =>
+                item.api &&
+                isOptionComponent(item) &&
+                (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key])
+            )
+            .map((item) => [
+              item.key,
+              [
+                {
+                  field: item.key,
+                  message: asyncErrorMap.value[item.key]?.message ?? '选项正在加载，请稍候'
+                }
+              ]
+            ])
+        )
+        if (args[0]) {
+          await args[0](false, invalidFields)
+          return false
+        }
+        throw invalidFields
+      }
+      return formInstance.value?.validate(...args)
+    },
     validateField: (...args: Parameters<FormInstance['validateField']>) =>
       formInstance.value?.validateField(...args),
     clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>

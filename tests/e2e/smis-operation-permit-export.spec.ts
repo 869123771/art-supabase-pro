@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import ExcelJS from 'exceljs'
 import { prepareIsolatedSession } from './support/isolated-session'
 import { mockApplicationMenus } from './support/menu-rpc'
+import { assertTableFocusContract } from './support/table-focus'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -22,7 +23,7 @@ for (const scenario of [
   for (const incomplete of [false, true]) {
     test(`${scenario.title}${incomplete ? '拒绝缺失导出页' : '按状态完整导出超过一万条作业票'}`, async ({
       page
-    }) => {
+    }, testInfo) => {
       test.setTimeout(180_000)
       const tenant = await prepareIsolatedSession(page)
       await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
@@ -142,6 +143,17 @@ for (const scenario of [
       }
       await expect(identity).toBeVisible()
       await expect(draft).toBeChecked()
+      if (!incomplete) {
+        const layout = await page
+          .locator('.special-operation-permit-page__workspace')
+          .evaluate((node) => {
+            const style = getComputedStyle(node)
+            return { display: style.display, direction: style.flexDirection, gap: style.gap }
+          })
+        expect(layout).toEqual({ display: 'flex', direction: 'column', gap: '12px' })
+        await assertTableFocusContract(page, testInfo, ['.special-operation-permit-page__status'])
+        await expect(draft).toBeChecked()
+      }
     })
   }
 }

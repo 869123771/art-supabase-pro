@@ -66,12 +66,60 @@ export interface CleanupMasterDataDeleteDependencyPayload {
 
 const { supabase, responseHandle } = useSupabase()
 
+export async function deleteSupplierMasterRecords(ids: string[]) {
+  return await responseHandle<number>(
+    () => supabase.rpc('smis_delete_suppliers_secure', { p_ids: ids }),
+    {
+      breakReturn: true,
+      showErrorMessage: false,
+      requireAffected: true,
+      noAffectedMessage: '所选供应商未删除，请刷新列表核对权限和数据状态后重试',
+      errorMessage: '供应商删除失败，请检查业务引用后重试'
+    }
+  )
+}
+
 export type VehicleReminderDeleteSourceType =
   'insurance' | 'inspection' | 'maintenance' | 'part' | 'vehicle'
 
 export interface VehicleReminderDeleteDestination {
   sourceType: VehicleReminderDeleteSourceType
   sourceKey: string
+}
+
+export async function fetchEquipmentInspectionDeleteDestination(
+  inspectionId: string
+): Promise<{ equipmentId: string } | null> {
+  const { data } = await responseHandle<{ equipmentId: string }>(
+    () =>
+      supabase
+        .from('smis_equipment_inspection')
+        .select('equipmentId:equipment_id')
+        .eq('id', inspectionId)
+        .maybeSingle(),
+    { breakReturn: true, showErrorMessage: false }
+  )
+  return data ?? null
+}
+
+export async function fetchWmsPurchaseDeleteDestination(
+  documentId: string
+): Promise<{ kind: string } | null> {
+  const { data } = await responseHandle<{ kind: string }>(
+    () => supabase.from('wms_purchase_document').select('kind').eq('id', documentId).maybeSingle(),
+    { breakReturn: true, showErrorMessage: false }
+  )
+  return data && typeof data.kind === 'string' ? data : null
+}
+
+export async function fetchScmPurchaseDeleteDestination(
+  documentId: string
+): Promise<{ kind: string } | null> {
+  const { data } = await responseHandle<{ kind: string }>(
+    () => supabase.from('scm_purchase_document').select('kind').eq('id', documentId).maybeSingle(),
+    { breakReturn: true, showErrorMessage: false }
+  )
+  return data && typeof data.kind === 'string' ? data : null
 }
 
 export async function fetchVehicleReminderDeleteDestination(

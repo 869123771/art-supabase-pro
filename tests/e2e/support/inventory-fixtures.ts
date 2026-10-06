@@ -63,6 +63,7 @@ const dictionaryItems: Record<string, [string, string, string][]> = {
     ['released', '已释放', 'info']
   ],
   mdmInventorySerialStatus: [['in_stock', '在库', 'success']],
+  mesWorkOrderStatus: [['released', '已下达', 'primary']],
   mdmMaterialSource: [['purchase', '采购', 'primary']]
 }
 const dictionaryRows = Object.entries(dictionaryItems).flatMap(([type, values]) =>

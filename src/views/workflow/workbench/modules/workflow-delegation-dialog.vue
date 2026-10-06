@@ -19,6 +19,15 @@
             <ElTag type="warning" effect="plain" round>有审计记录</ElTag>
           </div>
         </template>
+        <ArtAsyncState
+          v-if="state.loading || loadError"
+          :loading="state.loading"
+          :error="loadError"
+          size="compact"
+          :skeleton-rows="2"
+          error-title="委托数据加载失败"
+          @retry="loadData"
+        />
         <ArtForm
           ref="formRef"
           v-model="form.data"
@@ -33,6 +42,8 @@
       <ArtSectionCard
         class="workflow-delegation__history"
         :loading="state.loading"
+        :error="loadError"
+        @retry="loadData"
         loading-mode="mask"
         preserve-content-structure
       >
@@ -105,8 +116,13 @@
 <script setup lang="ts">
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import { useRoute } from 'vue-router'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
+  import { cloneDeep, isEqual } from 'lodash-es'
+  import { ElMessage } from 'element-plus'
   import type { FormRules, TagProps } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -146,6 +162,47 @@
     loading: false,
     records: [] as Api.Workflow.WorkflowDelegationRecord[],
     users: [] as Api.Workflow.WorkflowUserOption[]
+  })
+  const {
+    detail: loadedData,
+    loading,
+    loadError,
+    loadDetail,
+    openDetail
+  } = useDetailRecord<{
+    records: Api.Workflow.WorkflowDelegationRecord[]
+    users: Api.Workflow.WorkflowUserOption[]
+  }>(async (userId) => {
+    const tenantId = state.tenantId
+    const [records, users] = await Promise.all([
+      fetchWorkflowDelegations(userId, { showErrorMessage: false }),
+      fetchWorkflowUserOptions({ tenantId }, { showErrorMessage: false })
+    ])
+    if (records.error) throw records.error
+    if (users.error) throw users.error
+    return { data: { records: records.data ?? [], users: users.data ?? [] } }
+  }, '请检查网络后重新加载，已填写的委托内容会保留。')
+  let formRevision = 0
+  const formActive = ref(false)
+  const revokingId = ref('')
+  const invalidateForm = () => {
+    formRevision += 1
+    formActive.value = false
+    openDetail('')
+  }
+  const route = useRoute()
+  watch(() => route.fullPath, invalidateForm)
+  watch(loadedData, (data) => {
+    state.records = data?.records ?? []
+    state.users = data?.users ?? []
+    rebuildItems()
+  })
+  watch([loading, loadError, formActive], () => {
+    state.loading = loading.value
+    rebuildItems()
+    dialogRef.value?.setOptions({
+      confirmDisabled: !formActive.value || loading.value || !!loadError.value
+    })
   })
   const form = reactive<{
     data: DelegationFormData
@@ -189,6 +246,7 @@
         props: {
           placeholder: '选择同租户在职同事',
           filterable: true,
+          disabled: !formActive.value || loading.value || !!loadError.value,
           options: state.users.filter((user) => user.id !== state.userId).map(toUserSelectOption)
         }
       },
@@ -244,6 +302,10 @@
 
   function canRevoke(record: Api.Workflow.WorkflowDelegationRecord): boolean {
     return (
+      formActive.value &&
+      !revokingId.value &&
+      !loading.value &&
+      !loadError.value &&
       record.delegatorUserId === state.userId &&
       !record.revokedAt &&
       dayjs(record.endsAt).isAfter(dayjs())
@@ -251,58 +313,82 @@
   }
 
   async function loadData(): Promise<void> {
-    if (!state.userId) return
-    state.loading = true
-    try {
-      const [delegations, users] = await Promise.all([
-        fetchWorkflowDelegations(state.userId),
-        fetchWorkflowUserOptions({ tenantId: state.tenantId })
-      ])
-      state.records = delegations.data ?? []
-      state.users = users.data ?? []
-      rebuildItems()
-    } finally {
-      state.loading = false
-    }
+    if (!state.userId || !formActive.value) return
+    await loadDetail(state.userId)
   }
 
   async function handleSubmit(): Promise<boolean> {
+    const revision = formRevision
+    const input = cloneDeep(form.data)
+    const isCurrent = () => formActive.value && revision === formRevision
     try {
+      if (!formActive.value || loading.value || loadError.value) return false
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      const [startsAt, endsAt] = form.data.period
+      if (!isCurrent()) return false
+      if (!isEqual(input, form.data)) return false
+      const [startsAt, endsAt] = input.period
       if (!startsAt || !endsAt) return false
       await createWorkflowDelegation({
-        delegateUserId: form.data.delegateUserId,
+        delegateUserId: input.delegateUserId,
         startsAt: dayjs(startsAt).toISOString(),
         endsAt: dayjs(endsAt).toISOString(),
-        reason: form.data.reason.trim()
+        reason: input.reason.trim()
       })
+      if (!isCurrent()) return false
+      ElMessage.success('审批委托已创建')
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, '审批委托创建失败，请核对时间范围后重试', 'warning')
       return false
     }
     Object.assign(form.data, { delegateUserId: '', period: [], reason: '' })
-    try {
-      await loadData()
-    } catch (error) {
-      notifyFriendlyError(error, '审批委托已创建，但列表刷新失败，请稍后刷新', 'warning')
-    }
+    await loadData()
+    if (!isCurrent()) return false
+    if (loadError.value) ElMessage.warning('审批委托已创建，但列表刷新失败，请稍后刷新')
     emit('success')
     return true
   }
 
   async function handleRevoke(record: Api.Workflow.WorkflowDelegationRecord): Promise<void> {
-    const reason = await promptReason(
-      '撤销后，仍未处理且由该委托产生的待办会退回原审批人。',
-      '撤销委托',
-      { maxLength: 300 }
-    )
-    await revokeWorkflowDelegation(record.id, reason)
-    await loadData()
-    emit('success')
+    if (!canRevoke(record)) return
+    const revision = formRevision
+    const isCurrent = () => formActive.value && revision === formRevision
+    revokingId.value = record.id
+    try {
+      const reason = await promptReason(
+        '撤销后，仍未处理且由该委托产生的待办会退回原审批人。',
+        '撤销委托',
+        { maxLength: 300 }
+      )
+      if (!isCurrent()) return
+      const currentRecord = state.records.find((item) => item.id === record.id)
+      if (
+        !currentRecord ||
+        currentRecord.delegatorUserId !== state.userId ||
+        currentRecord.revokedAt ||
+        !dayjs(currentRecord.endsAt).isAfter(dayjs())
+      ) {
+        ElMessage.warning('委托状态已变化，请刷新记录后重试')
+        return
+      }
+      await revokeWorkflowDelegation(record.id, reason)
+      if (!isCurrent()) return
+      ElMessage.success('审批委托已撤销')
+      await loadData()
+      if (!isCurrent()) return
+      if (loadError.value) ElMessage.warning('审批委托已撤销，但列表刷新失败，请稍后刷新')
+      emit('success')
+    } catch (error) {
+      if (!isCurrent() || error === 'cancel' || error === 'close') return
+      notifyFriendlyError(error, '审批委托撤销失败，请刷新记录后重试')
+    } finally {
+      if (revokingId.value === record.id) revokingId.value = ''
+    }
   }
 
   async function handleOpen(userId: string, tenantId: string): Promise<void> {
+    invalidateForm()
+    formActive.value = true
     state.userId = userId
     state.tenantId = tenantId
     Object.assign(form.data, { delegateUserId: '', period: [], reason: '' })
@@ -316,7 +402,8 @@
         formRef.value?.clearValidate()
         await loadData()
       },
-      onConfirm: handleSubmit
+      onConfirm: handleSubmit,
+      onClose: invalidateForm
     })
   }
 

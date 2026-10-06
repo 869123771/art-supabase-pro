@@ -78,14 +78,18 @@ for (const scenario of [
     await page.route(`**/rest/v1/${scenario.table}?*`, (route) => {
       const params = new URL(route.request().url()).searchParams
       expect(params.get('kind')).toBe(`eq.${scenario.kind}`)
+      expect(params.get('order')).toBe('updated_at.desc,id.asc')
       const offset = Number(params.get('offset') || 0)
       const limit = Math.min(Number(params.get('limit') || 1000), 1000)
       offsets.push(offset)
-      const data = documents.slice(offset, offset + limit)
+      const scopedDocuments = params.has('id')
+        ? documents.filter((row) => params.get('id') === `eq.${row.id}`)
+        : documents
+      const data = scopedDocuments.slice(offset, offset + limit)
       return route.fulfill({
         status: 200,
         headers: {
-          'content-range': `${offset}-${offset + data.length - 1}/${documents.length}`,
+          'content-range': `${offset}-${offset + data.length - 1}/${scopedDocuments.length}`,
           'access-control-expose-headers': 'content-range'
         },
         json: data
@@ -139,6 +143,28 @@ for (const scenario of [
       await expect(body.locator('tr.el-table__row')).toHaveCount(20)
       await page.getByRole('button', { name: '上一页', exact: true }).click()
       await expect(body.getByText('EXPORT-0000', { exact: true }).first()).toBeVisible()
+    }
+    await documentMode.click()
+    await expect(page.getByRole('radio', { name: '按单据', exact: true })).toBeChecked()
+    const documentRows = page.locator('.el-table__body-wrapper').first().locator('tr.el-table__row')
+    await expect(documentRows).toHaveCount(20)
+    await expect(documentRows.nth(19)).toContainText('EXPORT-0019')
+    const identifiers = (await documentRows.allTextContents()).map(
+      (text) => text.match(/EXPORT-\d{4}/)?.[0]
+    )
+    expect(identifiers.every(Boolean)).toBe(true)
+    expect(new Set(identifiers).size).toBe(20)
+    if (scenario.kind === 'purchase_order') {
+      await page.goto(
+        `#/scm/${scenario.path}?fromMasterDelete=1&dependencyCode=scm_purchase_document&recordId=document-0&resourceId=supplier-1`
+      )
+      await expect(page.getByText('已精确过滤', { exact: true })).toBeVisible()
+      await expect(documentRows).toHaveCount(1)
+      await expect(documentRows).toContainText('EXPORT-0000')
+      await expect(documentRows).not.toContainText('EXPORT-0001')
+      await page.getByRole('button', { name: '清除定位', exact: true }).click()
+      await expect(documentRows).toHaveCount(20)
+      await expect(page.locator('.master-delete-notice')).toHaveCount(0)
     }
   })
 }

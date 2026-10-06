@@ -194,3 +194,142 @@ where schemaname = 'public'
   and policyname = 'canonical_tenant_read_scope'
   and permissive = 'RESTRICTIVE'
   and cmd = 'SELECT';
+
+-- MDM business types can belong to several document types; WMS writes must check
+-- the selected document against that set and its menu assignment.
+do $wms_business_document_assignment_test$
+declare
+  v_function_name text;
+begin
+  if exists (
+    select 1 from public.mdm_business_type b
+    where b.document_type_ids is null
+      or cardinality(b.document_type_ids) = 0
+      or b.document_type_ids[1] is distinct from b.document_type_id
+      or cardinality(b.document_type_ids) <> (
+        select count(distinct id) from unnest(b.document_type_ids) id
+      )
+  ) then
+    raise exception 'MDM business type multi-document assignment is inconsistent';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'mdm_business_type'
+      and policyname = 'tenant_select'
+      and qual like '%tenant_in_current_read_scope%'
+  ) then
+    raise exception 'MDM business type selected tenant read scope is missing';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'mdm_document_type'
+      and policyname = 'wms_document_type_read'
+      and qual like '%tenant_in_current_read_scope%'
+      and qual like '%WmsInitialSalesOutbound:View%'
+      and qual like '%WmsTransfer:View%'
+  ) then
+    raise exception 'WMS document type read permission is incomplete';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated',
+    'public.copy_mdm_business_type_with_menus_multi(uuid,uuid,text,text,boolean,uuid,text,text,boolean,text,integer,text,text,boolean,text,uuid[],uuid[])',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'anon',
+    'public.copy_mdm_business_type_with_menus_multi(uuid,uuid,text,text,boolean,uuid,text,text,boolean,text,integer,text,text,boolean,text,uuid[],uuid[])',
+    'EXECUTE'
+  ) then
+    raise exception 'MDM multi-document copy permission boundary is incomplete';
+  end if;
+
+  foreach v_function_name in array array[
+    'wms_save_count_adjustment_secure',
+    'wms_save_initial_stock_secure',
+    'wms_save_production_material_secure',
+    'wms_save_purchase_document_secure',
+    'wms_save_sales_document_secure',
+    'wms_save_transfer_request_secure'
+  ] loop
+    if not exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = v_function_name
+        and pg_get_functiondef(p.oid) like '%document_type_ids%'
+        and pg_get_functiondef(p.oid) like '%menu_ids%'
+    ) then
+      raise exception 'WMS write assignment validation missing in %', v_function_name;
+    end if;
+  end loop;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.mdm_document_type'::regclass
+      and tgname = 'mdm_document_type_secondary_reference_guard'
+      and (tgtype & 8) = 8
+  ) then
+    raise exception 'Secondary MDM document type delete guard is missing';
+  end if;
+
+  foreach v_function_name in array array[
+    'wms_create_issue_request_secure',
+    'wms_create_transfer_secure',
+    'wms_post_inventory_movement_secure'
+  ] loop
+    if not exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = v_function_name
+        and pg_get_functiondef(p.oid) like '%document_type_ids%'
+        and pg_get_functiondef(p.oid) like '%menu_ids%'
+        and pg_get_functiondef(p.oid) like '%wms_inventory_initialization%'
+    ) then
+      raise exception 'WMS special workflow master-data validation missing in %', v_function_name;
+    end if;
+  end loop;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'mdm_document_type'
+      and policyname = 'wms_special_document_type_read'
+      and qual like '%tenant_in_current_read_scope%'
+      and qual like '%WmsDirectTransfer:View%'
+      and qual like '%WmsStockOperation:View%'
+  ) or not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'mdm_business_type'
+      and policyname = 'wms_special_business_type_read'
+      and qual like '%tenant_in_current_read_scope%'
+      and qual like '%WmsStepTransfer:View%'
+  ) then
+    raise exception 'WMS special workflow master-data read permission is incomplete';
+  end if;
+
+  if exists (
+    select 1 from (values
+      ('wms_transfer_document'::text),
+      ('wms_inventory_movement'::text)
+    ) as tables(table_name)
+    cross join (values ('document_type_id'::text), ('business_type_id'::text)) as columns(column_name)
+    where not exists (
+      select 1 from information_schema.columns c
+      where c.table_schema = 'public' and c.table_name = tables.table_name
+        and c.column_name = columns.column_name
+    )
+  ) then
+    raise exception 'WMS transfer master-data columns are missing';
+  end if;
+
+  if exists (
+    select 1 from pg_constraint c
+    where c.conrelid in ('public.wms_transfer_document'::regclass, 'public.wms_inventory_movement'::regclass)
+      and c.contype = 'f'
+      and c.confrelid in ('public.mdm_document_type'::regclass, 'public.mdm_business_type'::regclass)
+      and cardinality(c.conkey) <> 2
+  ) then
+    raise exception 'WMS transfer master-data foreign keys must enforce tenant scope';
+  end if;
+end
+$wms_business_document_assignment_test$;

@@ -1,6 +1,8 @@
+import { fetchWmsInventoryOrganizationOptions } from './wms-inventory-organization'
 import { useSupabase } from '@/hooks'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
-import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { buildSupabasePageRange, fetchAllRangePages } from '@/utils/supabase/pagination'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import type {
   WmsInitializationStatusRow,
   WmsPendingInitializationDocument,
@@ -11,7 +13,6 @@ import type {
   WmsPurchaseMaterial,
   WmsPurchaseOption,
   WmsPurchaseOrderTarget,
-  WmsPurchaseOrganization,
   WmsPurchasePayload,
   WmsPurchaseSourceBatch,
   WmsPurchaseUnit,
@@ -66,31 +67,27 @@ interface OrderTargetRemainingRecord {
   remainingQuantity: number
 }
 
-type WmsPurchaseOrganizationRecord = Omit<
-  WmsPurchaseOrganization,
-  'enabledOn' | 'initializationClosedAt'
->
-
-type WmsPurchaseInitializationRecord = Pick<
-  WmsPurchaseOrganization,
-  'enabledOn' | 'initializationClosedAt'
-> & { organizationId: string }
-
 export async function fetchWmsPurchaseOrderTargets(
   tenantId?: string
 ): Promise<OrderTargetRecord[]> {
-  let request = supabase
-    .from('scm_order_target_document')
-    .select(
-      'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no)'
-    )
-    .eq('target_kind', 'purchase_inbound')
-    .in('status', ['draft', 'partial'])
-    .order('created_at', { ascending: false })
-    .limit(200)
-  if (tenantId) request = request.eq('tenant_id', tenantId)
-  const { data } = await responseHandle<OrderTargetRecord[]>(() => request, readOptions)
-  return data ?? []
+  return loadAllDocumentPages<OrderTargetRecord, { tenantId?: string; from?: number; to?: number }>(
+    ({ tenantId, from = 0, to = 499 }) => {
+      let request = supabase
+        .from('scm_order_target_document')
+        .select(
+          'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no)',
+          { count: 'exact' }
+        )
+        .eq('target_kind', 'purchase_inbound')
+        .in('status', ['draft', 'partial'])
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to)
+      if (tenantId) request = request.eq('tenant_id', tenantId)
+      return responseHandle<OrderTargetRecord[]>(() => request, readOptions)
+    },
+    { tenantId }
+  )
 }
 
 export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurchaseOrderTarget> {
@@ -190,8 +187,10 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
   }
 }
 
-export async function fetchWmsPurchasePage(query: {
+export interface WmsPurchasePageQuery {
   kind: WmsPurchaseKind
+  documentId?: string
+  documentIds?: string[]
   tenantId?: string
   status?: string
   supplier?: string
@@ -200,17 +199,84 @@ export async function fetchWmsPurchasePage(query: {
   materialCode?: string
   current: number
   size: number
-}): Promise<{ data: WmsPurchaseListRow[]; total: number }> {
+}
+
+/** Page parent records; matching embeds filter documents without truncating their sibling lines. */
+export async function fetchWmsPurchaseDocumentIdPage(
+  query: WmsPurchasePageQuery
+): Promise<{ data: Array<{ id: string }>; total: number }> {
+  const pageRange = buildSupabasePageRange(query)
+  const projectFilter = query.projectName?.trim()
+  const partyFilter = query.supplier?.trim()
+  const entrusted = query.kind.startsWith('entrusted_processing_')
+  const fields = [
+    'id',
+    `matchingLines:wms_purchase_document_line!wms_purchase_document_line_document_id_tenant_id_fkey!inner(
+      material:mdm_material!wms_purchase_document_line_material_id_fkey!inner()
+      ${projectFilter ? ',project:mdm_project!wms_purchase_document_line_project_id_fkey!inner()' : ''}
+    )`,
+    ...(partyFilter
+      ? [
+          entrusted
+            ? 'party:mdm_customer!wms_purchase_document_customer_id_fkey!inner()'
+            : 'party:mdm_supplier!wms_purchase_document_supplier_id_fkey!inner()'
+        ]
+      : [])
+  ].join(',')
   let request = supabase
-    .from('wms_purchase_document_list')
-    .select('*', { count: 'exact' })
+    .from('wms_purchase_document')
+    .select(fields, { count: 'exact' })
     .order('create_time', { ascending: false })
-    .order('line_no')
+    .order('id')
   request =
     query.kind === 'other_inbound'
       ? request.in('kind', ['other_inbound', 'other_return'])
       : request.eq('kind', query.kind)
   if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
+  if (query.status) request = request.eq('status', query.status)
+  if (partyFilter)
+    request = request.ilike(
+      entrusted ? 'party.customer_name' : 'party.supplier_name',
+      `%${partyFilter}%`
+    )
+  if (projectFilter)
+    request = request.ilike('matchingLines.project.project_name', `%${projectFilter}%`)
+  if (query.materialCode?.trim())
+    request = request.ilike(
+      'matchingLines.material.material_code',
+      `%${query.materialCode.trim()}%`
+    )
+  if (query.materialDescription?.trim())
+    request = request.ilike(
+      'matchingLines.material.description',
+      `%${query.materialDescription.trim()}%`
+    )
+  const { data, total } = await responseHandle<Array<{ id: string }>>(
+    () => request.range(pageRange.from, pageRange.to),
+    readOptions
+  )
+  return { data: data ?? [], total: total ?? 0 }
+}
+
+export async function fetchWmsPurchasePage(
+  query: WmsPurchasePageQuery
+): Promise<{ data: WmsPurchaseListRow[]; total: number }> {
+  const pageRange = buildSupabasePageRange(query)
+  if (query.documentIds && !query.documentIds.length) return { data: [], total: 0 }
+  let request = supabase
+    .from('wms_purchase_document_list')
+    .select('*', { count: 'exact' })
+    .order('create_time', { ascending: false })
+    .order('document_id')
+    .order('line_no')
+    .order('line_id')
+  request =
+    query.kind === 'other_inbound'
+      ? request.in('kind', ['other_inbound', 'other_return'])
+      : request.eq('kind', query.kind)
+  if (query.tenantId) request = request.eq('tenant_id', query.tenantId)
+  if (query.documentId) request = request.eq('document_id', query.documentId)
+  if (query.documentIds) request = request.in('document_id', query.documentIds)
   if (query.status) request = request.eq('status', query.status)
   if (query.supplier?.trim())
     request = request.ilike(
@@ -224,7 +290,7 @@ export async function fetchWmsPurchasePage(query: {
   if (query.materialCode?.trim())
     request = request.ilike('material_code', `%${query.materialCode.trim()}%`)
   const { data, total } = await responseHandle<WmsPurchaseListRow[]>(
-    () => request.range((query.current - 1) * query.size, query.current * query.size - 1),
+    () => request.range(pageRange.from, pageRange.to),
     readOptions
   )
   return { data: data ?? [], total: total ?? 0 }
@@ -267,35 +333,6 @@ export async function changeWmsPurchaseStatus(
   )
 }
 
-export async function fetchWmsPurchaseOrganizations(
-  tenantId?: string,
-  organizationType?: string
-): Promise<WmsPurchaseOrganization[]> {
-  let orgQuery = supabase
-    .from('mdm_organization')
-    .select('id,tenant_id,organization_code,organization_name,organization_type,status')
-    .eq('status', '1')
-    .order('organization_code')
-  let initQuery = supabase
-    .from('wms_inventory_initialization')
-    .select('organization_id,enabled_on,initialization_closed_at')
-  if (tenantId) {
-    orgQuery = orgQuery.eq('tenant_id', tenantId)
-    initQuery = initQuery.eq('tenant_id', tenantId)
-  }
-  if (organizationType) orgQuery = orgQuery.eq('organization_type', organizationType)
-  const [{ data: organizations }, { data: initialization }] = await Promise.all([
-    responseHandle<WmsPurchaseOrganizationRecord[]>(() => orgQuery.limit(2000), readOptions),
-    responseHandle<WmsPurchaseInitializationRecord[]>(() => initQuery.limit(2000), readOptions)
-  ])
-  const initMap = new Map((initialization ?? []).map((row) => [row.organizationId, row]))
-  return (organizations ?? []).map((row): WmsPurchaseOrganization => ({
-    ...row,
-    enabledOn: initMap.get(row.id)?.enabledOn ?? null,
-    initializationClosedAt: initMap.get(row.id)?.initializationClosedAt ?? null
-  }))
-}
-
 export async function fetchWmsInitializationStatusPage(query: {
   tenantId?: string
   keyword?: string
@@ -303,7 +340,8 @@ export async function fetchWmsInitializationStatusPage(query: {
   current: number
   size: number
 }): Promise<{ data: WmsInitializationStatusRow[]; total: number }> {
-  const rows = (await fetchWmsPurchaseOrganizations(query.tenantId, 'company'))
+  const pageRange = buildSupabasePageRange(query)
+  const rows = (await fetchWmsInventoryOrganizationOptions(query.tenantId, 'company'))
     .filter((row) => Boolean(row.enabledOn))
     .map((row): WmsInitializationStatusRow => ({
       ...row,
@@ -318,7 +356,7 @@ export async function fetchWmsInitializationStatusPage(query: {
       (!query.status || row.initializationStatus === query.status)
   )
   return {
-    data: filtered.slice((query.current - 1) * query.size, query.current * query.size),
+    data: filtered.slice(pageRange.from, pageRange.to + 1),
     total: filtered.length
   }
 }
@@ -436,6 +474,7 @@ export async function fetchWmsPurchaseMaterials(params: {
   current: number
   size: number
 }): Promise<{ data: WmsPurchaseMaterial[]; total: number }> {
+  const pageRange = buildSupabasePageRange(params)
   let request = supabase
     .from('mdm_material')
     .select(
@@ -445,12 +484,13 @@ export async function fetchWmsPurchaseMaterials(params: {
     .eq('tenant_id', params.tenantId)
     .eq('status', 'enabled')
     .order('material_code')
+    .order('id')
   if (params.keyword.trim())
     request = request.or(
       buildOrIlikeFilter(['material_code', 'material_name', 'description'], params.keyword)
     )
   const { data, total } = await responseHandle<WmsPurchaseMaterial[]>(
-    () => request.range((params.current - 1) * params.size, params.current * params.size - 1),
+    () => request.range(pageRange.from, pageRange.to),
     readOptions
   )
   return { data: data ?? [], total: total ?? 0 }
@@ -468,7 +508,7 @@ export async function fetchWmsPurchaseOptions(
       'documentTypeName'
     ],
     mdm_business_type: [
-      'id,tenant_id,document_type_id,business_type_code,business_type_name',
+      'id,tenant_id,document_type_id,document_type_ids,menu_ids,is_default,enabled,business_type_code,business_type_name',
       'businessTypeCode',
       'businessTypeName'
     ],
@@ -489,6 +529,9 @@ export async function fetchWmsPurchaseOptions(
       code: typeof code === 'string' ? code : '',
       name: typeof name === 'string' ? name : '',
       documentTypeId: typeof row.documentTypeId === 'string' ? row.documentTypeId : undefined,
+      documentTypeIds: Array.isArray(row.documentTypeIds)
+        ? row.documentTypeIds.filter((id): id is string => typeof id === 'string')
+        : undefined,
       isDefault: row.isDefault === true,
       enabled: row.enabled === true,
       menuIds: Array.isArray(row.menuIds)
@@ -509,6 +552,15 @@ export async function fetchWmsPurchaseDocumentTypes(
   if (!menu) return []
   const rows = await fetchWmsPurchaseOptions('mdm_document_type', tenantId)
   return rows.filter((row) => row.enabled && row.menuIds?.includes(menu.id))
+}
+
+export async function fetchWmsPurchaseMenuId(menuName: string): Promise<string> {
+  const { data } = await responseHandle<{ id: string }>(
+    () => supabase.from('sys_menu').select('id').eq('name', menuName).eq('type', 'menu').single(),
+    readOptions
+  )
+  if (!data?.id) throw new Error('单据菜单功能未配置，请联系管理员')
+  return data.id
 }
 
 export async function fetchWmsPurchaseWarehouses(
@@ -552,6 +604,7 @@ export async function fetchWmsPurchaseSourceBatches(params: {
   current: number
   size: number
 }): Promise<{ data: WmsPurchaseSourceBatch[]; total: number }> {
+  const pageRange = buildSupabasePageRange(params)
   let request = supabase
     .from('wms_inventory_batch')
     .select('id,batch_no,quantity,bin_id,received_at', { count: 'exact' })
@@ -564,6 +617,7 @@ export async function fetchWmsPurchaseSourceBatches(params: {
     .eq('status', params.stockStatus === 'available' ? 'normal' : params.stockStatus)
     .gt('quantity', 0)
     .order('received_at', { ascending: false })
+    .order('id')
   request = params.binId ? request.eq('bin_id', params.binId) : request.is('bin_id', null)
   request = params.projectId
     ? request.eq('project_id', params.projectId)
@@ -574,7 +628,7 @@ export async function fetchWmsPurchaseSourceBatches(params: {
   request = params.ownerId ? request.eq('owner_id', params.ownerId) : request.is('owner_id', null)
   if (params.keyword.trim()) request = request.ilike('batch_no', `%${params.keyword.trim()}%`)
   const { data, total } = await responseHandle<WmsPurchaseSourceBatch[]>(
-    () => request.range((params.current - 1) * params.size, params.current * params.size - 1),
+    () => request.range(pageRange.from, pageRange.to),
     readOptions
   )
   return { data: data ?? [], total: total ?? 0 }

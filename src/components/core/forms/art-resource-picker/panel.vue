@@ -241,7 +241,7 @@
   import useResourceStore from '@/store/modules/resource'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
-  import { pageInfoHandler } from '@utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatSize, viewAttachment } from '@/utils/file'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
@@ -1100,7 +1100,7 @@
       loadError.value = false
       resources.value = []
       const { suffix, originName, page: current, pageSize: size } = queryParams.value
-      const { from, to } = pageInfoHandler({ current, size })
+      const { from, to } = buildSupabasePageRange({ current, size })
       const params = {
         originName,
         suffix,

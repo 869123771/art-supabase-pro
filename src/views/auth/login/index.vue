@@ -56,7 +56,8 @@
             :show-submit="false"
             v-else-if="!showFeishuQr"
             ref="formRef"
-            v-model="formData"
+            :model-value="formData"
+            @update:model-value="replaceReactiveModel(formData, $event)"
             :rules="rules"
             :key="formKey"
             @submit="handleSubmit"
@@ -197,6 +198,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
@@ -208,7 +210,7 @@
     login,
     signInWithAuthChannel
   } from '@/api/auth'
-  import { MenuProcessor } from '@/router/core/MenuProcessor'
+  import { MenuProcessor } from '@/router/core/menu-processor'
   import { clearAccessibleApplicationsCache } from '@/api/system-manage/application-access'
   import { getFirstMenuPath } from '@/utils/navigation/route'
   import { useWebsiteConfig } from '@/hooks'

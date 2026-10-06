@@ -4,10 +4,10 @@
  * @module router/core
  */
 
-export { RouteRegistry } from './RouteRegistry'
-export { ComponentLoader } from './ComponentLoader'
-export { RouteValidator } from './RouteValidator'
-export { RouteTransformer } from './RouteTransformer'
-export { IframeRouteManager } from './IframeRouteManager'
-export { MenuProcessor } from './MenuProcessor'
-export { RoutePermissionValidator } from './RoutePermissionValidator'
+export { RouteRegistry } from './route-registry'
+export { ComponentLoader } from './component-loader'
+export { RouteValidator } from './route-validator'
+export { RouteTransformer } from './route-transformer'
+export { IframeRouteManager } from './iframe-route-manager'
+export { MenuProcessor } from './menu-processor'
+export { RoutePermissionValidator } from './route-permission-validator'

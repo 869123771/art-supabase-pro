@@ -44,7 +44,7 @@ export interface RunQueryOptions {
   formatErrorMessage?: (error: unknown, responseBody?: unknown) => string
   action?: SupabaseAction
   breakReturn?: boolean //打断返回
-  requireAffected?: boolean // 写操作是否要求至少影响一行，用于识别 RLS 导致的 0 行更新/删除
+  requireAffected?: boolean // 写操作至少影响一行；表写入使用 count，返回删除数量的 RPC 使用数值 data
 }
 
 /**
@@ -173,7 +173,8 @@ export function useSupabase() {
       return { data: null, error: returnedError }
     }
 
-    if (requireAffected && count === 0) {
+    const affectedCount = typeof data === 'number' ? data : count
+    if (requireAffected && affectedCount === 0) {
       const message = options.noAffectedMessage || '当前账号没有权限操作该数据，或数据不存在'
       if (showMessage || showErrorMessage) {
         ElMessage.error(message)

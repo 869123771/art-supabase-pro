@@ -133,7 +133,7 @@
     type MasterDataDeleteGuardOpenOptions
   } from '@/components/business/master-data-delete-guard/index.vue'
   import { fetchRecordDeleteDependencies } from '@/api/master-data-delete'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatWithDayjs } from '@/utils/time'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
@@ -400,7 +400,7 @@
   })
 
   function fetchTableData(params: TableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchWorkflowDefinitionList({ ...params, from, to })
   }
 

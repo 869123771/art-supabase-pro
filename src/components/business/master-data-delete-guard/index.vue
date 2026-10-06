@@ -88,11 +88,15 @@
                 <ElButton
                   v-if="
                     record.targetId &&
-                    (group.meta.routeName
-                      ? router.hasRoute(group.meta.routeName)
-                      : group.meta.routePath)
+                    (group.meta.canNavigate?.() ?? true) &&
+                    (group.meta.resolveRouteName
+                      ? group.meta.routeNames?.some((name) => router.hasRoute(name))
+                      : group.meta.routeName
+                        ? router.hasRoute(group.meta.routeName)
+                        : group.meta.routePath)
                   "
                   link
+                  :disabled="resolvingDependency"
                   type="primary"
                   @click="openDependency(group.meta, record)"
                 >
@@ -179,7 +183,14 @@
     description: string
     actionLabel: string
     routeName?: string
+    routeParams?: (
+      record: MasterDataDeleteDependencyDetail
+    ) => Record<string, string> | null | Promise<Record<string, string> | null>
     routePath?: string
+    routeQuery?: Record<string, string>
+    routeNames?: string[]
+    canNavigate?: () => boolean
+    resolveRouteName?: (record: MasterDataDeleteDependencyDetail) => Promise<string | null>
     order: number
   }
 
@@ -691,12 +702,17 @@
     }
   }
 
+  const resolvingDependency = ref(false)
   const openDependency = async (
     meta: DependencyMeta,
     record: MasterDataDeleteDependencyDetail
   ): Promise<void> => {
     const options = currentOptions.value
     if (!options) return
+    if (meta.canNavigate && !meta.canNavigate()) {
+      ElMessage.error('当前账号无权查看关联记录，请联系业务负责人核对')
+      return
+    }
     const resourceQueryKeyMap: Record<MasterDataDeleteResourceType, string> = {
       carrier: 'carrierId',
       driver: 'driverId',
@@ -730,6 +746,29 @@
         options.resources.find((item) => item.id === record.resourceId)?.label ??
         options.resourceLabel
     }
+    if (meta.resolveRouteName || meta.routeName) {
+      if (resolvingDependency.value) return
+      resolvingDependency.value = true
+      try {
+        const name = meta.resolveRouteName ? await meta.resolveRouteName(record) : meta.routeName
+        if (!name || !router.hasRoute(name)) {
+          ElMessage.error('关联记录已不存在或当前账号无权查看，请重新检查关联')
+          return
+        }
+        const params = await meta.routeParams?.(record)
+        if (params === null) {
+          ElMessage.error('关联记录已不存在或当前账号无权查看，请重新检查关联')
+          return
+        }
+        await dialogRef.value?.handleClose(true)
+        await router.push({ name, params, query: { ...query, ...meta.routeQuery } })
+      } catch (error) {
+        ElMessage.error(getFriendlySupabaseErrorMessage(error, '关联记录定位失败，请重试'))
+      } finally {
+        resolvingDependency.value = false
+      }
+      return
+    }
     if (record.dependencyCode === 'vehicle_reminder_work_order') {
       const reminderRoutes = {
         insurance: '/vms/reminder-manage/insurance-expiry',
@@ -758,10 +797,6 @@
       return
     }
     await dialogRef.value?.handleClose(true)
-    if (meta.routeName) {
-      await router.push({ name: meta.routeName, query })
-      return
-    }
     if (meta.routePath) await router.push({ path: meta.routePath, query })
   }
 

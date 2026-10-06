@@ -171,13 +171,14 @@ export const exportExcel = async <TRecord extends object>(
 
 export async function importExcelFile(file: File): Promise<Array<Record<string, unknown>>> {
   const XLSX = await import('@/vendor/sheetjs/xlsx.mjs')
+  const isCsv = file.name.toLowerCase().endsWith('.csv')
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
     reader.onload = (event) => {
       try {
         const data = event.target?.result
-        const workbook = XLSX.read(data, { type: 'array' })
+        const workbook = XLSX.read(data, { type: isCsv ? 'string' : 'array' })
         const firstSheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[firstSheetName]
         const rows = XLSX.utils.sheet_to_json(worksheet)
@@ -188,7 +189,8 @@ export async function importExcelFile(file: File): Promise<Array<Record<string, 
     }
 
     reader.onerror = (error) => reject(error)
-    reader.readAsArrayBuffer(file)
+    if (isCsv) reader.readAsText(file, 'UTF-8')
+    else reader.readAsArrayBuffer(file)
   })
 }
 

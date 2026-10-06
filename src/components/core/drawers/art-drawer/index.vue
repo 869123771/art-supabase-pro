@@ -295,7 +295,7 @@
   } = overlay
 
   const normalizedContentHeight = computed(() => {
-    if (isFullscreen.value) return 'calc(100vh - 86px)'
+    if (isFullscreen.value) return undefined
     const height = options.value.contentHeight
     return typeof height === 'number' ? `${height}px` : height
   })
@@ -435,7 +435,8 @@
   const getDrawerInstance = () => drawerRef.value
 
   const scrollTo = (scrollOptions: ArtScrollOptions) => {
-    scrollbarRef.value?.scrollTo(scrollOptions as never)
+    if (typeof scrollOptions === 'number') scrollbarRef.value?.scrollTo(scrollOptions)
+    else scrollbarRef.value?.scrollTo(scrollOptions)
   }
 
   const handleWheelBoundary = (event: WheelEvent): void => {

@@ -6,7 +6,7 @@ import {
   preloadRouteComponent,
   registerApplicationViewModules,
   resolveHostedApplicationCode
-} from '../../src/router/core/ComponentLoader'
+} from '../../src/router/core/component-loader'
 
 test('reuses an in-flight route component request and retries after a failure', async () => {
   let calls = 0

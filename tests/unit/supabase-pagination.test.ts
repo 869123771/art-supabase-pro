@@ -2,9 +2,31 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   buildSupabaseRpcRange,
+  buildSupabasePageRange,
   fetchAllRangePages,
   type SupabaseRange
 } from '../../src/utils/supabase/pagination'
+
+test('page ranges reject invalid pages and integer overflow', () => {
+  assert.deepEqual(buildSupabasePageRange({ current: 2, size: 2 ** 52 }), {
+    from: 2 ** 52,
+    to: Number.MAX_SAFE_INTEGER
+  })
+  assert.throws(
+    () => buildSupabasePageRange({ current: 3, size: 3002399751580331 }),
+    /分页范围无效/
+  )
+  assert.deepEqual(buildSupabasePageRange({ current: 1, size: 20 }), { from: 0, to: 19 })
+  assert.deepEqual(buildSupabasePageRange({ current: 4, size: 20 }), { from: 60, to: 79 })
+  for (const value of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => buildSupabasePageRange({ current: value, size: 20 }), /分页范围无效/)
+    assert.throws(() => buildSupabasePageRange({ current: 1, size: value }), /分页范围无效/)
+  }
+  assert.throws(
+    () => buildSupabasePageRange({ current: Number.MAX_SAFE_INTEGER, size: 2 }),
+    /分页范围无效/
+  )
+})
 
 test('RPC ranges remain inclusive and ordered after clamping negative offsets', () => {
   assert.deepEqual(buildSupabaseRpcRange(20, 39), { p_from: 20, p_to: 39 })

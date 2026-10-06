@@ -168,7 +168,7 @@
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import {
     fetchWorkflowCallbackOutbox,
@@ -466,7 +466,7 @@
   )
 
   function fetchTableData(params: MonitorTableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchWorkflowMonitorList({ ...params, from, to })
   }
 

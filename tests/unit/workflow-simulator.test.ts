@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   createWorkflowSimulationContext,
   inspectWorkflowConfig,
+  inspectWorkflowAssigneeReferences,
   simulateWorkflow
 } from '../../src/views/workflow/modules/workflow-simulator'
 
@@ -10,6 +11,53 @@ const fields: Api.Workflow.WorkflowContextField[] = [
   { key: 'amount', label: '费用金额', valueType: 'number' },
   { key: 'costType', label: '费用类型', valueType: 'text' }
 ]
+
+test('assignee reference inspection covers every node without modifying the draft', () => {
+  const userNode = createNode('users', 1, { operator: 'always' })
+  userNode.assignee = { type: 'users', userIds: ['active-user', 'unavailable-user'] }
+  const roleNode = createNode('roles', 2, { operator: 'always' })
+  roleNode.assignee = { type: 'roles', roleCodes: ['ACTIVE', 'UNAVAILABLE'] }
+  const initiatorNode = createNode('initiator', 3, { operator: 'always' })
+  initiatorNode.assignee = { type: 'initiator' }
+  const nodes = [userNode, roleNode, initiatorNode]
+  const snapshot = JSON.stringify(nodes)
+  const diagnostics = inspectWorkflowAssigneeReferences(
+    nodes,
+    [{ id: 'active-user', userEmail: 'test@example.invalid' }],
+    [{ id: 'role-active', roleCode: 'ACTIVE', roleName: '有效角色' }]
+  )
+  assert.deepEqual(
+    diagnostics.map((item) => item.nodeKey),
+    ['users', 'roles']
+  )
+  assert.ok(diagnostics.every((item) => item.severity === 'error'))
+  assert.ok(diagnostics[0].description.includes('节点 1'))
+  assert.ok(diagnostics[1].description.includes('节点 2'))
+  assert.equal(
+    diagnostics.some((item) => item.description.includes('unavailable-user')),
+    false
+  )
+  assert.equal(JSON.stringify(nodes), snapshot)
+})
+
+test('assignee reference inspection accepts complete references and blocks unavailable collections', () => {
+  const node = createNode('roles', 1, { operator: 'always' })
+  assert.deepEqual(
+    inspectWorkflowAssigneeReferences(
+      [node],
+      [],
+      [
+        {
+          id: 'finance',
+          roleCode: 'R_FINANCE',
+          roleName: '财务'
+        }
+      ]
+    ),
+    []
+  )
+  assert.equal(inspectWorkflowAssigneeReferences([node], [], []).length, 1)
+})
 
 function createNode(
   key: string,

@@ -21,7 +21,26 @@
  * @module utils/navigation/route
  */
 
-import { AppRouteRecord } from '@/types'
+import type { AppRouteRecord } from '@/types'
+
+/** 菜单展示与默认首页落点不同：隐藏的全屏页面也不展示在导航中。 */
+export const isVisibleMenuPage = (item: AppRouteRecord): boolean =>
+  Boolean(
+    !item.meta.isHide &&
+    (item.path?.trim() || item.meta.link || item.meta.isIframe === true) &&
+    (item.component || item.meta.link || item.meta.isIframe === true)
+  )
+
+/** 隐藏空目录，保留可访问的父页面；不修改权限过滤后的输入树。 */
+export const filterVisibleMenuItems = (items: AppRouteRecord[]): AppRouteRecord[] => {
+  const visible: AppRouteRecord[] = []
+  for (const item of items) {
+    if (item.meta.isHide) continue
+    const children = item.children ? filterVisibleMenuItems(item.children) : undefined
+    if (children?.length || isVisibleMenuPage(item)) visible.push({ ...item, children })
+  }
+  return visible
+}
 
 // 检查是否为 iframe 路由
 export function isIframe(url: string): boolean {

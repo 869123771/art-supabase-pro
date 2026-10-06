@@ -1672,6 +1672,10 @@
         border-top: 1px solid var(--art-gray-200);
         border-left: 0;
       }
+
+      &__canvas {
+        height: 440px;
+      }
     }
   }
 

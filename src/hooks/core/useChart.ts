@@ -55,6 +55,8 @@ import { useSettingStore } from '@/store/modules/setting'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
 import { h, render, type WatchSource } from 'vue'
+import { usePreferredReducedMotion } from '@vueuse/core'
+import type { SeriesOption } from 'echarts'
 
 // 图表主题配置
 export const useChartOps = (): ChartThemeConfig => {
@@ -94,9 +96,35 @@ export function useChart(options: UseChartOptions = {}) {
 
   const settingStore = useSettingStore()
   const { isDark, menuOpen, menuType } = storeToRefs(settingStore)
+  const motionPreference = usePreferredReducedMotion()
+  const prefersReducedMotion = computed(() => motionPreference.value === 'reduce')
 
   const chartRef = ref<HTMLElement>()
   let chart: echarts.ECharts | null = null
+  let latestOptions: EChartsOption | undefined
+  const applyChartOptions = (options: EChartsOption): void => {
+    latestOptions = options
+    const animation = !prefersReducedMotion.value && (options.animation ?? true)
+    const series = options.series
+    const applySeriesMotion = (item: SeriesOption): SeriesOption => ({
+      ...item,
+      animation: !prefersReducedMotion.value && (item.animation ?? animation)
+    })
+    chart?.setOption({
+      ...options,
+      animation,
+      ...(series
+        ? {
+            series: Array.isArray(series)
+              ? series.map(applySeriesMotion)
+              : applySeriesMotion(series)
+          }
+        : {})
+    })
+  }
+  watch(prefersReducedMotion, () => {
+    if (latestOptions && !emptyStateDiv && !isDestroyed) applyChartOptions(latestOptions)
+  })
   let intersectionObserver: IntersectionObserver | null = null
   let containerResizeObserver: ResizeObserver | null = null
   let pendingOptions: EChartsOption | null = null
@@ -211,9 +239,8 @@ export function useChart(options: UseChartOptions = {}) {
           // 使用 requestAnimationFrame 优化主题更新
           scheduleFrame(() => {
             if (chart && !isDestroyed) {
-              const currentOptions = chart.getOption()
-              if (currentOptions) {
-                updateChart(currentOptions as EChartsOption)
+              if (latestOptions && !emptyStateDiv) {
+                updateChart(latestOptions)
               }
             }
           })
@@ -438,13 +465,12 @@ export function useChart(options: UseChartOptions = {}) {
               if (!isDestroyed && pendingOptions) {
                 try {
                   // 元素变为可见，初始化图表
-                  if (!chart) {
-                    chart = echarts.init(entry.target as HTMLElement)
-                  }
+                  const visibleOptions = pendingOptions
+                  performChartInit(visibleOptions)
 
                   // 触发自定义事件，让组件处理动画逻辑
                   const event = new CustomEvent('chartVisible', {
-                    detail: { options: pendingOptions }
+                    detail: { options: visibleOptions }
                   })
                   entry.target.dispatchEvent(event)
 
@@ -487,7 +513,7 @@ export function useChart(options: UseChartOptions = {}) {
       setupThemeWatcher()
     }
     if (chart && !isDestroyed) {
-      chart.setOption(options)
+      applyChartOptions(options)
       pendingOptions = null
     }
   }
@@ -495,6 +521,11 @@ export function useChart(options: UseChartOptions = {}) {
   // 图表空数据也使用统一的反馈组件
   const emptyStateManager = {
     create: () => {
+      pendingOptions = null
+      if (initTimerId !== null) {
+        clearTimeout(initTimerId)
+        initTimerId = null
+      }
       if (!chartRef.value || emptyStateDiv) return
 
       emptyStateDiv = document.createElement('div')
@@ -576,7 +607,7 @@ export function useChart(options: UseChartOptions = {}) {
         initChart(options)
         return
       }
-      chart.setOption(options)
+      applyChartOptions(options)
     } catch (error) {
       console.error('图表更新失败:', error)
     }
@@ -617,6 +648,7 @@ export function useChart(options: UseChartOptions = {}) {
     clearTimers()
     clearStyleCache()
     pendingOptions = null
+    latestOptions = undefined
   }
 
   // 获取图表实例
@@ -646,6 +678,7 @@ export function useChart(options: UseChartOptions = {}) {
   return {
     isDark,
     chartRef,
+    prefersReducedMotion,
     initChart,
     updateChart,
     handleResize,

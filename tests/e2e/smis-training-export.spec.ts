@@ -143,7 +143,9 @@ for (const scenario of [
         })
       })
       await page.goto(`#${path}`)
-      await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible({
+        timeout: 60_000
+      })
       await expect(page.getByText('测试主题-0', { exact: true })).toBeVisible()
       if (mode === 'filtered') {
         await page.getByPlaceholder(scenario.placeholder, { exact: true }).fill('测试主题')

@@ -139,6 +139,23 @@ test('hides unknown English implementation details behind the caller fallback', 
   )
 })
 
+test('shows a safe overlap reason without exposing unique constraint details', () => {
+  assert.equal(
+    getFriendlySupabaseErrorMessage({
+      code: '23505',
+      message: '该资金账户存在期间重叠的有效对账批次'
+    }),
+    '该资金账户存在期间重叠的有效对账批次'
+  )
+  assert.equal(
+    getFriendlySupabaseErrorMessage({
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "内部批次约束"'
+    }),
+    '相同数据已存在，请勿重复提交'
+  )
+})
+
 test('converts common network failures into actionable guidance', () => {
   assert.equal(
     getFriendlySupabaseErrorMessage(new TypeError('Failed to fetch')),

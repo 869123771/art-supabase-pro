@@ -15,7 +15,7 @@
  */
 import { AppRouteRecord } from '@/types/router'
 import { router } from '@/router'
-import { preloadRouteComponent } from '@/router/core/ComponentLoader'
+import { preloadRouteComponent } from '@/router/core/component-loader'
 import { isNavigableMenuItem } from './route'
 
 const findFirstLeafMenu = (items: AppRouteRecord[]): AppRouteRecord | undefined => {

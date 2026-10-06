@@ -10,12 +10,16 @@ import {
   validateTasks
 } from '../../modules/art-supabase-mdm/src/views/production/operation-template/modules/template-model'
 
-test('template copies isolate task arrays and omit server-owned fields', () => {
+test('template payload preserves the resolved tenant and isolates tasks without server-owned fields', () => {
   const source = {
     ...createTemplate(),
     id: 'server-id',
     tenantId: 'tenant',
     totalScore: 999,
+    createBy: 'server-audit',
+    createTime: '2026-01-01',
+    updateBy: 'server-audit',
+    updateTime: '2026-01-02',
     name: '  装配检查  '
   }
   source.items[0] = {
@@ -28,8 +32,15 @@ test('template copies isolate task arrays and omit server-owned fields', () => {
   const payload = templatePayload(source)
   assert.equal(payload.name, '装配检查')
   assert.equal('id' in payload, false)
-  assert.equal('tenantId' in payload, false)
+  assert.equal(payload.tenantId, 'tenant')
   assert.equal('totalScore' in payload, false)
+  for (const key of ['createBy', 'createTime', 'updateBy', 'updateTime']) {
+    assert.equal(key in payload, false)
+  }
+  assert.deepEqual(
+    Object.keys(payload).sort(),
+    ['tenantId', 'name', 'items', 'sort', 'textColor', 'tagType', 'enabled'].sort()
+  )
   payload.items[0].choices.push('不合格')
   assert.equal(source.items[0].choices.length, 1)
 })

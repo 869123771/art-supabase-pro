@@ -238,6 +238,7 @@ export async function syncFileViewerAssets(
 
 export function createFileViewerAssetSyncPlugin(options: FileViewerAssetSyncPluginOptions): Plugin {
   let resolvedConfig: ResolvedConfig | undefined
+  let outputWritten = false
 
   return {
     name: 'file-viewer-asset-sync',
@@ -248,11 +249,18 @@ export function createFileViewerAssetSyncPlugin(options: FileViewerAssetSyncPlug
     configResolved(config) {
       resolvedConfig = config
     },
+    buildStart() {
+      outputWritten = false
+    },
+    writeBundle() {
+      outputWritten = true
+    },
     closeBundle: {
       order: 'post',
       sequential: true,
       async handler() {
-        if (!options.enabled) return
+        // closeBundle also runs after a failed build; never recreate partial output.
+        if (!options.enabled || !outputWritten) return
         if (!resolvedConfig) throw new Error('Vite 配置尚未完成，无法同步 File Viewer 资源')
 
         const targetRoot = path.resolve(resolvedConfig.root, resolvedConfig.build.outDir)

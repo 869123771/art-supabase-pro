@@ -1,3 +1,5 @@
+import type { WmsInventoryOrganizationOption } from './wms-inventory-organization'
+
 export type WmsPurchaseKind =
   | 'initial_inbound'
   | 'initial_return'
@@ -16,20 +18,10 @@ export interface WmsPurchaseOption {
   code: string
   tenantId: string
   documentTypeId?: string
+  documentTypeIds?: string[]
   isDefault?: boolean
   enabled?: boolean
   menuIds?: string[]
-}
-
-export interface WmsPurchaseOrganization {
-  id: string
-  tenantId: string
-  organizationCode: string
-  organizationName: string
-  organizationType: string
-  status: string
-  enabledOn: string | null
-  initializationClosedAt: string | null
 }
 
 export interface WmsPendingInitializationDocument {
@@ -252,6 +244,6 @@ export interface WmsPurchasePayload extends Omit<
   id?: string
 }
 
-export interface WmsInitializationStatusRow extends WmsPurchaseOrganization {
+export interface WmsInitializationStatusRow extends WmsInventoryOrganizationOption {
   initializationStatus: 'initialized' | 'not_initialized'
 }

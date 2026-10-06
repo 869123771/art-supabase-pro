@@ -75,7 +75,7 @@
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatWithDayjs } from '@/utils/time'
   import SystemParamDialog from './modules/system-param-dialog.vue'
 
@@ -257,7 +257,7 @@
   }
 
   const fetchTableData = (params: TableParams) => {
-    const { from, to } = pageInfoHandler({
+    const { from, to } = buildSupabasePageRange({
       current: params.current,
       size: params.size
     })

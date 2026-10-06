@@ -4,14 +4,24 @@ import { expect, type Page, type TestInfo } from '@playwright/test'
 export async function assertTableFocusContract(
   page: Page,
   testInfo: TestInfo,
-  contextSelectors: string[] = []
+  contextSelectors: string[] = [],
+  contentSelector = '.el-table'
 ) {
   const query = page.locator('.art-table-query:visible')
   const header = page.locator('.business-workspace-header')
   const search = query.locator('.art-search-bar').first()
   const searchWasVisible = await search.isVisible()
+  const pagination = query.locator('.el-pagination')
+  const paginationCount = await pagination.count()
   await expect(query).toHaveCount(1)
   await expect(header).toBeVisible()
+  // Clicking an off-screen switch first scrolls its container; measure from that interaction position.
+  await expect(async () => {
+    await page
+      .getByRole('switch', { name: '进入专注模式', exact: true })
+      .locator('..')
+      .scrollIntoViewIfNeeded()
+  }).toPass({ timeout: 10_000 })
   const initialBox = await query.boundingBox()
   if (!initialBox) throw new Error('无法读取表格工作区位置')
   await expect(
@@ -29,8 +39,9 @@ export async function assertTableFocusContract(
     await expect
       .poll(async () => (await query.boundingBox())?.y ?? Infinity)
       .toBeLessThan(initialBox.y)
-    await expect(query.locator('.el-table')).toBeVisible()
-    await expect(query.locator('.el-pagination')).toBeVisible()
+    await expect(query.locator(contentSelector)).toBeVisible()
+    await expect(pagination).toHaveCount(paginationCount)
+    if (paginationCount) await expect(pagination).toBeVisible()
     for (const selector of contextSelectors) await expect(page.locator(selector)).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
@@ -47,7 +58,7 @@ export async function assertTableFocusContract(
 
   await enter()
   await page.screenshot({ path: testInfo.outputPath('table-focus.png'), animations: 'disabled' })
-  if (contextSelectors.length && (page.viewportSize()?.width ?? 1440) < 980) {
+  if (paginationCount && contextSelectors.length && (page.viewportSize()?.width ?? 1440) < 980) {
     const scrollPositions = await query.evaluate((node) => {
       const positions: number[] = []
       for (let parent = node.parentElement; parent; parent = parent.parentElement)

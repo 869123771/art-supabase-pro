@@ -1,5 +1,30 @@
 <template>
+  <div v-if="readonly" class="art-upload is-readonly flex flex-wrap gap-1.5" v-bind="$attrs">
+    <div
+      v-for="(file, index) in fileList"
+      :key="file.url"
+      class="preview-list upload-container relative"
+      :style="getSize"
+    >
+      <div class="preview-mask">
+        <ArtIconButton
+          class="preview-action"
+          icon="ri-eye-line"
+          :label="`预览图片 ${file.name}`"
+          @click="handleView(index)"
+        />
+      </div>
+      <el-image
+        :src="file.url"
+        :alt="file.name || '上传图片预览'"
+        class="absolute rounded-md"
+        :style="getSize"
+        :fit="previewFit"
+      />
+    </div>
+  </div>
   <el-upload
+    v-else
     ref="uploadRef"
     v-model:file-list="fileList"
     class="art-upload"
@@ -15,9 +40,26 @@
     :disabled="readonly || uploadDisabled"
     v-bind="$attrs"
   >
-    <slot name="default">
-      <component :is="btnRender()" v-show="!readonly && fileList.length === 0" ref="uploadBtnRef" />
-    </slot>
+    <template #trigger>
+      <slot name="default">
+        <component
+          :is="btnRender()"
+          v-show="!readonly && fileList.length === 0"
+          ref="uploadBtnRef"
+        />
+      </slot>
+    </template>
+    <button
+      v-if="canPickResource && fileList.length < limit"
+      type="button"
+      class="resource-picker-action"
+      :class="{ 'resource-picker-action--inline': fileList.length > 0 }"
+      aria-label="从资源库选择图片"
+      title="从资源库选择图片"
+      @click="isOpenResource = true"
+    >
+      <ArtSvgIcon icon="ri-folder-open-line" aria-hidden="true" />
+    </button>
     <template #file="{ file, index }">
       <div class="preview-list upload-container relative" :style="getSize">
         <template v-if="file.url">
@@ -38,19 +80,11 @@
             />
           </div>
           <el-image
-            ref="ElImageRefs"
             :src="file.url"
             :alt="file.name || '上传图片预览'"
             class="absolute rounded-md"
             :style="getSize"
             :fit="previewFit"
-            :zoom-rate="1.2"
-            :max-scale="7"
-            :min-scale="0.2"
-            :preview-src-list="previewList"
-            :initial-index="index"
-            :preview-teleported="true"
-            :z-index="10000"
           />
         </template>
         <div v-else-if="file.status === 'fail'" class="upload-state upload-state--error">
@@ -94,12 +128,26 @@
       @confirm="handleConfirm"
     />
   </el-upload>
+  <ElImageViewer
+    v-if="previewVisible"
+    :url-list="previewList"
+    :initial-index="previewIndex"
+    :z-index="10000"
+    teleported
+    hide-on-click-modal
+    @close="previewVisible = false"
+  />
 </template>
 
 <script setup lang="tsx">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { ElMessage, UploadUserFile, UploadRequestOptions, type UploadFile } from 'element-plus'
-  import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
+  import {
+    ElMessage,
+    ElImageViewer,
+    UploadUserFile,
+    UploadRequestOptions,
+    type UploadFile
+  } from 'element-plus'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -163,8 +211,9 @@
   const canPickResource = computed(
     () => showResourcePicker && !readonly && !uploadDisabled.value && !missingTenantTarget.value
   )
-  const previewList = ref<string[]>([])
-  const ElImageRefs = ref<Array<{ $el?: HTMLElement }> | { $el?: HTMLElement } | null>(null)
+  const previewList = computed(() => fileList.value.flatMap((file) => (file.url ? [file.url] : [])))
+  const previewVisible = ref(false)
+  const previewIndex = ref(0)
 
   const getSize = computed(() => {
     const toCssSize = (value: number | string): string =>
@@ -188,22 +237,6 @@
           missingTenantTarget.value && !uploadRequest ? '请先在页头选择业务所属租户' : undefined
         }
       >
-        {canPickResource.value && (
-          <ArtTooltip content="打开资源选择器">
-            <button
-              type="button"
-              class="resource-btn"
-              aria-label="从资源库选择图片"
-              onClick={(event: MouseEvent) => {
-                event.preventDefault()
-                event.stopPropagation()
-                isOpenResource.value = true
-              }}
-            >
-              <ArtSvgIcon icon="ri-folder-open-line" />
-            </button>
-          </ArtTooltip>
-        )}
         <div class="upload-prompt">
           <span class="upload-prompt__icon" aria-hidden="true">
             <ArtSvgIcon icon="ri-add-line" />
@@ -229,21 +262,6 @@
       }
     },
     { immediate: true }
-  )
-
-  const setPreviewData = useDebounceFn(() => {
-    previewList.value = fileList.value.reduce<string[]>((urls, item) => {
-      if (item.url) urls.push(item.url)
-      return urls
-    }, [])
-  })
-
-  watch(
-    () => fileList.value,
-    async () => {
-      await setPreviewData()
-    },
-    { immediate: true, deep: true }
   )
 
   watch(
@@ -317,11 +335,10 @@
   }
 
   const handleView = (index: number) => {
-    const imageRef = Array.isArray(ElImageRefs.value) ? ElImageRefs.value[index] : ElImageRefs.value
-    const previewElement = imageRef?.$el?.children[0]
-    if (previewElement instanceof HTMLElement) {
-      previewElement.click()
-    }
+    const url = fileList.value[index]?.url
+    if (!url) return
+    previewIndex.value = previewList.value.indexOf(url)
+    previewVisible.value = true
   }
 
   const handleRemove = (index: number) => {
@@ -349,6 +366,58 @@
 </script>
 
 <style scoped lang="scss">
+  .art-upload {
+    position: relative;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .resource-picker-action {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% - 2px);
+    height: 32px;
+    padding: 0;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    background: var(--art-gray-200);
+    border: 1px dashed var(--el-border-color);
+    border-width: 0 0 1px;
+    border-radius: 0.375rem 0.375rem 0 0;
+    transition:
+      color var(--art-motion-duration-fast) ease,
+      background-color var(--art-motion-duration-fast) ease,
+      border-color var(--art-motion-duration-fast) ease,
+      box-shadow var(--art-motion-duration-fast) ease;
+
+    .art-svg-icon {
+      font-size: 18px;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+      border-color: var(--el-color-primary);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-color) 28%, transparent);
+    }
+
+    &--inline {
+      position: relative;
+      width: 32px;
+      border-radius: var(--art-control-radius);
+    }
+  }
+
   :deep(.el-upload) {
     display: inline-flex;
     width: auto;
@@ -386,6 +455,19 @@
     }
   }
 
+  .art-upload:not(.is-readonly):hover .upload-container,
+  .art-upload:not(.is-readonly):focus-within .upload-container {
+    color: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+  }
+
+  .art-upload:hover .resource-picker-action,
+  .art-upload:focus-within .resource-picker-action {
+    color: var(--el-color-primary);
+    background: var(--el-color-primary-light-9);
+    border-color: var(--el-color-primary);
+  }
+
   .upload-container {
     position: relative;
     display: flex;
@@ -403,45 +485,6 @@
       border-color 300ms ease,
       box-shadow 300ms ease;
 
-    .resource-btn {
-      position: absolute;
-      top: 0;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: max(20%, 32px);
-      padding: 0;
-      margin-inline: auto;
-      color: var(--color-g-500);
-      cursor: pointer;
-      outline: none;
-      background-color: var(--art-gray-200);
-      border-color: var(--default-border-dashed);
-      border-style: dashed;
-      border-width: 0 0 1px;
-      border-radius: 0.375rem 0.375rem 0 0;
-      transition:
-        color 300ms ease,
-        background-color 300ms ease,
-        border-color 300ms ease;
-
-      .art-svg-icon {
-        font-size: 18px;
-      }
-
-      &:hover,
-      &:focus-visible {
-        color: var(--el-color-primary);
-        border-color: var(--el-color-primary);
-      }
-
-      &:focus-visible {
-        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-color) 28%, transparent);
-      }
-    }
-
     .upload-prompt {
       position: absolute;
       inset: 0;
@@ -456,7 +499,7 @@
     }
 
     &.has-resource-picker .upload-prompt {
-      inset: max(20%, 32px) 0 0;
+      inset: 32px 0 0;
     }
 
     &.is-disabled {

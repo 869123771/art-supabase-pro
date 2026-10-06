@@ -45,7 +45,8 @@
 
       <ArtForm
         ref="formRef"
-        v-model="formData"
+        :model-value="formData"
+        @update:model-value="replaceReactiveModel(formData, $event)"
         custom-layout
         root-class="lock-screen-form"
         :show-reset="false"
@@ -105,7 +106,8 @@
 
           <ArtForm
             ref="unlockFormRef"
-            v-model="unlockForm"
+            :model-value="unlockForm"
+            @update:model-value="replaceReactiveModel(unlockForm, $event)"
             custom-layout
             root-class="lock-screen-form"
             :show-reset="false"
@@ -147,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { Lock, WarningFilled } from '@element-plus/icons-vue'
   import { useScrollLock } from '@vueuse/core'

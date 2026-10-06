@@ -154,7 +154,7 @@
             </ElScrollbar>
           </aside>
 
-          <section class="art-data-select-dialog__main">
+          <section class="art-data-select-dialog__main" :class="{ 'has-error': loadError }">
             <div
               v-if="showSearch"
               class="art-data-select-dialog__search"
@@ -728,9 +728,9 @@
       }
 
       if (props.multiple) {
-        treeRef.value?.setCheckedKeys?.(draftKeys.value as never[], false)
+        treeRef.value?.setCheckedKeys?.(draftKeys.value, false)
       } else {
-        treeRef.value?.setCurrentKey?.(currentSingleKey.value as never)
+        treeRef.value?.setCurrentKey?.(currentSingleKey.value)
       }
       await nextTick()
     } finally {
@@ -844,7 +844,7 @@
 
   const selectNavigation = (row?: DataSelectRecord) => {
     selectedNavigationKey.value = row ? getNavigationKey(row) : undefined
-    navigationTreeRef.value?.setCurrentKey?.(selectedNavigationKey.value as never)
+    navigationTreeRef.value?.setCurrentKey?.(selectedNavigationKey.value)
     handleSearch()
   }
 
@@ -1617,6 +1617,11 @@
     .art-data-select-dialog__main {
       flex: 0 0 320px;
       min-height: 320px;
+
+      &.has-error {
+        flex-basis: 420px;
+        min-height: 420px;
+      }
     }
 
     .art-data-select-dialog__navigation {

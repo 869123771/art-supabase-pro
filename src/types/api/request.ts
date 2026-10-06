@@ -3,5 +3,6 @@ export interface ApiRequestOptions {
 }
 
 export interface ApiFeedbackOptions {
+  showMessage?: boolean
   showErrorMessage?: boolean
 }

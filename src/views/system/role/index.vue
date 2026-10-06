@@ -117,7 +117,7 @@
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import RolePermissionDialog from './modules/role-permission-dialog.vue'
   import { formatWithDayjs } from '@/utils/time'
-  import { pageInfoHandler } from '@utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -546,7 +546,7 @@
   const handleGetRoleList = async () => {
     const { roleName, roleCode, description, enabled, startTime, endTime } =
       searchParams as RoleSearchParams
-    const { from, to } = pageInfoHandler(pagination)
+    const { from, to } = buildSupabasePageRange(pagination)
     return await fetchRoleList({
       tenantId: selectedTenantId.value || undefined,
       organizationIds: selectedOrganizationIds.value,

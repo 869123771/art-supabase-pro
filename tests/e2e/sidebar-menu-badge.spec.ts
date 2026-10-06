@@ -33,6 +33,9 @@ for (const theme of ['light', 'dark'] as const) {
       expect(badgeBox.x - nameBox.x - nameBox.width).toBeGreaterThanOrEqual(7)
       expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(230)
       expect(await name.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
+      await page.getByRole('menuitem', { name: '业务分组', exact: true }).click()
+      await page.getByRole('menuitem', { name: '二级分组', exact: true }).click()
+      await expect(page.getByRole('menuitem', { name: '三级业务页面', exact: true })).toBeVisible()
       await page.screenshot({ path: testInfo.outputPath('sidebar-menu-badge.png') })
     })
   }

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import ExcelJS from 'exceljs'
 import { mockApplicationMenus } from './support/menu-rpc'
-import { tenantId, meta, installFixtures } from './support/inventory-fixtures'
+import { tenantId, meta, material, installFixtures } from './support/inventory-fixtures'
 
 for (const scenario of [
   {
@@ -162,17 +162,54 @@ for (const scenario of [
         return route.fulfill({ json: lines.slice(offset, offset + limit) })
       })
     }
+    let parentPageReads = 0
+    let scopedLineReads = 0
+    let unrelatedLineReads = 0
+    if (scenario.table === 'wms_purchase_document_list') {
+      await page.route('**/rest/v1/wms_purchase_document?*', (route) => {
+        const params = new URL(route.request().url()).searchParams
+        parentPageReads++
+        expect(params.get('kind')).toBe(`eq.${scenario.kind}`)
+        const offset = Number(params.get('offset') || 0)
+        const limit = Number(params.get('limit') || 20)
+        const parents = params.has('matchingLines.material.material_code')
+          ? [{ id: 'document-0' }]
+          : Array.from({ length: 501 }, (_, index) => ({ id: `document-${index}` }))
+        const data = parents.slice(offset, offset + limit)
+        return route.fulfill({
+          json: data,
+          headers: {
+            'content-range': `${offset}-${offset + data.length - 1}/${parents.length}`,
+            'access-control-expose-headers': 'content-range'
+          }
+        })
+      })
+    }
     await page.route(`**/rest/v1/${scenario.table}?*`, (route) => {
       const params = new URL(route.request().url()).searchParams
       if (scenario.kind) expect(params.get('kind')).toBe(`eq.${scenario.kind}`)
       const offset = Number(params.get('offset') || 0)
       const limit = Math.min(Number(params.get('limit') || 1000), 1000)
       offsets.push(offset)
-      const data = records.slice(offset, offset + limit)
+      const parentFilter = params.get('document_id')
+      const parentIds = parentFilter?.startsWith('in.(')
+        ? new Set(parentFilter.slice(4, -1).replaceAll('"', '').split(','))
+        : null
+      if (parentIds) {
+        scopedLineReads++
+        expect(parentIds.size).toBeLessThanOrEqual(20)
+      }
+      if (!parentIds && !params.has('material_code')) unrelatedLineReads++
+      const scopedRecords = records.filter(
+        (row) =>
+          (!parentIds || parentIds.has(row.document_id)) &&
+          (!params.has('material_code') || row.material_code === 'M-0')
+      )
+      const data = scopedRecords.slice(offset, offset + limit)
       return route.fulfill({
         status: 200,
         headers: {
-          'content-range': `${offset}-${offset + data.length - 1}/${records.length}`,
+          'content-range': `${offset}-${offset + data.length - 1}/${scopedRecords.length}`,
           'access-control-expose-headers': 'content-range'
         },
         json: data
@@ -190,6 +227,10 @@ for (const scenario of [
       await expect(body).toContainText(
         mode === '按明细' ? '分页导出物料' : issueRequest ? '单据汇总物料' : '共 2 项物料'
       )
+      if (scenario.table === 'wms_purchase_document_list' && mode === '按单据') {
+        expect(parentPageReads).toBeGreaterThan(0)
+        expect(scopedLineReads).toBeGreaterThan(0)
+      }
       const before = await body.innerText()
       offsets.length = 0
       const downloadPromise = page.waitForEvent('download')
@@ -209,10 +250,43 @@ for (const scenario of [
       }
       await expect.poll(() => body.innerText()).toBe(before)
     }
+    const documentModeResponse = page.waitForResponse((response) =>
+      response.url().includes(`/rest/v1/${scenario.table}?`)
+    )
+    await page.locator('.el-radio-button').filter({ hasText: '按单据' }).click()
+    await documentModeResponse
+    await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0)
+    const documentRows = page.locator('.el-table__body-wrapper').first().locator('tr.el-table__row')
+    await expect(documentRows).toHaveCount(20)
+    await expect(documentRows.nth(19)).toContainText('EXPORT-0019')
+    const identifiers = await documentRows
+      .locator('td')
+      .filter({ hasText: /EXPORT-\d{4}/ })
+      .allTextContents()
+    expect(new Set(identifiers).size).toBe(20)
+    if (scenario.table === 'wms_purchase_document_list') {
+      await page.getByRole('button', { name: '展开', exact: true }).click()
+      await page.getByPlaceholder('物料编码', { exact: true }).fill('M-0')
+      await page.getByRole('button', { name: '查询', exact: true }).click()
+      const body = page.locator('.el-table__body-wrapper').first()
+      await expect(body).toContainText('共 2 项物料')
+      await expect(body).not.toContainText('EXPORT-0001')
+      const readsBeforeExport = unrelatedLineReads
+      const downloadPromise = page.waitForEvent('download')
+      await page.getByRole('button', { name: '导出当前范围', exact: true }).click()
+      const download = await downloadPromise
+      const workbook = new ExcelJS.Workbook()
+      await workbook.xlsx.readFile((await download.path())!)
+      const sheet = workbook.worksheets[0]
+      expect(sheet.rowCount).toBe(2)
+      expect(sheet.getCell('A2').text).toBe('EXPORT-0000')
+      expect(Number(sheet.getCell('N2').text)).toBe(2)
+      expect(unrelatedLineReads).toBe(readsBeforeExport)
+    }
   })
 }
 
-test('初始库存单带出默认组织与所属功能类型', async ({ page }, testInfo) => {
+test('初始库存单带出默认组织及多关联单据下的业务类型', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   await installFixtures(page)
   const root = {
@@ -309,6 +383,15 @@ test('初始库存单带出默认组织与所属功能类型', async ({ page }, 
           document_type_name: '标准初始库存单',
           is_default: true,
           enabled: true
+        },
+        {
+          id: 'other-document-type',
+          tenant_id: tenantId,
+          menu_ids: ['stock-menu'],
+          document_type_code: 'OTHER_STOCK',
+          document_type_name: '其他库存单据',
+          is_default: false,
+          enabled: true
         }
       ]
     })
@@ -319,7 +402,8 @@ test('初始库存单带出默认组织与所属功能类型', async ({ page }, 
         {
           id: 'initial-business-type',
           tenant_id: tenantId,
-          document_type_id: 'initial-document-type',
+          document_type_id: 'other-document-type',
+          document_type_ids: ['other-document-type', 'initial-document-type'],
           menu_ids: ['stock-menu'],
           business_type_code: 'WMS_INITIAL_STOCK',
           business_type_name: '初始化库存',
@@ -327,6 +411,11 @@ test('初始库存单带出默认组织与所属功能类型', async ({ page }, 
           enabled: true
         }
       ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_material?*', (route) =>
+    route.fulfill({
+      json: [{ ...material, code: material.material_code, name: material.material_name }]
     })
   )
   await page.goto('#/wms/initialization/initial-stock', { waitUntil: 'domcontentloaded' })
@@ -347,6 +436,43 @@ test('初始库存单带出默认组织与所属功能类型', async ({ page }, 
   mkdirSync(visualDir, { recursive: true })
   await page.waitForTimeout(350)
   await page.screenshot({ path: join(visualDir, 'wms-initial-stock-defaults.png'), fullPage: true })
+  await drawer.getByRole('button', { name: '新增', exact: true }).click()
+  const materialPicker = page.locator('.el-dialog:visible').last()
+  await expect(materialPicker.locator('.el-table__body tr').first()).toBeVisible()
+  await materialPicker.locator('.el-table__body tr .el-checkbox').first().click()
+  await materialPicker.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(
+    drawer.locator('.wms-editable-line-table .el-table__body tr:first-child .el-select').first()
+  ).toBeVisible()
+  const selectWidths = await drawer
+    .locator('.art-table.wms-editable-line-table')
+    .evaluate((table) => {
+      const headings = Array.from(table.querySelectorAll('.el-table__header th')).map((cell) =>
+        cell.textContent?.replace(/^\s*\*\s*|\s*（必填）\s*$/g, '').trim()
+      )
+      const cells = table.querySelectorAll('.el-table__body tr:first-child td')
+      return ['库存类型', '库存状态', '货主类型'].map((label) => {
+        const index = headings.indexOf(label)
+        const cell = cells[index]
+        const control = cell?.querySelector('.el-select')
+        return {
+          label,
+          index,
+          ratio:
+            cell && control
+              ? control.getBoundingClientRect().width / cell.getBoundingClientRect().width
+              : 0
+        }
+      })
+    })
+  for (const field of selectWidths) expect(field.ratio, field.label).toBeGreaterThan(0.7)
+  await drawer
+    .locator('.wms-editable-line-table .el-table__body tr')
+    .first()
+    .locator('td')
+    .nth(selectWidths[0].index)
+    .scrollIntoViewIfNeeded()
+  await page.screenshot({ path: join(visualDir, 'wms-initial-stock-line-width.png') })
   await drawer.getByRole('button', { name: '取消', exact: true }).click()
   await expect(drawer).not.toBeVisible()
 
@@ -398,4 +524,157 @@ test('初始库存单带出默认组织与所属功能类型', async ({ page }, 
     expect(new Set(sheet.getColumn(4).values.slice(2)).size).toBe(1002)
     expect(offsets).toContain(500)
   }
+})
+
+test('期初销售出库单按菜单和多关联单据带出默认值', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  await installFixtures(page)
+  const root = {
+    id: 'sales-root',
+    parentId: null,
+    name: 'WmsWarehouseManagement',
+    path: '/wms',
+    component: '/index/index',
+    type: 'folder',
+    sort: 1,
+    meta: meta('WMS仓储管理')
+  }
+  const folder = {
+    id: 'sales-folder',
+    parentId: root.id,
+    name: 'WmsInitialization',
+    path: 'initialization',
+    component: '',
+    type: 'folder',
+    sort: 1,
+    meta: meta('初始化')
+  }
+  const menu = {
+    id: 'initial-sales-menu',
+    parentId: folder.id,
+    name: 'WmsInitialSalesOutbound',
+    path: 'initial-sales-outbound',
+    component: '/wms/initialization/initial-sales-outbound',
+    type: 'menu',
+    sort: 1,
+    meta: meta('期初销售出库单')
+  }
+  const buttons = ['View', 'Add', 'Copy', 'Edit', 'Delete', 'Export'].map((action) => ({
+    id: `initial-sales-${action}`,
+    parentId: menu.id,
+    name: `WmsInitialSalesOutbound:${action}`,
+    path: '',
+    component: '',
+    type: 'button',
+    sort: 1,
+    meta: meta(action),
+    children: []
+  }))
+  await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
+    route.fulfill({
+      json: [
+        { code: 'platform', name: '测试平台', baseUrl: '/' },
+        { code: 'wms', name: 'WMS仓储管理', baseUrl: '/wms/' }
+      ]
+    })
+  )
+  await mockApplicationMenus(page, { wms: [root, folder, menu, ...buttons] })
+  await page.route('**/rest/v1/sys_menu?*', (route) => route.fulfill({ json: { id: menu.id } }))
+  await page.route('**/rest/v1/mdm_organization?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'default-sales-org',
+          tenant_id: tenantId,
+          parent_id: null,
+          organization_code: 'SALES-ORG',
+          organization_name: '销售默认库存组织',
+          organization_type: 'company',
+          status: '1',
+          sort: 1,
+          is_system: false
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/wms_inventory_initialization?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: 'default-sales-org',
+          enabled_on: '2026-10-06',
+          is_default: true,
+          initialization_closed_at: null
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_document_type?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'sales-document-type',
+          tenant_id: tenantId,
+          menu_ids: [menu.id, 'other-menu'],
+          document_type_code: 'SALES_INITIAL',
+          document_type_name: '期初销售默认单据',
+          is_default: true,
+          enabled: true
+        },
+        {
+          id: 'other-document-type',
+          tenant_id: tenantId,
+          menu_ids: [menu.id],
+          document_type_code: 'OTHER_SALES',
+          document_type_name: '其他销售单据',
+          is_default: false,
+          enabled: true
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/mdm_business_type?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'sales-business-type',
+          tenant_id: tenantId,
+          document_type_id: 'other-document-type',
+          document_type_ids: ['other-document-type', 'sales-document-type'],
+          menu_ids: [menu.id],
+          business_type_code: 'SALES_INITIAL',
+          business_type_name: '期初销售默认业务',
+          is_default: true,
+          enabled: true
+        },
+        {
+          id: 'unrelated-business-type',
+          tenant_id: tenantId,
+          document_type_id: 'sales-document-type',
+          document_type_ids: ['sales-document-type'],
+          menu_ids: ['other-menu'],
+          business_type_code: 'UNRELATED',
+          business_type_name: '其他菜单业务',
+          is_default: true,
+          enabled: true
+        }
+      ]
+    })
+  )
+  await page.route('**/rest/v1/wms_initial_sales_document?*', (route) =>
+    route.fulfill({ status: 200, headers: { 'content-range': '*/0' }, json: [] })
+  )
+  await page.goto('#/wms/initialization/initial-sales-outbound', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '期初销售出库单', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
+  await page.getByRole('button', { name: '新增期初销售出库单' }).click()
+  const drawer = page.locator('.el-drawer:visible')
+  const visualDir = join(process.cwd(), '.artifacts', 'wms-visual', testInfo.project.name)
+  mkdirSync(visualDir, { recursive: true })
+  await page.screenshot({ path: join(visualDir, 'wms-initial-sales-defaults.png'), fullPage: true })
+  await expect(drawer.getByText('销售默认库存组织')).toBeVisible()
+  await expect(drawer.getByText('期初销售默认单据')).toBeVisible()
+  await expect(drawer.getByText('期初销售默认业务')).toBeVisible()
+  await expect(drawer.getByText('其他菜单业务')).toHaveCount(0)
 })

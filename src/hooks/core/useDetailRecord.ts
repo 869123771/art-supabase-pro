@@ -13,6 +13,7 @@ export function useDetailRecord<T>(
   const detail = shallowRef<T>()
   const activeId = ref('')
   const loading = ref(false)
+  const missing = ref(false)
   const loadError = shallowRef<Error | null>(null)
   let requestVersion = 0
 
@@ -21,10 +22,17 @@ export function useDetailRecord<T>(
     activeId.value = id
     loading.value = true
     loadError.value = null
+    missing.value = false
     try {
       const result = await fetchDetail(id)
       if (result.error) throw result.error
-      if (version === requestVersion) detail.value = result.data ?? undefined
+      if (version !== requestVersion) return
+      if (result.data == null) {
+        detail.value = undefined
+        missing.value = true
+        return
+      }
+      detail.value = result.data
     } catch (cause) {
       if (version !== requestVersion) return
       detail.value = undefined
@@ -40,11 +48,12 @@ export function useDetailRecord<T>(
     detail.value = seed
     loading.value = false
     loadError.value = null
+    missing.value = false
   }
 
   function retryLoad(): Promise<void> {
     return activeId.value ? loadDetail(activeId.value) : Promise.resolve()
   }
 
-  return { detail, activeId, loading, loadError, loadDetail, openDetail, retryLoad }
+  return { detail, activeId, loading, missing, loadError, loadDetail, openDetail, retryLoad }
 }

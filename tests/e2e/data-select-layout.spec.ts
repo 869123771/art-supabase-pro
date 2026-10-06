@@ -1,6 +1,9 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { mockApplicationMenus } from './support/menu-rpc'
 import { prepareAppearance } from './support/appearance'
+import { prepareIsolatedSession } from './support/isolated-session'
+
+test.use({ storageState: { cookies: [], origins: [] } })
 
 test.beforeEach(async ({ page }, testInfo) => {
   await prepareAppearance(page, {
@@ -10,40 +13,14 @@ test.beforeEach(async ({ page }, testInfo) => {
 })
 
 async function openDemo(page: Page) {
-  // Generic UI tests isolate identity latency; this does not grant real permissions.
-  const tenant = { id: 'select-test-tenant', tenant_code: 'test', tenant_name: '测试租户' }
-  await page.route('**/rest/v1/sys_user?*', (route) =>
-    route.fulfill({
-      json: {
-        id: 'select-test-user',
-        user_name: '测试用户',
-        user_email: 'test@example.invalid',
-        status: '1',
-        tenant_id: tenant.id,
-        tenant
-      }
-    })
-  )
-  await page.route('**/auth/v1/user', (route) =>
-    route.fulfill({
-      json: {
-        id: 'select-test-auth',
-        aud: 'authenticated',
-        role: 'authenticated'
-      }
-    })
-  )
-  await page.route('**/rest/v1/sys_param?*', (route) => route.fulfill({ json: [] }))
-  await page.route('**/rest/v1/sys_dictionary?*', (route) => route.fulfill({ json: [] }))
-  await page.route('**/rest/v1/sys_tenant?*', (route) => route.fulfill({ json: [tenant] }))
-  await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: true }))
+  await prepareIsolatedSession(page)
   // Use the existing synthetic widget data, without adding database menus or permissions.
   const menu = {
     id: 'test-select-widget',
     parentId: null,
     name: 'TestSelectWidget',
     path: '/widgets/data-select',
-    component: '/widgets/data-select/index',
+    component: '/widgets/data-select',
     type: 'menu',
     meta: { title: '数据选择器', is_enable: true, is_hide: false },
     children: []

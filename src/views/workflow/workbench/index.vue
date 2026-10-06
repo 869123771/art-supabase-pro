@@ -154,7 +154,7 @@
   } from '@/components/business/business-workspace-header/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -777,21 +777,21 @@
     )
   }
   function fetchPendingData(params: TaskTableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchPendingWorkflowTasks({ ...params, assigneeUserId: requireUserId(), from, to })
   }
   async function fetchGlobalPendingData(params: TaskTableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     const response = await fetchPlatformGlobalPendingWorkflowTasks({ ...params, from, to })
     globalPendingCount.value = response.data?.total ?? 0
     return response
   }
   function fetchHandledData(params: TaskTableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchHandledWorkflowTasks({ ...params, assigneeUserId: requireUserId(), from, to })
   }
   function fetchInitiatedData(params: InstanceTableParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchInitiatedWorkflowInstances({
       ...params,
       initiatorUserId: requireUserId(),

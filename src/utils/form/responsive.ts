@@ -95,3 +95,12 @@ export function calculateResponsiveSpan(
   // 如果 span 小于阈值，使用降级值
   return finalSpan >= config.threshold ? finalSpan : config.fallback
 }
+
+/** 操作区占用最后一行剩余空间；字段超出当前行时按完整列换行。 */
+export function calculateActionSpan(fieldSpans: readonly number[]): number {
+  const occupiedSpan = fieldSpans.reduce((occupied, fieldSpan) => {
+    return occupied + fieldSpan > 24 ? fieldSpan : occupied + fieldSpan
+  }, 0)
+
+  return occupiedSpan === 0 || occupiedSpan === 24 ? 24 : 24 - occupiedSpan
+}

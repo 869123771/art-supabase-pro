@@ -1,7 +1,10 @@
+import type { ApiFeedbackOptions } from '@/types/api/request'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseError } from '@/utils/supabase'
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
+import type { QueryResult } from '@/types/api/response'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -65,25 +68,39 @@ export async function fetchWorkflowDefinitionList(params: WorkflowDefinitionList
   })
 }
 
-export async function fetchWorkflowDefinitionDetail(id: string) {
+export async function fetchWorkflowDefinitionDetail(id: string, options: ApiFeedbackOptions = {}) {
   return await responseHandle<Api.Workflow.WorkflowDefinitionRecord>(
     () => supabase.from('wf_definition').select(DEFINITION_SELECT).eq('id', id).single(),
-    { showErrorMessage: true, breakReturn: true }
+    { showErrorMessage: options.showErrorMessage ?? true, breakReturn: true }
   )
 }
 
-export async function saveWorkflowDefinition(payload: Api.Workflow.WorkflowDefinitionSavePayload) {
+export async function saveWorkflowDefinition(
+  payload: Api.Workflow.WorkflowDefinitionSavePayload,
+  options: ApiFeedbackOptions = {}
+) {
   return await responseHandle<{ definitionId: string; versionId: string; versionNo: number }>(
     // Workflow config is an explicit JSON contract and intentionally keeps camelCase keys.
     () => supabase.rpc('save_workflow_definition', { p_definition: payload }),
-    { showMessage: true, breakReturn: true }
+    {
+      showMessage: options.showMessage ?? true,
+      showErrorMessage: options.showErrorMessage ?? true,
+      errorMessage: '流程草稿保存失败，请稍后重试',
+      breakReturn: true
+    }
   )
 }
 
-export async function publishWorkflowDefinition(id: string) {
+export async function publishWorkflowDefinition(id: string, options: ApiFeedbackOptions = {}) {
   return await responseHandle<{ definitionId: string; versionId: string; versionNo: number }>(
     () => supabase.rpc('publish_workflow_definition', { p_definition_id: id }),
-    { showMessage: true, breakReturn: true, message: '流程发布成功' }
+    {
+      showMessage: options.showMessage ?? true,
+      showErrorMessage: options.showErrorMessage ?? true,
+      breakReturn: true,
+      errorMessage: '流程发布失败，请稍后重试',
+      message: '流程发布成功'
+    }
   )
 }
 
@@ -106,58 +123,99 @@ export async function deleteWorkflowDefinition(id: string) {
 }
 
 export async function fetchWorkflowUserOptions(
-  params: Api.Workflow.WorkflowOptionSearchParams = {}
+  params: Api.Workflow.WorkflowOptionSearchParams = {},
+  options: ApiFeedbackOptions = {}
 ) {
-  const { tenantId } = params
-  let query = supabase
-    .from('sys_user')
-    .select('id, user_name, nick_name, user_email, avatar')
-    .eq('status', '1')
-    .is('deleted_at', null)
-    .order('user_name')
-    .limit(1000)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-
-  return await responseHandle<Api.Workflow.WorkflowUserOption[]>(() => query, {
-    showErrorMessage: true
-  })
+  try {
+    const data = await loadAllDocumentPages<
+      Api.Workflow.WorkflowUserOption,
+      { from?: number; to?: number }
+    >(({ from = 0, to = 499 }) => {
+      let query = supabase
+        .from('sys_user')
+        .select('id,user_name,nick_name,user_email,avatar', { count: 'exact' })
+        .eq('status', '1')
+        .is('deleted_at', null)
+        .order('user_name')
+        .order('id')
+        .range(from, to)
+      if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
+      return responseHandle<Api.Workflow.WorkflowUserOption[]>(() => query, {
+        showErrorMessage: options.showErrorMessage ?? true
+      })
+    }, {})
+    return { data, total: data.length, error: null } satisfies QueryResult<
+      Api.Workflow.WorkflowUserOption[]
+    >
+  } catch (error) {
+    return { data: null, error } satisfies QueryResult<Api.Workflow.WorkflowUserOption[]>
+  }
 }
 
 export async function fetchWorkflowRoleOptions(
-  params: Api.Workflow.WorkflowOptionSearchParams = {}
+  params: Api.Workflow.WorkflowOptionSearchParams = {},
+  options: ApiFeedbackOptions = {}
 ) {
-  const { tenantId } = params
-  let query = supabase
-    .from('sys_role')
-    .select('id, role_code, role_name')
-    .eq('enabled', true)
-    .order('role_name')
-    .limit(500)
-  if (tenantId) query = query.eq('tenant_id', tenantId)
-
-  return await responseHandle<Api.Workflow.WorkflowRoleOption[]>(() => query, {
-    showErrorMessage: true
-  })
+  try {
+    const data = await loadAllDocumentPages<
+      Api.Workflow.WorkflowRoleOption,
+      { from?: number; to?: number }
+    >(({ from = 0, to = 499 }) => {
+      let query = supabase
+        .from('sys_role')
+        .select('id,role_code,role_name', { count: 'exact' })
+        .eq('enabled', true)
+        .order('role_name')
+        .order('id')
+        .range(from, to)
+      if (params.tenantId) query = query.eq('tenant_id', params.tenantId)
+      return responseHandle<Api.Workflow.WorkflowRoleOption[]>(() => query, {
+        showErrorMessage: options.showErrorMessage ?? true
+      })
+    }, {})
+    return { data, total: data.length, error: null } satisfies QueryResult<
+      Api.Workflow.WorkflowRoleOption[]
+    >
+  } catch (error) {
+    return { data: null, error } satisfies QueryResult<Api.Workflow.WorkflowRoleOption[]>
+  }
 }
 
-export async function fetchWorkflowDelegations(userId: string) {
-  return await responseHandle<Api.Workflow.WorkflowDelegationRecord[]>(
-    () =>
-      supabase
-        .from('wf_delegation')
-        .select(
-          `*,
+export async function fetchWorkflowDelegations(userId: string, options: ApiFeedbackOptions = {}) {
+  try {
+    const data = await loadAllDocumentPages<
+      Api.Workflow.WorkflowDelegationRecord,
+      { from?: number; to?: number }
+    >(
+      ({ from = 0, to = 499 }) =>
+        responseHandle<Api.Workflow.WorkflowDelegationRecord[]>(
+          () =>
+            supabase
+              .from('wf_delegation')
+              .select(
+                `*,
           delegator:sys_user!wf_delegation_delegator_user_id_fkey(
             id, user_name, nick_name, user_email, avatar
           ),
           delegate:sys_user!wf_delegation_delegate_user_id_fkey(
             id, user_name, nick_name, user_email, avatar
-          )`
-        )
-        .or(`delegator_user_id.eq.${userId},delegate_user_id.eq.${userId}`)
-        .order('create_time', { ascending: false }),
-    { showErrorMessage: true }
-  )
+          )`,
+                { count: 'exact' }
+              )
+              .or(`delegator_user_id.eq.${userId},delegate_user_id.eq.${userId}`)
+              .order('create_time', { ascending: false })
+              .order('id')
+              .range(from, to),
+          { showErrorMessage: options.showErrorMessage ?? true }
+        ),
+      {}
+    )
+    return { data, total: data.length, error: null } satisfies QueryResult<
+      Api.Workflow.WorkflowDelegationRecord[]
+    >
+  } catch (error) {
+    return { data: null, error } satisfies QueryResult<Api.Workflow.WorkflowDelegationRecord[]>
+  }
 }
 
 export async function createWorkflowDelegation(params: {
@@ -174,7 +232,12 @@ export async function createWorkflowDelegation(params: {
         p_ends_at: params.endsAt,
         p_reason: params.reason
       }),
-    { showMessage: true, breakReturn: true, message: '审批委托已生效' }
+    {
+      showMessage: false,
+      showErrorMessage: false,
+      breakReturn: true,
+      errorMessage: '审批委托创建失败，请核对时间范围后重试'
+    }
   )
 }
 
@@ -185,7 +248,12 @@ export async function revokeWorkflowDelegation(delegationId: string, reason: str
         p_delegation_id: delegationId,
         p_reason: reason
       }),
-    { showMessage: true, breakReturn: true, message: '审批委托已撤销' }
+    {
+      showMessage: false,
+      showErrorMessage: false,
+      breakReturn: true,
+      errorMessage: '审批委托撤销失败，请刷新记录后重试'
+    }
   )
 }
 
@@ -202,7 +270,12 @@ export async function transferWorkflowTask(params: {
         p_reason: params.reason,
         p_idempotency_key: crypto.randomUUID()
       }),
-    { showMessage: true, breakReturn: true, message: '审批待办已转交' }
+    {
+      showMessage: false,
+      showErrorMessage: false,
+      breakReturn: true,
+      errorMessage: '审批转交失败，请刷新待办后重试'
+    }
   )
 }
 
@@ -317,7 +390,7 @@ export async function fetchWorkflowBusinessHistory(params: {
 
 export async function fetchWorkflowBusinessSnapshot(
   instanceId: string,
-  options: { showErrorMessage?: boolean } = {}
+  options: ApiFeedbackOptions = {}
 ) {
   return await responseHandle<Api.Workflow.WorkflowBusinessSnapshot>(
     () => supabase.rpc('get_workflow_business_snapshot', { p_instance_id: instanceId }),

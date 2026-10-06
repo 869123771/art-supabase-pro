@@ -3,7 +3,9 @@
     <div class="master-delete-notice__content">
       <div class="master-delete-notice__title">
         <ArtSvgIcon icon="ri:links-line" aria-hidden="true" />
-        <strong>正在处理“{{ resourceName }}”的删除前置资料</strong>
+        <strong :title="`正在处理“${resourceName}”的删除前置资料`"
+          >正在处理“{{ resourceName }}”的删除前置资料</strong
+        >
         <ElTag type="warning" effect="light" size="small">
           {{ props.locationReady ? '已精确过滤' : '定位待完成' }}
         </ElTag>

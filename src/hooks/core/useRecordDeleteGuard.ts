@@ -15,7 +15,8 @@ import {
 export function recordDeleteGuardOptions(
   context: DeleteReferenceContext,
   resourceLabel: string,
-  resources: MasterDataDeleteResource[]
+  resources: MasterDataDeleteResource[],
+  referenceMeta: Record<string, Partial<MasterDataDeleteDependencyMeta>> = {}
 ): MasterDataDeleteGuardOpenOptions {
   const dependencyMeta: Record<string, MasterDataDeleteDependencyMeta> = {}
   return {
@@ -32,7 +33,8 @@ export function recordDeleteGuardOptions(
           unit: '条',
           order: 1,
           actionLabel: '查看关联',
-          description: '请核对以下引用记录，处理关联后再重试删除。'
+          description: '请核对以下引用记录，处理关联后再重试删除。',
+          ...referenceMeta[row.sourceTable]
         }
       }
       return rows.map((row) => ({
@@ -46,7 +48,11 @@ export function recordDeleteGuardOptions(
   }
 }
 
-export function useRecordDeleteGuard(table: string, resourceLabel: string) {
+export function useRecordDeleteGuard(
+  table: string,
+  resourceLabel: string,
+  referenceMeta: Record<string, Partial<MasterDataDeleteDependencyMeta>> = {}
+) {
   const deleteGuardRef = ref<{
     inspect: (options: MasterDataDeleteGuardOpenOptions) => Promise<boolean>
   }>()
@@ -59,7 +65,8 @@ export function useRecordDeleteGuard(table: string, resourceLabel: string) {
       recordDeleteGuardOptions(
         { table, ids: resources.map((row) => row.id) },
         resourceLabel,
-        resources
+        resources,
+        referenceMeta
       )
     )
   }

@@ -3,7 +3,11 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { syncFileViewerAssets } from '../../scripts/file-viewer-asset-sync'
+import { build, type InlineConfig } from 'vite'
+import {
+  createFileViewerAssetSyncPlugin,
+  syncFileViewerAssets
+} from '../../scripts/file-viewer-asset-sync'
 
 async function createFixture(): Promise<{
   root: string
@@ -34,6 +38,67 @@ async function createFixture(): Promise<{
 
   return { root, sourceRoot, targetRoot }
 }
+
+test('a failed Vite build does not recreate output with viewer assets', async (context) => {
+  const fixture = await createFixture()
+  context.after(() => rm(fixture.root, { recursive: true, force: true }))
+  const outputRoot = path.join(fixture.root, 'failed-output')
+  await assert.rejects(
+    build({
+      configFile: false,
+      root: fixture.root,
+      logLevel: 'silent',
+      plugins: [
+        createFileViewerAssetSyncPlugin({ enabled: true, sourceRoot: fixture.sourceRoot }),
+        {
+          name: 'failed-test-entry',
+          resolveId: () => '\0failed-test-entry',
+          load() {
+            throw new Error('intentional build failure')
+          }
+        }
+      ],
+      build: { outDir: outputRoot, rolldownOptions: { input: 'failed-test-entry' } }
+    }),
+    /intentional build failure/
+  )
+  await assert.rejects(stat(outputRoot), { code: 'ENOENT' })
+})
+
+test('syncs successful output and resets that success before a failed rebuild', async (context) => {
+  const fixture = await createFixture()
+  context.after(() => rm(fixture.root, { recursive: true, force: true }))
+  let failBuild = false
+  const config: InlineConfig = {
+    configFile: false,
+    root: fixture.root,
+    logLevel: 'silent',
+    plugins: [
+      createFileViewerAssetSyncPlugin({ enabled: true, sourceRoot: fixture.sourceRoot }),
+      {
+        name: 'rebuild-test-entry',
+        resolveId: () => '\0rebuild-test-entry',
+        load() {
+          if (failBuild) throw new Error('intentional rebuild failure')
+          return 'export const value = 1'
+        }
+      }
+    ],
+    build: { outDir: fixture.targetRoot, rolldownOptions: { input: 'rebuild-test-entry' } }
+  }
+  await build(config)
+  assert.equal(
+    await readFile(path.join(fixture.targetRoot, 'vendor/pdf/fonts/files/font.woff2'), 'utf8'),
+    'stable-font-content'
+  )
+  const failedOutput = path.join(fixture.root, 'failed-rebuild')
+  failBuild = true
+  await assert.rejects(
+    build({ ...config, build: { ...config.build, outDir: failedOutput } }),
+    /intentional rebuild failure/
+  )
+  await assert.rejects(stat(failedOutput), { code: 'ENOENT' })
+})
 
 test('skips byte-identical file-viewer assets instead of replacing them', async (context) => {
   const fixture = await createFixture()

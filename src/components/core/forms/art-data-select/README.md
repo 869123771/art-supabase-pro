@@ -11,7 +11,7 @@
 
 All variants delegate to `index.vue` and share the contracts exported by `types.ts`.
 
-Common defaults live in `defaults.ts`; keep array defaults as factories so instances never share mutable state. Variants override only pagination and selected-panel defaults: table multiple enables both, tree multiple enables the selected panel, and single selectors disable both. The base component keeps pagination enabled and derives selected-panel visibility from `multiple` unless explicitly set.
+Common defaults live in `defaults.ts`; keep array defaults as factories so instances never share mutable state. Table single selectors enable pagination by default for an `api-fn` remote source and disable it for local data; an explicit `show-pagination` always takes precedence. Table multiple enables pagination and the selected panel, tree multiple enables the selected panel, and tree single disables both. The base component keeps pagination enabled and derives selected-panel visibility from `multiple` unless explicitly set.
 
 ## Data contract
 

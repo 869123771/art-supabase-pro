@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadAllDocumentPages } from '../../src/utils/business/document-detail-list'
+import { fetchAllRangePages } from '../../src/utils/supabase/pagination'
 import {
   createTenantScopeReadGuard,
   readTenantScopeId,
@@ -224,6 +225,40 @@ test('paged reads reject platform scope changes and ignore forged ordinary scope
   }
 })
 
+test('Supabase range collection rejects changed platform scopes and preserves ordinary reads', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const ownTenant = '028e6a68-a9db-4055-974c-1e05bfe94b0f'
+  const otherTenant = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
+  try {
+    for (const mode of ['platform-all', 'platform-selected', 'ordinary-own', 'ordinary-forged']) {
+      const storage = new MemoryStorage()
+      Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage })
+      const platform = mode.startsWith('platform-')
+      writePlatformTenantScopeActive(platform)
+      writeTenantScopeId(mode === 'platform-selected' ? ownTenant : null)
+      if (mode === 'ordinary-forged') storage.setItem(TENANT_SCOPE_STORAGE_KEY, otherTenant)
+      let requests = 0
+      const read = fetchAllRangePages(
+        async () => {
+          requests++
+          if (requests === 1) writeTenantScopeId(otherTenant)
+          return { data: requests <= 2 ? [requests] : [], error: null }
+        },
+        { pageSize: 1 }
+      )
+      if (platform) {
+        await assert.rejects(read, /租户范围已变化/)
+        assert.equal(requests, 1)
+      } else {
+        assert.deepEqual((await read).data, [1, 2])
+      }
+    }
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'sessionStorage', descriptor)
+    else Reflect.deleteProperty(globalThis, 'sessionStorage')
+  }
+})
+
 test('platform table reads discard legacy tenant filters but preserve explicit filters and RPCs', () => {
   assert.equal(
     normalizePlatformTenantReadUrl(
@@ -293,6 +328,8 @@ test('platform table reads discard legacy tenant filters but preserve explicit f
     'hr_training_plan',
     'sys_user',
     'mdm_master_group',
+    'mdm_document_type',
+    'mdm_business_type',
     'mdm_equipment',
     'pmis_department_setting',
     'pmis_plan',

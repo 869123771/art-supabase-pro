@@ -39,7 +39,7 @@
         <ElButton
           v-if="canSave"
           :loading="page.saving"
-          :disabled="page.publishing"
+          :disabled="page.publishing || assigneeChecking"
           @click="saveDraft"
         >
           保存草稿
@@ -48,7 +48,7 @@
           v-if="canSave && hasAuth('WorkflowDefinition:Publish')"
           type="primary"
           :loading="page.publishing"
-          :disabled="page.saving"
+          :disabled="page.saving || assigneeChecking"
           @click="publishVersion"
         >
           发布新版
@@ -80,6 +80,13 @@
 
       <ElScrollbar class="workflow-designer-page__scrollbar" always>
         <div class="workflow-designer-page__content">
+          <ArtAsyncState
+            v-if="assigneeError"
+            size="compact"
+            :error="assigneeError"
+            error-title="审批对象核验失败"
+            @retry="validateAssigneeReferences"
+          />
           <ArtSectionCard
             v-show="activeStep === 1"
             class="workflow-designer-page__basic"
@@ -199,14 +206,16 @@
             />
           </ArtSectionCard>
 
-          <WorkflowCanvasEditor
-            ref="workflowCanvasRef"
-            v-show="activeStep === 3"
-            v-model="form.data.config"
-            :tenant-id="form.data.tenantId"
-            :business-type="form.data.businessType"
-            @request-step="activeStep = $event"
-          />
+          <KeepAlive>
+            <WorkflowCanvasEditor
+              v-if="activeStep === 3"
+              ref="workflowCanvasRef"
+              v-model="form.data.config"
+              :tenant-id="form.data.tenantId"
+              :business-type="form.data.businessType"
+              @request-step="activeStep = $event"
+            />
+          </KeepAlive>
 
           <ArtSectionCard
             v-show="activeStep === 4"
@@ -364,7 +373,9 @@
 <script setup lang="ts">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
-  import { cloneDeep, trim } from 'lodash-es'
+  import { cloneDeep, isEqual, trim } from 'lodash-es'
+  import { normalizeNullableText } from '@/utils/form/normalize'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtPageHeader from '@/components/core/layouts/art-page-header/index.vue'
@@ -378,6 +389,8 @@
   import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import {
     fetchWorkflowDefinitionDetail,
+    fetchWorkflowUserOptions,
+    fetchWorkflowRoleOptions,
     publishWorkflowDefinition,
     saveWorkflowDefinition
   } from '@/api/workflow'
@@ -387,6 +400,7 @@
   } from '../../modules/workflow-business-contracts'
   import {
     inspectWorkflowConfig,
+    inspectWorkflowAssigneeReferences,
     type WorkflowDiagnostic,
     type WorkflowDiagnosticSeverity
   } from '../../modules/workflow-simulator'
@@ -460,6 +474,9 @@
   const identityLocked = ref(false)
   const currentDefinition = shallowRef<Api.Workflow.WorkflowDefinitionRecord>()
   const page = reactive<PageGroup>({ loading: false, saving: false, publishing: false, error: '' })
+  const assigneeChecking = ref(false)
+  const assigneeError = shallowRef<Error | null>(null)
+  let assigneeRevision = 0
   const form = reactive<{ data: DesignerForm }>({
     data: createWorkflowTemplateDraft(props.templateKey || 'custom')
   })
@@ -708,8 +725,8 @@
     const payload = cloneDeep(toRaw(form.data))
     payload.code = trim(payload.code)
     payload.name = trim(payload.name)
-    payload.description = trim(payload.description || '') || null
-    payload.changeNote = trim(payload.changeNote || '') || null
+    payload.description = normalizeNullableText(payload.description)
+    payload.changeNote = normalizeNullableText(payload.changeNote)
     payload.config.layout = normalizeWorkflowCanvasLayout(
       payload.config.layout,
       payload.config.nodes
@@ -747,6 +764,62 @@
     return payload
   }
 
+  async function validateAssigneeReferences(): Promise<boolean> {
+    if (assigneeChecking.value) return false
+    const tenantId = form.data.tenantId
+    if (!tenantId) return false
+    const revision = ++assigneeRevision
+    const nodes = cloneDeep(form.data.config.nodes)
+    const definitionId = props.definitionId
+    const isCurrent = () =>
+      revision === assigneeRevision &&
+      props.definitionId === definitionId &&
+      tenantId === form.data.tenantId &&
+      isEqual(nodes, form.data.config.nodes)
+    assigneeChecking.value = true
+    assigneeError.value = null
+    try {
+      const [users, roles] = await Promise.all([
+        nodes.some((node) => node.assignee.type === 'users')
+          ? fetchWorkflowUserOptions({ tenantId }, { showErrorMessage: false })
+          : Promise.resolve({ data: [], error: null }),
+        nodes.some((node) => node.assignee.type === 'roles')
+          ? fetchWorkflowRoleOptions({ tenantId }, { showErrorMessage: false })
+          : Promise.resolve({ data: [], error: null })
+      ])
+      if (!isCurrent()) return false
+      if (users.error) throw users.error
+      if (roles.error) throw roles.error
+      const issues = inspectWorkflowAssigneeReferences(nodes, users.data ?? [], roles.data ?? [])
+      if (issues.length) {
+        assigneeError.value = new Error(issues.map((item) => item.description).join('；'))
+        if (issues[0].nodeKey) await locateDiagnosticNode(issues[0].nodeKey)
+        return false
+      }
+      return true
+    } catch (cause) {
+      if (isCurrent())
+        assigneeError.value = new Error('审批成员或角色读取失败，请重新加载。草稿内容已保留。', {
+          cause
+        })
+      return false
+    } finally {
+      if (revision === assigneeRevision) assigneeChecking.value = false
+    }
+  }
+
+  watch(
+    () => [form.data.tenantId, props.definitionId],
+    () => {
+      assigneeRevision += 1
+      assigneeChecking.value = false
+      assigneeError.value = null
+    }
+  )
+  onUnmounted(() => {
+    assigneeRevision += 1
+  })
+
   async function validateDesigner(): Promise<boolean> {
     try {
       await baseFormRef.value?.validate()
@@ -760,22 +833,49 @@
       ElMessage.warning(firstError.description)
       return false
     }
-    return true
+    return validateAssigneeReferences()
   }
 
   async function persistDraft(): Promise<string | null> {
-    if (!canSave.value) return null
+    if (!canSave.value || page.saving || page.publishing || assigneeChecking.value) return null
+    const payload = normalizePayload()
     if (!(await validateDesigner())) return null
+    if (!isEqual(payload, normalizePayload())) return null
+    const revision = assigneeRevision
+    const isCurrent = () => revision === assigneeRevision
     page.saving = true
     try {
-      const response = await saveWorkflowDefinition(normalizePayload())
+      const response = await saveWorkflowDefinition(payload, {
+        showMessage: false,
+        showErrorMessage: false
+      })
+      if (!isCurrent()) return null
       const saved = response.data
       const definitionId = saved?.definitionId || form.data.id
       if (!definitionId) return null
+      ElMessage.success('流程草稿已保存')
+      if (!isEqual(payload, normalizePayload())) {
+        ElMessage.warning('草稿已保存，保存期间的新修改仍保留在页面，请再次保存')
+        form.data.id = definitionId
+        return definitionId
+      }
       form.data.id = definitionId
-      await loadDefinition(definitionId)
+      const refreshInput = cloneDeep(toRaw(form.data))
+      try {
+        await loadDefinition(
+          definitionId,
+          () => isCurrent() && isEqual(refreshInput, form.data),
+          false
+        )
+      } catch {
+        if (isCurrent()) ElMessage.warning('草稿已保存，但详情刷新失败，请稍后重新加载')
+      }
+      if (!isCurrent()) return null
       if (props.definitionId === 'new') emit('saved', definitionId)
       return definitionId
+    } catch (error) {
+      if (isCurrent()) notifyFriendlyError(error, '流程草稿保存失败，请稍后重试')
+      return null
     } finally {
       page.saving = false
     }
@@ -786,25 +886,79 @@
   }
 
   async function publishVersion(): Promise<void> {
-    if (!canSave.value || !hasAuth('WorkflowDefinition:Publish')) return
-    if (!(await validateDesigner())) return
-    await confirmAction(
-      `发布“${form.data.name || '未命名流程'}”后，新实例会立即使用本次配置，已运行实例仍保留原版本。`,
-      {
-        title: '发布流程新版',
-        confirmButtonText: '保存并发布',
-        type: 'warning'
-      }
+    if (
+      !canSave.value ||
+      !hasAuth('WorkflowDefinition:Publish') ||
+      page.saving ||
+      page.publishing ||
+      assigneeChecking.value
     )
+      return
+    const payload = normalizePayload()
+    if (!(await validateDesigner())) return
+    if (!isEqual(payload, normalizePayload())) {
+      ElMessage.warning('流程内容已变化，请重新核验后发布')
+      return
+    }
+    const revision = assigneeRevision
+    let draftSaved = false
+    let published = false
     page.publishing = true
     try {
-      const response = await saveWorkflowDefinition(normalizePayload())
+      try {
+        await confirmAction(
+          `发布“${payload.name || '未命名流程'}”后，新实例会立即使用本次配置，已运行实例仍保留原版本。`,
+          {
+            title: '发布流程新版',
+            confirmButtonText: '保存并发布',
+            type: 'warning'
+          }
+        )
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return
+        throw error
+      }
+      if (revision !== assigneeRevision) return
+      if (!canSave.value || !hasAuth('WorkflowDefinition:Publish')) return
+      if (!isEqual(payload, normalizePayload())) {
+        ElMessage.warning('流程内容已变化，请重新核验后发布')
+        return
+      }
+      const response = await saveWorkflowDefinition(payload, {
+        showMessage: false,
+        showErrorMessage: false
+      })
       const definitionId = response.data?.definitionId || form.data.id
       if (!definitionId) return
+      if (revision !== assigneeRevision) return
+      draftSaved = true
+      if (!isEqual(payload, normalizePayload())) {
+        form.data.id = definitionId
+        ElMessage.warning('草稿已保存，内容已变化，请重新核验后发布')
+        return
+      }
       form.data.id = definitionId
-      await publishWorkflowDefinition(definitionId)
-      await loadDefinition(definitionId)
+      await publishWorkflowDefinition(definitionId, { showMessage: false, showErrorMessage: false })
+      if (revision !== assigneeRevision) return
+      published = true
+      ElMessage.success('流程发布成功')
+      if (!isEqual({ ...payload, id: definitionId }, normalizePayload())) {
+        ElMessage.warning('流程已发布，页面上的新修改尚未保存，请再次保存')
+        return
+      }
+      const refreshInput = cloneDeep(toRaw(form.data))
+      await loadDefinition(
+        definitionId,
+        () => revision === assigneeRevision && isEqual(refreshInput, form.data),
+        false
+      )
+      if (revision !== assigneeRevision) return
       if (props.definitionId === 'new') emit('saved', definitionId)
+    } catch (error) {
+      if (revision !== assigneeRevision) return
+      if (published) ElMessage.warning('流程已发布，但详情刷新失败，请稍后重新加载')
+      else if (draftSaved) ElMessage.warning('草稿已保存，但发布失败，请稍后重试发布')
+      else notifyFriendlyError(error, '流程保存失败，尚未发布，请稍后重试')
     } finally {
       page.publishing = false
     }
@@ -837,8 +991,13 @@
     }
   }
 
-  async function loadDefinition(definitionId: string): Promise<void> {
-    const response = await fetchWorkflowDefinitionDetail(definitionId)
+  async function loadDefinition(
+    definitionId: string,
+    isCurrent: () => boolean = () => true,
+    showErrorMessage = true
+  ): Promise<void> {
+    const response = await fetchWorkflowDefinitionDetail(definitionId, { showErrorMessage })
+    if (!isCurrent()) return
     const detail = response.data
     if (!detail) throw new Error('流程定义不存在')
     currentDefinition.value = detail

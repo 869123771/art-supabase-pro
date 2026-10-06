@@ -20,6 +20,8 @@ const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
   'hr_training_enrollment',
   'hr_training_plan',
   'mdm_master_group',
+  'mdm_document_type',
+  'mdm_business_type',
   'mdm_equipment',
   'mdm_production_department',
   'mdm_production_personnel',

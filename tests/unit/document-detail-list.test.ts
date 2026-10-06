@@ -4,10 +4,21 @@ import {
   documentGroupSpan,
   expandDocumentLines,
   groupDocumentLines,
+  getDocumentDetailRowKey,
   loadAllDocumentPages,
   loadAllLinePages,
   paginateDetailRows
 } from '../../src/utils/business/document-detail-list'
+
+test('row keys stay unique for sibling details and remain defined for parent records', () => {
+  const rows = expandDocumentLines(
+    [{ id: 'one', lines: [{ id: 'a' }, { id: 'b' }] }],
+    (document) => document.lines,
+    (line) => line.id
+  )
+  assert.deepEqual(rows.map(getDocumentDetailRowKey), ['one:a', 'one:b'])
+  assert.equal(getDocumentDetailRowKey({ id: 'one' }), 'one')
+})
 
 test('line pagination counts every detail and keeps its document visible at a page boundary', async () => {
   const documents = [
@@ -178,6 +189,19 @@ test('underreported totals cannot resolve to a truncated first page', async () =
         2
       ),
       /总数与记录不一致/
+    )
+  }
+})
+
+test('later invalid or changed counts reject a mixed document collection', async () => {
+  for (const total of [1, 3, -1, NaN, Infinity]) {
+    await assert.rejects(
+      loadAllDocumentPages(
+        async ({ from }) => ({ data: [from], total: from === 0 ? 2 : total }),
+        {},
+        1
+      ),
+      /总数已变化|总数无效/
     )
   }
 })

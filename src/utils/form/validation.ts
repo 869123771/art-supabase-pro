@@ -21,11 +21,14 @@ export function focusFirstInvalidFormField(
   if (!invalidItem) return
 
   invalidItem.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' })
-  invalidItem
-    .querySelector<HTMLElement>(
-      'input:not([type="hidden"]):not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"]), button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([type="hidden"]):not([disabled]):not([aria-disabled="true"])'
+  const field =
+    invalidItem.querySelector<HTMLElement>(
+      'input:not([type="hidden"]):not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"])'
+    ) ??
+    invalidItem.querySelector<HTMLElement>(
+      'button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([type="hidden"]):not([disabled]):not([aria-disabled="true"])'
     )
-    ?.focus({ preventScroll: true })
+  field?.focus({ preventScroll: true })
 }
 
 export async function validateFormRefs(

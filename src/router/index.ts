@@ -7,8 +7,6 @@ import { setupAfterEachGuard } from './guards/after-each'
 import { setupRouteErrorRecovery } from './guards/error-recovery'
 import { normalizeHashRouterBase } from './hash-history'
 
-normalizeHashRouterBase(import.meta.env.BASE_URL)
-
 // 创建路由实例
 export const router = createRouter({
   // 显式使用部署基路径，避免从非标准业务 URL 启动时把当前 pathname 误识别为 Hash base。
@@ -21,6 +19,7 @@ export function initRouter(
   app: App<Element>,
   loadHostedApplications?: () => Promise<unknown>
 ): void {
+  normalizeHashRouterBase(import.meta.env.BASE_URL)
   configureNProgress() // 顶部进度条
   setupBeforeEachGuard(router, loadHostedApplications) // 路由前置守卫
   setupAfterEachGuard(router) // 路由后置守卫

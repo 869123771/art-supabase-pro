@@ -4,7 +4,8 @@
     class="recognition-table"
     :class="{ 'is-motion-ready': motionReady }"
     focusable
-    v-model="searchQuery"
+    :model-value="searchQuery"
+    @update:model-value="replaceReactiveModel(searchQuery, $event)"
     :search-items="searchItems"
     :api-fn="fetchTableData"
     :columns-factory="columnsFactory"
@@ -42,6 +43,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { ElButton, ElProgress, ElTag } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
@@ -52,7 +54,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import RecognitionSourceGallery from './recognition-source-gallery.vue'
   import type { ColumnOption } from '@/types'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatWithDayjs } from '@/utils/time'
   import { fetchRecognitionArtifactList } from '@/api/intelligent-recognition'
   import { useUserStore } from '@/store/modules/user'
@@ -327,7 +329,7 @@
   ]
 
   function fetchTableData(params: Search & Api.Common.PaginationParams) {
-    const { from, to } = pageInfoHandler(params)
+    const { from, to } = buildSupabasePageRange(params)
     return fetchRecognitionArtifactList({
       ...params,
       status: props.mode === 'review' ? 'pending' : params.status,

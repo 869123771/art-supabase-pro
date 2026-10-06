@@ -150,7 +150,7 @@
   import { useMenuStore } from '@/store/modules/menu'
   import { isIframe } from '@/utils/navigation'
   import { startMenuJump } from '@/utils/navigation'
-  import SidebarSubmenu from './widget/SidebarSubmenu.vue'
+  import SidebarSubmenu from './widget/sidebar-submenu.vue'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useWindowSize, useTimeoutFn } from '@vueuse/core'
   import type { AppRouteRecord } from '@/types/router'

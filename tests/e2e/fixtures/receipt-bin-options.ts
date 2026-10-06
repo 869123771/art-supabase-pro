@@ -17,10 +17,27 @@ import {
   fetchScmPurchaseWarehouseOptions,
   fetchScmPurchaseBinOptions,
   fetchScmPurchaseCustomerOptions,
-  fetchScmProjectSections
+  fetchScmProjectSections,
+  fetchScmPurchaseSourceOptions,
+  fetchScmRecentPurchasePrices
 } from '../../../modules/art-supabase-scm/src/api/purchase-document'
 
 const optionLoaders = {
+  recentPrices: async (tenantId: string) =>
+    Object.fromEntries(
+      await fetchScmRecentPurchasePrices(tenantId, [
+        'material-first',
+        'material-last',
+        'material-last',
+        ''
+      ])
+    ),
+  emptyPrices: async (tenantId: string) =>
+    Object.fromEntries(await fetchScmRecentPurchasePrices(tenantId, ['', ''])),
+  purchaseSources: (tenantId: string) =>
+    fetchScmPurchaseSourceOptions('purchase_contract', tenantId),
+  purchaseRequestSources: (tenantId: string) =>
+    fetchScmPurchaseSourceOptions('purchase_request', tenantId),
   engineering: fetchScmEngineeringReferenceOptions,
   salesSources: (tenantId: string) =>
     fetchScmSourceOptions('sales_order', tenantId, 'project-a', 'customer-a'),

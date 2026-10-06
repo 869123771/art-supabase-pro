@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./plan-workspace-3W8hUe-H.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`preventive`}))}});export{i as default};

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => ({
@@ -10,6 +10,42 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     overflow.scrollWidth,
     `页面产生横向溢出：scrollWidth=${overflow.scrollWidth}, clientWidth=${overflow.clientWidth}`
   ).toBeLessThanOrEqual(overflow.clientWidth + 1)
+}
+
+async function expectResourcePickerInsideUpload(container: Locator): Promise<void> {
+  const placement = await container.evaluate((element) => {
+    const upload = element.querySelector('.upload-container')?.getBoundingClientRect()
+    const picker = element.querySelector('.resource-picker-action')?.getBoundingClientRect()
+    if (!upload || !picker) return null
+
+    return {
+      header:
+        picker.left >= upload.left &&
+        picker.right <= upload.right &&
+        picker.top >= upload.top &&
+        picker.bottom <= upload.bottom &&
+        picker.width >= upload.width - 4
+    }
+  })
+
+  expect(placement, '资源库按钮应占据图片上传框的顶部').toEqual({ header: true })
+
+  await container.locator('.resource-picker-action').hover()
+  await expect
+    .poll(
+      () =>
+        container.evaluate((element) => {
+          const upload = element.querySelector('.upload-container')
+          const picker = element.querySelector('.resource-picker-action')
+          return Boolean(
+            upload &&
+            picker &&
+            getComputedStyle(upload).borderTopColor === getComputedStyle(picker).color
+          )
+        }),
+      { message: '悬停顶部文件选择区时整个上传框应变为蓝色虚线' }
+    )
+    .toBe(true)
 }
 
 test('员工花名册与新增用户选人入口可用', async ({ page }) => {
@@ -44,7 +80,14 @@ test('员工花名册与新增用户选人入口可用', async ({ page }) => {
   await expect(page.getByText('工作经历', { exact: false }).first()).toBeVisible()
   await expect(page.getByText('培训经历', { exact: false }).first()).toBeVisible()
   await expect(page.getByText('奖惩经历', { exact: false }).first()).toBeVisible()
+  await expectResourcePickerInsideUpload(page.locator('.hr-profile-page__avatar'))
   await page.getByRole('tab', { name: /劳动合同/ }).click()
+  const emptyBottomGap = await page.locator('.hr-profile-page__tabs').evaluate((tabs) => {
+    const empty = tabs.querySelector('.hr-history-section__empty')?.getBoundingClientRect()
+    return empty ? tabs.getBoundingClientRect().bottom - empty.bottom : null
+  })
+  expect(emptyBottomGap, '空状态背景应延伸到页签卡片底部内边距').not.toBeNull()
+  expect(emptyBottomGap).toBeLessThanOrEqual(26)
   await page.getByRole('button', { name: '新增合同', exact: true }).click()
   await expect(page.getByRole('textbox', { name: '合同编号', exact: true })).toBeVisible()
   await expect(page.getByText('合同 1', { exact: true })).toBeVisible()
@@ -59,6 +102,7 @@ test('员工花名册与新增用户选人入口可用', async ({ page }) => {
 
   const userDialog = page.getByRole('dialog', { name: '新增用户' })
   await expect(userDialog).toBeVisible()
+  await expectResourcePickerInsideUpload(userDialog)
   await expect(userDialog.getByText('创建新的登录账号', { exact: true })).toBeVisible()
   await expect(userDialog.getByText('账号身份', { exact: true })).toBeVisible()
   await expect(userDialog.getByText('员工', { exact: true })).toBeVisible()

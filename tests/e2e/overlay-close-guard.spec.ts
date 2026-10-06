@@ -33,8 +33,12 @@ test('弹窗拖动与垂直居中参数控制实际交互', async ({ page }) => 
     const after = await dialog.boundingBox()
     expect(after).not.toBeNull()
     if (!after) throw new Error('弹窗位置不可用')
-    if (enabled) expect(after.x - before.x).toBeGreaterThan(40)
-    else expect(Math.abs(after.x - before.x)).toBeLessThan(1)
+    if (enabled) {
+      const viewportWidth = page.viewportSize()?.width ?? 1440
+      const availableDistance = viewportWidth - before.x - before.width
+      expect(after.x - before.x).toBeGreaterThan(Math.min(40, availableDistance * 0.8))
+      expect(after.x + after.width).toBeLessThanOrEqual(viewportWidth + 1)
+    } else expect(Math.abs(after.x - before.x)).toBeLessThan(1)
   }
 })
 

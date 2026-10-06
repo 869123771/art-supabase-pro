@@ -262,6 +262,12 @@
   // 初始化动画函数（优化：统一定时器管理，减少内存泄漏风险）
   const initChartWithAnimation = () => {
     clearAnimationTimers()
+    if (prefersReducedMotion.value) {
+      isAnimating.value = false
+      animatedData.value = copyRealData()
+      updateChartOptions(generateChartOptions(true))
+      return
+    }
     isAnimating.value = true
 
     // 初始化为0值数据
@@ -325,6 +331,7 @@
   // 使用新的图表组件抽象
   const {
     chartRef,
+    prefersReducedMotion,
     initChart,
     getAxisLineStyle,
     getAxisLabelStyle,
@@ -347,15 +354,18 @@
     generateOptions: () => generateChartOptions(false)
   })
 
-  // 图表渲染函数（优化：防止动画期间重复触发）
+  // New data interrupts the previous animation so delayed series cannot restore stale values.
   const renderChart = () => {
-    if (!isAnimating.value && !isEmpty.value) {
+    clearAnimationTimers()
+    isAnimating.value = false
+    if (!isEmpty.value) {
       initChartWithAnimation()
     }
   }
 
   // 使用 VueUse 的 watchDebounced 优化数据监听（避免频繁更新）
   watch([() => props.data, () => props.xAxisData, () => props.colors], renderChart, { deep: true })
+  watch(prefersReducedMotion, renderChart)
 
   // 生命周期
   onMounted(() => {

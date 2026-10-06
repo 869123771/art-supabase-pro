@@ -4,6 +4,7 @@ interface RecordReferenceMeta {
 }
 
 const recordReferences: Record<string, RecordReferenceMeta> = {
+  smis_hazardous_waste_document: { label: '危废入出库单据' },
   fms_account_set: { label: '企业账套', routeName: 'FinanceAccountSet' },
   fms_accounting_period: { label: '会计期间', routeName: 'FinanceAccountSet' },
   fms_asset_category: { label: '资产类别', routeName: 'FinanceFixedAsset' },
@@ -36,6 +37,12 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   tms_cash_transaction: { label: '收付款记录', routeName: 'FinanceCashTransaction' },
   tms_expense_payment: { label: '运单费用付款记录' },
   mdm_material: { label: '物料编码' },
+  mdm_equipment: { label: '设备档案' },
+  smis_equipment_inspection: { label: '设备检验记录' },
+  wms_purchase_document: { label: '仓库采购单据' },
+  scm_receipt_target_document: { label: '供应链收货单据' },
+  scm_order_target_document: { label: '供应链订单' },
+  scm_purchase_document: { label: '供应链采购单据' },
   mdm_document_type: { label: '单据类型', routeName: 'MdmDocumentType' },
   mdm_business_type: { label: '业务类型', routeName: 'MdmBusinessType' },
   mdm_bom: { label: 'BOM', routeName: 'MdmBomMaintenance' },

@@ -13,7 +13,8 @@ export function normalizeNullableText(value: string | null | undefined): string 
 
 /** Normalize a form value into a finite number, using NULL for blank or invalid input. */
 export function normalizeNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
+  if (typeof value !== 'number' && typeof value !== 'string') return null
+  if (typeof value === 'string' && !value.trim()) return null
   const numberValue = Number(value)
   return Number.isFinite(numberValue) ? numberValue : null
 }

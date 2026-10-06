@@ -1,4 +1,5 @@
 import type { QueryResult } from '@/types/api/response'
+import { createTenantScopeReadGuard } from '../tenant-scope-context'
 
 export interface SupabaseRange {
   from: number
@@ -10,6 +11,23 @@ interface FetchAllRangePagesOptions {
 }
 
 const DEFAULT_PAGE_SIZE = 500
+
+/** Convert one-based pages to inclusive Data API bounds without rounding or overflow. */
+export function buildSupabasePageRange(page: { current: number; size: number }): SupabaseRange {
+  const { current, size } = page
+  const from = (current - 1) * size
+  const to = from + (size - 1)
+  if (
+    !Number.isSafeInteger(current) ||
+    current < 1 ||
+    !Number.isSafeInteger(size) ||
+    size < 1 ||
+    !Number.isSafeInteger(to)
+  ) {
+    throw new RangeError('分页范围无效，请刷新后重试')
+  }
+  return { from, to }
+}
 
 /** Keep inclusive RPC bounds ordered after clamping the offset to zero. */
 export function buildSupabaseRpcRange(from: number, to: number): { p_from: number; p_to: number } {
@@ -31,9 +49,12 @@ export async function fetchAllRangePages<T>(
   }
 
   const rows: T[] = []
+  const assertTenantScope = createTenantScopeReadGuard()
 
   for (let from = 0; ; from += pageSize) {
+    assertTenantScope()
     const page = await fetchPage({ from, to: from + pageSize - 1 })
+    assertTenantScope()
 
     if (page.error) {
       return { data: null, error: page.error, total: rows.length }

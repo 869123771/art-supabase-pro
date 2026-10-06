@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./scm-document-workspace-BTV7X9M3.js";var i=e({name:`ScmLoading`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`loading`}))}});export{i as default};

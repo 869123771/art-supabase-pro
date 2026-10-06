@@ -408,6 +408,21 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
 const files = await collectFiles(sourceRoot)
 const moduleUiFiles = await collectModuleUiFiles()
 const componentNames = new Map<string, Finding>()
+function checkComponentFileName(file: string): Finding[] {
+  if (!file.endsWith('.vue')) return []
+  const relativeFile = path.relative(projectRoot, file).replace(/\\/g, '/')
+  // Framework roots retain App.vue; nested business components follow kebab-case.
+  if (/^(?:src|modules\/[^/]+\/src)\/App\.vue$/.test(relativeFile)) return []
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*\.vue$/.test(path.basename(file))) return []
+  return [
+    {
+      file: relativeFile,
+      line: 1,
+      rule: 'naming/kebab-case-vue-file',
+      excerpt: path.basename(file)
+    }
+  ]
+}
 function checkComponentName(file: string, content: string): Finding[] {
   if (!file.endsWith('.vue')) return []
   const { descriptor } = parseSfc(content, { filename: file })
@@ -469,11 +484,19 @@ const findings = (
   await Promise.all([
     ...files.map(async (file) => {
       const content = await readFile(file, 'utf8')
-      return [...scanFile(file, content), ...checkComponentName(file, content)]
+      return [
+        ...checkComponentFileName(file),
+        ...scanFile(file, content),
+        ...checkComponentName(file, content)
+      ]
     }),
     ...moduleUiFiles.map(async (file) => {
       const content = await readFile(file, 'utf8')
-      return [...scanFile(file, content, true), ...checkComponentName(file, content)]
+      return [
+        ...checkComponentFileName(file),
+        ...scanFile(file, content, true),
+        ...checkComponentName(file, content)
+      ]
     })
   ])
 ).flat()

@@ -1,4 +1,4 @@
-import { isEqual, trim } from 'lodash-es'
+import { difference, isEqual, trim } from 'lodash-es'
 
 export type WorkflowSimulationNodeState = 'matched' | 'skipped'
 export type WorkflowSimulationOutcome = 'matched' | 'blocked' | 'auto-approved'
@@ -10,6 +10,35 @@ export interface WorkflowDiagnostic {
   description: string
   severity: WorkflowDiagnosticSeverity
   nodeKey?: string
+}
+
+/** Inspect every configured node against complete, tenant-filtered option collections. */
+export function inspectWorkflowAssigneeReferences(
+  nodes: Api.Workflow.WorkflowNode[],
+  users: Api.Workflow.WorkflowUserOption[],
+  roles: Api.Workflow.WorkflowRoleOption[]
+): WorkflowDiagnostic[] {
+  const userIds = users.map((user) => user.id)
+  const roleCodes = roles.map((role) => role.roleCode)
+  return nodes.flatMap((node): WorkflowDiagnostic[] => {
+    const missing =
+      node.assignee.type === 'users'
+        ? difference(node.assignee.userIds ?? [], userIds)
+        : node.assignee.type === 'roles'
+          ? difference(node.assignee.roleCodes ?? [], roleCodes)
+          : []
+    if (!missing.length) return []
+    const label = node.assignee.type === 'users' ? '成员' : '角色'
+    return [
+      {
+        code: 'assignee-reference-unavailable',
+        title: '审批对象不可用',
+        description: `“${node.name || '未命名节点'}”有 ${missing.length} 个${label}已停用、不存在或不属于当前租户，请重新选择。`,
+        severity: 'error',
+        nodeKey: node.key
+      }
+    ]
+  })
 }
 
 export interface WorkflowSimulationTrace {

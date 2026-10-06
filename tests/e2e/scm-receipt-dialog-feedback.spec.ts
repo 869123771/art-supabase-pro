@@ -46,6 +46,9 @@ test('收料 SN 弹窗区分字段错误和保存错误', async ({ page, request
 
 test('入库库位保存失败时保留选择并提示', async ({ page, request }, testInfo) => {
   test.setTimeout(180_000)
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.route('**/rest/v1/mdm_unit_of_measure?*', (route) => route.fulfill({ json: [] }))
   await page.route('**/rest/v1/mdm_warehouse?*', (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -104,4 +107,5 @@ test('入库库位保存失败时保留选择并提示', async ({ page, request 
     content: document.documentElement.scrollWidth
   }))
   expect(widths.content).toBeLessThanOrEqual(widths.viewport + 1)
+  expect(errors).toEqual([])
 })

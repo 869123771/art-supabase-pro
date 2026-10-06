@@ -43,7 +43,8 @@
 
         <ArtForm
           ref="formRef"
-          v-model="formModel"
+          :model-value="formModel"
+          @update:model-value="replaceReactiveModel(formModel, $event)"
           :items="formItems"
           :rules="formRules"
           :span="12"
@@ -117,6 +118,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'

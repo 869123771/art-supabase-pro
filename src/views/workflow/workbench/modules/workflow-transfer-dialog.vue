@@ -23,6 +23,15 @@
         </div>
       </div>
 
+      <ArtAsyncState
+        v-if="usersLoading || usersError"
+        :loading="usersLoading"
+        :error="usersError"
+        size="compact"
+        :skeleton-rows="2"
+        error-title="审批人加载失败"
+        @retry="retryUsers"
+      />
       <ArtForm
         ref="formRef"
         v-model="form.data"
@@ -46,7 +55,11 @@
 <script setup lang="ts">
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
+  import { useRoute } from 'vue-router'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import type { FormRules } from 'element-plus'
+  import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
@@ -68,6 +81,36 @@
     task?: Api.Workflow.WorkflowTaskRecord
     users: Api.Workflow.WorkflowUserOption[]
   }>({ task: undefined, users: [] })
+  const {
+    detail: loadedUsers,
+    loading: usersLoading,
+    loadError: usersError,
+    loadDetail: loadUsers,
+    openDetail: resetUsers,
+    retryLoad: retryUsers
+  } = useDetailRecord<Api.Workflow.WorkflowUserOption[]>(
+    (tenantId) => fetchWorkflowUserOptions({ tenantId }, { showErrorMessage: false }),
+    '请检查网络后重试，已填写的转交原因会保留。'
+  )
+  let formRevision = 0
+  const formActive = ref(false)
+  const invalidateForm = () => {
+    formRevision += 1
+    formActive.value = false
+    resetUsers('')
+  }
+  const route = useRoute()
+  watch(() => route.fullPath, invalidateForm)
+  watch(loadedUsers, (users) => {
+    state.users = users ?? []
+    rebuildItems()
+  })
+  watch([usersLoading, usersError, formActive], () => {
+    rebuildItems()
+    dialogRef.value?.setOptions({
+      confirmDisabled: !formActive.value || usersLoading.value || !!usersError.value
+    })
+  })
   const form = reactive<{
     data: { assigneeUserId: string; reason: string }
     items: FormItem[]
@@ -106,6 +149,7 @@
         props: {
           placeholder: '选择同租户在职人员',
           filterable: true,
+          disabled: !formActive.value || usersLoading.value || !!usersError.value,
           options: state.users
             .filter((user) => user.id !== state.task?.assigneeUserId)
             .map(toUserSelectOption)
@@ -128,23 +172,36 @@
   }
 
   async function handleSubmit(): Promise<boolean> {
+    const revision = formRevision
+    const task = state.task
+    const assigneeUserId = form.data.assigneeUserId
+    const reason = form.data.reason
+    const isCurrent = () => formActive.value && revision === formRevision && task === state.task
     try {
+      if (!formActive.value || usersLoading.value || usersError.value || !task) return false
       if (!(await validateArtFormForSubmit(formRef.value))) return false
-      if (!state.task) return false
+      if (!isCurrent()) return false
+      if (assigneeUserId !== form.data.assigneeUserId || reason !== form.data.reason) return false
       await transferWorkflowTask({
-        taskId: state.task.id,
-        assigneeUserId: form.data.assigneeUserId,
-        reason: form.data.reason.trim()
+        taskId: task.id,
+        assigneeUserId,
+        reason: reason.trim()
       })
+      if (!isCurrent()) return false
+      ElMessage.success('审批待办已转交')
       emit('success')
       return true
     } catch (error) {
+      if (!isCurrent()) return false
       notifyFriendlyError(error, '审批转交失败，请刷新待办后重试', 'warning')
       return false
     }
   }
 
   async function handleOpen(task: Api.Workflow.WorkflowTaskRecord): Promise<void> {
+    invalidateForm()
+    formActive.value = true
+    resetUsers(task.tenantId)
     state.task = task
     Object.assign(form.data, { assigneeUserId: '', reason: '' })
     state.users = []
@@ -154,19 +211,12 @@
       subtitle: '新审批人必须属于同一租户且账号处于启用状态。',
       confirmText: '确认转交',
       contentMaxHeight: '70vh',
-      loading: true,
-      loadingText: '正在加载审批人…',
-      onOpen: async (_openData, api) => {
+      onOpen: async () => {
         await nextTick()
         formRef.value?.clearValidate()
-        try {
-          const response = await fetchWorkflowUserOptions({ tenantId: task.tenantId })
-          state.users = response.data ?? []
-          rebuildItems()
-        } finally {
-          api.setLoading(false)
-        }
+        await loadUsers(task.tenantId)
       },
+      onClose: invalidateForm,
       onConfirm: handleSubmit,
       onReset: () => {
         state.task = undefined

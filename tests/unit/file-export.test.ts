@@ -4,7 +4,52 @@ import {
   TENANT_SCOPE_MODE_STORAGE_KEY,
   writeTenantScopeId
 } from '../../src/utils/tenant-scope-context'
-import { buildExcelFilename, buildExcelRows, downloadBlob, exportExcel } from '../../src/utils/file'
+import {
+  buildExcelFilename,
+  buildExcelRows,
+  downloadBlob,
+  exportExcel,
+  importExcelFile
+} from '../../src/utils/file'
+
+test('spreadsheet imports preserve UTF-8 CSV headers and binary Excel files', async () => {
+  const originalReader = Object.getOwnPropertyDescriptor(globalThis, 'FileReader')
+  class ImportFileReader {
+    onload?: (event: { target: { result: string | ArrayBuffer } }) => void
+    onerror?: (error: unknown) => void
+
+    readAsText(file: File) {
+      void file.text().then(
+        (result) => this.onload?.({ target: { result } }),
+        (error: unknown) => this.onerror?.(error)
+      )
+    }
+
+    readAsArrayBuffer(file: File) {
+      void file.arrayBuffer().then(
+        (result) => this.onload?.({ target: { result } }),
+        (error: unknown) => this.onerror?.(error)
+      )
+    }
+  }
+  Object.defineProperty(globalThis, 'FileReader', { configurable: true, value: ImportFileReader })
+  try {
+    const expected = [
+      { 客户: '测试甲', 金额: 12 },
+      { 客户: '测试乙', 金额: 18 }
+    ]
+    const csv = new File(['\uFEFF客户,金额\n测试甲,12\n测试乙,18'], '流水.CSV')
+    assert.deepEqual(await importExcelFile(csv), expected)
+    const XLSX = await import('../../src/vendor/sheetjs/xlsx.mjs')
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(expected), '流水')
+    const excel = new File([XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })], '流水.xlsx')
+    assert.deepEqual(await importExcelFile(excel), expected)
+  } finally {
+    if (originalReader) Object.defineProperty(globalThis, 'FileReader', originalReader)
+    else Reflect.deleteProperty(globalThis, 'FileReader')
+  }
+})
 
 test('Excel export rejects a tenant change before saving its generated file', async () => {
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')

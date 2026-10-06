@@ -1,1 +1,0 @@
-import{Kt as e}from"./icon-D6lsc2HN.js";import{N as t}from"./common-utils-CCW50KHL.js";var n=e({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=e=>t(n,e);export{r as t};

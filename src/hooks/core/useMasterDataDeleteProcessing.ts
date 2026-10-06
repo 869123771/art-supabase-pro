@@ -8,6 +8,7 @@ export interface MasterDataDeleteProcessingContext {
   driverId: string
   recordId: string
   recordNo: string
+  resourceId: string
   vehicleId: string
 }
 
@@ -30,6 +31,7 @@ export function useMasterDataDeleteProcessingContext() {
       driverId: scopedText(route.query.driverId),
       recordId: scopedText(route.query.recordId),
       recordNo: scopedText(route.query.recordNo),
+      resourceId: scopedText(route.query.resourceId),
       vehicleId: scopedText(route.query.vehicleId)
     }
   })

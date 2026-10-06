@@ -1,4 +1,6 @@
 import dayjs from 'dayjs'
+import { countBy } from 'lodash-es'
+import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import { fetchAiOperationsOverview } from '@/api/ai-operations'
 import { fetchEnterpriseDashboardData } from '@/api/enterprise-dashboard'
 import {
@@ -445,17 +447,23 @@ async function fetchAiSecurityEvents(days: number): Promise<AiSecurityEvent[]> {
     .subtract(days - 1, 'day')
     .startOf('day')
     .toISOString()
-  const { data } = await responseHandle<AiSecurityEvent[]>(
-    () =>
-      supabase
-        .from('ai_security_event')
-        .select('id,event_type,severity,decision,status,title,detail,detected_at')
-        .gte('detected_at', from)
-        .order('detected_at', { ascending: false })
-        .limit(100),
-    { breakReturn: true, errorMessage: 'AI 安全事件加载失败' }
+  return loadAllDocumentPages<AiSecurityEvent, { from?: number; to?: number }>(
+    ({ from: offset = 0, to = 499 }) =>
+      responseHandle<AiSecurityEvent[]>(
+        () =>
+          supabase
+            .from('ai_security_event')
+            .select('id,event_type,severity,decision,status,title,detail,detected_at', {
+              count: 'exact'
+            })
+            .gte('detected_at', from)
+            .order('detected_at', { ascending: false })
+            .order('id')
+            .range(offset, to),
+        { breakReturn: true, errorMessage: 'AI 安全事件加载失败' }
+      ),
+    {}
   )
-  return data ?? []
 }
 
 async function loadAiSafety(): Promise<DomainCommandData> {
@@ -467,6 +475,9 @@ async function loadAiSafety(): Promise<DomainCommandData> {
     ['open', 'investigating', 'blocked'].includes(item.status)
   )
   const blockedCount = securityEvents.filter((item) => item.decision === 'blocked').length
+  const eventsByDay = countBy(securityEvents, (event) =>
+    dayjs(event.detectedAt).format('YYYY-MM-DD')
+  )
   const criticalCount = activeSecurityEvents.filter((item) =>
     ['high', 'critical'].includes(item.severity)
   ).length
@@ -621,8 +632,7 @@ async function loadAiSafety(): Promise<DomainCommandData> {
     trend: data.dailyTrend.slice(-14).map((item) => ({
       label: dayjs(item.date).format('MM/DD'),
       primary: item.total,
-      secondary: securityEvents.filter((event) => dayjs(event.detectedAt).isSame(item.date, 'day'))
-        .length
+      secondary: eventsByDay[dayjs(item.date).format('YYYY-MM-DD')] ?? 0
     })),
     alerts
   }

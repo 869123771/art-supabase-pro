@@ -14,6 +14,7 @@
     :aria-busy="!!loading"
     @mousedown="handleTableMouseDown"
     @wheel.capture="handleWheelBoundary"
+    @focusin="handleControlFocus"
   >
     <ElTable ref="elTableRef" v-bind="mergedTableProps">
       <template v-for="col in visibleColumns" :key="col.prop || col.type">
@@ -184,14 +185,16 @@
 
       <template #empty>
         <div v-if="loading"></div>
-        <slot v-else name="empty">
-          <ArtEmptyState
-            :title="emptyText"
-            :description="emptyDescription"
-            :visual-size="92"
-            size="compact"
-          />
-        </slot>
+        <div v-else ref="emptyContentRef">
+          <slot name="empty">
+            <ArtEmptyState
+              :title="emptyText"
+              :description="emptyDescription"
+              :visual-size="92"
+              size="compact"
+            />
+          </slot>
+        </div>
       </template>
     </ElTable>
 
@@ -250,7 +253,7 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
-  import { useElementSize, useEventListener, useResizeObserver, useWindowSize } from '@vueuse/core'
+  import { useEventListener, useRafFn, useResizeObserver, useWindowSize } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
@@ -301,7 +304,21 @@
 
   const { width } = useWindowSize()
   const containerRef = ref<HTMLElement>()
-  const { width: containerWidth } = useElementSize(containerRef)
+  const containerWidth = ref(0)
+  let pendingContainerWidth = 0
+  // 固定列切换会再次布局；在下一帧接收容器宽度，避免观察回调中的尺寸反馈。
+  const { resume: scheduleContainerWidth, pause: pauseContainerWidth } = useRafFn(
+    () => {
+      containerWidth.value = pendingContainerWidth
+      pauseContainerWidth()
+    },
+    { immediate: false }
+  )
+  useResizeObserver(containerRef, ([entry]) => {
+    if (!entry) return
+    pendingContainerWidth = entry.contentRect.width
+    scheduleContainerWidth()
+  })
   const elTableRef = ref<ArtTableInstance | null>(null)
   const paginationRef = ref<HTMLElement>()
   const tableHeaderRef = ref<HTMLElement>()
@@ -430,15 +447,15 @@
     pageSizes: [10, 20, 30, 50, 100],
     align: 'center',
     background: true,
-    layout: layout.value,
     hideOnSinglePage: false,
-    size: 'default',
-    pagerCount: width.value > 1200 ? 7 : 5
+    size: 'default'
   }
 
   // 合并分页配置
   const mergedPaginationOptions = computed(() => ({
     ...DEFAULT_PAGINATION_OPTIONS,
+    layout: layout.value,
+    pagerCount: width.value > 1200 ? 7 : 5,
     ...props.paginationOptions
   }))
 
@@ -453,6 +470,20 @@
 
   const paginationHeight = ref(0)
   const tableHeaderHeight = ref(0)
+  const emptyContentRef = ref<HTMLElement>()
+  const emptyTableHeight = ref(0)
+  useResizeObserver(emptyContentRef, () => {
+    requestAnimationFrame(() => {
+      const content = emptyContentRef.value
+      if (!content) return
+      const header = elTableRef.value?.$el.querySelector(
+        '.el-table__header-wrapper'
+      ) as HTMLElement | null
+      emptyTableHeight.value = Math.ceil(
+        content.getBoundingClientRect().height + (header?.getBoundingClientRect().height ?? 0) + 1
+      )
+    })
+  })
   const isRowSelectionDragging = ref(false)
   const rowSelectionDragStartRow = ref<ArtTableRow>()
   const rowSelectionDragMode = ref<'select' | 'deselect'>('select')
@@ -498,7 +529,9 @@
     if (isFullScreen.value) return '100%'
     // 初次加载也使用稳定的空表格高度，避免未定高容器中的百分比高度反馈。
     // 加载期间保留业务显式传入的高度。
-    if (isEmpty.value && (!props.loading || !props.height)) return props.emptyHeight
+    if (isEmpty.value && !props.loading)
+      return `max(${props.emptyHeight}, ${emptyTableHeight.value}px)`
+    if (isEmpty.value && !props.height) return props.emptyHeight
     // 使用传入的高度
     if (props.height) return props.height
     // 默认占满容器高度
@@ -761,6 +794,49 @@
     return undefined
   }
 
+  const revealTableCell = (cell: HTMLElement): void => {
+    cell.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })
+    const viewport = cell
+      .closest('.el-table__body-wrapper')
+      ?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+    const row = cell.closest('tr')
+    const tableCell = cell.closest('td')
+    // 原生焦点滚动不扣除固定列占用的空间，需要按实际可见边界补偿。
+    if (
+      viewport &&
+      row &&
+      !tableCell?.matches('.el-table-fixed-column--left, .el-table-fixed-column--right')
+    ) {
+      const viewportRect = viewport.getBoundingClientRect()
+      const visibleLeft = Math.max(
+        viewportRect.left,
+        ...Array.from(row.querySelectorAll('.el-table-fixed-column--left')).map(
+          (fixedCell) => fixedCell.getBoundingClientRect().right
+        )
+      )
+      const visibleRight = Math.min(
+        viewportRect.left + viewport.clientWidth,
+        ...Array.from(row.querySelectorAll('.el-table-fixed-column--right')).map(
+          (fixedCell) => fixedCell.getBoundingClientRect().left
+        )
+      )
+      const cellRect = cell.getBoundingClientRect()
+      if (cellRect.left < visibleLeft) viewport.scrollLeft += cellRect.left - visibleLeft
+      else if (cellRect.right > visibleRight) viewport.scrollLeft += cellRect.right - visibleRight
+    }
+  }
+
+  const handleControlFocus = (event: FocusEvent): void => {
+    const target = event.target
+    if (!(target instanceof HTMLElement) || !target.matches('input, textarea, button, [tabindex]'))
+      return
+    const cell = target.closest<HTMLElement>('td')
+    if (!cell) return
+    requestAnimationFrame(() => {
+      if (target.isConnected && document.activeElement === target) revealTableCell(cell)
+    })
+  }
+
   const focusValidationError = async (
     error: InternalTableValidationError | undefined
   ): Promise<void> => {
@@ -771,7 +847,7 @@
     )
     const cell = cells.find((item) => item.dataset.artValidationKey === error.key)
     if (!cell) return
-    cell.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })
+    revealTableCell(cell)
     const control = cell.querySelector<HTMLElement>(
       'input:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )

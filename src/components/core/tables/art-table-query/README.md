@@ -196,6 +196,7 @@ const load = () => {
 | `onCacheHit` | `(data, response) => void` | 内管 | - | 缓存命中回调。 |
 | `debug` | `boolean` | 内管 | `false` | 是否开启 `useTable` 调试日志。 |
 | `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂。 |
+| `columnsContextKey` | `string \| number` | 内管 | — | 列工厂依赖的业务模式；变化时重新生成列，数据查询仍由业务事件控制。 |
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
 | `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；支持 `v-model`。专注模式期间有效值强制为开启，退出后恢复原值。 |

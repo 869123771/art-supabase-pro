@@ -13,6 +13,11 @@ export type DetailListRow<TDocument, TLine> = TDocument & {
   detailGroupStart: boolean
 }
 
+/** Row identity must remain unique while a mode switch still displays the previous rows. */
+export function getDocumentDetailRowKey(row: { id: string; detailRowId?: string }): string {
+  return row.detailRowId ?? row.id
+}
+
 /** Load documents before line pagination so a page never silently drops sibling lines. */
 export async function loadAllDocumentPages<
   TDocument,
@@ -35,11 +40,14 @@ export async function loadAllDocumentPages<
     const page = await fetchPage({ ...filters, from, to: from + batchSize - 1 })
     assertTenantScope()
     if (page.error) throw page.error
-    if (from === 0 && page.total != null) {
+    if (page.total != null) {
       if (!Number.isSafeInteger(page.total) || page.total < 0) {
         throw new Error('数据总数无效，请刷新后重试')
       }
-      total = page.total
+      if (total !== undefined && total !== page.total) {
+        throw new Error('数据总数已变化，请刷新后重试')
+      }
+      if (from === 0) total = page.total
     }
     const rows = page.data ?? []
     if (total !== undefined && loaded + rows.length > total) {

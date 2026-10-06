@@ -1,6 +1,11 @@
 <template>
   <ArtPermissionGuard :permission="permission.View" :resource-name="title">
     <div class="business-workspace-page art-full-height min-w-0">
+      <MasterDeleteProcessingNotice
+        v-if="deleteContext.active"
+        :location-ready="Boolean(locatedDocumentId && locatedDocumentId === matchedDocumentId)"
+        action-hint="请核对关联采购单据，处理完成后返回原页面重新检查引用。"
+      />
       <BusinessWorkspaceHeader
         class="wms-initialization-header"
         :eyebrow="isInitial ? 'OPENING PURCHASE DOCUMENT' : 'INBOUND INVENTORY DOCUMENT'"
@@ -18,20 +23,24 @@
       </BusinessWorkspaceHeader>
       <ArtTableQuery
         ref="tableRef"
-        v-model="search"
+        :model-value="search"
+        @update:model-value="replaceReactiveModel(search, $event)"
         :api-fn="fetchRows"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
+        :columns-context-key="displayMode"
         :header-actions="headerActions"
         header-actions-placement="workspace"
         :search-bar-props="{ span: 5, labelWidth: 76 }"
         :table-props="{
-          rowKey: displayMode === 'document' ? 'documentId' : 'lineId',
+          rowKey: 'lineId',
           spanMethod: mergeDocumentCells,
           tableLayout: 'fixed',
           cellClassName: purchaseCellClassName,
-          emptyText: `当前范围暂无${title}`,
-          emptyDescription: '新建单据并选择物料，填写数量、价格与仓储信息。'
+          emptyText: deleteContext.active ? '未找到可查看的目标采购单据' : `当前范围暂无${title}`,
+          emptyDescription: deleteContext.active
+            ? '请核对单据类型、租户范围和查看权限，可重试或清除定位。'
+            : '新建单据并选择物料，填写数量、价格与仓储信息。'
         }"
         focusable
         @selection-change="onSelectionChange"
@@ -66,7 +75,12 @@
         :import-permission="permission.Import"
         @success="refresh"
       />
-      <ArtDialog ref="orderTargetDialogRef" size="md" :show-footer="false">
+      <ArtDialog
+        ref="orderTargetDialogRef"
+        size="md"
+        :show-footer="false"
+        @close="closeOrderTargetPicker"
+      >
         <ArtEntitySummary
           icon="ri:link-m"
           :eyebrow="kind === 'other_inbound' ? 'SOURCE DOCUMENT' : 'PURCHASE ORDER'"
@@ -105,7 +119,7 @@
             </div>
             <ElButton
               type="primary"
-              :disabled="!selectedOrderTargetId"
+              :disabled="orderTargetLoading || Boolean(orderTargetError) || !selectedOrderTargetId"
               @click="openSelectedOrderTarget"
             >
               {{ kind === 'other_inbound' ? '生成入库草稿' : '承接订单' }}
@@ -148,24 +162,32 @@
           <ElButton disabled class="w-full!">{{ isReturn ? '其他出库单' : '到货确认单' }}</ElButton>
         </div>
       </ArtDialog>
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
 
 <script setup lang="tsx">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
+  import { formatCurrencyValue } from '@/utils/ui/format'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElMessage, ElTag } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
+  import { chunk } from 'lodash-es'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
+  import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
-  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import ArtTableQuery, {
     type ArtTableQueryExpose,
     type ArtTableQueryHeaderAction
@@ -191,6 +213,7 @@
     changeWmsPurchaseStatus,
     fetchWmsPurchaseDocument,
     fetchWmsPurchasePage,
+    fetchWmsPurchaseDocumentIdPage,
     fetchWmsPurchaseOrderTargets,
     type WmsPurchaseKind,
     type WmsPurchaseListRow
@@ -216,10 +239,30 @@
     permissions: Record<PurchaseAction, string>
   }>()
   const { confirmAction } = useArtFeedback()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'wms_purchase_document',
+    '采购入退库单'
+  )
   const { hasAuth } = useAuth()
   const route = useRoute()
   const router = useRouter()
   const { effectiveTenantId } = storeToRefs(useTenantScopeStore())
+  const deleteContext = useMasterDataDeleteProcessingContext()
+  const locatedDocumentId = computed(() =>
+    deleteContext.value.active && route.query.dependencyCode === 'wms_purchase_document'
+      ? deleteContext.value.recordId
+      : ''
+  )
+  const matchedDocumentId = ref('')
+  let locationRequestSequence = 0
+  watch(
+    [locatedDocumentId, () => deleteContext.value.active, effectiveTenantId, () => props.kind],
+    () => {
+      locationRequestSequence += 1
+      matchedDocumentId.value = ''
+      void refresh()
+    }
+  )
   const userStore = useUserStore()
   void userStore.ensureDictLoaded('wmsInitialStockType')
   void userStore.ensureDictLoaded('wmsInitialStockCondition')
@@ -266,8 +309,26 @@
   const entrustedTargetDrawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const pushDialogRef = ref<ArtDialogExpose>()
   const orderTargetDialogRef = ref<ArtDialogExpose>()
-  const orderTargets = ref<Awaited<ReturnType<typeof fetchWmsPurchaseOrderTargets>>>([])
-  const orderTargetError = ref('')
+  const orderTargetPickerActive = ref(false)
+  const {
+    detail: orderTargetRows,
+    loading: orderTargetLoading,
+    loadError: orderTargetError,
+    loadDetail: loadOrderTargetRows,
+    openDetail: resetOrderTargetRows
+  } = useDetailRecord<Awaited<ReturnType<typeof fetchWmsPurchaseOrderTargets>>>(
+    async (tenantId) => ({
+      data: await fetchWmsPurchaseOrderTargets(tenantId === '__all__' ? undefined : tenantId)
+    }),
+    '来源单据加载失败，请重新加载后再选择'
+  )
+  const orderTargets = computed(() => orderTargetRows.value ?? [])
+  watch(orderTargetLoading, (loading) => orderTargetDialogRef.value?.setLoading(loading))
+  watch(effectiveTenantId, () => {
+    selectedOrderTargetId.value = ''
+    resetOrderTargetRows('')
+    if (orderTargetPickerActive.value) void loadOrderTargets()
+  })
   const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
   const selectedRows = ref<Array<{ documentId: string; kind: unknown; status: unknown }>>([])
@@ -315,7 +376,7 @@
     materialCode: ''
   })
   const searchItems = computed<SearchFormItem[]>(() => [
-    { label: '展示方式', key: 'displayMode', type: 'text' },
+    { label: '展示方式', key: 'displayMode', type: 'text', span: 6 },
     {
       label: '单据状态',
       key: 'status',
@@ -356,6 +417,7 @@
   ])
   async function fetchRows(query: {
     exportAll?: boolean
+    documentIds?: string[]
     status?: string
     supplier?: string
     projectName?: string
@@ -365,33 +427,108 @@
     size: number
   }) {
     const exportAll = query.exportAll === true
-    const fetchPage = (page: typeof query) =>
-      fetchWmsPurchasePage({
-        ...page,
-        kind: props.kind,
-        tenantId: effectiveTenantId.value || undefined
+    const documentId = locatedDocumentId.value
+    const tenantId = effectiveTenantId.value
+    const kind = props.kind
+    const locating = deleteContext.value.active
+    const assertReadContext = () => {
+      if (
+        documentId !== locatedDocumentId.value ||
+        tenantId !== effectiveTenantId.value ||
+        kind !== props.kind ||
+        locating !== deleteContext.value.active
+      ) {
+        throw new Error('查询范围已变化，请在当前范围重新查询或导出')
+      }
+    }
+    const requestSequence = exportAll ? locationRequestSequence : ++locationRequestSequence
+    if (!exportAll) matchedDocumentId.value = ''
+    if (deleteContext.value.active && !locatedDocumentId.value) {
+      matchedDocumentId.value = ''
+      return { data: [], total: 0 }
+    }
+    const fetchPage = async (page: typeof query) => {
+      assertReadContext()
+      const result = await fetchWmsPurchasePage({
+        ...(documentId ? { current: page.current, size: page.size } : page),
+        documentId: documentId || undefined,
+        kind,
+        tenantId: tenantId || undefined
       })
+      assertReadContext()
+      if (
+        !exportAll &&
+        requestSequence === locationRequestSequence &&
+        documentId === locatedDocumentId.value &&
+        tenantId === effectiveTenantId.value &&
+        kind === props.kind
+      ) {
+        matchedDocumentId.value = result.data.some((row) => row.documentId === documentId)
+          ? documentId
+          : ''
+      }
+      return result
+    }
     if (displayMode.value === 'line') {
       if (exportAll) {
         const data = await loadAllLinePages(fetchPage, query)
         return { data, total: data.length }
       }
       const result = await fetchPage(query)
-      visibleRows.value = result.data
+      if (requestSequence === locationRequestSequence) visibleRows.value = result.data
       return result
     }
     if (!exportAll) visibleRows.value = []
-    const hasMaterialFilter = Boolean(
-      query.materialCode?.trim() || query.materialDescription?.trim()
-    )
-    const matchingDocumentIds = hasMaterialFilter
-      ? new Set((await loadAllLinePages(fetchPage, query)).map((line) => line.documentId))
-      : null
-    const lines = await loadAllLinePages(fetchPage, {
-      ...query,
-      materialCode: undefined,
-      materialDescription: undefined
-    })
+    let documentTotal: number | undefined
+    let expectedDocumentCount: number | undefined
+    let matchingDocumentIds: Set<string> | null = null
+    let lines: WmsPurchaseListRow[]
+    if (!exportAll && !documentId) {
+      assertReadContext()
+      const documents = await fetchWmsPurchaseDocumentIdPage({
+        ...query,
+        kind,
+        tenantId: tenantId || undefined
+      })
+      assertReadContext()
+      documentTotal = documents.total
+      if (!documents.data.length) return { data: [], total: documentTotal }
+      expectedDocumentCount = documents.data.length
+      matchingDocumentIds = new Set(documents.data.map((row) => row.id))
+      lines = await loadAllLinePages(fetchPage, {
+        ...query,
+        documentIds: documents.data.map((row) => row.id),
+        projectName: undefined,
+        materialCode: undefined,
+        materialDescription: undefined
+      })
+    } else {
+      const hasLineFilter = Boolean(
+        !documentId &&
+        (query.materialCode?.trim() ||
+          query.materialDescription?.trim() ||
+          query.projectName?.trim())
+      )
+      matchingDocumentIds = hasLineFilter
+        ? new Set((await loadAllLinePages(fetchPage, query)).map((line) => line.documentId))
+        : null
+      if (matchingDocumentIds?.size === 0) return { data: [], total: 0 }
+      const completeLineQuery = {
+        ...query,
+        projectName: undefined,
+        materialCode: undefined,
+        materialDescription: undefined
+      }
+      if (matchingDocumentIds) {
+        lines = []
+        for (const documentIds of chunk(Array.from(matchingDocumentIds), 20)) {
+          lines.push(...(await loadAllLinePages(fetchPage, { ...completeLineQuery, documentIds })))
+        }
+        expectedDocumentCount = matchingDocumentIds.size
+      } else {
+        lines = await loadAllLinePages(fetchPage, completeLineQuery)
+      }
+    }
     const documents = groupDocumentLines(
       matchingDocumentIds
         ? lines.filter((line) => matchingDocumentIds.has(line.documentId))
@@ -406,15 +543,18 @@
       taxAmount: group.reduce((sum, line) => sum + Number(line.taxAmount || 0), 0),
       totalAmount: group.reduce((sum, line) => sum + Number(line.totalAmount || 0), 0)
     }))
+    if (expectedDocumentCount !== undefined && documents.length !== expectedDocumentCount) {
+      throw new Error('单据或明细已变化，请刷新列表后重试')
+    }
     return {
-      data: (exportAll
+      data: (exportAll || documentTotal !== undefined
         ? documents
         : documents.slice((query.current - 1) * query.size, query.current * query.size)
       ).map((row) => ({
         ...row,
         inventoryUnitName: formatUnitDisplayName(row.inventoryUnitName)
       })),
-      total: documents.length
+      total: documentTotal ?? documents.length
     }
   }
   async function refresh(): Promise<void> {
@@ -453,29 +593,37 @@
     }
   }
   async function loadOrderTargets(): Promise<void> {
-    orderTargetDialogRef.value?.setLoading(true)
-    orderTargetError.value = ''
-    try {
-      orderTargets.value = await fetchWmsPurchaseOrderTargets(effectiveTenantId.value || undefined)
-    } catch (error) {
-      orderTargetError.value = getFriendlySupabaseErrorMessage(error, '来源单据加载失败，请重试')
-    } finally {
-      orderTargetDialogRef.value?.setLoading(false)
-    }
-  }
-  async function openOrderTargetPicker(): Promise<void> {
-    orderTargets.value = []
+    if (!orderTargetPickerActive.value) return
     selectedOrderTargetId.value = ''
-    orderTargetError.value = ''
+    await loadOrderTargetRows(effectiveTenantId.value ?? '__all__')
+  }
+  function closeOrderTargetPicker(): void {
+    orderTargetPickerActive.value = false
+    selectedOrderTargetId.value = ''
+    resetOrderTargetRows('')
+  }
+  onUnmounted(closeOrderTargetPicker)
+  async function openOrderTargetPicker(): Promise<void> {
+    orderTargetPickerActive.value = true
+    resetOrderTargetRows('')
+    selectedOrderTargetId.value = ''
     await orderTargetDialogRef.value?.handleOpen(undefined, {
       title: props.kind === 'other_inbound' ? '选择来源单据' : '承接采购订单',
       loading: true,
       loadingText: '正在加载来源单据…',
-      onOpen: loadOrderTargets
+      onOpen: () => {
+        void loadOrderTargets()
+      }
     })
   }
   async function openSelectedOrderTarget(): Promise<void> {
-    if (!selectedOrderTargetId.value) return
+    if (
+      !orderTargetPickerActive.value ||
+      orderTargetLoading.value ||
+      orderTargetError.value ||
+      !orderTargets.value.some((row) => row.id === selectedOrderTargetId.value)
+    )
+      return
     const targetId = selectedOrderTargetId.value
     await orderTargetDialogRef.value?.handleClose()
     await openOrderTarget(targetId)
@@ -554,15 +702,20 @@
   ): Promise<void> {
     if (workingId.value) return
     const label = { submit: '提交', approve: '审核', delete: '删除' }[action]
+    const resources = [{ id: row.documentId, label: row.documentNo }]
+    workingId.value = row.documentId
     try {
+      if (action === 'delete' && (await inspectDeleteReferences(resources))) return
       await confirmAction(`确定${label} ${row.documentNo}？`, `${label}${title.value}`, {
         type: action === 'delete' ? 'warning' : 'info',
         confirmButtonText: `确定${label}`
       })
-      workingId.value = row.documentId
       await changeWmsPurchaseStatus(row.documentId, action)
       await refresh()
-    } catch {
+    } catch (error) {
+      if (action === 'delete' && error !== 'cancel' && error !== 'close') {
+        await inspectDeleteReferences(resources)
+      }
       /* 取消和接口错误由组件处理。 */
     } finally {
       workingId.value = undefined
@@ -798,9 +951,27 @@
       { prop: 'unitPrice', label: '单价(元)', minWidth: 108, align: 'right' },
       { prop: 'taxInclusiveUnitPrice', label: '含税单价(元)', minWidth: 125, align: 'right' },
       { prop: 'taxRate', label: '税率(%)', minWidth: 100, align: 'right' },
-      { prop: 'amount', label: '金额(元)', minWidth: 110, align: 'right' },
-      { prop: 'taxAmount', label: '税额(元)', minWidth: 110, align: 'right' },
-      { prop: 'totalAmount', label: '价税合计(元)', minWidth: 130, align: 'right' },
+      {
+        prop: 'amount',
+        label: '金额(元)',
+        minWidth: 110,
+        align: 'right',
+        formatter: (row) => formatCurrencyValue(row.amount)
+      },
+      {
+        prop: 'taxAmount',
+        label: '税额(元)',
+        minWidth: 110,
+        align: 'right',
+        formatter: (row) => formatCurrencyValue(row.taxAmount)
+      },
+      {
+        prop: 'totalAmount',
+        label: '价税合计(元)',
+        minWidth: 130,
+        align: 'right',
+        formatter: (row) => formatCurrencyValue(row.totalAmount)
+      },
       { prop: 'batchNo', label: '批号', minWidth: 120 },
       { prop: 'warehouseName', label: '仓库', minWidth: 140 },
       { prop: 'binName', label: '仓位', minWidth: 120 },

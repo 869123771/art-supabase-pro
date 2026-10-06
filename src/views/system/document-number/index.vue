@@ -135,7 +135,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useAuth } from '@/hooks/core/useAuth'
-  import { pageInfoHandler } from '@/utils/table/table-utils'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatWithDayjs } from '@/utils/time'
   import TreeUtils from '@/utils/tree'
   import DocumentNumberDialog from './modules/document-number-dialog.vue'
@@ -328,7 +328,7 @@
   }
 
   const fetchTableData = (params: TableParams) => {
-    const { from, to } = pageInfoHandler({ current: params.current, size: params.size })
+    const { from, to } = buildSupabasePageRange({ current: params.current, size: params.size })
     return fetchDocumentNumberRuleList({
       ...params,
       ruleKeys: targetRuleKey.value

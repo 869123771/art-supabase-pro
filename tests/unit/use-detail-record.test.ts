@@ -13,10 +13,44 @@ test('detail loader keeps the requested ID after an empty response so retry rema
   await request.loadDetail('record-1')
   assert.equal(request.detail.value, undefined)
   assert.equal(request.activeId.value, 'record-1')
+  assert.equal(request.loadError.value, null)
+  assert.equal(request.missing.value, true)
+  assert.equal(request.loading.value, false)
 
   await request.retryLoad()
   assert.deepEqual(request.detail.value, { name: '已恢复' })
+  assert.equal(request.loadError.value, null)
+  assert.equal(request.missing.value, false)
   assert.equal(calls, 2)
+})
+
+test('detail loader treats an empty collection as valid loaded data', async () => {
+  const request = useDetailRecord<string[]>(async () => ({ data: [] }), '加载失败')
+  request.openDetail('tenant-1')
+  await request.retryLoad()
+  assert.deepEqual(request.detail.value, [])
+  assert.equal(request.missing.value, false)
+  assert.equal(request.loadError.value, null)
+})
+
+test('closing a detail discards a late empty response without reopening an error', async () => {
+  let resolvePending: ((result: { data: null }) => void) | undefined
+  const request = useDetailRecord(
+    () =>
+      new Promise<{ data: null }>((resolve) => {
+        resolvePending = resolve
+      }),
+    '加载失败'
+  )
+  request.openDetail('record-1')
+  const pending = request.retryLoad()
+  request.openDetail('')
+  resolvePending?.({ data: null })
+  await pending
+  assert.equal(request.activeId.value, '')
+  assert.equal(request.missing.value, false)
+  assert.equal(request.loadError.value, null)
+  assert.equal(request.loading.value, false)
 })
 
 test('detail loader keeps the technical cause behind a safe error and recovers on retry', async () => {

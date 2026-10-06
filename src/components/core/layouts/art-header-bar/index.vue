@@ -226,8 +226,8 @@
   import { themeAnimation } from '@/utils/ui/animation'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
-  import ArtUserMenu from './widget/ArtUserMenu.vue'
-  import ArtApplicationSwitcher from './widget/ArtApplicationSwitcher.vue'
+  import ArtUserMenu from './widget/art-user-menu.vue'
+  import ArtApplicationSwitcher from './widget/art-application-switcher.vue'
   import PlatformTenantScopeSwitcher from '@/components/business/platform-tenant-scope-switcher/index.vue'
   import PageDesignReference from '@/components/business/page-design-reference/index.vue'
 

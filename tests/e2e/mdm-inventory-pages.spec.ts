@@ -853,7 +853,7 @@ test('生产工单类型显示可配置的领料仓库范围', async ({ page }, 
   expect(payload.menu_ids).toEqual(['wms-work-order-menu', 'wms-initial-stock-menu'])
 })
 
-test('业务类型可选择多个菜单并设置出入库标志', async ({ page }, testInfo) => {
+test('业务类型可选择多个单据类型和菜单并设置出入库标志', async ({ page }, testInfo) => {
   test.setTimeout(180_000)
   await installFixtures(page)
   const root = {
@@ -932,13 +932,26 @@ test('业务类型可选择多个菜单并设置出入库标志', async ({ page 
     document_type_name: '测试单据类型',
     enabled: true
   }
+  const secondDocumentType = {
+    ...documentType,
+    id: 'second-business-document-type',
+    menu_id: 'stock-menu',
+    menu_ids: ['stock-menu'],
+    document_type_code: 'STOCK_DOC',
+    document_type_name: '库存单据类型'
+  }
   await page.route('**/rest/v1/mdm_document_type?*', (route) =>
-    route.fulfill({ status: 206, headers: { 'content-range': '0-0/1' }, json: [documentType] })
+    route.fulfill({
+      status: 206,
+      headers: { 'content-range': '0-1/2' },
+      json: [documentType, secondDocumentType]
+    })
   )
   const businessType = {
     id: 'business-type-id',
     tenant_id: tenantId,
     document_type_id: documentType.id,
+    document_type_ids: [documentType.id],
     menu_ids: ['production-menu'],
     business_type_code: 'TEST_BUSINESS',
     business_type_name: '测试业务类型',
@@ -972,6 +985,15 @@ test('业务类型可选择多个菜单并设置出入库标志', async ({ page 
   await expect(menuInput).toHaveAttribute('aria-expanded', 'true')
   await page.locator('.el-select-dropdown:visible').getByText('初始库存单', { exact: true }).click()
   await expect(menuField).toContainText('+ 1')
+  const documentField = dialog.locator('.el-form-item').filter({ hasText: '所属单据类型' })
+  await documentField.scrollIntoViewIfNeeded()
+  await documentField.getByRole('combobox').press('ArrowDown')
+  await page
+    .locator('.el-select-dropdown:visible')
+    .getByText('库存单据类型 · STOCK_DOC', { exact: true })
+    .click()
+  await expect(documentField).toContainText('+ 1')
+  await documentField.getByRole('combobox').press('Escape')
   const movementField = dialog.locator('.el-form-item').filter({ hasText: '出入库标志' })
   await movementField.scrollIntoViewIfNeeded()
   await movementField.getByText('出库', { exact: true }).click()
@@ -984,9 +1006,11 @@ test('业务类型可选择多个菜单并设置出入库标志', async ({ page 
   await dialog.getByRole('button', { name: '保存更改' }).click()
   const payload = (await saveRequest).postDataJSON() as {
     menu_ids: string[]
+    document_type_ids: string[]
     stock_movement: string
   }
   expect(payload.menu_ids).toEqual(['production-menu', 'stock-menu'])
+  expect(payload.document_type_ids).toEqual([documentType.id, secondDocumentType.id])
   expect(payload.stock_movement).toBe('outbound')
 })
 

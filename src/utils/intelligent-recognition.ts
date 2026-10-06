@@ -3,7 +3,7 @@ import { financePaths } from '@/router/business-paths'
 
 type Artifact = Api.IntelligentRecognition.RecognitionArtifact
 
-function metadataText(artifact: Artifact, key: string): string {
+export function getRecognitionMetadataText(artifact: Artifact, key: string): string {
   const value = artifact.metadata?.[key]
   return typeof value === 'string' ? value : ''
 }
@@ -15,12 +15,15 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
   if (artifact.feature === 'invoice_ocr') {
     return {
       path: financePaths.invoiceManagement,
-      query: { ...commonQuery, direction: metadataText(artifact, 'direction') || 'output' }
+      query: {
+        ...commonQuery,
+        direction: getRecognitionMetadataText(artifact, 'direction') || 'output'
+      }
     }
   }
 
   if (artifact.feature === 'cash_voucher_ocr') {
-    const direction = metadataText(artifact, 'direction') || 'receipt'
+    const direction = getRecognitionMetadataText(artifact, 'direction') || 'receipt'
     return {
       path:
         direction === 'payment' ? financePaths.paymentApplication : financePaths.cashTransaction,
@@ -36,8 +39,8 @@ export function buildRecognitionBusinessRoute(artifact: Artifact): RouteLocation
     path: '/tms/delivery-management',
     query: {
       ...commonQuery,
-      orderId: metadataText(artifact, 'orderId'),
-      keyword: metadataText(artifact, 'orderNo')
+      orderId: getRecognitionMetadataText(artifact, 'orderId'),
+      keyword: getRecognitionMetadataText(artifact, 'orderNo')
     }
   }
 }

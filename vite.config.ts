@@ -370,7 +370,7 @@ export default ({ mode }: { mode: string }) => {
         : []),
       ...(!isProduction && !isE2E && enableVueDevTools ? [vueDevTools()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
-      createNoJekyllPlugin(outDir),
+      createNoJekyllPlugin(),
       ...(enableBundleAnalyzer
         ? [
             visualizer({

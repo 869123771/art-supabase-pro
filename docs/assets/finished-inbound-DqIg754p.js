@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./production-material-workspace-Bbn5Ib9u.js";var i=e({name:`WmsFinishedInbound`,__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`finished_inbound`}))}});export{i as default};

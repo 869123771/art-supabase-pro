@@ -2,6 +2,7 @@
   <ArtDataSelect
     ref="selectRef"
     v-bind="props"
+    :show-pagination="props.showPagination ?? Boolean(props.apiFn)"
     mode="table"
     :multiple="false"
     @update:model-value="(value) => emit('update:modelValue', value)"
@@ -31,7 +32,7 @@
 
   const props = withDefaults(defineProps<ArtDataSelectSingleProps>(), {
     ...dataSelectDefaults,
-    showPagination: false,
+    showPagination: undefined,
     showSelectedPanel: false
   })
   const emit = defineEmits<ArtDataSelectEmits>()

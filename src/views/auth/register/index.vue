@@ -20,7 +20,8 @@
             :show-submit="false"
             form-class="mt-7.5"
             ref="formRef"
-            v-model="formData"
+            :model-value="formData"
+            @update:model-value="replaceReactiveModel(formData, $event)"
             :rules="rules"
             label-position="top"
             :key="formKey"
@@ -117,6 +118,7 @@
 </template>
 
 <script setup lang="ts">
+  import { replaceReactiveModel } from '@/utils/form/model'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useI18n } from 'vue-i18n'
   import type { FormItemRule, FormRules } from 'element-plus'

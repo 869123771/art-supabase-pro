@@ -43,17 +43,17 @@
 <script setup lang="ts">
   import { useSettingsPanel } from './composables/useSettingsPanel'
 
-  import SettingDrawer from './widget/SettingDrawer.vue'
-  import SettingHeader from './widget/SettingHeader.vue'
-  import SmartLayoutPresets from './widget/SmartLayoutPresets.vue'
-  import ThemeSettings from './widget/ThemeSettings.vue'
-  import MenuLayoutSettings from './widget/MenuLayoutSettings.vue'
-  import MenuStyleSettings from './widget/MenuStyleSettings.vue'
-  import ColorSettings from './widget/ColorSettings.vue'
-  import BoxStyleSettings from './widget/BoxStyleSettings.vue'
-  import ContainerSettings from './widget/ContainerSettings.vue'
-  import BasicSettings from './widget/BasicSettings.vue'
-  import SettingActions from './widget/SettingActions.vue'
+  import SettingDrawer from './widget/setting-drawer.vue'
+  import SettingHeader from './widget/setting-header.vue'
+  import SmartLayoutPresets from './widget/smart-layout-presets.vue'
+  import ThemeSettings from './widget/theme-settings.vue'
+  import MenuLayoutSettings from './widget/menu-layout-settings.vue'
+  import MenuStyleSettings from './widget/menu-style-settings.vue'
+  import ColorSettings from './widget/color-settings.vue'
+  import BoxStyleSettings from './widget/box-style-settings.vue'
+  import ContainerSettings from './widget/container-settings.vue'
+  import BasicSettings from './widget/basic-settings.vue'
+  import SettingActions from './widget/setting-actions.vue'
 
   defineOptions({ name: 'ArtSettingsPanel' })
 

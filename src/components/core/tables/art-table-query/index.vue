@@ -698,6 +698,8 @@
     debug?: boolean
     /** 内管模式的列工厂函数，用法同 useTable.core.columnsFactory。 */
     columnsFactory?: () => ColumnOption[]
+    /** 列工厂依赖的业务上下文；变化时重新生成列。 */
+    columnsContextKey?: string | number
     /** 透传给 ArtSearchBar 的额外配置，例如 labelWidth、span、showExpand。 */
     searchBarProps?: ArtTableQuerySearchBarProps
     /** 透传给 ArtTableHeader 的额外配置，例如 layout、showBorder。 */
@@ -1541,6 +1543,7 @@
   const focusPathElements = new Set<HTMLElement>()
   let focusPageElement: HTMLElement | undefined
   let showSearchBarBeforeFocus = true
+  let focusScrollPositions: Array<{ element: HTMLElement; top: number; left: number }> = []
 
   const addManagedClass = (
     element: HTMLElement,
@@ -1600,6 +1603,16 @@
 
   const handleFocusModeChange = (value: boolean): void => {
     if (!props.focusable) return
+    if (value && !focusMode.value) {
+      focusScrollPositions = []
+      for (
+        let element: HTMLElement | null = rootRef.value ?? null;
+        element;
+        element = element.parentElement
+      ) {
+        focusScrollPositions.push({ element, top: element.scrollTop, left: element.scrollLeft })
+      }
+    }
     focusMode.value = value
     emit('focus-change', value)
   }
@@ -1640,6 +1653,12 @@
   }
 
   watch(
+    () => props.columnsContextKey,
+    () => managedTable.resetColumns?.(),
+    { flush: 'sync' }
+  )
+
+  watch(
     focusMode,
     (value, previousValue) => {
       if (value && props.focusable) {
@@ -1652,6 +1671,16 @@
           showSearchBar.value = showSearchBarBeforeFocus
         }
         restoreFocusLayout()
+        const positions = focusScrollPositions
+        focusScrollPositions = []
+        void nextTick(() => {
+          if (focusMode.value || !rootRef.value?.isConnected) return
+          positions.forEach(({ element, top, left }) => {
+            if (!element.isConnected) return
+            element.scrollTop = top
+            element.scrollLeft = left
+          })
+        })
       }
     },
     { flush: 'post' }
@@ -1663,10 +1692,12 @@
 
   useEventListener(document, 'keydown', handleFocusEscape)
   onDeactivated(() => {
+    focusScrollPositions = []
     if (focusMode.value) handleFocusModeChange(false)
     restoreFocusLayout()
   })
   onBeforeUnmount(() => {
+    focusScrollPositions = []
     restoreFocusLayout()
   })
 

@@ -1,3 +1,4 @@
+import type { ApiFeedbackOptions } from '@/types/api/request'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { AppRouteRecord } from '@/types/router'
 import { useSupabase } from '@/hooks/core/useSupabase'
@@ -216,7 +217,7 @@ export async function fetchOrganizationTree(
 /** Organization selectors need hierarchy and identity, not the management page's aggregate counts. */
 export async function fetchOrganizationOptionsTree(
   params: Pick<Api.SystemManage.OrganizationSearchParams, 'tenantId' | 'status'> = {},
-  options: { showErrorMessage?: boolean } = {}
+  options: ApiFeedbackOptions = {}
 ) {
   const scopedTenantId = resolveTenantScopeId(params.tenantId)
   let query = supabase

@@ -495,7 +495,8 @@
   const getDialogInstance = () => dialogRef.value
 
   const scrollTo = (scrollOptions: ArtScrollOptions) => {
-    scrollbarRef.value?.scrollTo(scrollOptions as never)
+    if (typeof scrollOptions === 'number') scrollbarRef.value?.scrollTo(scrollOptions)
+    else scrollbarRef.value?.scrollTo(scrollOptions)
   }
 
   const handleWheelBoundary = (event: WheelEvent): void => {
