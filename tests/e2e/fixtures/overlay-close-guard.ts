@@ -12,6 +12,8 @@ import '@styles/index.scss'
 
 const dialog = ref<ArtDialogExpose>()
 const drawer = ref<ArtDrawerExpose>()
+const snapshotDialog = ref<ArtDialogExpose<{ details: { amount: number }; callback: () => void }>>()
+const sourceRecord = { details: { amount: 10 }, callback: () => undefined }
 const attributesChanged = ref(false)
 const nativeAllowed = ref(false)
 const projectAllowed = ref(false)
@@ -40,6 +42,33 @@ const onClose = () => {
 const app = createApp({
   render: () =>
     h('main', { class: 'p-4' }, [
+      h(
+        'button',
+        {
+          onClick: () => snapshotDialog.value?.handleOpen(sourceRecord, { title: '快照隔离检查' })
+        },
+        '打开快照检查'
+      ),
+      h(
+        ArtDialog,
+        { ref: snapshotDialog },
+        {
+          default: ({ data }: { data: typeof sourceRecord }) => [
+            h('output', { 'data-testid': 'snapshot-amount' }, String(data.details.amount)),
+            h(
+              'button',
+              {
+                onClick: () => {
+                  data.details.amount = 20
+                }
+              },
+              '修改嵌套金额'
+            ),
+            h('button', { onClick: () => snapshotDialog.value?.handleReset() }, '恢复打开时数据'),
+            h('output', { 'data-testid': 'source-amount' }, String(sourceRecord.details.amount))
+          ]
+        }
+      ),
       h(
         'button',
         { onClick: () => dialog.value?.handleOpen({}, { title: '关闭检查弹窗', onClose }) },

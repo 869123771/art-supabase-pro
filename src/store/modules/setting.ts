@@ -35,7 +35,7 @@ import type { BreadcrumbStyle, MenuThemeType, WorkTabStyle } from '@/types/store
 import AppConfig from '@/config'
 import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/app-enum'
 import { setElementThemeColor } from '@/utils/ui'
-import { useCeremony } from '@/hooks/core/useCeremony'
+import { useCurrentFestival } from '@/hooks/core/useCurrentFestival'
 import { StorageConfig } from '@/utils/storage/storage-config'
 import { SETTING_DEFAULT_CONFIG } from '@/config/setting'
 
@@ -46,6 +46,7 @@ import { SETTING_DEFAULT_CONFIG } from '@/config/setting'
 export const useSettingStore = defineStore(
   'settingStore',
   () => {
+    const { currentFestivalData, currentFestivalDate } = useCurrentFestival()
     // 菜单相关设置
     /** 菜单类型 */
     const menuType = ref(SETTING_DEFAULT_CONFIG.menuType)
@@ -159,7 +160,7 @@ export const useSettingStore = defineStore(
      * 根据当前日期和节日日期判断是否显示烟花效果
      */
     const isShowFireworks = computed((): boolean => {
-      return festivalDate.value === useCeremony().currentFestivalData.value?.date ? false : true
+      return Boolean(currentFestivalData.value) && festivalDate.value !== currentFestivalDate.value
     })
 
     /**
@@ -183,7 +184,7 @@ export const useSettingStore = defineStore(
      * @param theme 主题类型
      * @param themeMode 主题模式
      */
-    const setGlopTheme = (theme: SystemThemeEnum, themeMode: SystemThemeEnum) => {
+    const setGlobalTheme = (theme: SystemThemeEnum, themeMode: SystemThemeEnum) => {
       systemThemeType.value = theme
       systemThemeMode.value = themeMode
       localStorage.setItem(StorageConfig.THEME_KEY, theme)
@@ -372,10 +373,10 @@ export const useSettingStore = defineStore(
 
     /**
      * 设置节日烟花加载状态
-     * @param isLoad 是否已加载
+     * @param loaded 是否已加载
      */
-    const setholidayFireworksLoaded = (isLoad: boolean) => {
-      holidayFireworksLoaded.value = isLoad
+    const setHolidayFireworksLoaded = (loaded: boolean) => {
+      holidayFireworksLoaded.value = loaded
     }
 
     /**
@@ -433,7 +434,7 @@ export const useSettingStore = defineStore(
       isShowFireworks,
       switchMenuLayouts,
       setMenuOpenWidth,
-      setGlopTheme,
+      setGlobalTheme,
       switchMenuStyles,
       setElementTheme,
       setBorderMode,
@@ -458,7 +459,7 @@ export const useSettingStore = defineStore(
       reload,
       setWatermarkVisible,
       setCustomRadius,
-      setholidayFireworksLoaded,
+      setHolidayFireworksLoaded,
       setShowFestivalText,
       setFestivalDate,
       setDualMenuShowText

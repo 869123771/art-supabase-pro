@@ -62,8 +62,9 @@ export async function deactivateTenant(id: string) {
     () =>
       supabase
         .from('sys_tenant')
-        .update({ status: '0' })
+        .update({ status: '2' }, { count: 'exact' })
         .eq('id', id)
+        .eq('status', '1')
         .is('builtin_type', null)
         .select('id'),
     {
@@ -71,7 +72,7 @@ export async function deactivateTenant(id: string) {
       message: '租户已停用，历史数据已保留',
       breakReturn: true,
       requireAffected: true,
-      noAffectedMessage: '系统预置租户不可停用，或当前账号没有操作权限'
+      noAffectedMessage: '租户状态已变化、系统预置租户不可停用，或当前账号没有操作权限'
     }
   )
 }
@@ -81,8 +82,9 @@ export async function deactivateTenantBatch(ids: string[]) {
     () =>
       supabase
         .from('sys_tenant')
-        .update({ status: '0' })
+        .update({ status: '2' }, { count: 'exact' })
         .in('id', ids)
+        .eq('status', '1')
         .is('builtin_type', null)
         .select('id'),
     {
@@ -90,7 +92,28 @@ export async function deactivateTenantBatch(ids: string[]) {
       message: '所选租户已停用，历史数据已保留',
       breakReturn: true,
       requireAffected: true,
-      noAffectedMessage: '所选记录均为系统预置租户，或当前账号没有操作权限'
+      noAffectedMessage: '所选租户状态已变化、均为系统预置租户，或当前账号没有操作权限'
+    }
+  )
+}
+
+/** 恢复已停用租户的访问权限，保留原有组织和业务数据。 */
+export async function activateTenant(id: string) {
+  return await responseHandle(
+    () =>
+      supabase
+        .from('sys_tenant')
+        .update({ status: '1' }, { count: 'exact' })
+        .eq('id', id)
+        .eq('status', '2')
+        .is('builtin_type', null)
+        .select('id'),
+    {
+      showMessage: true,
+      message: '租户已启用',
+      breakReturn: true,
+      requireAffected: true,
+      noAffectedMessage: '租户状态已变化，或当前账号没有操作权限，请刷新后重试'
     }
   )
 }

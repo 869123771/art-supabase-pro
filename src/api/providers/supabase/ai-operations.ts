@@ -1,4 +1,5 @@
 import { normalizeNullableText } from '@/utils/form/normalize'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import dayjs from 'dayjs'
 import { useSupabase } from '@/hooks'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
@@ -459,15 +460,13 @@ export async function applyAiOcrQualityThreshold(params: {
 }
 
 export async function fetchAiRunList(params: AiRunSearchParams) {
-  const current = Math.max(params.current || 1, 1)
-  const size = Math.min(Math.max(params.size || 20, 1), 100)
-  const from = (current - 1) * size
-  const to = from + size - 1
+  const { from, to } = buildSupabasePageRange(params)
 
   let query = supabase
     .from('ai_run')
     .select(runListSelect, { count: 'exact' })
     .order('started_at', { ascending: false })
+    .order('id')
     .range(from, to)
 
   if (params.feature) query = query.eq('feature', params.feature)

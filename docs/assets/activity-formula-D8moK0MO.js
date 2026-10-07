@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./operational-master-NVRD2Ev9.js";var i=t({name:`MdmActivityFormula`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

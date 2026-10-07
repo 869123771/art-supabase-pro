@@ -924,11 +924,18 @@ function runModulePackageAction(
   const esbuildBinaryPath = prepareEsbuildPlatformPackage(moduleRoot)
   const restoreFiles = prepareLocalPlatformOverride(module, platformPackage)
   const previousEsbuildBinaryPath = process.env.ESBUILD_BINARY_PATH
+  const previousPlatformRoot = process.env.ART_SUPABASE_PLATFORM_ROOT
   if (esbuildBinaryPath) process.env.ESBUILD_BINARY_PATH = esbuildBinaryPath
   try {
     runPackageManager(['install', '--no-frozen-lockfile', '--prefer-offline'], moduleRoot)
+    if (action === 'build' && useWorkspacePlatform) {
+      // Verify the packed runtime instead of silently resolving the adjacent workspace.
+      process.env.ART_SUPABASE_PLATFORM_ROOT = join(moduleRoot, 'node_modules/art-supabase-pro')
+    }
     if (action !== 'install') runPackageManager(args, moduleRoot)
   } finally {
+    if (previousPlatformRoot === undefined) delete process.env.ART_SUPABASE_PLATFORM_ROOT
+    else process.env.ART_SUPABASE_PLATFORM_ROOT = previousPlatformRoot
     if (previousEsbuildBinaryPath === undefined) delete process.env.ESBUILD_BINARY_PATH
     else process.env.ESBUILD_BINARY_PATH = previousEsbuildBinaryPath
     restoreFiles()

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { installFixtures, meta } from './support/inventory-fixtures'
+import { installFixtures, meta, tenantId } from './support/inventory-fixtures'
 import { mockApplicationMenus } from './support/menu-rpc'
 
 test('仓储工作台刷新失败清理旧统计并原位恢复', async ({ page }, testInfo) => {
@@ -115,99 +115,176 @@ test('仓储工作台刷新失败清理旧统计并原位恢复', async ({ page 
   })
 })
 
-test('仓储工作台全部快捷入口可进入对应页面', async ({ page }, testInfo) => {
-  test.setTimeout(180_000)
-  await installFixtures(page)
-  await page.route('**/rpc/get_accessible_applications', (route) =>
-    route.fulfill({
-      json: [
-        { code: 'platform', name: '平台', baseUrl: '/' },
-        { code: 'wms', name: 'WMS', baseUrl: '/wms/' }
-      ]
-    })
-  )
-  const destinations = [
-    ['收料入库', 'receipt-issue/receipt-inbound', 'WmsReceiptInbound'],
-    ['即时库存', 'inventory-trace/stock', 'WmsStock'],
-    ['库存作业', 'receipt-issue/stock-operation', 'WmsStockOperation'],
-    ['领料申请', 'outbound-business/outbound-request', 'WmsIssueRequest'],
-    ['销售退货入库', 'receipt-issue/sales-return', 'WmsSalesReturn'],
-    ['直接调拨', 'transfer-business/direct-transfer', 'WmsDirectTransfer'],
-    ['分步调拨', 'transfer-business/step-transfer', 'WmsTransfer'],
-    ['库存盘点', 'count-business/count', 'WmsCount'],
-    ['库存调整', 'adjustment-business/adjustment', 'WmsAdjustment'],
-    ['库存组装', 'adjustment-business/assembly', 'WmsAssembly'],
-    ['项目施工号', 'project-warehouse/project-section', 'WmsProjectSection'],
-    ['序列号追溯', 'inventory-trace/serial-trace', 'WmsSerialTrace'],
-    ['库存流水', 'inventory-trace/inventory-ledger', 'WmsInventoryLedger'],
-    ['项目仓储复盘', 'project-warehouse/project-report', 'WmsProjectReport']
-  ]
-  await mockApplicationMenus(page, {
-    wms: [
-      {
-        id: 'root',
-        parentId: null,
-        name: 'WmsWarehouseManagement',
-        path: '/wms',
-        component: '/index/index',
-        type: 'folder',
-        sort: 1,
-        meta: meta('WMS')
-      },
-      {
-        id: 'workbench',
-        parentId: 'root',
-        name: 'WmsWorkbench',
-        path: 'workbench',
-        component: '/wms/workbench',
-        type: 'menu',
-        sort: 1,
-        meta: meta('仓储工作台')
-      },
-      ...destinations.flatMap(([title, path, name], index) => [
+for (const authority of ['super', 'ordinary', 'ordinary-none', 'ordinary-partial'] as const) {
+  test(`${authority}仓储工作台${authority === 'ordinary-none' || authority === 'ordinary-partial' ? '按权限过滤快捷入口' : '全部快捷入口可进入对应页面'}`, async ({
+    page
+  }, testInfo) => {
+    test.setTimeout(180_000)
+    await installFixtures(page)
+    await page.route('**/rpc/get_accessible_applications', (route) =>
+      route.fulfill({
+        json: [
+          { code: 'platform', name: '平台', baseUrl: '/' },
+          { code: 'wms', name: 'WMS', baseUrl: '/wms/' }
+        ]
+      })
+    )
+    const scopedRequests: string[] = []
+    if (authority.startsWith('ordinary')) {
+      await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
+      await page.route('**/rest/v1/sys_user?*', (route) =>
+        route.fulfill({
+          json: {
+            id: 'wms-test-user',
+            auth_user_id: '705ddd8d-4959-4dc1-aeb0-08caed7ab51a',
+            user_name: '普通仓储用户',
+            user_type: '2',
+            user_roles: ['R_USER'],
+            status: '1',
+            tenant_id: tenantId,
+            tenant: { id: tenantId, tenant_code: 'DEMO', tenant_name: '示例工厂' }
+          }
+        })
+      )
+      for (const table of [
+        'wms_inventory_batch',
+        'wms_serial_number',
+        'wms_inventory_reservation',
+        'scm_receipt_target_document'
+      ]) {
+        await page.route(`**/rest/v1/${table}?*`, (route) => {
+          if (route.request().method() === 'HEAD') scopedRequests.push(route.request().url())
+          return route.fulfill({
+            json: [],
+            headers: { 'content-range': '*/0', 'access-control-expose-headers': 'content-range' }
+          })
+        })
+      }
+    }
+    const destinations = [
+      ['收料入库', 'receipt-issue/receipt-inbound', 'WmsReceiptInbound'],
+      ['即时库存', 'inventory-trace/stock', 'WmsStock'],
+      ['库存作业', 'receipt-issue/stock-operation', 'WmsStockOperation'],
+      ['领料申请', 'outbound-business/outbound-request', 'WmsIssueRequest'],
+      ['销售退货入库', 'receipt-issue/sales-return', 'WmsSalesReturn'],
+      ['直接调拨', 'transfer-business/direct-transfer', 'WmsDirectTransfer'],
+      ['分步调拨', 'transfer-business/step-transfer', 'WmsTransfer'],
+      ['库存盘点', 'count-business/count', 'WmsCount'],
+      ['库存调整', 'adjustment-business/adjustment', 'WmsAdjustment'],
+      ['库存组装', 'adjustment-business/assembly', 'WmsAssembly'],
+      ['项目施工号', 'project-warehouse/project-section', 'WmsProjectSection'],
+      ['序列号追溯', 'inventory-trace/serial-trace', 'WmsSerialTrace'],
+      ['库存流水', 'inventory-trace/inventory-ledger', 'WmsInventoryLedger'],
+      ['项目仓储复盘', 'project-warehouse/project-report', 'WmsProjectReport']
+    ]
+    await mockApplicationMenus(page, {
+      wms: [
         {
-          id: name,
-          parentId: 'root',
-          name,
-          path,
-          component: `/wms/${path}`,
-          type: 'menu',
-          sort: index + 2,
-          meta: meta(title)
+          id: 'root',
+          parentId: null,
+          name: 'WmsWarehouseManagement',
+          path: '/wms',
+          component: '/index/index',
+          type: 'folder',
+          sort: 1,
+          meta: meta('WMS')
         },
         {
-          id: `${name}-view`,
-          parentId: name,
-          name: `${name}:View`,
-          path: '',
-          component: '',
-          type: 'button',
+          id: 'workbench',
+          parentId: 'root',
+          name: 'WmsWorkbench',
+          path: 'workbench',
+          component: '/wms/workbench',
+          type: 'menu',
           sort: 1,
-          meta: meta('查看')
-        }
-      ])
-    ]
-  })
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  await page.goto('#/wms/workbench')
-  for (const [title, path] of destinations) {
-    await expect(page.getByRole('heading', { name: '仓储运营工作台', exact: true })).toBeVisible()
-    const link = page
-      .getByRole('link')
-      .filter({ has: page.locator('strong').getByText(title, { exact: true }) })
-    await link.click()
-    await expect(page).toHaveURL(new RegExp(`#/wms/${path}$`))
-    await expect(
-      page.getByRole('heading', { name: title === '领料申请' ? '出库申请单' : title, exact: true })
-    ).toBeVisible()
-    await expect(page.locator('.business-workspace-page').last()).toBeVisible()
-    await expect(page.getByText('暂无访问权限', { exact: true })).toHaveCount(0)
-    await page.screenshot({
-      path: testInfo.outputPath(`${path.replaceAll('/', '-')}.png`),
-      animations: 'disabled'
+          meta: meta('仓储工作台')
+        },
+        ...destinations.flatMap(([title, path, name], index) => [
+          {
+            id: name,
+            parentId: 'root',
+            name,
+            path,
+            component: `/wms/${path}`,
+            type: 'menu',
+            sort: index + 2,
+            meta: meta(title)
+          },
+          ...(authority === 'ordinary-none' ||
+          (authority === 'ordinary-partial' && !['WmsStock', 'WmsSerialTrace'].includes(name))
+            ? []
+            : [
+                {
+                  id: `${name}-view`,
+                  parentId: name,
+                  name: `${name}:View`,
+                  path: '',
+                  component: '',
+                  type: 'button',
+                  sort: 1,
+                  meta: meta('查看')
+                }
+              ])
+        ])
+      ]
     })
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('#/wms/workbench')
-  }
-  expect(errors).toEqual([])
-})
+    await expect(page.getByRole('heading', { name: '仓储运营工作台', exact: true })).toBeVisible()
+    if (authority === 'ordinary-none' || authority === 'ordinary-partial') {
+      for (const [title, , name] of destinations) {
+        const link = page
+          .getByRole('link')
+          .filter({ has: page.locator('strong').getByText(title, { exact: true }) })
+        const allowed =
+          authority === 'ordinary-partial' && ['WmsStock', 'WmsSerialTrace'].includes(name)
+        await expect(link).toHaveCount(allowed ? 1 : 0)
+      }
+      if (authority === 'ordinary-none') {
+        await expect(page.getByText('暂无可用作业入口', { exact: true })).toBeVisible()
+        await expect(
+          page.getByText('请联系管理员为当前角色配置仓储作业权限。', { exact: true })
+        ).toBeVisible()
+      } else {
+        await expect(page.getByText('暂无可用作业入口', { exact: true })).toHaveCount(0)
+      }
+      await page.screenshot({
+        path: testInfo.outputPath('workbench-permission-entries.png'),
+        animations: 'disabled'
+      })
+    }
+    for (const [title, path, name] of destinations) {
+      if (
+        authority === 'ordinary-none' ||
+        (authority === 'ordinary-partial' && !['WmsStock', 'WmsSerialTrace'].includes(name))
+      )
+        continue
+      await expect(page.getByRole('heading', { name: '仓储运营工作台', exact: true })).toBeVisible()
+      const link = page
+        .getByRole('link')
+        .filter({ has: page.locator('strong').getByText(title, { exact: true }) })
+      await link.click()
+      await expect(page).toHaveURL(new RegExp(`#/wms/${path}$`))
+      await expect(
+        page.getByRole('heading', {
+          name: title === '领料申请' ? '出库申请单' : title,
+          exact: true
+        })
+      ).toBeVisible()
+      await expect(page.locator('.business-workspace-page').last()).toBeVisible()
+      await expect(page.getByText('暂无访问权限', { exact: true })).toHaveCount(0)
+      await page.screenshot({
+        path: testInfo.outputPath(`${path.replaceAll('/', '-')}.png`),
+        animations: 'disabled'
+      })
+      await page.goto('#/wms/workbench')
+    }
+    expect(errors).toEqual([])
+    if (authority.startsWith('ordinary')) {
+      expect(scopedRequests.length).toBeGreaterThanOrEqual(4)
+      for (const url of scopedRequests)
+        expect(new URL(url).searchParams.get('tenant_id')).toBe(`eq.${tenantId}`)
+    }
+  })
+}

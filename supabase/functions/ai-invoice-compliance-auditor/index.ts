@@ -9,7 +9,7 @@ interface InvoiceAuditRequest {
 }
 
 const FEATURE = 'invoice_compliance_audit'
-const RULE_VERSION = 'invoice-compliance-audit-rules-v1'
+const RULE_VERSION = 'invoice-compliance-audit-rules-v2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

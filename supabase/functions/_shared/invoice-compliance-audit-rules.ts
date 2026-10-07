@@ -160,10 +160,6 @@ export function assessInvoiceCompliance(
   const totalAmount = roundMoney(numberValue(field(invoice, 'total_amount', 'totalAmount')))
   const taxRate = numberValue(field(invoice, 'tax_rate', 'taxRate'))
   const calculatedTotalAmount = roundMoney(amountExcludingTax + taxAmount)
-  const linkedAmount = roundMoney(numberValue(field(invoice, 'linked_amount', 'linkedAmount')))
-  const unlinkedAmount = roundMoney(
-    numberValue(field(invoice, 'unlinked_amount', 'unlinkedAmount'))
-  )
   const attachments = attachmentCount(field(invoice, 'attachments', 'attachments'))
   const linkTotal = roundMoney(
     statementLinks.reduce(
@@ -171,6 +167,15 @@ export function assessInvoiceCompliance(
       0
     )
   )
+  // The secure RPC returns raw invoice columns; association totals are derived from its links.
+  const linkedAmountValue = field(invoice, 'linked_amount', 'linkedAmount')
+  const unlinkedAmountValue = field(invoice, 'unlinked_amount', 'unlinkedAmount')
+  const linkedAmount =
+    linkedAmountValue == null ? linkTotal : roundMoney(numberValue(linkedAmountValue))
+  const unlinkedAmount =
+    unlinkedAmountValue == null
+      ? roundMoney(totalAmount - linkedAmount)
+      : roundMoney(numberValue(unlinkedAmountValue))
   const coverageRate = totalAmount > 0 ? clamp(linkedAmount / totalAmount, 0, 1) : 0
   const duplicateCount = duplicateInvoices.filter(
     (item) =>
@@ -229,6 +234,8 @@ export function assessInvoiceCompliance(
   }
 
   if (
+    linkedAmount < -0.01 ||
+    unlinkedAmount < -0.01 ||
     Math.abs(linkTotal - linkedAmount) > 0.01 ||
     Math.abs(totalAmount - linkedAmount - unlinkedAmount) > 0.01
   ) {

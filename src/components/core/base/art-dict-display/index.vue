@@ -25,6 +25,7 @@
 <script setup lang="ts">
   import { ElBadge, ElTag } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { DictDisplayMode } from '@/types/component'
 
   defineOptions({ name: 'ArtDictDisplay' })
@@ -35,6 +36,7 @@
     item?: Api.DataCenter.DictListItem
     display?: DictDisplayMode
     emptyText?: string
+    unknownText?: string
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -47,9 +49,14 @@
 
   const userStore = useUserStore()
   watch(
-    () => [props.dictCode, props.value] as const,
-    ([dictCode, value]) => {
-      if (dictCode) void userStore.ensureDictValueLoaded(dictCode, value)
+    () => props.dictCode,
+    (dictCode) => {
+      if (dictCode)
+        void userStore
+          .ensureDictLoaded(dictCode)
+          .catch((error: unknown) =>
+            notifyFriendlyError(error, '字典资料加载失败，请刷新页面后重试')
+          )
     },
     { immediate: true }
   )
@@ -62,7 +69,7 @@
     if (props.value === undefined || props.value === null || props.value === '') {
       return props.emptyText
     }
-    return String(props.value)
+    return props.unknownText ?? String(props.value)
   })
   const tagType = computed<Api.Common.TagPreset | undefined>(() => {
     const type = dictItem.value?.tagType

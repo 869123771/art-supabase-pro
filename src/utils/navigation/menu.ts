@@ -1,3 +1,5 @@
+import { formatMenuTitle } from '@/utils/router'
+
 export interface MenuLabelSource {
   name?: unknown
   meta?: { title?: unknown } | null
@@ -6,8 +8,8 @@ export interface MenuLabelSource {
 /** Resolves the user-facing title shared by menu trees and menu-backed selectors. */
 export function resolveMenuLabel(menu: MenuLabelSource, fallback = '未命名菜单'): string {
   const title = String(menu.meta?.title ?? '').trim()
-  if (title) return title
+  if (title) return formatMenuTitle(title)
 
   const name = String(menu.name ?? '').trim()
-  return name || fallback
+  return name ? formatMenuTitle(name) : fallback
 }

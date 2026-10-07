@@ -9,8 +9,27 @@ import {
   buildExcelRows,
   downloadBlob,
   exportExcel,
-  importExcelFile
+  importExcelFile,
+  mapExcelRowsToRecords
 } from '../../src/utils/file'
+
+test('Excel row mapping ignores inherited columns and preserves explicit special keys', () => {
+  const rows = [JSON.parse('{"__proto__":"  明确数据  ","金额":0,"启用":false}')]
+  const mapped = mapExcelRowsToRecords(rows, [
+    { key: '__proto__', title: '__proto__', required: true },
+    { key: 'amount', title: '金额' },
+    { key: 'enabled', title: '启用' }
+  ])
+  assert.equal(Object.getPrototypeOf(mapped[0]), Object.prototype)
+  assert.equal(Object.prototype.hasOwnProperty.call(mapped[0], '__proto__'), true)
+  assert.equal(mapped[0].__proto__, '明确数据')
+  assert.equal(mapped[0].amount, 0)
+  assert.equal(mapped[0].enabled, false)
+  assert.deepEqual(
+    mapExcelRowsToRecords([{}], [{ key: 'constructor', title: '客户', required: true }]),
+    []
+  )
+})
 
 test('spreadsheet imports preserve UTF-8 CSV headers and binary Excel files', async () => {
   const originalReader = Object.getOwnPropertyDescriptor(globalThis, 'FileReader')

@@ -17,6 +17,22 @@ test('field access defaults to hidden and keeps explicit levels', () => {
   assert.equal(getFieldAccess({ amount: 'masked' }, 'amount'), 'masked')
 })
 
+test('field permissions ignore inherited fields and unsupported runtime levels', () => {
+  const access = JSON.parse('{"amount":"unsupported"}')
+  assert.equal(canViewField(access, 'constructor'), false)
+  assert.equal(getFieldAccess(access, 'amount'), 'hidden')
+  assert.equal(getFieldAccess(Object.create({ amount: 'edit' }), 'amount'), 'hidden')
+})
+
+test('permission merges preserve explicit special fields and ignore invalid levels', () => {
+  const access = JSON.parse('{"__proto__":"read","constructor":"edit","amount":"invalid"}')
+  const result = mergeFieldAccessMaps(access, { amount: 'masked' })
+  assert.equal(Object.getPrototypeOf(result), Object.prototype)
+  assert.equal(getFieldAccess(result, '__proto__'), 'read')
+  assert.equal(getFieldAccess(result, 'constructor'), 'edit')
+  assert.equal(getFieldAccess(result, 'amount'), 'masked')
+})
+
 test('view and edit checks distinguish hidden, masked, read and edit', () => {
   const access = {
     secret: 'hidden',

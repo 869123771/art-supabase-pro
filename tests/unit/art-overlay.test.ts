@@ -1,6 +1,32 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { useArtOverlay, type ArtOverlayOptions } from '../../src/hooks/core/useArtOverlay'
+import {
+  cloneOverlayData,
+  useArtOverlay,
+  type ArtOverlayOptions
+} from '../../src/hooks/core/useArtOverlay'
+
+test('fallback snapshots isolate nested values while preserving callback identity and cycles', () => {
+  const callback = () => 'unchanged'
+  const source = { details: { lines: [{ amount: 10 }] }, callback, self: undefined as unknown }
+  source.self = source
+  const snapshot = cloneOverlayData(source)
+  snapshot.details.lines[0].amount = 20
+  assert.equal(source.details.lines[0].amount, 10)
+  assert.equal(snapshot.callback, callback)
+  assert.equal(snapshot.self, snapshot)
+})
+
+test('overlay reset restores nested form values when a callback prevents native cloning', async () => {
+  const overlay = createOverlay()
+  const original = { id: 'record', details: { amount: 10 }, callback: () => undefined }
+  await overlay.handleOpen(original)
+  const draft = overlay.getData() as typeof original
+  draft.details.amount = 20
+  assert.equal(original.details.amount, 10)
+  overlay.handleReset()
+  assert.equal((overlay.getData() as typeof original).details.amount, 10)
+})
 
 interface TestData {
   id?: string

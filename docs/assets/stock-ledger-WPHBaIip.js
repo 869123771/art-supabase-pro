@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./inventory-report-workspace-DAOzvchz.js";var i=t({name:`WmsStockLedger`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`ledger`}))}});export{i as default};

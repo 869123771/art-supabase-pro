@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="88%" :show-footer="mode !== 'view'">
+  <ArtDrawer
+    @open="invalidateBins"
+    @close="invalidateBins"
+    ref="drawerRef"
+    size="88%"
+    :show-footer="mode !== 'view'"
+  >
     <ArtEmptyState
       v-if="documentError"
       title="单据加载失败"
@@ -165,9 +171,10 @@
               <ArtExcelImport
                 accept=".xlsx,.xls,.csv"
                 :context-key="openData"
-                :disabled="!form.organizationId"
-                :button-props="{ type: 'success', plain: true }"
+                :disabled="!form.organizationId || importing || parsing"
+                :button-props="{ type: 'success', plain: true, loading: importing || parsing }"
                 icon="ri:upload-2-line"
+                @parsing-change="onImportParsing"
                 @import-success="importLines"
                 @import-error="onImportError"
                 >导入明细</ArtExcelImport
@@ -187,9 +194,11 @@
             table-layout="fixed"
           >
             <template #material="{ row }">
-              <strong class="block truncate text-sm">{{ row.material?.name || '物料' }}</strong>
+              <strong class="block truncate text-sm">{{
+                row.material?.name || row.material?.code || '物料资料不可用'
+              }}</strong>
               <small class="text-[var(--el-text-color-secondary)]">{{
-                row.material?.code || row.materialId
+                row.material?.code || '—'
               }}</small>
             </template>
             <template #projectId="{ row }">
@@ -377,7 +386,9 @@
                   :key="bin.id"
                   :label="`${bin.binName} · ${bin.binCode}`"
                   :value="bin.id" /></ElSelect
-              ><span v-else>{{ row.binId || '—' }}</span></template
+              ><span v-else>{{
+                row.bin?.binName || row.bin?.binCode || (row.binId ? '仓位资料不可用' : '—')
+              }}</span></template
             >
             <template #stockType="{ row }"
               ><ElSelect
@@ -512,15 +523,29 @@
                 @click="(item) => onLineMoreAction(item, row)"
               />
             </template>
+            <template #purchaserId="{ row }">
+              <ArtEmployeeSelect
+                v-if="mode !== 'view'"
+                :model-value="row.purchaserId || undefined"
+                :selected-data="row.purchaser ? [row.purchaser] : []"
+                :tenant-id="form.tenantId || undefined"
+                title="选择行采购员"
+                @update:model-value="row.purchaserId = $event || null"
+                @update:selected-data="row.purchaser = $event[0] || null"
+              />
+              <span v-else>{{ row.purchaser?.employeeName || '—' }}</span>
+            </template>
             <template #keeperId="{ row }">
               <ArtEmployeeSelect
                 v-if="mode !== 'view'"
                 :model-value="row.keeperId || undefined"
+                :selected-data="row.keeper ? [row.keeper] : []"
                 :tenant-id="form.tenantId || undefined"
                 title="选择行仓管员"
                 @update:model-value="row.keeperId = $event || null"
+                @update:selected-data="row.keeper = $event[0] || null"
               />
-              <span v-else>{{ row.keeperId || '—' }}</span>
+              <span v-else>{{ row.keeper?.employeeName || '—' }}</span>
             </template>
           </ArtTable>
         </ElScrollbar>
@@ -562,10 +587,12 @@
 </template>
 
 <script setup lang="ts">
+  import { readWmsDocumentImportRows } from '@/utils/wms/document-import'
   import { formatWmsOwnerName } from '@/utils/wms/owner-display'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
   import { isWmsBusinessTypeAvailable } from '@/utils/wms/business-type'
+  import { useWarehouseBinOptions } from '@/hooks/core/useWarehouseBinOptions'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { parseSerialNumberText } from '@/utils/file/serial-number-text'
@@ -627,7 +654,6 @@
     type WmsInventoryOrganizationOption
   } from '@/api/wms-inventory-organization'
 
-  const commonDocumentReviewStatusOptions = useDictionaryOptions('commonDocumentReviewStatus')
   const wmsLineDiscountModeOptions = useDictionaryOptions('wmsLineDiscountMode')
 
   type OpenMode = 'create' | 'copy' | 'edit' | 'view'
@@ -658,6 +684,8 @@
   const documentError = ref('')
   const openData = shallowRef<OpenData>()
   let documentRequest = 0
+  const importing = ref(false)
+  const parsing = ref(false)
   const organizations = ref<WmsInventoryOrganizationOption[]>([])
   const warehouses = ref<WmsPurchaseWarehouse[]>([])
   const units = ref<WmsPurchaseUnit[]>([])
@@ -667,7 +695,14 @@
   const customers = ref<WmsPurchaseOption[]>([])
   const suppliers = ref<WmsPurchaseOption[]>([])
   const projects = ref<WmsPurchaseOption[]>([])
-  const bins = ref<WmsPurchaseBin[]>([])
+  const {
+    options: bins,
+    load: loadInlineBins,
+    invalidate: invalidateBins
+  } = useWarehouseBinOptions<WmsPurchaseLine, WmsPurchaseBin>(
+    () => lines.value,
+    fetchWmsPurchaseBins
+  )
   const lines = ref<WmsPurchaseLine[]>([])
   const permissionPrefix = computed(() => props.permissionPrefix)
   const lineEditPermission = computed(
@@ -694,7 +729,7 @@
     { prop: 'material', label: '物料', minWidth: 230, useSlot: true },
     { prop: 'projectId', label: '项目名称', minWidth: 150, useSlot: true },
     { prop: 'constructionNo', label: '施工号', width: 150, useSlot: true },
-    { prop: 'quantity', label: '数量', width: 132, align: 'right', useSlot: true },
+    { prop: 'quantity', label: '数量', width: 180, align: 'right', useSlot: true },
     {
       prop: 'inventoryUnitId',
       label: '库存单位',
@@ -740,8 +775,8 @@
           }
         ]
       : []),
-    { prop: 'unitPrice', label: '未税单价', width: 132, align: 'right', useSlot: true },
-    { prop: 'taxInclusiveUnitPrice', label: '含税单价', width: 132, align: 'right', useSlot: true },
+    { prop: 'unitPrice', label: '未税单价', width: 180, align: 'right', useSlot: true },
+    { prop: 'taxInclusiveUnitPrice', label: '含税单价', width: 180, align: 'right', useSlot: true },
     { prop: 'taxRate', label: '税率', width: 100, align: 'right', useSlot: true },
     { prop: 'discountMethod', label: '折扣方式', width: 130, useSlot: true },
     { prop: 'unitDiscountRate', label: '单位折扣', width: 120, useSlot: true },
@@ -766,12 +801,15 @@
     { prop: 'ownerType', label: '货主类型', width: 160, useSlot: true },
     { prop: 'ownerId', label: '货主', width: 170, useSlot: true },
     { prop: 'stockStatus', label: '库存状态', width: 160, useSlot: true },
+    ...(props.kind === 'initial_inbound'
+      ? [{ prop: 'purchaserId', label: '采购员', width: 170, useSlot: true }]
+      : []),
     { prop: 'keeperId', label: '仓管员', width: 170, useSlot: true },
     ...(isReturn.value
       ? [{ prop: 'sourceBatchId', label: '退料来源批次', width: 180, useSlot: true }]
       : []),
-    { prop: 'productionDate', label: '生产日期', width: 165, useSlot: true },
-    { prop: 'expiryDate', label: '有效期至', width: 165, useSlot: true },
+    { prop: 'productionDate', label: '生产日期', width: 190, useSlot: true },
+    { prop: 'expiryDate', label: '有效期至', width: 190, useSlot: true },
     { prop: 'trackingNo', label: '跟踪号', width: 150, useSlot: true },
     { prop: 'sourceDocument', label: '来源单据', width: 150, useSlot: true },
     { prop: 'sourceLineNo', label: '源行号', width: 120, useSlot: true },
@@ -1075,7 +1113,7 @@
       key: 'status',
       label: '单据状态',
       type: 'select',
-      options: commonDocumentReviewStatusOptions,
+      options: [{ label: statusLabel.value, value: form.status }],
       props: { disabled: true }
     },
     ...(isInitial.value || props.kind === 'other_return'
@@ -1247,6 +1285,9 @@
       ownerId: isEntrustedProcessing.value ? form.customerId || null : null,
       stockStatus: 'available',
       keeperId: form.keeperId,
+      keeper: selectedKeeper.value[0] || null,
+      purchaserId: props.kind === 'initial_inbound' ? form.purchaserId : null,
+      purchaser: props.kind === 'initial_inbound' ? selectedPurchaser.value[0] || null : null,
       auxiliaryUnitId: material.auxiliaryUnitId,
       auxiliaryQuantity: null,
       auxiliaryUnit2Id: material.auxiliaryUnit2Id,
@@ -1327,9 +1368,7 @@
     line.sourceBatchId = null
     await loadInlineBins(line)
   }
-  async function loadInlineBins(line: WmsPurchaseLine): Promise<void> {
-    bins.value = line.warehouseId ? await fetchWmsPurchaseBins(line.warehouseId) : []
-  }
+
   function onInlineOwnerTypeChange(line: WmsPurchaseLine): void {
     line.ownerId = null
     line.sourceBatchId = null
@@ -1503,50 +1542,71 @@
       optionError.value = true
     } finally {
       drawerRef.value?.setOptions({
-        confirmDisabled: optionError.value || Boolean(documentError.value)
+        confirmDisabled:
+          parsing.value || importing.value || optionError.value || Boolean(documentError.value)
       })
     }
   }
   function onImportError(): void {
     ElMessage.error('导入失败，请检查 Excel 文件格式')
   }
+  function onImportParsing(value: boolean): void {
+    parsing.value = value
+    drawerRef.value?.setOptions({
+      confirmDisabled:
+        parsing.value || importing.value || optionError.value || Boolean(documentError.value)
+    })
+  }
   async function importLines(rows: Array<Record<string, unknown>>): Promise<void> {
+    if (importing.value || mode.value === 'view' || !form.organizationId) return
     const request = documentRequest
+    const tenantId = form.tenantId
+    const organizationId = form.organizationId
+    importing.value = true
+    drawerRef.value?.setOptions({ confirmDisabled: true })
     try {
       const importedLines: typeof lines.value = []
-      for (const row of rows.slice(0, 500)) {
-        const code = String(row['物料编码'] || row.materialCode || '').trim()
-        if (!code) continue
+      for (const { row, code, fileRow, amounts } of readWmsDocumentImportRows(rows)) {
         const result = await fetchWmsPurchaseMaterials({
-          tenantId: form.tenantId,
-          keyword: code,
+          tenantId,
+          keyword: '',
+          materialCode: code,
           current: 1,
           size: 20
         })
-        const material = result.data.find((item) => item.code === code)
+        const matches = result.data.filter((item) => item.code === code)
         if (request !== documentRequest) return
-        if (!material) continue
-        const line = makeLine(material)
-        line.quantity = Math.abs(Number(row['数量'] || row.quantity || 0))
-        line.unitPrice = Number(row['单价(元)'] || row.unitPrice || 0)
-        line.taxRate = Number(row['税率(%)'] ?? row.taxRate ?? 13)
+        if (matches.length !== 1)
+          throw new Error(`第 ${fileRow} 行物料编码“${code}”未匹配到唯一物料，请检查当前租户物料`)
+        const line = makeLine(matches[0])
+        line.quantity = amounts.quantity
+        line.unitPrice = amounts.unitPrice
+        line.taxRate = amounts.taxRate
         line.taxInclusiveUnitPrice = round(line.unitPrice * (1 + line.taxRate / 100))
         line.batchNo = String(row['批号'] || row.batchNo || '') || null
         importedLines.push(line)
       }
       if (request !== documentRequest) return
+      if (form.tenantId !== tenantId || form.organizationId !== organizationId)
+        throw new Error('库存组织已变更，请重新导入明细')
       lines.value.push(...importedLines)
       renumber()
-      if (importedLines.length)
-        ElMessage.success(`已导入 ${importedLines.length} 行，请逐行核对仓储与价格信息`)
-      else ElMessage.warning('未找到匹配的物料编码，请检查模板和当前租户物料')
+      ElMessage.success(`已导入 ${importedLines.length} 行，请逐行核对仓储与价格信息`)
     } catch (error) {
       if (request !== documentRequest) return
       notifyFriendlyError(error, '导入物料读取失败，请检查网络后重新选择文件')
+    } finally {
+      if (request === documentRequest) {
+        importing.value = false
+        drawerRef.value?.setOptions({
+          confirmDisabled:
+            parsing.value || importing.value || optionError.value || Boolean(documentError.value)
+        })
+      }
     }
   }
   async function save(): Promise<boolean> {
-    if (optionError.value || documentError.value) return false
+    if (parsing.value || importing.value || optionError.value || documentError.value) return false
     try {
       if (!(await validateArtFormForSubmit(formRef.value))) return false
       if (
@@ -1560,6 +1620,17 @@
       if (!lines.value.length) {
         ElMessage.warning('请至少添加一行物料')
         return false
+      }
+      if (props.kind === 'initial_inbound') {
+        for (const line of lines.value) {
+          line.warehouseId ||= form.warehouseId
+          if (!line.purchaserId) {
+            line.purchaserId = form.purchaserId
+            line.purchaser = selectedPurchaser.value[0] || null
+          }
+          if (!line.keeperId) line.keeper = selectedKeeper.value[0] || null
+          line.keeperId ||= form.keeperId
+        }
       }
       const validation = await lineTableRef.value?.validate()
       if (!validation?.valid) {
@@ -1623,12 +1694,14 @@
       emit('success')
       return true
     } catch (error) {
-      notifyFriendlyError(error, '采购单据提交失败，请检查填写内容和网络后重试')
+      notifyFriendlyError(error, `${title.value}提交失败，请检查填写内容和网络后重试`)
       return false
     }
   }
   async function handleOpen(data: OpenData): Promise<void> {
     documentRequest += 1
+    importing.value = false
+    parsing.value = false
     openData.value = data
     documentError.value = ''
     mode.value = data.mode
@@ -1651,6 +1724,8 @@
       onConfirm: save,
       onClose: () => {
         documentRequest += 1
+        importing.value = false
+        parsing.value = false
         openData.value = undefined
       }
     })
@@ -1695,6 +1770,9 @@
         form.businessTypeId = ''
       }
       lines.value = source ? cloneDeep(source.lines) : []
+      if (data.mode !== 'view') {
+        for (const line of lines.value) line.quantity = Math.abs(Number(line.quantity))
+      }
       selectedSupplier.value = []
       selectedHeaderCustomer.value = []
       selectedPurchaser.value = []
@@ -1755,7 +1833,8 @@
       if (request === documentRequest) {
         drawerRef.value?.setLoading(false)
         drawerRef.value?.setOptions({
-          confirmDisabled: optionError.value || Boolean(documentError.value)
+          confirmDisabled:
+            parsing.value || importing.value || optionError.value || Boolean(documentError.value)
         })
       }
     }

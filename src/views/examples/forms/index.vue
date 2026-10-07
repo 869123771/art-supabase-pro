@@ -432,6 +432,7 @@
         clearable: true,
         style: { width: '100%' },
         collapseTags: true,
+        collapseTagsTooltip: true,
         maxCollapseTags: 1,
         props: { multiple: true },
         options: cascaderOptions

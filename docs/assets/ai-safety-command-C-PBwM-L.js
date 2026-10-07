@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./domain-command-screen-DcZpn_F8.js";var i=t({name:`AiSafetyCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`ai-safety`}))}});export{i as default};

@@ -57,33 +57,33 @@ export function camelToSnake(str: string) {
 }
 
 /** shallow object camelCase → snake_case */
-export function convertKeysToSnake<TValue>(obj: Record<string, TValue>): Record<string, TValue> {
-  const out: Record<string, TValue> = {}
-  Object.entries(obj || {}).forEach(([k, v]) => {
-    out[camelToSnake(k)] = v
-  })
-  return out
+export function convertKeysToSnake<TValue>(source: Record<string, TValue>): Record<string, TValue> {
+  return Object.fromEntries(
+    Object.entries(source || {}).map(([column, value]) => [camelToSnake(column), value])
+  )
 }
 
 /** 内部使用：数组 specs 时转换 col */
 function toOp(value: Op | string | undefined): Op | undefined {
-  return value && value in opHandlers ? (value as Op) : undefined
+  return value && Object.prototype.hasOwnProperty.call(opHandlers, value)
+    ? (value as Op)
+    : undefined
 }
 
 function isFilterDescriptor(payload: FilterPayload): payload is { op?: Op; val?: FilterValue } {
   return !Array.isArray(payload) && typeof payload === 'object' && payload !== null
 }
 
-function normalizeSpecArray(specs: LooseFilterSpec[], camelToSnake: boolean): FilterSpec[] {
+function normalizeSpecArray(specs: LooseFilterSpec[], convertColumnNames: boolean): FilterSpec[] {
   const normalized = specs.map((spec) => ({
     col: spec.col,
     op: toOp(spec.op),
     val: spec.val
   }))
-  if (!camelToSnake) return normalized
+  if (!convertColumnNames) return normalized
   return normalized.map((spec) => ({
     ...spec,
-    col: camelToSnakeStr(spec.col)
+    col: camelToSnake(spec.col)
   }))
 }
 
@@ -162,26 +162,15 @@ export function applyFilters<TQuery extends FilterQueryLike>(
 export function buildSpecsFromMap(
   filters: Filters,
   ops?: Record<string, Op>,
-  camelToSnake = true
+  convertColumnNames = true
 ): FilterSpec[] {
-  const snakeFilters: Filters = camelToSnake ? convertKeysToSnake(filters) : filters
-
-  const snakeOps: Record<string, Op> = {}
-  if (ops) {
-    Object.entries(ops).forEach(([k, v]) => {
-      const key = camelToSnake ? camelToSnakeStr(k) : k
-      snakeOps[key] = v
-    })
-  }
+  const snakeFilters: Filters = convertColumnNames ? convertKeysToSnake(filters) : filters
+  const operations = ops ?? {}
+  const snakeOps = convertColumnNames ? convertKeysToSnake(operations) : operations
 
   return Object.entries(snakeFilters).map(([col, val]) => ({
     col,
-    op: snakeOps[col] ?? 'eq',
+    op: Object.prototype.hasOwnProperty.call(snakeOps, col) ? (toOp(snakeOps[col]) ?? 'eq') : 'eq',
     val
   }))
-}
-
-/** 内部 snake 转换 */
-function camelToSnakeStr(s: string) {
-  return s.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 }

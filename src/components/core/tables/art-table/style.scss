@@ -7,6 +7,11 @@
     margin-top: var(--art-space-3);
   }
 
+  :deep(.el-table__empty-text) {
+    width: 100%;
+    line-height: normal;
+  }
+
   &__cell-content {
     display: inline-flex;
     gap: 6px;

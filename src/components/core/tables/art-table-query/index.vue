@@ -265,6 +265,7 @@
     computed,
     h,
     nextTick,
+    onActivated,
     onBeforeUnmount,
     onDeactivated,
     onMounted,
@@ -278,7 +279,7 @@
   } from 'vue'
   import type { ButtonProps, TableColumnCtx, TableProps } from 'element-plus'
   import { ElMessage } from 'element-plus'
-  import { useEventListener, useResizeObserver } from '@vueuse/core'
+  import { useEventListener, useRafFn, useResizeObserver } from '@vueuse/core'
   import { cloneDeep } from 'lodash-es'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
@@ -870,18 +871,24 @@
     ...props.tableProps
   }))
 
-  useResizeObserver(headerTopRef, (entries) => {
-    const entry = entries[0]
-    if (!entry) return
-
-    window.requestAnimationFrame(() => {
+  let measurementActive = true
+  const { resume: measureHeaderTop, pause: stopHeaderTopMeasurement } = useRafFn(
+    () => {
       const element = headerTopRef.value
       if (!element) return
       const style = window.getComputedStyle(element)
       const marginHeight =
         (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
       headerTopHeight.value = element.getBoundingClientRect().height + marginHeight
-    })
+    },
+    { immediate: false, once: true }
+  )
+  useResizeObserver(headerTopRef, () => {
+    if (measurementActive) measureHeaderTop()
+  })
+  onActivated(() => {
+    measurementActive = true
+    measureHeaderTop()
   })
 
   const resolvedColumnsModel = computed({
@@ -1692,6 +1699,8 @@
 
   useEventListener(document, 'keydown', handleFocusEscape)
   onDeactivated(() => {
+    measurementActive = false
+    stopHeaderTopMeasurement()
     focusScrollPositions = []
     if (focusMode.value) handleFocusModeChange(false)
     restoreFocusLayout()

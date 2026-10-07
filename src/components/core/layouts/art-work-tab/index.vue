@@ -121,7 +121,7 @@
   import { LocationQueryRaw, useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n'
   import { storeToRefs } from 'pinia'
-  import { useResizeObserver } from '@vueuse/core'
+  import { useRafFn, useResizeObserver, useTimeoutFn } from '@vueuse/core'
 
   import { useWorktabStore } from '@/store/modules/worktab'
   import { useUserStore } from '@/store/modules/user'
@@ -277,11 +277,29 @@
 
   // 滚动逻辑
   const useScrolling = () => {
+    let pendingPositionUpdate: (() => void) | undefined
+    const { resume: resumePositionUpdate } = useRafFn(
+      () => {
+        const update = pendingPositionUpdate
+        pendingPositionUpdate = undefined
+        update?.()
+      },
+      { immediate: false, once: true }
+    )
+    const schedulePositionUpdate = (update: () => void) => {
+      pendingPositionUpdate = update
+      resumePositionUpdate()
+    }
+    const { start: clearTransitionLater } = useTimeoutFn(
+      () => {
+        scrollState.value.transition = ''
+      },
+      250,
+      { immediate: false }
+    )
     const setTransition = () => {
       scrollState.value.transition = 'transform 0.5s cubic-bezier(0.15, 0, 0.15, 1)'
-      setTimeout(() => {
-        scrollState.value.transition = ''
-      }, 250)
+      clearTransitionLater()
     }
 
     const getCurrentTabElement = (): HTMLElement | null => {
@@ -311,39 +329,38 @@
       }
     }
 
-    const autoPositionTab = () => {
-      const positions = calculateScrollPosition()
-      if (!positions) return
+    const autoPositionTab = () =>
+      schedulePositionUpdate(() => {
+        const positions = calculateScrollPosition()
+        if (!positions) return
 
-      const { scrollWidth, ulWidth, offsetLeft, curTabRight, targetLeft } = positions
+        const { scrollWidth, ulWidth, offsetLeft, curTabRight, targetLeft } = positions
 
-      if (
-        (offsetLeft > Math.abs(scrollState.value.translateX) && curTabRight <= scrollWidth) ||
-        (scrollState.value.translateX < targetLeft && targetLeft < 0)
-      ) {
-        return
-      }
+        if (
+          (offsetLeft > Math.abs(scrollState.value.translateX) && curTabRight <= scrollWidth) ||
+          (scrollState.value.translateX < targetLeft && targetLeft < 0)
+        ) {
+          return
+        }
 
-      requestAnimationFrame(() => {
         if (curTabRight > scrollWidth) {
           scrollState.value.translateX = Math.max(targetLeft - 6, scrollWidth - ulWidth)
         } else if (offsetLeft < Math.abs(scrollState.value.translateX)) {
           scrollState.value.translateX = -offsetLeft
         }
       })
-    }
 
-    const adjustPositionAfterClose = () => {
-      const positions = calculateScrollPosition()
-      if (!positions) return
+    const adjustPositionAfterClose = () =>
+      schedulePositionUpdate(() => {
+        const positions = calculateScrollPosition()
+        if (!positions) return
 
-      const { scrollWidth, ulWidth, offsetLeft, clientWidth } = positions
-      const curTabLeft = offsetLeft + clientWidth
+        const { scrollWidth, ulWidth, offsetLeft, clientWidth } = positions
+        const curTabLeft = offsetLeft + clientWidth
 
-      requestAnimationFrame(() => {
-        scrollState.value.translateX = curTabLeft > scrollWidth ? scrollWidth - ulWidth : 0
+        scrollState.value.translateX =
+          curTabLeft > scrollWidth ? Math.min(scrollWidth - ulWidth, 0) : 0
       })
-    }
 
     return {
       setTransition,
@@ -353,9 +370,7 @@
   }
 
   // 事件处理逻辑
-  const useEventHandlers = () => {
-    const { setTransition, adjustPositionAfterClose } = useScrolling()
-
+  const useEventHandlers = (setTransition: () => void) => {
     const handleWheelScroll = (event: WheelEvent) => {
       if (!scrollRef.value || !tabsRef.value) return
 
@@ -415,13 +430,15 @@
 
     return {
       setupEventListeners,
-      cleanupEventListeners,
-      adjustPositionAfterClose
+      cleanupEventListeners
     }
   }
 
   // 标签页操作逻辑
   const useTabOperations = (adjustPositionAfterClose: () => void) => {
+    const { start: adjustAfterCloseLater } = useTimeoutFn(adjustPositionAfterClose, 100, {
+      immediate: false
+    })
     const clickTab = (item: WorkTab): void => {
       void router.push({
         path: item.path,
@@ -442,9 +459,7 @@
 
       closeActions[type]?.()
 
-      setTimeout(() => {
-        adjustPositionAfterClose()
-      }, 100)
+      adjustAfterCloseLater()
     }
 
     const showMenu = (e: MouseEvent, path?: string) => {
@@ -495,9 +510,8 @@
 
   // 组合所有逻辑
   const { menuItems } = useContextMenu()
-  const { setTransition, autoPositionTab } = useScrolling()
-  const { setupEventListeners, cleanupEventListeners, adjustPositionAfterClose } =
-    useEventHandlers()
+  const { setTransition, autoPositionTab, adjustPositionAfterClose } = useScrolling()
+  const { setupEventListeners, cleanupEventListeners } = useEventHandlers(setTransition)
   const { clickTab, closeWorktab, showMenu, handleSelect } =
     useTabOperations(adjustPositionAfterClose)
 

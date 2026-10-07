@@ -18,13 +18,13 @@
 
 <script setup lang="ts">
   import { useSettingStore } from '@/store/modules/setting'
-  import { useCeremony } from '@/hooks/core/useCeremony'
+  import { useCurrentFestival } from '@/hooks/core/useCurrentFestival'
 
   defineOptions({ name: 'ArtFestivalTextScroll' })
 
   const settingStore = useSettingStore()
   const { showFestivalText } = storeToRefs(settingStore)
-  const { currentFestivalData } = useCeremony()
+  const { currentFestivalData } = useCurrentFestival()
 
   const handleClose = () => {
     settingStore.setShowFestivalText(false)

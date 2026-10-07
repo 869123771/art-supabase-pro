@@ -229,7 +229,7 @@
 
       // 节日相关
       settingStore.setFestivalDate(config.festivalDate)
-      settingStore.setholidayFireworksLoaded(config.holidayFireworksLoaded)
+      settingStore.setHolidayFireworksLoaded(config.holidayFireworksLoaded)
 
       location.reload()
     } catch (error) {

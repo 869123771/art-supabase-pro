@@ -52,6 +52,7 @@ onOpen: async (_data, api) => {
 - 支持异步确认、关闭拦截和 Loading
 - 内容区域默认使用 `ElScrollbar`，长表单和详情可在抽屉内滚动；`contentHeight` 可覆盖滚动区域高度
 - 支持自定义 Header、Footer 和动态内容组件
+- `headerIcon` 为默认标题增加业务图标并将副标题对齐到标题；自定义 `header` 插槽优先，未设置图标时保留普通标题。
 - 未封装的 `ElDrawer` API 可以直接透传
 
 ## 配置方式与优先级

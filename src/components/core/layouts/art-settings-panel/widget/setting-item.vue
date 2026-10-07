@@ -8,6 +8,7 @@
     <!-- 开关类型 -->
     <ElSwitch
       v-if="config.type === 'switch'"
+      :aria-label="config.label"
       :model-value="switchValue"
       :disabled="config.disabled"
       @change="handleChange"
@@ -16,6 +17,7 @@
     <!-- 数字输入类型 -->
     <ElInputNumber
       v-else-if="config.type === 'input-number'"
+      :aria-label="config.label"
       :model-value="inputNumberValue"
       :min="config.min"
       :max="config.max"
@@ -29,6 +31,7 @@
     <!-- 选择器类型 -->
     <ElSelect
       v-else-if="config.type === 'select'"
+      :aria-label="config.label"
       :model-value="selectValue"
       :style="config.style"
       :disabled="config.disabled"

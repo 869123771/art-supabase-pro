@@ -231,6 +231,8 @@
     ref,
     computed,
     nextTick,
+    onActivated,
+    onDeactivated,
     watch,
     watchEffect,
     watchPostEffect,
@@ -306,16 +308,16 @@
   const containerRef = ref<HTMLElement>()
   const containerWidth = ref(0)
   let pendingContainerWidth = 0
+  let measurementActive = true
   // 固定列切换会再次布局；在下一帧接收容器宽度，避免观察回调中的尺寸反馈。
-  const { resume: scheduleContainerWidth, pause: pauseContainerWidth } = useRafFn(
+  const { resume: scheduleContainerWidth, pause: stopContainerWidth } = useRafFn(
     () => {
       containerWidth.value = pendingContainerWidth
-      pauseContainerWidth()
     },
-    { immediate: false }
+    { immediate: false, once: true }
   )
   useResizeObserver(containerRef, ([entry]) => {
-    if (!entry) return
+    if (!entry || !measurementActive) return
     pendingContainerWidth = entry.contentRect.width
     scheduleContainerWidth()
   })
@@ -472,8 +474,14 @@
   const tableHeaderHeight = ref(0)
   const emptyContentRef = ref<HTMLElement>()
   const emptyTableHeight = ref(0)
-  useResizeObserver(emptyContentRef, () => {
-    requestAnimationFrame(() => {
+  let pendingPaginationHeight: number | undefined
+  let pendingTableHeaderHeight: number | undefined
+  const { resume: scheduleLayoutMeasurement, pause: stopLayoutMeasurement } = useRafFn(
+    () => {
+      if (pendingPaginationHeight !== undefined) paginationHeight.value = pendingPaginationHeight
+      if (pendingTableHeaderHeight !== undefined) tableHeaderHeight.value = pendingTableHeaderHeight
+      pendingPaginationHeight = undefined
+      pendingTableHeaderHeight = undefined
       const content = emptyContentRef.value
       if (!content) return
       const header = elTableRef.value?.$el.querySelector(
@@ -482,7 +490,11 @@
       emptyTableHeight.value = Math.ceil(
         content.getBoundingClientRect().height + (header?.getBoundingClientRect().height ?? 0) + 1
       )
-    })
+    },
+    { immediate: false, once: true }
+  )
+  useResizeObserver(emptyContentRef, () => {
+    if (measurementActive) scheduleLayoutMeasurement()
   })
   const isRowSelectionDragging = ref(false)
   const rowSelectionDragStartRow = ref<ArtTableRow>()
@@ -492,23 +504,28 @@
   // 使用 useResizeObserver 监听分页器高度变化
   useResizeObserver(paginationRef, (entries) => {
     const entry = entries[0]
-    if (entry) {
-      // 使用 requestAnimationFrame 避免 ResizeObserver loop 警告
-      requestAnimationFrame(() => {
-        paginationHeight.value = entry.contentRect.height
-      })
+    if (entry && measurementActive) {
+      pendingPaginationHeight = entry.contentRect.height
+      scheduleLayoutMeasurement()
     }
   })
 
   // 使用 useResizeObserver 监听表格头部高度变化
   useResizeObserver(tableHeaderRef, (entries) => {
     const entry = entries[0]
-    if (entry) {
-      // 使用 requestAnimationFrame 避免 ResizeObserver loop 警告
-      requestAnimationFrame(() => {
-        tableHeaderHeight.value = entry.contentRect.height
-      })
+    if (entry && measurementActive) {
+      pendingTableHeaderHeight = entry.contentRect.height
+      scheduleLayoutMeasurement()
     }
+  })
+  onActivated(() => {
+    measurementActive = true
+    scheduleLayoutMeasurement()
+  })
+  onDeactivated(() => {
+    measurementActive = false
+    stopContainerWidth()
+    stopLayoutMeasurement()
   })
 
   // 分页器与表格之间的间距常量（计算属性，响应 showTableHeader 变化）

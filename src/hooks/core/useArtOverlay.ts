@@ -1,4 +1,5 @@
 import { nextTick, ref, shallowRef, toRaw, type Component, type Ref, type ShallowRef } from 'vue'
+import { cloneDeep } from 'lodash-es'
 
 export type Awaitable<T> = T | Promise<T>
 export type ArtScrollOptions =
@@ -106,12 +107,10 @@ export const cloneOverlayData = <TValue>(value: TValue): TValue => {
     try {
       return structuredClone(toRaw(value))
     } catch {
-      // Component instances and functions intentionally remain by reference.
+      // Callback-bearing data and nested reactive values cannot use structuredClone.
     }
   }
-  if (Array.isArray(value)) return value.map((item) => cloneOverlayData(item)) as TValue
-  if (typeof value === 'object') return { ...(toRaw(value) as object) } as TValue
-  return value
+  return cloneDeep(toRaw(value))
 }
 
 export const mergeOverlayRecords = <T extends Record<string, unknown> | undefined>(

@@ -39,6 +39,7 @@
         :disabled="disabled"
         :clearable="clearable"
         collapse-tags
+        collapse-tags-tooltip
         :max-collapse-tags="maxTagCount"
         class="art-data-select__multiple-input"
         aria-haspopup="dialog"
@@ -154,7 +155,13 @@
             </ElScrollbar>
           </aside>
 
-          <section class="art-data-select-dialog__main" :class="{ 'has-error': loadError }">
+          <section
+            class="art-data-select-dialog__main"
+            :class="{
+              'has-error': loadError,
+              'is-empty': !loading && !loadError && !tableRows.length
+            }"
+          >
             <div
               v-if="showSearch"
               class="art-data-select-dialog__search"
@@ -226,6 +233,7 @@
                 :empty-text="emptyText"
                 :row-class-name="getTableRowClassName"
                 :highlight-current-row="!multiple"
+                :tooltip-options="{ enterable: false, popperStyle: { pointerEvents: 'none' } }"
                 @row-click="handleTableRowClick"
                 @selection-change="handleTableSelectionChange"
               >
@@ -386,7 +394,11 @@
             </div>
           </section>
 
-          <aside v-if="shouldShowSelectedPanel" class="art-data-select-dialog__selected">
+          <aside
+            v-if="shouldShowSelectedPanel"
+            class="art-data-select-dialog__selected"
+            :class="{ 'is-empty': !draftRows.length }"
+          >
             <div class="art-data-select-dialog__selected-header">
               <span>已选 {{ draftRows.length }}</span>
               <ElButton text type="primary" :disabled="!draftRows.length" @click="clearDraft">
@@ -397,7 +409,7 @@
               <ArtEmptyState
                 v-if="!draftRows.length"
                 title="暂未选择数据"
-                description="从左侧列表选择需要关联的记录。"
+                description="从可选列表选择需要关联的记录。"
                 :visual-size="68"
                 size="compact"
               />
@@ -1618,6 +1630,16 @@
       flex: 0 0 320px;
       min-height: 320px;
 
+      &.is-empty {
+        flex-basis: auto;
+
+        .art-data-select-dialog__content {
+          flex: none;
+          height: auto;
+          min-height: 260px;
+        }
+      }
+
       &.has-error {
         flex-basis: 420px;
         min-height: 420px;
@@ -1646,6 +1668,16 @@
       max-height: 160px;
       border-top: 1px solid var(--el-border-color-lighter);
       border-left: 0;
+
+      &.is-empty {
+        flex: none;
+        max-height: none;
+
+        .art-data-select-dialog__selected-scrollbar {
+          flex: none;
+          height: auto;
+        }
+      }
     }
 
     .art-data-select-dialog__pager {

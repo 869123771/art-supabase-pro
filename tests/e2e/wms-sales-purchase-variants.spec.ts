@@ -1,4 +1,42 @@
 import { expect, test, type Locator } from '@playwright/test'
+import { expectInputTextUnclipped } from './support/input-text-width'
+
+async function checkLineDates(drawer: Locator, labels: string[]): Promise<void> {
+  for (const label of labels) {
+    const column = await drawer
+      .getByRole('columnheader', { name: label, exact: true })
+      .evaluate((element) => (element as HTMLTableCellElement).cellIndex)
+    const input = drawer
+      .locator('.el-table__body tr')
+      .first()
+      .locator('td')
+      .nth(column)
+      .locator('.el-date-editor input')
+    await input.scrollIntoViewIfNeeded()
+    await input.fill('2026-10-07')
+    await input.press('Tab')
+    await input.hover()
+    await expect(input).toHaveValue('2026-10-07')
+    await expectInputTextUnclipped(input)
+  }
+  for (const label of labels.includes('入库日期') ? ['单价'] : ['未税单价', '含税单价']) {
+    const column = await drawer
+      .getByRole('columnheader', { name: label, exact: true })
+      .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+    const input = drawer
+      .locator('.el-table__body tr')
+      .first()
+      .locator('td')
+      .nth(column)
+      .getByRole('spinbutton')
+    await input.scrollIntoViewIfNeeded()
+    await input.fill('12345678.1234')
+    await input.press('Tab')
+    await expect(input).toHaveValue('12345678.1234')
+    await input.scrollIntoViewIfNeeded()
+    await expectInputTextUnclipped(input)
+  }
+}
 
 async function expectErrorCellUncovered(drawer: Locator): Promise<void> {
   const covered = await drawer
@@ -62,7 +100,14 @@ for (const { family, query, kind } of scenarios) {
           organization_code: 'TEST-ORG',
           organization_name: '测试库存组织',
           organization_type: 'company',
-          status: '1'
+          status: '1',
+          initialization: {
+            organization_id: organizationId,
+            enabled_on: '2026-10-30',
+            is_default: true,
+            initialization_closed_at:
+              kind.startsWith('initial_') || kind.startsWith('stock') ? null : '2026-10-03'
+          }
         }
       ],
       wms_inventory_initialization: [
@@ -162,7 +207,8 @@ for (const { family, query, kind } of scenarios) {
       ['mdmBusinessOwnerType', 'self', '自有'],
       ['mdmBusinessOwnerType', 'supplier', '供应商'],
       ['mdmBusinessOwnerType', 'customer', '客户'],
-      ['wmsInitialSalesReturnType', 'return', '退货']
+      ['wmsInitialSalesReturnType', 'return', '退货'],
+      ['wmsInitialSalesReturnType', 'replace', '配置退补货']
     ].map(([code, value, label], index) => ({
       id: `dictionary-${index}`,
       value,
@@ -187,9 +233,13 @@ for (const { family, query, kind } of scenarios) {
             : dictionaryRows
         })
       }
+      const data = records[new URL(route.request().url()).pathname.split('/').at(-1) || ''] ?? []
       return route.fulfill({
-        headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' },
-        json: records[new URL(route.request().url()).pathname.split('/').at(-1) || ''] ?? []
+        headers: {
+          'content-range': data.length ? `0-${data.length - 1}/${data.length}` : '*/0',
+          'access-control-expose-headers': 'content-range'
+        },
+        json: data
       })
     })
     await page.goto(
@@ -202,6 +252,11 @@ for (const { family, query, kind } of scenarios) {
       const save = stockDrawer.getByRole('button', { name: '保存', exact: true })
       await expect(save).toBeEnabled()
       await expect(stockDrawer.locator('.el-table__body tr')).toHaveCount(2)
+      await checkLineDates(stockDrawer, ['入库日期', '生产日期', '有效期至'])
+      await page.screenshot({
+        path: testInfo.outputPath('stock-line-dates.png'),
+        animations: 'disabled'
+      })
       if (kind === 'stock-unit') {
         await stockDrawer
           .locator('.el-table__body tr')
@@ -231,6 +286,18 @@ for (const { family, query, kind } of scenarios) {
       await page.getByRole('button', { name: '查看初始库存单', exact: true }).click()
       await expect(stockDrawer.locator('.el-descriptions')).toBeVisible()
       await expect(stockDrawer.locator('.el-table__body').getByRole('checkbox')).toHaveCount(0)
+      for (const [header, label] of [
+        ['库存类型', '正常库存'],
+        ['库存状态', '可用'],
+        ['货主类型', '供应商']
+      ]) {
+        const column = await stockDrawer
+          .getByRole('columnheader', { name: header, exact: true })
+          .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+        const cell = stockDrawer.locator('.el-table__body tr').first().locator('td').nth(column)
+        await cell.scrollIntoViewIfNeeded()
+        await expect(cell.getByText(label, { exact: true })).toBeVisible()
+      }
       for (const name of ['复制', '编制', '删除', '序列号']) {
         await expect(
           stockDrawer
@@ -374,6 +441,12 @@ for (const { family, query, kind } of scenarios) {
     }
     await page.getByRole('button', { name: `复制${family}单据`, exact: true }).click()
     const drawer = page.locator('.el-drawer:visible')
+    await expect(drawer.getByRole('button', { name: '保存副本', exact: true })).toBeEnabled()
+    await checkLineDates(drawer, ['生产日期', '有效期至'])
+    await page.screenshot({
+      path: testInfo.outputPath('trade-line-dates.png'),
+      animations: 'disabled'
+    })
     await expect(drawer.getByRole('button', { name: '保存副本', exact: true })).toBeVisible()
     await expect(drawer.getByRole('button', { name: '保存副本', exact: true })).toBeEnabled()
     await expect(drawer.getByRole('textbox', { name: '单据编号', exact: true })).toHaveValue('')
@@ -450,6 +523,21 @@ for (const { family, query, kind } of scenarios) {
     await expect(drawer.locator('.el-descriptions')).toBeVisible()
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
     await expect(drawer.locator('.el-table__body tr')).toHaveCount(2)
+    if (family === '销售' && kind.includes('return')) {
+      const column = await drawer
+        .getByRole('columnheader', { name: '退货类型', exact: true })
+        .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+      const cells = drawer.locator('.el-table__body tr').locator('td').nth(column)
+      await cells.scrollIntoViewIfNeeded()
+      await expect(cells.getByText('配置退补货', { exact: true })).toBeVisible()
+      await expect(
+        drawer.locator('.el-table__body tr').nth(1).locator('td').nth(column)
+      ).toHaveText('--')
+      await page.screenshot({
+        path: testInfo.outputPath('sales-return-dictionary.png'),
+        animations: 'disabled'
+      })
+    }
     await expect(
       drawer.locator('.el-table__body').getByText('测试供应商', { exact: true })
     ).toHaveCount(1)
@@ -486,7 +574,7 @@ for (const { family, query, kind } of scenarios) {
       )
     })
     await page.goto(
-      `/tests/e2e/fixtures/wms-document-serials.html?${query}&twoLines=true&validSave=true`
+      `/tests/e2e/fixtures/wms-document-serials.html?${query}&twoLines=true&validSave=true&storedReturnQuantity=true`
     )
     await page.getByRole('button', { name: `复制${family}单据`, exact: true }).click()
     await expect(drawer.getByRole('button', { name: '保存副本', exact: true })).toBeEnabled()
@@ -494,6 +582,16 @@ for (const { family, query, kind } of scenarios) {
     await expect(page.getByText('测试保存失败，请重试', { exact: true })).toBeVisible()
     await expect(drawer).toBeVisible()
     expect(payloads).toHaveLength(1)
+    expect(payloads[0].p_payload).toMatchObject({
+      kind,
+      is_initialization: kind.startsWith('initial_'),
+      lines: [0, 1].map((index) =>
+        expect.objectContaining({
+          quantity: 2,
+          serial_nos: [`SN-SAVE-${index}-1`, `SN-SAVE-${index}-2`]
+        })
+      )
+    })
     rejectSave = false
     await drawer.getByRole('button', { name: '保存副本', exact: true }).click()
     await expect(drawer).toBeHidden()
@@ -514,7 +612,14 @@ for (const { family, query, kind } of scenarios) {
       id: '22222222-2222-4222-8222-222222222222',
       tenant_id: tenantId,
       kind,
-      remark: '编辑保存重试验证'
+      is_initialization: kind.startsWith('initial_'),
+      remark: '编辑保存重试验证',
+      lines: [0, 1].map((index) =>
+        expect.objectContaining({
+          quantity: 2,
+          serial_nos: [`SN-SAVE-${index}-1`, `SN-SAVE-${index}-2`]
+        })
+      )
     })
     rejectSave = false
     await editSave.click()
@@ -596,7 +701,11 @@ for (const { family, query, kind } of scenarios) {
       await expect(drawer).toBeHidden()
       expect(payloads).toHaveLength(4 + draft * 2)
       expect(payloads.at(-1)).toEqual(payloads.at(-2))
-      expect(payloads.at(-1)?.p_payload).toMatchObject({ kind, remark: `新增草稿 ${draft}` })
+      expect(payloads.at(-1)?.p_payload).toMatchObject({
+        kind,
+        is_initialization: kind.startsWith('initial_'),
+        remark: `新增草稿 ${draft}`
+      })
       const saved = payloads.at(-1)?.p_payload
       expect(saved).toHaveProperty('lines')
       if (typeof saved === 'object' && saved !== null && 'lines' in saved) {

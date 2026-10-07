@@ -216,14 +216,14 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { useFullscreen, useWindowSize } from '@vueuse/core'
+  import { useFullscreen, useTimeoutFn, useWindowSize } from '@vueuse/core'
   import { LanguageEnum, MenuTypeEnum } from '@/enums/app-enum'
   import { useSettingStore } from '@/store/modules/setting'
   import { useUserStore } from '@/store/modules/user'
   import { useMenuStore } from '@/store/modules/menu'
   import { languageOptions } from '@/locales'
   import { mittBus } from '@/utils/sys'
-  import { themeAnimation } from '@/utils/ui/animation'
+  import { useThemeAnimation } from '@/hooks/core/useThemeAnimation'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
   import ArtUserMenu from './widget/art-user-menu.vue'
@@ -246,6 +246,7 @@
   const isWindows = navigator.userAgent.includes('Windows')
 
   const router = useRouter()
+  const themeAnimation = useThemeAnimation()
   const { locale } = useI18n()
   const { width } = useWindowSize()
 
@@ -321,8 +322,9 @@
     settingStore.setMenuOpen(!menuOpen.value)
   }
 
-  const { homePath } = useCommon()
-  const { refresh } = useCommon()
+  const { homePath, refresh } = useCommon()
+  const refreshDelay = ref(0)
+  const { start: scheduleRefresh } = useTimeoutFn(refresh, refreshDelay, { immediate: false })
 
   /**
    * 跳转到首页
@@ -336,9 +338,8 @@
    * @param {number} time - 延迟时间，默认为0毫秒
    */
   const reload = (time: number = 0): void => {
-    setTimeout(() => {
-      refresh()
-    }, time)
+    refreshDelay.value = time
+    scheduleRefresh()
   }
 
   /**

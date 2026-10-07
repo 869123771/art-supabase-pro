@@ -98,6 +98,8 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
+  import { useTimeoutFn } from '@vueuse/core'
+  import type { PopoverInstance } from 'element-plus'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useUserStore } from '@/store/modules/user'
   import { WEB_LINKS } from '@/utils/constants'
@@ -111,8 +113,14 @@
   const userStore = useUserStore()
 
   const { getUserInfo: userInfo } = storeToRefs(userStore)
-  const userMenuPopover = ref()
+  const userMenuPopover = ref<PopoverInstance>()
   const userMenuButton = ref<HTMLButtonElement>()
+  const { start: closeUserMenu } = useTimeoutFn(() => userMenuPopover.value?.hide(), 100, {
+    immediate: false
+  })
+  const { start: restoreMenuFocus } = useTimeoutFn(() => userMenuButton.value?.focus(), 120, {
+    immediate: false
+  })
 
   const focusFirstMenuItem = async (): Promise<void> => {
     await nextTick()
@@ -130,9 +138,8 @@
   /**
    * 用户登出确认
    */
-  const loginOut = (): void => {
-    closeUserMenu()
-    setTimeout(async () => {
+  const { start: confirmLogoutLater } = useTimeoutFn(
+    async () => {
       try {
         await confirmAction(t('common.logOutTips'), t('common.tips'), {
           confirmButtonText: t('common.confirm'),
@@ -143,21 +150,21 @@
         return
       }
       userStore.logOut()
-    }, 200)
+    },
+    200,
+    { immediate: false }
+  )
+  const loginOut = (): void => {
+    closeUserMenu()
+    confirmLogoutLater()
   }
 
   /**
    * 关闭用户菜单弹出层
    */
-  const closeUserMenu = (): void => {
-    setTimeout(() => {
-      userMenuPopover.value?.hide()
-    }, 100)
-  }
-
   const closeUserMenuAndRestoreFocus = (): void => {
     closeUserMenu()
-    setTimeout(() => userMenuButton.value?.focus(), 120)
+    restoreMenuFocus()
   }
 </script>
 

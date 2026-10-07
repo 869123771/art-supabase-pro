@@ -74,7 +74,10 @@ for (const entry of ['component', 'menu'] as const) {
       await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
     else {
       await installFixtures(page)
-      await prepareAppearance(page, { theme: 'light', boxBorderMode: true })
+      await prepareAppearance(page, {
+        theme: testInfo.project.name.includes('dark') ? 'dark' : 'light',
+        boxBorderMode: !testInfo.project.name.includes('shadow')
+      })
       await page.route('**/rpc/get_accessible_applications', (route) =>
         route.fulfill({
           json: [
@@ -212,8 +215,16 @@ for (const entry of ['component', 'menu'] as const) {
       name: entry === 'component' ? '测试库存组装' : '办理组装',
       exact: true
     })
+    if (entry === 'menu' && testInfo.project.name.includes('dark'))
+      await expect(page.locator('html')).toHaveClass(/dark/)
+    if (entry === 'menu' && testInfo.project.name.includes('shadow'))
+      await expect(page.locator('html')).toHaveAttribute('data-box-mode', 'shadow-mode')
     await openButton.click()
     const assembly = page.getByRole('dialog', { name: /办理库存组装/ })
+    await assembly.getByRole('button', { name: '确定', exact: true }).click()
+    await expect(page.getByText('请添加至少两条有效组件', { exact: true })).toBeVisible()
+    await expect(assembly.getByText('请选择成品物料', { exact: true })).toHaveCount(0)
+    expect(payloads).toHaveLength(0)
     async function pickBatch(index: number) {
       await assembly.getByPlaceholder('选择一个库存批次加入组件', { exact: true }).click()
       const picker = page.getByRole('dialog', { name: /添加来源批次/ })
@@ -223,6 +234,48 @@ for (const entry of ['component', 'menu'] as const) {
         .click()
       await picker.getByRole('button', { name: /^(确定|确认)$/ }).click()
     }
+    let releaseSource!: () => void
+    const sourcePending = new Promise<void>((resolve) => {
+      releaseSource = resolve
+    })
+    let sourceStarted = false
+    await page.route(
+      '**/rest/v1/wms_serial_number?*',
+      async (route) => {
+        sourceStarted = true
+        await sourcePending
+        await route.fulfill({ json: [] })
+      },
+      { times: 1 }
+    )
+    await pickBatch(1)
+    await expect.poll(() => sourceStarted).toBe(true)
+    await assembly.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+    await expect(assembly).toBeHidden()
+    const downstreamRequests: string[] = []
+    const trackDownstream = (request: import('@playwright/test').Request) => {
+      if (/\/rest\/v1\/mdm_warehouse(?:_bin)?\?/.test(request.url()))
+        downstreamRequests.push(request.url())
+    }
+    page.on('request', trackDownstream)
+    const sourceReturned = page.waitForResponse((response) =>
+      response.url().includes('/wms_serial_number?')
+    )
+    releaseSource()
+    await (await sourceReturned).finished()
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    )
+    expect(downstreamRequests).toEqual([])
+    expect(payloads).toHaveLength(0)
+    page.off('request', trackDownstream)
+    await openButton.click()
+    await expect(assembly.getByRole('spinbutton', { name: /ASSEMBLY-BATCH-.* 用量/ })).toHaveCount(
+      0
+    )
     for (const documentIndex of [1, 2]) {
       if (documentIndex === 2) {
         await openButton.click()

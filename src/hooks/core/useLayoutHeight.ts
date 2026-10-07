@@ -16,7 +16,7 @@
  */
 
 import { ref, computed, watch, onMounted } from 'vue'
-import { useElementSize } from '@vueuse/core'
+import { useElementSize, useRafFn } from '@vueuse/core'
 
 /**
  * 页面容器高度配置
@@ -59,11 +59,9 @@ export function useLayoutHeight(options: LayoutHeightOptions = {}) {
     watch(
       containerMinHeight,
       (newHeight) => {
-        requestAnimationFrame(() => {
-          document.documentElement.style.setProperty(cssVarName, newHeight)
-        })
+        document.documentElement.style.setProperty(cssVarName, newHeight)
       },
-      { immediate: true }
+      { immediate: true, flush: 'post' }
     )
   }
 
@@ -135,27 +133,25 @@ export function useAutoLayoutHeight(
     watch(
       containerMinHeight,
       (newHeight) => {
-        requestAnimationFrame(() => {
-          document.documentElement.style.setProperty(cssVarName, newHeight)
-        })
+        document.documentElement.style.setProperty(cssVarName, newHeight)
       },
-      { immediate: true }
+      { immediate: true, flush: 'post' }
     )
   }
 
-  // 在 DOM 挂载后查找元素
-  onMounted(() => {
-    if (typeof document !== 'undefined') {
-      // 使用 nextTick 确保 DOM 完全渲染
-      requestAnimationFrame(() => {
-        headerIds.forEach((headerId, index) => {
-          const element = document.getElementById(headerId)
-          const elementRef = layoutElementRefs[index]
-          if (element && elementRef) elementRef.value = element
-        })
+  // 下一帧查找挂载后的布局元素；组件卸载会取消尚未执行的查找。
+  const { resume: findLayoutElements, pause: stopFindingLayoutElements } = useRafFn(
+    () => {
+      stopFindingLayoutElements()
+      headerIds.forEach((headerId, index) => {
+        const element = document.getElementById(headerId)
+        const elementRef = layoutElementRefs[index]
+        if (element && elementRef) elementRef.value = element
       })
-    }
-  })
+    },
+    { immediate: false }
+  )
+  onMounted(findLayoutElements)
 
   return {
     /** 容器最小高度（响应式） */

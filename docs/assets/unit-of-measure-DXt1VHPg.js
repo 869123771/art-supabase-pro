@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./material-reference-BUfsA_z4.js";var i=t({name:`MdmUnitOfMeasure`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

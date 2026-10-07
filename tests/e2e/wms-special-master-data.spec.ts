@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 import { prepareAppearance } from './support/appearance'
 import { mockApplicationMenus } from './support/menu-rpc'
 import { installFixtures, material, meta, tenantId } from './support/inventory-fixtures'
+import { expectInputTextUnclipped } from './support/input-text-width'
 
 const organizationId = '219c1773-f518-41a3-8563-c36b164fd132'
 const sourceOrganizationId = '219c1773-f518-41a3-8563-c36b164fd133'
@@ -101,12 +102,18 @@ async function installSpecialFixtures(page: Page): Promise<void> {
   )
   await page.route('**/rest/v1/mdm_organization?*', (route) =>
     route.fulfill({
+      headers: { 'content-range': '0-2/3', 'access-control-expose-headers': 'content-range' },
       json: [
         {
           id: organizationId,
           tenant_id: tenantId,
           organization_code: 'INV-01',
           organization_name: '默认启用库存组织',
+          initialization: {
+            enabled_on: '2026-10-01',
+            is_default: true,
+            initialization_closed_at: '2026-10-02T00:00:00Z'
+          },
           organization_type: 'company',
           status: '1'
         },
@@ -115,6 +122,11 @@ async function installSpecialFixtures(page: Page): Promise<void> {
           tenant_id: tenantId,
           organization_code: 'INV-02',
           organization_name: '来源库存组织',
+          initialization: {
+            enabled_on: '2026-10-01',
+            is_default: false,
+            initialization_closed_at: '2026-10-02T00:00:00Z'
+          },
           organization_type: 'company',
           status: '1'
         },
@@ -123,6 +135,7 @@ async function installSpecialFixtures(page: Page): Promise<void> {
           tenant_id: tenantId,
           organization_code: 'INV-03',
           organization_name: '未启用库存组织',
+          initialization: null,
           organization_type: 'company',
           status: '1'
         }
@@ -494,7 +507,10 @@ test('生产入库两张新增承接工单和确认垛包保存重试', async ({
     route.fulfill(
       rejectPack
         ? { status: 400, json: { code: 'P0001', message: '测试垛包读取失败' } }
-        : { json: [{ id: 'confirmed-pack', pack_no: 'PACK-PRODUCTION', items: [{ pieces: 2 }] }] }
+        : {
+            headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' },
+            json: [{ id: 'confirmed-pack', pack_no: 'PACK-PRODUCTION', items: [{ pieces: 2 }] }]
+          }
     )
   )
   let rejectSave = true
@@ -610,6 +626,10 @@ for (const oldFailure of [false, true]) {
         first && oldFailure
           ? { status: 400, json: { code: 'P0001', message: '过期垛包读取失败' } }
           : {
+              headers: {
+                'content-range': '0-0/1',
+                'access-control-expose-headers': 'content-range'
+              },
               json: [
                 {
                   id: first ? 'old-pack' : `current-${order}`,
@@ -1309,7 +1329,15 @@ for (const oldOutcome of ['success', 'failure']) {
   }
 }
 
-async function installOrdinaryIssuePermissions(page: Page, permissions: string[]): Promise<void> {
+async function installOrdinaryWmsPermissions(
+  page: Page,
+  permissions: string[],
+  menu = {
+    name: 'WmsIssueRequest',
+    path: '/wms/outbound-business/outbound-request',
+    title: '出库申请单'
+  }
+): Promise<void> {
   await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
   await page.route('**/rest/v1/sys_user?*', (route) =>
     route.fulfill({
@@ -1332,12 +1360,12 @@ async function installOrdinaryIssuePermissions(page: Page, permissions: string[]
       {
         id: menuId,
         parentId: null,
-        name: 'WmsIssueRequest',
-        path: '/wms/outbound-business/outbound-request',
-        component: '/wms/outbound-business/outbound-request',
+        name: menu.name,
+        path: menu.path,
+        component: menu.path,
         type: 'menu',
         sort: 1,
-        meta: meta('出库申请单')
+        meta: meta(menu.title)
       },
       ...permissions.map((permission) => ({
         id: `${menuId}-${permission}`,
@@ -1353,12 +1381,570 @@ async function installOrdinaryIssuePermissions(page: Page, permissions: string[]
   })
 }
 
+for (const action of ['View', 'Create', 'Dispatch', 'Receive', 'ReceiveLocations']) {
+  test(`分步调拨普通用户${action}权限入口及租户查询`, async ({ page }, testInfo) => {
+    await installSpecialFixtures(page)
+    const permission = action === 'ReceiveLocations' ? 'Receive' : action
+    await installOrdinaryWmsPermissions(page, ['WmsTransfer:View', `WmsTransfer:${permission}`], {
+      name: 'WmsStepTransfer',
+      path: '/wms/transfer-business/step-transfer',
+      title: '分步调拨'
+    })
+    const queries: string[] = []
+    const statuses = ['draft', 'in_transit']
+    await page.route('**/rest/v1/wms_transfer_document?*', (route) => {
+      queries.push(route.request().url())
+      return route.fulfill({
+        json: statuses.map((status, index) => ({
+          id: `ordinary-transfer-${index}`,
+          tenant_id: tenantId,
+          document_no: `ORDINARY-TRANSFER-${index}`,
+          status,
+          quantity: 2,
+          target_warehouse_id: targetWarehouseId,
+          serial_ids: [],
+          material_id: material.id,
+          created_at: '2026-10-07T01:00:00Z',
+          sourceWarehouse: { warehouse_name: '调出仓库' },
+          targetWarehouse: {
+            warehouse_name: '调入仓库',
+            enable_locations: action === 'ReceiveLocations'
+          },
+          material: { material_code: 'TRANSFER-MAT', material_name: '调拨物料' }
+        })),
+        headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' }
+      })
+    })
+    await page.goto('#/wms/transfer-business/step-transfer')
+    await expect(page.getByText('ORDINARY-TRANSFER-0', { exact: true })).toBeVisible()
+    for (const [label, required] of [
+      ['取消申请', 'Create'],
+      ['确认调出', 'Dispatch'],
+      ['确认入库', 'Receive']
+    ]) {
+      const button = page.getByRole('button', { name: label, exact: true })
+      if (permission === required) {
+        await expect(button).toHaveCount(1)
+        await button.scrollIntoViewIfNeeded()
+        await expect(button).toBeInViewport()
+      } else await expect(button).toHaveCount(0)
+    }
+    for (const query of queries)
+      expect(new URL(query).searchParams.get('tenant_id')).toBe(`eq.${tenantId}`)
+    expect(queries.length).toBeGreaterThan(0)
+    if (action === 'Create' || action === 'Dispatch') {
+      const rpc =
+        action === 'Create' ? 'wms_cancel_transfer_secure' : 'wms_dispatch_transfer_secure'
+      const calls: Record<string, unknown>[] = []
+      let reject = true
+      await page.route(`**/rest/v1/rpc/${rpc}`, (route) => {
+        calls.push(route.request().postDataJSON())
+        if (reject)
+          return route.fulfill({
+            status: 400,
+            json: { code: 'P0001', message: '测试调拨操作失败，请重试' }
+          })
+        statuses[0] = action === 'Create' ? 'cancelled' : 'in_transit'
+        return route.fulfill({ json: null })
+      })
+      const trigger = page.locator('.el-table').getByRole('button', {
+        name: action === 'Create' ? '取消申请' : '确认调出',
+        exact: true
+      })
+      await trigger.click()
+      const confirmation = page.locator('.el-message-box:visible')
+      await confirmation.getByRole('button', { name: '返回', exact: true }).click()
+      expect(calls).toHaveLength(0)
+      await trigger.click()
+      await confirmation
+        .getByRole('button', { name: action === 'Create' ? '确定取消' : '确认调出', exact: true })
+        .click()
+      await expect(page.getByText('测试调拨操作失败，请重试', { exact: true })).toBeVisible()
+      await expect(trigger).toBeEnabled()
+      expect(calls).toEqual([{ p_transfer_id: 'ordinary-transfer-0' }])
+      reject = false
+      await trigger.click()
+      await confirmation
+        .getByRole('button', { name: action === 'Create' ? '确定取消' : '确认调出', exact: true })
+        .click()
+      await expect(trigger).toHaveCount(0)
+      expect(calls).toEqual([
+        { p_transfer_id: 'ordinary-transfer-0' },
+        { p_transfer_id: 'ordinary-transfer-0' }
+      ])
+      const row = page
+        .locator('.el-table__body tr')
+        .filter({ has: page.getByText('ORDINARY-TRANSFER-0', { exact: true }) })
+      const status = row.getByText(action === 'Create' ? '已取消' : '在途', { exact: true })
+      await status.scrollIntoViewIfNeeded()
+      await expect(status).toBeInViewport()
+    }
+    if (permission === 'Receive') {
+      const calls: Record<string, unknown>[] = []
+      let reject = true
+      let rejectBins = action === 'ReceiveLocations'
+      const binId = 'receive-bin'
+      await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) =>
+        route.fulfill(
+          rejectBins
+            ? { status: 400, json: { code: 'P0001', message: '测试库位加载失败' } }
+            : {
+                json: [
+                  {
+                    id: binId,
+                    tenant_id: tenantId,
+                    warehouse_id: targetWarehouseId,
+                    bin_code: 'ARRIVAL-01',
+                    bin_name: '调拨接收库位',
+                    status: 'available'
+                  }
+                ]
+              }
+        )
+      )
+      await page.route('**/rest/v1/rpc/wms_receive_transfer_secure', (route) => {
+        calls.push(route.request().postDataJSON())
+        if (reject)
+          return route.fulfill({
+            status: 400,
+            json: { code: 'P0001', message: '测试调拨入库失败，请重试' }
+          })
+        statuses[1] = 'received'
+        return route.fulfill({ json: null })
+      })
+      const trigger = page
+        .locator('.el-table')
+        .getByRole('button', { name: '确认入库', exact: true })
+      await trigger.click()
+      const dialog = page.getByRole('dialog', { name: '确认调拨入库', exact: true })
+      const submit = dialog.getByRole('button', { name: '确定', exact: true })
+      await expect(submit).toBeInViewport()
+      await dialog.getByRole('button', { name: '取消', exact: true }).click()
+      expect(calls).toHaveLength(0)
+      await trigger.click()
+      if (action === 'ReceiveLocations') {
+        await expect(
+          dialog.getByText('库位加载失败，请重新加载后办理。', { exact: false })
+        ).toBeVisible()
+        await expect(submit).toBeDisabled()
+        rejectBins = false
+        await dialog.getByRole('button', { name: '重新加载', exact: true }).click()
+        await expect(submit).toBeEnabled()
+        await submit.click()
+        await expect(dialog.getByText('请选择目标库位', { exact: true })).toBeVisible()
+        expect(calls).toHaveLength(0)
+        const recommendationCalls: Record<string, unknown>[] = []
+        let rejectRecommendation = true
+        await page.route('**/rest/v1/rpc/wms_recommend_bin_secure', (route) => {
+          recommendationCalls.push(route.request().postDataJSON())
+          return route.fulfill(
+            rejectRecommendation
+              ? { status: 400, json: { code: 'P0001', message: '测试自动选位失败，请重试' } }
+              : { json: binId }
+          )
+        })
+        const recommend = dialog.getByRole('button', { name: '自动选位', exact: true })
+        await choose(page, dialog, '目标库位', 'ARRIVAL-01 · 调拨接收库位')
+        await recommend.click()
+        await expect(page.getByText('测试自动选位失败，请重试', { exact: true })).toBeVisible()
+        await expect(recommend).toBeEnabled()
+        await expect(dialog.getByText('ARRIVAL-01 · 调拨接收库位', { exact: true })).toBeVisible()
+        rejectRecommendation = false
+        await recommend.click()
+        await expect(dialog.getByText('ARRIVAL-01 · 调拨接收库位', { exact: true })).toBeVisible()
+        expect(recommendationCalls).toEqual([
+          {
+            p_warehouse_id: targetWarehouseId,
+            p_material_id: material.id,
+            p_quantity: 2,
+            p_area_sqm: null
+          },
+          {
+            p_warehouse_id: targetWarehouseId,
+            p_material_id: material.id,
+            p_quantity: 2,
+            p_area_sqm: null
+          }
+        ])
+      }
+      await submit.click()
+      await expect(page.getByText('测试调拨入库失败，请重试', { exact: true })).toBeVisible()
+      await expect(dialog).toBeVisible()
+      await expect(submit).toBeEnabled()
+      await page.screenshot({
+        path: testInfo.outputPath('step-transfer-receive-retry.png'),
+        animations: 'disabled'
+      })
+      reject = false
+      await submit.click()
+      await expect(dialog).toBeHidden()
+      expect(calls).toEqual([
+        {
+          p_transfer_id: 'ordinary-transfer-1',
+          p_target_bin_id: action === 'ReceiveLocations' ? binId : null
+        },
+        {
+          p_transfer_id: 'ordinary-transfer-1',
+          p_target_bin_id: action === 'ReceiveLocations' ? binId : null
+        }
+      ])
+      await expect(trigger).toHaveCount(0)
+    }
+    await page.screenshot({
+      path: testInfo.outputPath('step-transfer-authorized-actions.png'),
+      animations: 'disabled'
+    })
+  })
+}
+
+for (const action of ['reserve', 'bind']) {
+  test(`序列号普通用户从追溯菜单${action}失败重试`, async ({ page }, testInfo) => {
+    await installSpecialFixtures(page)
+    await prepareAppearance(page, {
+      theme: testInfo.project.name.includes('dark') ? 'dark' : 'light',
+      boxBorderMode: !testInfo.project.name.includes('shadow')
+    })
+    await installOrdinaryWmsPermissions(
+      page,
+      ['WmsSerialTrace:View', `WmsSerialTrace:${action === 'reserve' ? 'Reserve' : 'Bind'}`],
+      {
+        name: 'WmsSerialTrace',
+        path: '/wms/inventory-trace/serial-trace',
+        title: '序列号追溯'
+      }
+    )
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    let rejectCandidates = true
+    let emptyCandidates = true
+    await page.route('**/rest/v1/wms_serial_number?*', (route) =>
+      route.fulfill({
+        ...(new URL(route.request().url()).searchParams.has('consumed_work_order_id')
+          ? rejectCandidates
+            ? { status: 400, json: { code: 'P0001', message: '测试候选加载失败' } }
+            : {
+                json: emptyCandidates
+                  ? []
+                  : [
+                      {
+                        id: 'child-serial',
+                        serial_no: 'CHILD-SN-01',
+                        material: { material_name: '绑定测试子件' }
+                      }
+                    ],
+                headers: {
+                  'content-range': emptyCandidates ? '*/0' : '0-0/1',
+                  'access-control-expose-headers': 'content-range'
+                }
+              }
+          : {
+              json: [
+                {
+                  id: 'reserve-serial',
+                  tenant_id: tenantId,
+                  serial_no: 'RESERVE-SN-01',
+                  batch_id: batchId,
+                  work_order_id: 'reserve-order',
+                  status: 'in_stock',
+                  material: { material_name: '预留测试物料' }
+                }
+              ],
+              headers: {
+                'content-range': '0-0/1',
+                'access-control-expose-headers': 'content-range'
+              }
+            })
+      })
+    )
+    await page.route('**/rest/v1/wms_inventory_reservation?*', (route) =>
+      route.fulfill(
+        rejectCandidates
+          ? { status: 400, json: { code: 'P0001', message: '测试候选加载失败' } }
+          : {
+              json: emptyCandidates
+                ? []
+                : [
+                    {
+                      work_order_id: 'reserve-order',
+                      workOrder: { work_order_no: 'RESERVE-ORDER-01', order_status: 'REL' }
+                    }
+                  ]
+            }
+      )
+    )
+    const calls: unknown[] = []
+    let reject = true
+    await page.route(
+      `**/rest/v1/rpc/${action === 'reserve' ? 'wms_reserve_serials_secure' : 'wms_bind_assembly_serials_secure'}`,
+      (route) => {
+        calls.push(route.request().postDataJSON())
+        return route.fulfill(
+          reject
+            ? { status: 400, json: { code: 'P0001', message: '测试序列号预留失败，请重试' } }
+            : { json: null }
+        )
+      }
+    )
+    await page.goto('#/wms/inventory-trace/serial-trace')
+    if (testInfo.project.name.includes('dark'))
+      await expect(page.locator('html')).toHaveClass(/dark/)
+    if (testInfo.project.name.includes('shadow'))
+      await expect(page.locator('html')).toHaveAttribute('data-box-mode', 'shadow-mode')
+    await page
+      .getByRole('button', { name: action === 'reserve' ? '预留 SN' : '绑定子件', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', {
+      name: action === 'reserve' ? '预留关键件 SN' : '绑定装配子件',
+      exact: true
+    })
+    const submit = dialog.getByRole('button', { name: '确定', exact: true })
+    await expect(dialog.getByText('候选记录加载失败', { exact: true })).toBeVisible()
+    await expect(submit).toBeDisabled()
+    expect(calls).toHaveLength(0)
+    rejectCandidates = false
+    await dialog.getByRole('button', { name: '重新加载', exact: true }).click()
+    await expect(
+      dialog.getByText(
+        action === 'reserve'
+          ? '暂无可预留工单，请先为已下达或执行中的工单预留该批次库存。'
+          : '暂无可绑定子件，请先完成同工单关键件领用，再返回绑定。',
+        { exact: true }
+      )
+    ).toBeVisible()
+    await expect(submit).toBeDisabled()
+    await page.screenshot({
+      path: testInfo.outputPath('serial-empty-candidates.png'),
+      animations: 'disabled'
+    })
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    emptyCandidates = false
+    await page
+      .getByRole('button', { name: action === 'reserve' ? '预留 SN' : '绑定子件', exact: true })
+      .click()
+    await expect(submit).toBeEnabled()
+    await submit.click()
+    await expect(
+      dialog.getByText(action === 'reserve' ? '请选择工单' : '请选择关键件 SN', { exact: true })
+    ).toBeVisible()
+    expect(calls).toHaveLength(0)
+    await choose(
+      page,
+      dialog,
+      action === 'reserve' ? '预留给工单' : '已领用的关键件 SN',
+      action === 'reserve' ? 'RESERVE-ORDER-01' : 'CHILD-SN-01 · 绑定测试子件'
+    )
+    await page.keyboard.press('Escape')
+    await submit.click()
+    await expect(page.getByText('测试序列号预留失败，请重试', { exact: true })).toBeVisible()
+    await expect(
+      dialog.getByText(action === 'reserve' ? 'RESERVE-ORDER-01' : 'CHILD-SN-01 · 绑定测试子件', {
+        exact: true
+      })
+    ).toBeVisible()
+    await page.screenshot({
+      path: testInfo.outputPath('serial-action-retry.png'),
+      animations: 'disabled'
+    })
+    reject = false
+    await submit.click()
+    await expect(dialog).toBeHidden()
+    expect(calls).toEqual(
+      action === 'reserve'
+        ? [
+            { p_work_order_id: 'reserve-order', p_serial_ids: ['reserve-serial'] },
+            { p_work_order_id: 'reserve-order', p_serial_ids: ['reserve-serial'] }
+          ]
+        : [
+            { p_parent_serial_id: 'reserve-serial', p_child_serial_ids: ['child-serial'] },
+            { p_parent_serial_id: 'reserve-serial', p_child_serial_ids: ['child-serial'] }
+          ]
+    )
+    expect(errors).toEqual([])
+  })
+}
+
+test('序列号普通用户释放预留确认返回及失败重试', async ({ page }) => {
+  await installSpecialFixtures(page)
+  await installOrdinaryWmsPermissions(page, ['WmsSerialTrace:View', 'WmsSerialTrace:Reserve'], {
+    name: 'WmsSerialTrace',
+    path: '/wms/inventory-trace/serial-trace',
+    title: '序列号追溯'
+  })
+  let reserved = true
+  await page.route('**/rest/v1/wms_serial_number?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'release-serial',
+          tenant_id: tenantId,
+          serial_no: 'RELEASE-SN-01',
+          batch_id: batchId,
+          status: 'in_stock',
+          reserved_work_order_id: reserved ? 'release-order' : null
+        }
+      ],
+      headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+    })
+  )
+  let reject = true
+  const calls: unknown[] = []
+  await page.route('**/rest/v1/rpc/wms_release_serials_secure', (route) => {
+    calls.push(route.request().postDataJSON())
+    if (reject)
+      return route.fulfill({
+        status: 400,
+        json: { code: 'P0001', message: '测试释放预留失败，请重试' }
+      })
+    reserved = false
+    return route.fulfill({ json: null })
+  })
+  await page.goto('#/wms/inventory-trace/serial-trace')
+  const trigger = page.getByRole('button', { name: '释放预留', exact: true })
+  const confirmation = page.locator('.el-message-box:visible')
+  await trigger.click()
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click()
+  expect(calls).toHaveLength(0)
+  await trigger.click()
+  await confirmation.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(page.getByText('测试释放预留失败，请重试', { exact: true })).toBeVisible()
+  await expect(trigger).toBeEnabled()
+  reject = false
+  await trigger.click()
+  await confirmation.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(trigger).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '预留 SN', exact: true })).toBeVisible()
+  expect(calls).toEqual([
+    { p_work_order_id: 'release-order', p_serial_ids: ['release-serial'] },
+    { p_work_order_id: 'release-order', p_serial_ids: ['release-serial'] }
+  ])
+})
+
+test('出库申请普通用户文本筛选与重置保持租户范围', async ({ page }, testInfo) => {
+  test.setTimeout(90_000)
+  await installSpecialFixtures(page)
+  await installOrdinaryWmsPermissions(page, ['WmsIssueRequest:View'])
+  const queries: string[] = []
+  await page.route('**/rest/v1/wms_issue_request_list?*', (route) => {
+    queries.push(route.request().url())
+    return route.fulfill({
+      json: [
+        {
+          id: 'query-request',
+          tenant_id: tenantId,
+          organization_id: organizationId,
+          document_no: 'QUERY-ISSUE-01',
+          status: 'submitted',
+          request_type: 'consumables_outbound',
+          application_date: '2026-10-07',
+          warehouse_id: targetWarehouseId,
+          project_id: null,
+          project_name: '项目甲',
+          construction_no: null,
+          requested_quantity_total: 5,
+          issued_quantity_total: 1,
+          created_at: '2026-10-07T01:00:00Z'
+        }
+      ],
+      headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+    })
+  })
+  await page.route('**/rest/v1/wms_issue_request_line?*', (route) =>
+    route.fulfill({
+      json: [1, 2].map((index) => ({
+        id: `query-line-${index}`,
+        request_id: 'query-request',
+        material_id: `query-material-${index}`,
+        requested_quantity: index === 1 ? 2 : 3,
+        issued_quantity: index === 1 ? 1 : 0,
+        material: {
+          material_code: `MAT-01-${index}`,
+          material_name: `安全帽 ${index}`,
+          baseUnit: { unit_name: '件' }
+        }
+      })),
+      headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' }
+    })
+  )
+  await page.goto('#/wms/outbound-business/outbound-request', { waitUntil: 'domcontentloaded' })
+  await expect.poll(() => queries.length, { timeout: 60_000 }).toBeGreaterThan(0)
+  const expand = page.getByRole('button', { name: '展开', exact: true })
+  if (await expand.isVisible()) await expand.click()
+  for (const [placeholder, value] of [
+    ['项目名称', ' 项目甲 '],
+    ['物料描述', ' 安全帽 '],
+    ['物料编码', ' MAT-01 '],
+    ['姓名或工号', ' EMP-01 ']
+  ])
+    await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
+  for (const [label, option] of [
+    ['单据状态', '待审核'],
+    ['申请类型', '耗材出库']
+  ]) {
+    await page.locator('.el-form-item').filter({ hasText: label }).getByRole('combobox').click()
+    await page.getByRole('option', { name: option, exact: true }).click()
+  }
+  await page.getByPlaceholder('开始日期', { exact: true }).fill('2026-10-01')
+  const endDate = page.getByPlaceholder('结束日期', { exact: true })
+  await endDate.fill('2026-10-07')
+  await endDate.press('Enter')
+  await page.keyboard.press('Escape')
+  await expectInputTextUnclipped(page.locator('.el-date-editor input.el-range-input'))
+  const count = queries.length
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  await expect.poll(() => queries.length).toBeGreaterThan(count)
+  const filtered = new URL(queries.at(-1)!).searchParams
+  expect(filtered.get('project_name')).toBe('ilike.%项目甲%')
+  expect(filtered.get('material_descriptions')).toBe('ilike.%安全帽%')
+  expect(filtered.get('material_codes')).toBe('ilike.%MAT-01%')
+  expect(filtered.get('or')).toContain('applicant_code.ilike.%EMP-01%')
+  expect(filtered.get('status')).toBe('eq.submitted')
+  expect(filtered.get('request_type')).toBe('eq.consumables_outbound')
+  expect(filtered.getAll('application_date')).toEqual(['gte.2026-10-01', 'lte.2026-10-07'])
+  const beforeMode = queries.length
+  await page.locator('.el-radio-button').filter({ hasText: '按明细' }).click()
+  await expect(page.getByRole('radio', { name: '按明细', exact: true })).toBeChecked()
+  await expect.poll(() => queries.length).toBeGreaterThan(beforeMode)
+  const detail = new URL(queries.at(-1)!).searchParams
+  for (const key of ['status', 'request_type', 'project_name', 'material_codes', 'or'])
+    expect(detail.get(key)).toBe(filtered.get(key))
+  expect(detail.getAll('application_date')).toEqual(filtered.getAll('application_date'))
+  const rows = page.locator('.el-table__body tr')
+  await expect(rows).toHaveCount(2)
+  for (const [index, row] of (await rows.all()).entries()) {
+    await expect(row).toContainText(`MAT-01-${index + 1}`)
+    await expect(row).toContainText(`安全帽 ${index + 1}`)
+  }
+  const view = rows.first().getByRole('button', { name: '查看明细', exact: true })
+  await view.scrollIntoViewIfNeeded()
+  await expect(view).toBeInViewport()
+  await page.screenshot({
+    path: testInfo.outputPath('issue-filtered-lines.png'),
+    animations: 'disabled'
+  })
+  const filteredCount = queries.length
+  await page.getByRole('button', { name: '重置', exact: true }).click()
+  await expect.poll(() => queries.length).toBeGreaterThan(filteredCount)
+  const reset = new URL(queries.at(-1)!).searchParams
+  for (const key of [
+    'project_name',
+    'material_descriptions',
+    'material_codes',
+    'or',
+    'status',
+    'request_type',
+    'application_date'
+  ])
+    expect(reset.has(key)).toBe(false)
+  for (const query of queries)
+    expect(new URL(query).searchParams.get('tenant_id')).toBe(`eq.${tenantId}`)
+})
+
 for (const allowCopy of [false, true]) {
   test(`出库申请普通用户${allowCopy ? '允许复制' : '仅查看'}权限与租户查询`, async ({
     page
   }, testInfo) => {
     await installSpecialFixtures(page)
-    await installOrdinaryIssuePermissions(page, [
+    await installOrdinaryWmsPermissions(page, [
       'WmsIssueRequest:View',
       ...(allowCopy ? ['WmsIssueRequest:Copy'] : [])
     ])
@@ -1447,7 +2033,7 @@ for (const scenario of [
     test(`出库申请普通用户${scenario.name}${mode}领料入口权限一致`, async ({ page }, testInfo) => {
       const postedQuantity = mode === 'pack' ? 2 : 1
       await installSpecialFixtures(page)
-      await installOrdinaryIssuePermissions(page, ['WmsIssueRequest:View', ...scenario.permissions])
+      await installOrdinaryWmsPermissions(page, ['WmsIssueRequest:View', ...scenario.permissions])
       await page.route('**/rest/v1/wms_issue_request_list?*', (route) =>
         route.fulfill({
           json: [
@@ -1864,7 +2450,7 @@ for (const action of [
     test(testName, async ({ page }, testInfo) => {
       await installSpecialFixtures(page)
       if (authority !== 'super')
-        await installOrdinaryIssuePermissions(page, [
+        await installOrdinaryWmsPermissions(page, [
           'WmsIssueRequest:View',
           ...(authority === 'ordinary'
             ? [
@@ -2039,4 +2625,115 @@ test('出库申请组织加载失败后重试带入默认组织并保留说明',
     '保留申请说明'
   )
   await expect(dialog.getByRole('button', { name: '确定', exact: true })).toBeEnabled()
+})
+
+for (const reopen of [false, true]) {
+  for (const oldFailure of [false, true]) {
+    test(`出库申请${reopen ? '关闭重开同工单' : '工单切换返回原工单'}隔离旧预留${oldFailure ? '失败' : '成功'}`, async ({
+      page
+    }) => {
+      test.setTimeout(120_000)
+      await installSpecialFixtures(page)
+      await page.route('**/rest/v1/rpc/wms_work_order_options_secure', (route) =>
+        route.fulfill({
+          json: ['A', 'B'].map((key) => ({
+            id: `issue-order-${key}`,
+            tenant_id: tenantId,
+            organization_id: organizationId,
+            work_order_no: `ISSUE-ORDER-${key}`,
+            project_id: null,
+            construction_no: null,
+            allowed_issue_warehouse_types: ['raw_material'],
+            status: 'confirmed'
+          }))
+        })
+      )
+      let release = () => {}
+      const delayed = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      let reads = 0
+      await page.route('**/rest/v1/wms_inventory_reservation?*', async (route) => {
+        const read = ++reads
+        if (read === 1) await delayed
+        if (read === 1 && oldFailure)
+          return route.fulfill({ status: 400, json: { code: 'P0001', message: '旧预留失败' } })
+        return route.fulfill({
+          json: [
+            {
+              material_id: material.id,
+              reserved_quantity: read,
+              material: { material_code: material.material_code, material_name: `预留物料-${read}` }
+            }
+          ]
+        })
+      })
+      await page.goto('#/wms/outbound-business/outbound-request', { waitUntil: 'domcontentloaded' })
+      await page
+        .getByRole('button', { name: '新增出库申请单', exact: true })
+        .click({ timeout: 90_000 })
+      const dialog = page.getByRole('dialog', { name: '新增出库申请单', exact: true })
+      await expect(dialog.getByText('默认启用库存组织').first()).toBeVisible()
+      await choose(page, dialog, '领料仓库', '目标一仓 · RAW-B')
+      await choose(page, dialog, 'MES 工单', 'ISSUE-ORDER-A')
+      await expect.poll(() => reads).toBe(1)
+      if (reopen) {
+        await dialog.getByRole('button', { name: '取消', exact: true }).click()
+        await expect(dialog).toBeHidden()
+        await page.getByRole('button', { name: '新增出库申请单', exact: true }).click()
+        await expect(dialog.getByText('默认启用库存组织').first()).toBeVisible()
+        await choose(page, dialog, '领料仓库', '目标一仓 · RAW-B')
+      } else {
+        await choose(page, dialog, 'MES 工单', 'ISSUE-ORDER-B')
+        await expect(dialog.getByPlaceholder('按编码或名称选择物料')).toHaveValue('预留物料-2')
+      }
+      await choose(page, dialog, 'MES 工单', 'ISSUE-ORDER-A')
+      const expectedMaterial = reopen ? '预留物料-2' : '预留物料-3'
+      await expect(dialog.getByPlaceholder('按编码或名称选择物料')).toHaveValue(expectedMaterial)
+      const oldResponse = page.waitForResponse('**/rest/v1/wms_inventory_reservation?*')
+      release()
+      await oldResponse
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      )
+      await expect(dialog.getByPlaceholder('按编码或名称选择物料')).toHaveValue(expectedMaterial)
+      await expect(dialog.getByRole('button', { name: '重新加载', exact: true })).toHaveCount(0)
+      await expect(dialog.getByRole('button', { name: '确定', exact: true })).toBeEnabled()
+      await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    })
+  }
+}
+
+test('出库申请基础选项加载中及失败禁止新增且重试恢复', async ({ page }) => {
+  test.setTimeout(120_000)
+  await installSpecialFixtures(page)
+  let release = () => {}
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let failure = true
+  await page.route('**/rest/v1/mdm_warehouse?*', async (route) => {
+    await delayed
+    if (failure)
+      return route.fulfill({ status: 400, json: { code: 'P0001', message: '仓库暂不可用' } })
+    return route.fallback()
+  })
+  await page.goto('#/wms/outbound-business/outbound-request', { waitUntil: 'domcontentloaded' })
+  const create = page.getByRole('button', { name: '新增出库申请单', exact: true })
+  await expect(create).toBeDisabled({ timeout: 90_000 })
+  release()
+  await expect(page.getByText('筛选项加载失败。', { exact: false })).toBeVisible()
+  await expect(create).toBeDisabled()
+  failure = false
+  await page.getByRole('button', { name: '重新加载', exact: true }).click()
+  await expect(create).toBeEnabled()
+  await create.click()
+  const dialog = page.getByRole('dialog', { name: '新增出库申请单', exact: true })
+  await expect(dialog.getByText('默认启用库存组织').first()).toBeVisible()
+  await choose(page, dialog, '领料仓库', '目标一仓 · RAW-B')
+  await expect(dialog.getByText('出库申请默认单据').first()).toBeVisible()
+  await dialog.getByRole('button', { name: '取消', exact: true }).click()
 })

@@ -32,8 +32,6 @@
 
 import { useSettingStore } from '@/store/modules/setting'
 import { SystemThemeEnum } from '@/enums/app-enum'
-import AppConfig from '@/config'
-import { SystemThemeTypes } from '@/types/store'
 import { getDarkColor, getLightColor, setElementThemeColor } from '@/utils/ui'
 import { usePreferredDark } from '@vueuse/core'
 import { watch } from 'vue'
@@ -43,6 +41,7 @@ export function useTheme() {
 
   // 禁用过渡效果
   const disableTransitions = () => {
+    if (document.getElementById('disable-transitions')) return
     const style = document.createElement('style')
     style.setAttribute('id', 'disable-transitions')
     style.textContent = '* { transition: none !important; }'
@@ -69,11 +68,7 @@ export function useTheme() {
       themeMode = theme
     }
 
-    const currentTheme = AppConfig.systemThemeStyles[theme as keyof SystemThemeTypes]
-
-    if (currentTheme) {
-      el.setAttribute('class', currentTheme.className)
-    }
+    el.classList.toggle('dark', isDark)
 
     // 设置按钮颜色加深或变浅
     const primary = settingStore.systemThemeColor
@@ -86,7 +81,7 @@ export function useTheme() {
     }
 
     // 更新store中的主题设置
-    settingStore.setGlopTheme(theme, themeMode)
+    settingStore.setGlobalTheme(theme, themeMode)
 
     // 使用 requestAnimationFrame 确保在下一帧恢复过渡效果
     requestAnimationFrame(() => {
@@ -142,10 +137,7 @@ export function initializeTheme() {
     }
 
     // 设置主题 class
-    const currentTheme = AppConfig.systemThemeStyles[actualTheme as keyof SystemThemeTypes]
-    if (currentTheme) {
-      el.setAttribute('class', currentTheme.className)
-    }
+    el.classList.toggle('dark', actualTheme === SystemThemeEnum.DARK)
 
     // 设置主题颜色
     setElementThemeColor(settingStore.systemThemeColor)
@@ -157,17 +149,8 @@ export function initializeTheme() {
   // 应用主题
   applyThemeByMode()
 
-  // 如果是 AUTO 模式，监听系统主题变化（使用 VueUse 的响应式特性）
-  if (settingStore.systemThemeMode === SystemThemeEnum.AUTO) {
-    watch(
-      prefersDark,
-      () => {
-        // 只有在 AUTO 模式下才响应系统主题变化
-        if (settingStore.systemThemeMode === SystemThemeEnum.AUTO) {
-          applyThemeByMode()
-        }
-      },
-      { immediate: false }
-    )
-  }
+  // 手动模式启动后仍可能切换为自动模式，监听须保留到组件卸载。
+  watch(prefersDark, () => {
+    if (settingStore.systemThemeMode === SystemThemeEnum.AUTO) applyThemeByMode()
+  })
 }

@@ -5,6 +5,9 @@ test.use({ storageState: { cookies: [], origins: [] } })
 for (const kind of ['gain', 'loss', 'transfer']) {
   test(`${kind}两行编辑复制详情保持明细可读`, async ({ page }, testInfo) => {
     test.setTimeout(180_000)
+    const description = (line: number) =>
+      `测试物料 ${line} · 用于检查明细列宽与复制` +
+      (kind === 'transfer' ? ' · 长物料描述及规格说明'.repeat(12) : '')
     let writes = 0
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
@@ -24,7 +27,7 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         material_id: `material-${line}`,
         material_code: `TEST-${line}`,
         material_name: `测试物料 ${line}`,
-        material_description: `测试物料 ${line} · 用于检查明细列宽与复制`,
+        material_description: description(line),
         specification_model: 'TEST-MODEL',
         inventory_unit_id: 'unit-test',
         inventory_unit_name: '测试库存单位',
@@ -128,8 +131,8 @@ for (const kind of ['gain', 'loss', 'transfer']) {
           animations: 'disabled'
         })
       }
-      await expect(drawer.getByText('测试物料 1 · 用于检查明细列宽与复制').first()).toBeVisible()
-      await expect(drawer.getByText('测试物料 2 · 用于检查明细列宽与复制').first()).toBeVisible()
+      await expect(drawer.getByText(description(1)).first()).toBeVisible()
+      await expect(drawer.getByText(description(2)).first()).toBeVisible()
       if (mode === 'copy') {
         await expect(drawer.locator('.art-entity-summary')).toContainText('复制')
         await expect(drawer.getByRole('textbox', { name: '单据编号', exact: true })).toHaveValue(
@@ -171,7 +174,7 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         animations: 'disabled',
         path: testInfo.outputPath(`${kind}-${mode}.png`)
       })
-      await drawer.getByText('测试物料 1 · 用于检查明细列宽与复制').first().scrollIntoViewIfNeeded()
+      await drawer.getByText(description(1)).first().scrollIntoViewIfNeeded()
       await page.screenshot({
         animations: 'disabled',
         path: testInfo.outputPath(`${kind}-${mode}-lines.png`)

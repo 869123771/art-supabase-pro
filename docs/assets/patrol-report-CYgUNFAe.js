@@ -1,1 +1,0 @@
-import{Ht as e,Mt as t,cn as n}from"./framework-BGq_7U6Z.js";import{t as r}from"./task-workspace-B0ygxJB3.js";var i=e({__name:`index`,setup(e){return(e,i)=>(n(),t(r,{kind:`patrol`,mode:`report`}))}});export{i as default};

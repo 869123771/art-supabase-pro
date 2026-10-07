@@ -5,8 +5,28 @@ import { prepareAppearance } from './support/appearance'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-async function installAdjustmentMenu(page: Page, savedRecords: Record<string, unknown>[]) {
+async function installAdjustmentMenu(
+  page: Page,
+  savedRecords: Record<string, unknown>[],
+  canPost = true
+) {
   await installFixtures(page)
+  await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
+  await page.route('**/rest/v1/sys_user?*', (route) =>
+    route.fulfill({
+      json: {
+        id: 'ordinary-adjustment-user',
+        auth_user_id: '705ddd8d-4959-4dc1-aeb0-08caed7ab51a',
+        user_name: '库存调整用户',
+        user_email: 'adjustment@example.invalid',
+        user_type: '2',
+        user_roles: ['R_USER'],
+        status: '1',
+        tenant_id: tenantId,
+        tenant: { id: tenantId, tenant_code: 'DEMO', tenant_name: '示例工厂' }
+      }
+    })
+  )
   await prepareAppearance(page, { theme: 'light', boxBorderMode: true })
   await page.route('**/rpc/get_accessible_applications', (route) =>
     route.fulfill({
@@ -28,7 +48,7 @@ async function installAdjustmentMenu(page: Page, savedRecords: Record<string, un
         sort: 1,
         meta: meta('库存调整')
       },
-      ...['View', 'Post'].map((action) => ({
+      ...['View', ...(canPost ? ['Post'] : [])].map((action) => ({
         id: `adjustment-${action}`,
         parentId: 'adjustment-menu',
         name: `WmsAdjustment:${action}`,
@@ -72,6 +92,14 @@ async function installAdjustmentMenu(page: Page, savedRecords: Record<string, un
     })
   )
 }
+
+test('库存调整仅查看菜单隐藏办理入口', async ({ page }) => {
+  await installAdjustmentMenu(page, [], false)
+  await page.goto('#/wms/adjustment-business/adjustment')
+  await expect(page.getByRole('heading', { name: '库存调整', exact: true })).toBeVisible()
+  await expect(page.getByText('当前范围暂无库存调整单', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '办理调整', exact: true })).toHaveCount(0)
+})
 
 test('属性转换菜单两张新增格式校验失败重试及重开清理', async ({ page }, testInfo) => {
   test.setTimeout(90_000)

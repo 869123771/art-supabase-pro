@@ -68,7 +68,7 @@ const document: WmsInitialSalesDocument = {
   lines: [
     {
       lineNo: 1,
-      returnType: null,
+      returnType: salesKind.includes('return') ? 'replace' : null,
       materialId: '77777777-7777-4777-8777-777777777777',
       material: {
         id: '77777777-7777-4777-8777-777777777777',
@@ -173,7 +173,7 @@ const initialStockDocument: WmsInitialStockDocument = {
 }
 
 if (query.get('twoLines') === 'true') {
-  document.lines.push({ ...document.lines[0], lineNo: 2 })
+  document.lines.push({ ...document.lines[0], lineNo: 2, returnType: null })
   purchaseDocument.lines.push({ ...purchaseLine, lineNo: 2 })
   initialStockDocument.lines.push({ ...initialStockDocument.lines[0], lineNo: 2 })
 }
@@ -183,6 +183,43 @@ if (query.get('validSave') === 'true') {
       line.warehouseId = 'warehouse-test'
       line.serialNos = [`SN-SAVE-${index}-1`, `SN-SAVE-${index}-2`]
     })
+  }
+}
+if (query.get('initialDefaults') === 'true') {
+  purchaseDocument.warehouseId = 'warehouse-test'
+  purchaseDocument.purchaserId = 'purchaser-header'
+  purchaseDocument.keeperId = 'keeper-header'
+  purchaseDocument.lines.forEach((line, index) => {
+    line.warehouseId = index === 0 ? null : 'warehouse-override'
+    line.purchaserId = index === 0 ? null : 'purchaser-override'
+    line.keeperId = index === 0 ? null : 'keeper-override'
+    line.binId = null
+    if (index > 0) {
+      line.purchaser = {
+        id: 'purchaser-override',
+        tenantId,
+        employeeNo: 'P002',
+        employeeName: '行采购员',
+        employmentStatus: 'active'
+      }
+      line.keeper = {
+        id: 'keeper-override',
+        tenantId,
+        employeeNo: 'K002',
+        employeeName: '行仓管员',
+        employmentStatus: 'active'
+      }
+    }
+  })
+}
+if (query.get('storedReturnQuantity') === 'true') {
+  for (const [kind, lines] of [
+    [salesKind, document.lines],
+    [purchaseKind, purchaseDocument.lines]
+  ] as const) {
+    if (kind.includes('return')) {
+      for (const line of lines) line.quantity = -Math.abs(line.quantity)
+    }
   }
 }
 if (query.get('missingStockWarehouse') === 'true') {
@@ -207,6 +244,33 @@ if (query.get('ownerNames') === 'true') {
   }
 }
 
+if (query.get('binRace') === 'true') {
+  for (const lines of [document.lines, purchaseDocument.lines, initialStockDocument.lines]) {
+    lines[0].warehouseId = 'warehouse-A'
+    lines[1].warehouseId = 'warehouse-B'
+  }
+}
+if (query.get('binDisplay') === 'true') {
+  for (const lines of [document.lines, purchaseDocument.lines]) {
+    lines[0].binId = 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb'
+    lines[0].bin = null
+    lines[1].binId = 'cccccccc-1111-4111-8111-cccccccccccc'
+    lines[1].bin = { binName: '可识别测试仓位', binCode: 'BIN-TEST' }
+  }
+  initialStockDocument.lines[0].binId = 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb'
+  initialStockDocument.lines[0].bin = null
+  initialStockDocument.lines[1].binId = 'cccccccc-1111-4111-8111-cccccccccccc'
+  initialStockDocument.lines[1].bin = { binName: '可识别测试仓位' }
+}
+if (query.get('missingMaterial') === 'true') {
+  for (const lines of [document.lines, purchaseDocument.lines, initialStockDocument.lines]) {
+    lines[0].material = undefined
+    lines[0].materialId = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa'
+    const second = lines[1]
+    if (second?.material)
+      second.material = { ...second.material, name: '', code: 'CODE-ONLY-DOCUMENT' }
+  }
+}
 const Preview = defineComponent({
   setup() {
     const drawer = ref<InstanceType<typeof InitialSalesDrawer> | null>(null)
@@ -281,7 +345,12 @@ const Preview = defineComponent({
           'button',
           {
             type: 'button',
-            onClick: () => void drawer.value?.handleOpen({ mode: 'view', document })
+            onClick: () =>
+              void drawer.value?.handleOpen(
+                query.get('loadFromApi') === 'true'
+                  ? { mode: 'view', documentId: document.id }
+                  : { mode: 'view', document }
+              )
           },
           '查看销售单据'
         ),
@@ -290,7 +359,11 @@ const Preview = defineComponent({
           {
             type: 'button',
             onClick: () =>
-              void purchaseDrawer.value?.handleOpen({ mode: 'view', document: purchaseDocument })
+              void purchaseDrawer.value?.handleOpen(
+                query.get('loadFromApi') === 'true'
+                  ? { mode: 'view', documentId: purchaseDocument.id }
+                  : { mode: 'view', document: purchaseDocument }
+              )
           },
           '查看采购单据'
         ),

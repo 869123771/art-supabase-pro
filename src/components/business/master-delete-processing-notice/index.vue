@@ -7,10 +7,10 @@
           >正在处理“{{ resourceName }}”的删除前置资料</strong
         >
         <ElTag type="warning" effect="light" size="small">
-          {{ props.locationReady ? '已精确过滤' : '定位待完成' }}
+          {{ props.locationReady ? '已找到关联记录' : '定位待完成' }}
         </ElTag>
       </div>
-      <p>{{ props.actionHint }}</p>
+      <p>{{ actionHint }}</p>
     </div>
     <div class="master-delete-notice__actions">
       <ElButton @click="clearLocation">清除定位</ElButton>
@@ -33,7 +33,7 @@
       customerName?: string
     }>(),
     {
-      actionHint: '当前列表已按关联记录自动过滤。请处理完成后返回原页面继续删除。',
+      actionHint: '',
       locationReady: true,
       customerId: '',
       customerName: ''
@@ -52,11 +52,19 @@
       ? String(route.query.resourceName || '当前资料')
       : props.customerName || '该客户'
   )
+  const actionHint = computed(() => {
+    if (props.actionHint) return props.actionHint
+    if (props.locationReady) return '已在当前页面找到关联记录。请核对并处理后返回原页面继续删除。'
+    const recordNo = route.query.recordNo
+    return typeof recordNo === 'string' && recordNo
+      ? `请核对关联记录“${recordNo}”，处理完成后返回原页面重新检查。`
+      : '请核对当前关联记录，处理完成后返回原页面重新检查。'
+  })
 
   const goBack = (): void => {
     if (isMasterDelete.value) {
       const returnPath = typeof route.query.returnPath === 'string' ? route.query.returnPath : '/'
-      void router.push({ path: returnPath })
+      void router.push(returnPath)
       return
     }
 

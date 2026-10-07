@@ -13,8 +13,10 @@ const app = createApp({
         {
           onClick: async () => {
             try {
-              if (mode === 'invalid') {
-                await fetchWmsInitializationStatusPage({ current: 0, size: 50 })
+              if (mode === 'invalid' || mode === 'invalid-wms') {
+                if (mode === 'invalid-wms')
+                  await fetchWmsInventoryOrganizations({ current: 0, size: 50 })
+                else await fetchWmsInitializationStatusPage({ current: 0, size: 50 })
                 output.value = '错误接受了非法分页'
               } else if (mode === 'page' || mode === 'initialization-status') {
                 const result =
@@ -54,7 +56,9 @@ const app = createApp({
               }
             } catch (error) {
               output.value =
-                mode === 'invalid' && error instanceof RangeError ? '分页参数无效' : '加载失败'
+                (mode === 'invalid' || mode === 'invalid-wms') && error instanceof RangeError
+                  ? '分页参数无效'
+                  : '加载失败'
             }
           }
         },

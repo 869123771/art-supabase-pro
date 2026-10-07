@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { useSettingStore } from '@/store/modules/setting'
 import { storeToRefs } from 'pinia'
-import { useBreakpoints } from '@vueuse/core'
+import { useBreakpoints, useTimeoutFn, tryOnScopeDispose } from '@vueuse/core'
 import AppConfig from '@/config'
 import { SystemThemeEnum, MenuTypeEnum } from '@/enums/app-enum'
 import { mittBus } from '@/utils/sys'
@@ -73,19 +73,9 @@ export function useSettingsPanel() {
       }
     }
 
-    // 监听系统主题变化
-    const listenerSystemTheme = () => {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      mediaQuery.addEventListener('change', initSystemTheme)
-      return () => {
-        mediaQuery.removeEventListener('change', initSystemTheme)
-      }
-    }
-
     return {
       initSystemColor,
-      initSystemTheme,
-      listenerSystemTheme
+      initSystemTheme
     }
   }
 
@@ -129,32 +119,25 @@ export function useSettingsPanel() {
 
   // 抽屉控制
   const useDrawerControl = () => {
-    // 用于存储 setTimeout 的 ID，以便在需要时清除
-    let themeChangeTimer: ReturnType<typeof setTimeout> | null = null
+    const themeChangeTimer = useTimeoutFn(
+      () => domOperations.setBodyClass('theme-change', true),
+      500,
+      { immediate: false }
+    )
 
     // 打开抽屉
     const handleOpen = () => {
-      // 清除可能存在的旧定时器
-      if (themeChangeTimer) {
-        clearTimeout(themeChangeTimer)
-      }
       // 延迟添加 theme-change class，避免抽屉打开动画受影响
-      themeChangeTimer = setTimeout(() => {
-        domOperations.setBodyClass('theme-change', true)
-        themeChangeTimer = null
-      }, 500)
+      themeChangeTimer.start()
     }
 
     // 关闭抽屉
     const handleClose = () => {
-      // 清除未执行的定时器，防止关闭后才添加 class
-      if (themeChangeTimer) {
-        clearTimeout(themeChangeTimer)
-        themeChangeTimer = null
-      }
+      themeChangeTimer.stop()
       // 立即移除 theme-change class
       domOperations.setBodyClass('theme-change', false)
     }
+    tryOnScopeDispose(handleClose)
 
     // 打开设置
     const openSetting = () => {
@@ -174,6 +157,8 @@ export function useSettingsPanel() {
     }
   }
 
+  const drawerControl = useDrawerControl()
+
   // Props 变化监听
   const usePropsWatcher = (props: { open?: boolean }) => {
     watch(
@@ -189,14 +174,12 @@ export function useSettingsPanel() {
   // 初始化设置
   const useSettingsInitializer = () => {
     const themeHandlers = useThemeHandlers()
-    const { openSetting } = useDrawerControl()
+    const { openSetting } = drawerControl
     const { stopWatch } = useResponsiveLayout()
-    let themeCleanup: (() => void) | null = null
 
     const initializeSettings = () => {
       mittBus.on('openSetting', openSetting)
       themeHandlers.initSystemColor()
-      themeCleanup = themeHandlers.listenerSystemTheme()
       initColorWeak()
 
       themeHandlers.initSystemTheme()
@@ -206,7 +189,6 @@ export function useSettingsPanel() {
     const cleanupSettings = () => {
       mittBus.off('openSetting', openSetting)
       stopWatch()
-      themeCleanup?.()
       cleanup()
     }
 
@@ -223,7 +205,7 @@ export function useSettingsPanel() {
     // 方法组合
     useThemeHandlers,
     useResponsiveLayout,
-    useDrawerControl,
+    drawerControl,
     usePropsWatcher,
     useSettingsInitializer
   }

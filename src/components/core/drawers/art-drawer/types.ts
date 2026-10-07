@@ -14,6 +14,8 @@ export interface ArtDrawerOptions<TData = unknown> extends ArtOverlayOptions<
 > {
   /** 抽屉标题 */
   title?: string
+  /** 默认头部的业务图标；自定义 header 插槽优先 */
+  headerIcon?: string
   /** 标题下方的辅助说明 */
   subtitle?: string
   /** 抽屉尺寸 */

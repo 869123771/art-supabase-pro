@@ -1,1 +1,0 @@
-function e(e,t=`未命名菜单`){return String(e.meta?.title??``).trim()||String(e.name??``).trim()||t}export{e as t};

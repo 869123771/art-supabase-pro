@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./execution-event-workspace-DJSZ8vuX.js";var i=t({name:`MesMiscReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`misc_report`}))}});export{i as default};

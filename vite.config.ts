@@ -16,6 +16,7 @@ import { fileViewerRenderers } from '@file-viewer/vite-plugin'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
 import { createViteWatchPolicy } from './scripts/vite-watch-policy.mjs'
+import { matchElementPlusStyles } from './scripts/element-plus-style-chunks.mjs'
 import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
 import {
@@ -77,65 +78,6 @@ const getElementPlusStyleDeps = (root: string): string[] => {
     .sort()
 }
 
-// Common controls share one initial stylesheet; less-used controls keep their route CSS.
-const sharedElementPlusStyleComponents = new Set([
-  'alert',
-  'avatar',
-  'badge',
-  'base',
-  'button',
-  'calendar',
-  'card',
-  'checkbox',
-  'checkbox-button',
-  'col',
-  'collapse',
-  'collapse-transition',
-  'dialog',
-  'date-picker',
-  'descriptions',
-  'dropdown',
-  'form',
-  'icon',
-  'image',
-  'input',
-  'input-number',
-  'message',
-  'overlay',
-  'pagination',
-  'popconfirm',
-  'popover',
-  'progress',
-  'radio',
-  'radio-button',
-  'radio-group',
-  'result',
-  'row',
-  'scrollbar',
-  'segmented',
-  'select',
-  'slider',
-  'skeleton',
-  'space',
-  'splitter',
-  'switch',
-  'table',
-  'tag',
-  'tabs',
-  'text',
-  'time-picker',
-  'timeline',
-  'timeline-item',
-  'tooltip',
-  'tree-select'
-])
-
-const matchElementPlusStyles = (id: string) => {
-  const normalizedId = normalizeModuleId(id)
-  const match = normalizedId.match(/\/node_modules\/element-plus\/es\/components\/([^/]+)\/style\//)
-  return match !== null && sharedElementPlusStyleComponents.has(match[1])
-}
-
 export default ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
@@ -176,7 +118,9 @@ export default ({ mode }: { mode: string }) => {
     base: VITE_BASE_URL,
     server: {
       port: Number(VITE_PORT),
-      watch: createViteWatchPolicy(outDir),
+      // 浏览器回归期间固定页面，避免并发文件修改导致弹窗与测试输入丢失。
+      watch: isE2E ? null : createViteWatchPolicy(outDir),
+      hmr: isE2E ? false : undefined,
       proxy: {
         '/api': {
           target: VITE_API_PROXY_URL,

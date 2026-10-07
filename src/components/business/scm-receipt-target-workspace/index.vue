@@ -48,11 +48,36 @@
             <ElRadioButton label="line" value="line">按明细</ElRadioButton>
           </ElRadioGroup>
         </template>
+        <template v-if="kind === 'asset_payable'" #empty>
+          <ArtEmptyState
+            title="暂无资产应付"
+            description="从已确认的收料通知单选择明细下推后，会在这里生成草稿。"
+          >
+            <ElButton
+              v-if="router.hasRoute('ScmReceiptNotice') && hasAuth('ScmReceiptNotice:View')"
+              v-auth="'ScmReceiptNotice:View'"
+              type="primary"
+              plain
+              @click="router.push({ name: 'ScmReceiptNotice' })"
+            >
+              <ArtSvgIcon icon="ri:inbox-archive-line" aria-hidden="true" />
+              去收料通知单
+            </ElButton>
+          </ArtEmptyState>
+        </template>
       </ArtTableQuery>
       <ArtDrawer ref="detailRef" size="lg" :show-footer="false" @close="closeDetail">
         <ArtAsyncState :error="detailError" error-title="单据明细加载失败" @retry="loadDetail">
           <div v-if="activeDocument" class="receipt-target-detail grid-cols-1">
-            <div class="receipt-target-detail__summary">
+            <ArtSectionCard v-if="kind === 'asset_payable'" title="应付概览">
+              <ArtDescriptions
+                :data="activeDocument"
+                :items="payableDescriptionItems"
+                :columns="2"
+                :label-width="96"
+              />
+            </ArtSectionCard>
+            <div v-else class="receipt-target-detail__summary">
               <div>
                 <span>{{ title }}单号</span>
                 <strong>{{ activeDocument.documentNo }}</strong>
@@ -78,7 +103,7 @@
                 <ElSelect
                   v-model="selectedConstructionNo"
                   filterable
-                  :disabled="!canAssignScope"
+                  :disabled="!canAssignScope || savingScope"
                   placeholder="选择本项目施工号"
                 >
                   <ElOption
@@ -107,6 +132,7 @@
             </div>
             <ArtTable
               class="min-w-0 max-w-full"
+              :border="false"
               :data="activeLines"
               :columns="lineColumns"
               :pagination="false"
@@ -134,6 +160,10 @@
   import { useUnitDisplayNames } from '@/hooks/core/useUnitDisplayNames'
   import ArtPermissionGuard from '@/components/core/feedback/art-permission-guard/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
+  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -248,6 +278,44 @@
   const serialDialogRef = ref<InstanceType<typeof ReceiptSerialDialog>>()
   const binDialogRef = ref<InstanceType<typeof ReceiptBinDialog>>()
   const activeDocument = ref<ScmReceiptTargetDocument>()
+  const payableDescriptionItems: ArtDescriptionItem<ScmReceiptTargetDocument>[] = [
+    { key: 'documentNo', field: 'documentNo', label: '应付单号', copyable: true },
+    {
+      key: 'status',
+      label: '状态',
+      render: (_, row) => (
+        <ElTag type={row.status === 'draft' ? 'warning' : 'success'}>
+          {statusLabel(row.status)}
+        </ElTag>
+      )
+    },
+    {
+      key: 'sourceNo',
+      label: '来源通知单',
+      value: (row: ScmReceiptTargetDocument) => row.source?.documentNo
+    },
+    {
+      key: 'projectName',
+      label: '项目',
+      value: (row: ScmReceiptTargetDocument) => row.project?.projectName
+    },
+    {
+      key: 'supplierName',
+      label: '供应商',
+      value: (row: ScmReceiptTargetDocument) => row.supplier?.supplierName,
+      span: 2
+    },
+    {
+      key: 'totalAmount',
+      label: '应付金额',
+      value: (row: ScmReceiptTargetDocument) => formatCurrencyValue(row.totalAmount)
+    },
+    {
+      key: 'createdAt',
+      label: '创建时间',
+      value: (row: ScmReceiptTargetDocument) => formatDateTimeValue(row.createdAt)
+    }
+  ]
   const activeLines = ref<ScmReceiptTargetLine[]>([])
   const detailError = ref('')
   const projectSections = ref<
@@ -457,12 +525,15 @@
     return result
   }
   let detailGeneration = 0
+  let scopeSaveGeneration = 0
   function closeDetail(): void {
     detailGeneration++
+    scopeSaveGeneration++
     activeDocument.value = undefined
     activeLines.value = []
     projectSections.value = []
     detailError.value = ''
+    savingScope.value = false
   }
   async function loadDetail(): Promise<void> {
     const row = activeDocument.value
@@ -491,6 +562,8 @@
   }
   async function openDetail(row: ScmReceiptTargetDocument) {
     const generation = ++detailGeneration
+    scopeSaveGeneration++
+    savingScope.value = false
     await loadUnitDisplayNames([row.tenantId])
     if (generation !== detailGeneration) return
     activeDocument.value = row
@@ -499,7 +572,10 @@
     detailError.value = ''
     selectedConstructionNo.value = row.constructionNo ?? ''
     await detailRef.value?.handleOpen(row, {
-      title: row.documentNo,
+      title: props.kind === 'asset_payable' ? '资产应付详情' : row.documentNo,
+      ...(props.kind === 'asset_payable'
+        ? { headerIcon: 'ri:bill-line', subtitle: row.documentNo }
+        : {}),
       loading: true,
       loadingText: '正在加载单据明细…',
       onOpen: loadDetail
@@ -529,7 +605,13 @@
     }
   })
   function openSerialDialog(line: ScmReceiptTargetLine): void {
-    if (!activeDocument.value || activeDocument.value.status !== 'draft') return
+    if (
+      !serialPermission.value ||
+      !hasAuth(serialPermission.value) ||
+      !activeDocument.value ||
+      activeDocument.value.status !== 'draft'
+    )
+      return
     void serialDialogRef.value?.handleOpen({ documentNo: activeDocument.value.documentNo, line })
   }
   function openBinDialog(line: ScmReceiptTargetLine): void {
@@ -545,16 +627,20 @@
   }
   async function saveScope() {
     const document = activeDocument.value
-    if (!document || !selectedConstructionNo.value || savingScope.value) return
+    if (!canAssignScope.value || !document || !selectedConstructionNo.value || savingScope.value)
+      return
+    const constructionNo = selectedConstructionNo.value
+    const generation = ++scopeSaveGeneration
     savingScope.value = true
     try {
-      await setScmReceiptScope(document.id, selectedConstructionNo.value)
-      document.constructionNo = selectedConstructionNo.value
+      await setScmReceiptScope(document.id, constructionNo)
+      if (generation !== scopeSaveGeneration || activeDocument.value?.id !== document.id) return
+      document.constructionNo = constructionNo
       await tableRef.value?.refreshUpdate()
     } catch {
       /* API 边界已展示中文业务错误，保留抽屉便于修改重试。 */
     } finally {
-      savingScope.value = false
+      if (generation === scopeSaveGeneration) savingScope.value = false
     }
   }
   async function complete(row: ScmReceiptTargetDocument) {
@@ -822,7 +908,9 @@
             minWidth: 154,
             formatter: (row: ScmReceiptTargetLine) =>
               row.serialManagementEnabled ? (
-                activeDocument.value?.status === 'draft' ? (
+                activeDocument.value?.status === 'draft' &&
+                serialPermission.value &&
+                hasAuth(serialPermission.value) ? (
                   <ArtButtonTable
                     type="edit"
                     icon="ri:qr-scan-2-line"

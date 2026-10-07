@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./inventory-configuration-DRGG-EOp.js";var i=t({name:`MdmSupplyChainCodeRule`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

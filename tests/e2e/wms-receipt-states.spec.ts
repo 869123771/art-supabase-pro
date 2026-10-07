@@ -17,10 +17,36 @@ for (const scenario of [
     title: '资产应付',
     kind: 'asset_payable'
   }
-]) {
-  test(`${scenario.title}查询失败清理旧单据并可恢复`, async ({ page }, testInfo) => {
+].flatMap((scenario) =>
+  scenario.kind === 'inbound'
+    ? [
+        { ...scenario, viewOnly: false },
+        { ...scenario, viewOnly: true }
+      ]
+    : [{ ...scenario, viewOnly: false }]
+)) {
+  test(`${scenario.title}${scenario.viewOnly ? '仅查看权限' : ''}查询失败清理旧单据并可恢复`, async ({
+    page
+  }, testInfo) => {
     test.setTimeout(90_000)
     await installFixtures(page)
+    if (scenario.kind === 'inbound') {
+      await page.route('**/rpc/current_is_super', (route) => route.fulfill({ json: false }))
+      await page.route('**/rest/v1/sys_user?*', (route) =>
+        route.fulfill({
+          json: {
+            id: 'receipt-ordinary-user',
+            auth_user_id: '705ddd8d-4959-4dc1-aeb0-08caed7ab51a',
+            user_name: '普通收料用户',
+            user_type: '2',
+            user_roles: ['R_USER'],
+            status: '1',
+            tenant_id: tenantId,
+            tenant: { id: tenantId, tenant_code: 'DEMO', tenant_name: '示例工厂' }
+          }
+        })
+      )
+    }
     await page.route('**/rpc/get_accessible_applications', (route) =>
       route.fulfill({
         json: [
@@ -41,19 +67,27 @@ for (const scenario of [
           sort: 1,
           meta: meta(scenario.title)
         },
-        {
-          id: 'receipt-view',
+        ...(scenario.kind === 'inbound' && !scenario.viewOnly
+          ? ['View', 'Confirm', 'AssignScope', 'AssignBin', 'CaptureSN']
+          : ['View']
+        ).map((action) => ({
+          id: `receipt-${action}`,
           parentId: 'receipt-menu',
-          name: `${scenario.name}:View`,
+          name: `${scenario.name}:${action}`,
           path: '',
           component: '',
           type: 'button',
           sort: 1,
-          meta: meta('查看')
-        }
+          meta: meta(action)
+        }))
       ]
     })
     let state: 'data' | 'error' | 'empty' = 'data'
+    await page.route('**/rest/v1/mdm_project_construction?*', (route) =>
+      route.fulfill({
+        json: [{ construction_no: 'SCOPE-01', section_name: '测试施工段', status: 'active' }]
+      })
+    )
     await page.route('**/rest/v1/scm_receipt_target_document?*', (route) =>
       route.fulfill(
         state === 'error'
@@ -69,7 +103,8 @@ for (const scenario of [
                         document_no: 'RECEIPT-TEST-001',
                         status: 'draft',
                         created_at: '2026-10-01T01:02:03Z',
-                        target_kind: scenario.kind
+                        target_kind: scenario.kind,
+                        project_id: scenario.kind === 'inbound' ? 'receipt-project' : null
                       }
                     ],
               headers: {
@@ -103,6 +138,11 @@ for (const scenario of [
     await page.getByRole('button', { name: '查询', exact: true }).click()
     await expect(page.getByText(`暂无${scenario.title}`, { exact: true })).toBeVisible()
     let lineFailed = false
+    await page.route('**/rest/v1/mdm_material?*', (route) =>
+      route.fulfill({
+        json: [{ id: 'receipt-sn-material', serial_management_enabled: true }]
+      })
+    )
     await page.route('**/rest/v1/scm_receipt_target_line?*', (route) =>
       route.fulfill(
         lineFailed
@@ -115,9 +155,11 @@ for (const scenario of [
                 line_snapshot: {
                   line_no: line,
                   material_code: `RECEIPT-MAT-${line}`,
+                  material_id: 'receipt-sn-material',
                   material_description: `收料测试物料${line}`,
                   quantity: line,
-                  stock_quantity: line
+                  stock_quantity: line,
+                  warehouse_id: 'receipt-warehouse'
                 },
                 serial_nos: [],
                 amount: line
@@ -157,6 +199,135 @@ for (const scenario of [
     await drawer.getByRole('button', { name: /重新加载|重试/ }).click()
     await expect(drawer.getByText('RECEIPT-MAT-1', { exact: true })).toBeVisible()
     await expect(drawer.getByText('RECEIPT-MAT-2', { exact: true })).toBeVisible()
+    if (scenario.viewOnly) {
+      await expect(drawer.getByRole('combobox').first()).toBeDisabled()
+      for (const action of ['保存施工号', '指定入库库位', '录入序列号'])
+        await expect(drawer.getByRole('button', { name: action, exact: true })).toHaveCount(0)
+      await expect(table.getByRole('button', { name: '确认入库', exact: true })).toHaveCount(0)
+      await expect(drawer.getByRole('button', { name: /^录入 SN/ })).toHaveCount(0)
+      await expect(drawer.getByText('0 件 SN', { exact: true })).toHaveCount(2)
+      await drawer.getByText('0 件 SN', { exact: true }).first().scrollIntoViewIfNeeded()
+      await page.screenshot({
+        path: testInfo.outputPath('receipt-viewonly-detail.png'),
+        animations: 'disabled'
+      })
+      await page.keyboard.press('Escape')
+      await expect(drawer).toBeHidden()
+      expect(errors).toEqual([])
+      return
+    }
+    if (scenario.kind === 'inbound') {
+      let serialFailed = true
+      const serialWrites: unknown[] = []
+      await page.route('**/rpc/wms_set_receipt_line_serials_secure', (route) => {
+        serialWrites.push(route.request().postDataJSON())
+        return route.fulfill(
+          serialFailed
+            ? { status: 400, json: { code: 'P0001', message: '测试普通用户 SN 保存失败' } }
+            : { json: null }
+        )
+      })
+      await drawer.getByRole('button', { name: '录入 SN (0)', exact: true }).nth(1).click()
+      const serialDialog = page.getByRole('dialog', { name: /录入.*SN|录入.*序列号/ })
+      const serialInput = serialDialog.getByRole('textbox')
+      const serialConfirm = serialDialog.getByRole('button', { name: '确定', exact: true })
+      await serialInput.fill('SN-ORDINARY-001\nSN-ORDINARY-001')
+      await serialConfirm.click()
+      await expect(
+        page.getByText('SN 编码必须逐件唯一，件数应等于本行库存数量', { exact: true })
+      ).toBeVisible()
+      expect(serialWrites).toHaveLength(0)
+      await serialInput.fill('SN-ORDINARY-001\nSN-ORDINARY-002')
+      await serialConfirm.click()
+      await expect(
+        page.getByText('测试普通用户 SN 保存失败', { exact: true }).first()
+      ).toBeVisible()
+      await expect(serialInput).toHaveValue('SN-ORDINARY-001\nSN-ORDINARY-002')
+      serialFailed = false
+      await serialConfirm.click()
+      await expect(serialDialog).toBeHidden()
+      expect(serialWrites).toEqual(
+        [1, 2].map(() => ({
+          p_line_id: 'receipt-line-2',
+          p_serial_nos: ['SN-ORDINARY-001', 'SN-ORDINARY-002']
+        }))
+      )
+      await expect(drawer.getByText('RECEIPT-MAT-2', { exact: true })).toBeVisible()
+      let pendingScope: Route | undefined
+      const scopeResponse = page.waitForResponse('**/rpc/wms_set_receipt_scope_secure')
+      await page.route('**/rpc/wms_set_receipt_scope_secure', (route) => {
+        pendingScope = route
+      })
+      const scope = drawer.getByRole('combobox').first()
+      await scope.click()
+      await page.getByRole('option', { name: 'SCOPE-01 · 测试施工段', exact: true }).click()
+      const saveScope = drawer.getByRole('button', { name: '保存施工号', exact: true })
+      await saveScope.click()
+      await expect.poll(() => Boolean(pendingScope)).toBe(true)
+      expect(pendingScope!.request().postDataJSON()).toMatchObject({
+        p_target_id: 'receipt-test',
+        p_construction_no: 'SCOPE-01'
+      })
+      await expect(scope).toBeDisabled()
+      await page.keyboard.press('Escape')
+      await expect(drawer).toBeHidden()
+      await table.getByText('RECEIPT-TEST-001', { exact: true }).click()
+      await expect(drawer.getByText('RECEIPT-MAT-2', { exact: true })).toBeVisible()
+      await expect(scope).toBeEnabled()
+      await pendingScope!.fulfill({ json: null })
+      await (await scopeResponse).finished()
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      )
+      await expect(drawer.getByText('施工号：待指定', { exact: true })).toBeVisible()
+      await expect(saveScope).toBeDisabled()
+      await page.screenshot({
+        path: testInfo.outputPath('receipt-scope-reopened.png'),
+        animations: 'disabled'
+      })
+      await page.route('**/rest/v1/mdm_warehouse?*', (route) =>
+        route.fulfill({
+          json: {
+            id: 'receipt-warehouse',
+            warehouse_code: 'WH-01',
+            warehouse_name: '测试仓库',
+            enable_locations: false
+          }
+        })
+      )
+      await page.route('**/rpc/wms_set_receipt_line_bin_secure', (route) =>
+        route.fulfill({ json: null })
+      )
+      pendingScope = undefined
+      const concurrentScopeResponse = page.waitForResponse('**/rpc/wms_set_receipt_scope_secure')
+      await scope.click()
+      await page.getByRole('option', { name: 'SCOPE-01 · 测试施工段', exact: true }).click()
+      await saveScope.click()
+      await expect.poll(() => Boolean(pendingScope)).toBe(true)
+      await drawer.getByRole('button', { name: '指定入库库位', exact: true }).first().click()
+      const binDialog = page.getByRole('dialog', { name: /指定入库库位/ })
+      await expect(
+        binDialog.getByText('此仓库未启用库位，入库将直接归属仓库。', { exact: true })
+      ).toBeVisible()
+      const refreshedLines = page.waitForResponse('**/rest/v1/scm_receipt_target_line?*')
+      await binDialog.getByRole('button', { name: '确定', exact: true }).click()
+      await expect(binDialog).toBeHidden()
+      await (await refreshedLines).finished()
+      await expect(drawer.getByText('RECEIPT-MAT-2', { exact: true })).toBeVisible()
+      await expect(scope).toBeDisabled()
+      await pendingScope!.fulfill({ json: null })
+      await (await concurrentScopeResponse).finished()
+      await expect(scope).toBeEnabled()
+      await expect(drawer.getByText('施工号：SCOPE-01', { exact: true })).toBeVisible()
+      await expect(saveScope).toBeDisabled()
+      await page.screenshot({
+        path: testInfo.outputPath('receipt-scope-after-bin-refresh.png'),
+        animations: 'disabled'
+      })
+    }
     await drawer.getByText('RECEIPT-MAT-2', { exact: true }).scrollIntoViewIfNeeded()
     await expect(drawer.locator('.receipt-target-detail__summary strong')).toBeInViewport()
     expect(await drawer.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(

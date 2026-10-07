@@ -3,8 +3,10 @@ import { defineConfig } from '@playwright/test'
 const useDevServer =
   process.env.E2E_USE_DEV_SERVER === 'true' ||
   (!process.env.CI && process.env.E2E_USE_DEV_SERVER !== 'false')
-const baseURL =
-  process.env.E2E_BASE_URL || (useDevServer ? 'http://127.0.0.1:41738' : 'http://127.0.0.1:41737')
+const serverPort = Number(process.env.E2E_SERVER_PORT || (useDevServer ? 41738 : 41737))
+if (!Number.isInteger(serverPort) || serverPort < 1 || serverPort > 65535)
+  throw new Error('E2E_SERVER_PORT 必须为 1 至 65535 的整数端口')
+const baseURL = process.env.E2E_BASE_URL || `http://127.0.0.1:${serverPort}`
 const browserChannel = (process.env.E2E_BROWSER_CHANNEL ||
   (!process.env.CI ? 'chrome' : undefined)) as 'chrome' | 'msedge' | undefined
 const proxyServer = process.env.E2E_PROXY_URL
@@ -122,12 +124,14 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: 'pnpm serve --host 127.0.0.1 --port 41737 --strictPort',
+        command: `pnpm serve --host 127.0.0.1 --port ${serverPort} --strictPort`,
         ...(useDevServer
-          ? { command: 'pnpm exec vite --mode e2e --host 127.0.0.1 --port 41738 --strictPort' }
+          ? {
+              command: `pnpm exec vite --mode e2e --host 127.0.0.1 --port ${serverPort} --strictPort`
+            }
           : {}),
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: !process.env.CI && !process.env.E2E_SERVER_PORT,
         timeout: useDevServer ? 300_000 : 120_000
       }
 })

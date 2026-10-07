@@ -93,13 +93,14 @@
   import { useSettingStore } from '@/store/modules/setting'
   import { useUserStore } from '@/store/modules/user'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
-  import { themeAnimation } from '@/utils/ui/animation'
+  import { useThemeAnimation } from '@/hooks/core/useThemeAnimation'
   import { languageOptions } from '@/locales'
   import { LanguageEnum } from '@/enums/app-enum'
   import AppConfig from '@/config'
   import { useWebsiteConfig } from '@/hooks'
 
   defineOptions({ name: 'AuthTopBar' })
+  const themeAnimation = useThemeAnimation()
 
   const settingStore = useSettingStore()
   const userStore = useUserStore()

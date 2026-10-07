@@ -3,6 +3,18 @@ import { expect, test } from '@playwright/test'
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(120_000)
 
+test('含回调的嵌套表单编辑与重置保持原始记录隔离', async ({ page }) => {
+  await page.goto('/tests/e2e/fixtures/overlay-close-guard.html')
+  await page.getByRole('button', { name: '打开快照检查', exact: true }).click()
+  await expect(page.getByTestId('snapshot-amount')).toHaveText('10')
+  await page.getByRole('button', { name: '修改嵌套金额', exact: true }).click()
+  await expect(page.getByTestId('snapshot-amount')).toHaveText('20')
+  await expect(page.getByTestId('source-amount')).toHaveText('10')
+  await page.getByRole('button', { name: '恢复打开时数据', exact: true }).click()
+  await expect(page.getByTestId('snapshot-amount')).toHaveText('10')
+  await expect(page.getByTestId('source-amount')).toHaveText('10')
+})
+
 test('弹窗拖动与垂直居中参数控制实际交互', async ({ page }) => {
   for (const enabled of [true, false]) {
     await page.goto(

@@ -99,7 +99,6 @@
     &__value {
       overflow: hidden;
       text-overflow: ellipsis;
-      font-family: var(--art-font-family-mono, Consolas, monospace);
       color: var(--el-text-color-regular);
       white-space: nowrap;
     }

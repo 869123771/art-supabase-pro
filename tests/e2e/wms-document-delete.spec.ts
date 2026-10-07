@@ -7,6 +7,58 @@ test.setTimeout(150_000)
 
 const scenarios = [
   [
+    'inbound-business/other-inbound',
+    'WmsOtherInbound',
+    '其他入库单',
+    'wms_purchase_document',
+    'wms_purchase_document_list',
+    'purchase_document',
+    'other_return'
+  ],
+  [
+    'outbound-business/other-outbound',
+    'WmsOtherOutbound',
+    '其他出库单',
+    'wms_sales_document',
+    'wms_sales_document_list',
+    'sales_document',
+    'other_return'
+  ],
+  ...[
+    [
+      'initialization/initial-purchase-return',
+      'WmsInitialPurchaseReturn',
+      '期初采购退料单',
+      'initial_return'
+    ],
+    ['inbound-business/purchase-inbound', 'WmsPurchaseInbound', '采购入库单', 'purchase_inbound'],
+    ['inbound-business/purchase-return', 'WmsPurchaseReturn', '采购退货单', 'purchase_return'],
+    ['inbound-business/other-inbound', 'WmsOtherInbound', '其他入库单', 'other_inbound'],
+    [
+      'inbound-business/entrusted-processing-inbound',
+      'WmsEntrustedProcessingInbound',
+      '受托加工材料入库单',
+      'entrusted_processing_inbound'
+    ],
+    [
+      'inbound-business/entrusted-processing-return',
+      'WmsEntrustedProcessingReturn',
+      '受托加工材料退料单',
+      'entrusted_processing_return'
+    ]
+  ].map(
+    ([path, name, title, kind]) =>
+      [
+        path,
+        name,
+        title,
+        'wms_purchase_document',
+        'wms_purchase_document_list',
+        'purchase_document',
+        kind
+      ] as const
+  ),
+  [
     'initialization/initial-stock',
     'WmsInitialStock',
     '初始库存单',
@@ -145,7 +197,9 @@ const scenarios = [
 
 for (const [path, name, title, table, list, rpc, kind] of scenarios) {
   for (const authority of ['super', 'ordinary']) {
-    test(`${authority}${title}删除检查失败、重试与并发引用阻止删除`, async ({ page }, testInfo) => {
+    test(`${authority}${title}删除检查失败、重试与并发引用阻止删除-${kind}`, async ({
+      page
+    }, testInfo) => {
       const tenant = await prepareIsolatedSession(page)
       if (authority === 'ordinary')
         await page.route('**/rest/v1/rpc/current_is_super', (route) =>
@@ -366,11 +420,15 @@ for (const [path, name, title, table, list, rpc, kind] of scenarios) {
         [
           'wms_production_material_document',
           'wms_count_adjustment_document',
-          'wms_sales_document'
+          'wms_sales_document',
+          'wms_purchase_document'
         ].includes(table)
       )
         await expect(
-          page.getByRole('heading', { name: `暂时无法删除${title}`, exact: true })
+          page.getByRole('heading', {
+            name: `暂时无法删除${kind === 'other_return' ? (title === '其他入库单' ? '其他入库退回单' : '其他出库退回单') : title}`,
+            exact: true
+          })
         ).toBeVisible()
       expect(checks).toBeGreaterThan(previousChecks)
       await page.screenshot({

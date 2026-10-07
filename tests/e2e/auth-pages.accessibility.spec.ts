@@ -5,6 +5,31 @@ interface AuthFieldExpectation {
   autocomplete: string
 }
 
+test('登录页主题切换保留已显示的账号与记住密码状态', async ({ page }) => {
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
+  const form = page.locator('.auth-right-wrap .form')
+  await expect(form).toBeVisible({ timeout: 60_000 })
+  const username = page.locator('input[name="username"]')
+  const password = page.locator('input[name="password"]')
+  const originalUsername = await username.inputValue()
+  const originalPassword = await password.inputValue()
+  const remembered = await page.getByRole('checkbox', { name: '记住密码' }).isChecked()
+  const initiallyDark = await page
+    .locator('html')
+    .evaluate((element) => element.classList.contains('dark'))
+  for (const dark of [!initiallyDark, initiallyDark]) {
+    await page
+      .getByRole('button', { name: dark ? '切换到深色模式' : '切换到浅色模式', exact: true })
+      .click()
+    await expect(form).toBeVisible()
+    if (dark) await expect(page.locator('html')).toHaveClass(/dark/)
+    else await expect(page.locator('html')).not.toHaveClass(/dark/)
+    expect((await username.inputValue()) === originalUsername).toBe(true)
+    expect((await password.inputValue()) === originalPassword).toBe(true)
+    expect(await page.getByRole('checkbox', { name: '记住密码' }).isChecked()).toBe(remembered)
+  }
+})
+
 interface AuthPageExpectation {
   path: string
   fields: AuthFieldExpectation[]

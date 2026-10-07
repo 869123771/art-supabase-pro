@@ -1,0 +1,1 @@
+import{L as e}from"./sys-Bgk4W9OO.js";function t(t,n=`未命名菜单`){let r=String(t.meta?.title??``).trim();if(r)return e(r);let i=String(t.name??``).trim();return i?e(i):n}export{t};

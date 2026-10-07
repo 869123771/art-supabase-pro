@@ -576,7 +576,9 @@
     }
 
     &__node {
+      display: flex;
       flex: 1;
+      align-items: center;
       min-width: 0;
       height: 100%;
     }
@@ -602,6 +604,7 @@
 
     &__node-copy {
       display: grid;
+      flex: 1;
       min-width: 0;
 
       strong,
@@ -630,6 +633,7 @@
       padding: 0 5px;
       margin-left: 6px;
       font-size: 10px;
+      font-variant-numeric: tabular-nums;
       line-height: 20px;
       color: var(--el-text-color-secondary);
       text-align: center;

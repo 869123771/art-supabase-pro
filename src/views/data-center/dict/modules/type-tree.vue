@@ -1091,7 +1091,6 @@
       padding: 2px 6px;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 10px;
       font-style: normal;
       line-height: 18px;

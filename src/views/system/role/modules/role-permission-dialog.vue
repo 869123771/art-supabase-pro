@@ -645,7 +645,6 @@
       min-width: 0;
       max-width: 45%;
       margin-left: auto;
-      font-family: var(--art-font-family-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
       font-size: 12px;
       color: var(--el-text-color-secondary);
     }

@@ -47,7 +47,8 @@ const transfer: WmsDirectTransfer = {
   targetOrganization: { organizationName: '测试目标库存组织'.repeat(8) },
   serialMovements: [
     { serialId: 'serial-1', serial: { serialNo: 'TEST-SERIAL-0001' } },
-    { serialId: 'serial-2', serial: { serialNo: 'TEST-LONG-SERIAL-'.repeat(20) } }
+    { serialId: 'serial-2', serial: { serialNo: 'TEST-LONG-SERIAL-'.repeat(20) } },
+    { serialId: '44444444-4444-4444-8444-444444444444', serial: null }
   ]
 }
 

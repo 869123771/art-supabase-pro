@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
 
 test.use({ storageState: { cookies: [], origins: [] } })
+// The fixture starts the complete business page through Vite before exercising deletion.
+test.setTimeout(120_000)
 
 for (const entry of ['bulk', 'row'] as const) {
   test(`${entry} 删除先核验，失败与取消保留选择，成功后刷新`, async ({ page }) => {
@@ -92,12 +94,14 @@ for (const entry of ['bulk', 'row'] as const) {
     const clickDelete = async () => {
       if (entry === 'bulk') await remove.click()
       else {
-        await page.getByRole('button', { name: '更多操作', exact: true }).hover()
+        await page.getByRole('button', { name: '更多操作', exact: true }).click()
         await page.getByRole('menuitem', { name: '删除工位' }).click()
       }
     }
     await clickDelete()
-    await expect(page.getByRole('alert')).toContainText('关联资料未完成核验')
+    await expect(
+      page.getByRole('dialog', { name: '删除检查未完成', exact: true }).getByRole('alert')
+    ).toContainText('关联资料未完成核验')
     expect(deleteCalls).toBe(0)
     await expect(page.locator('.el-message-box')).toHaveCount(0)
     await page.screenshot({

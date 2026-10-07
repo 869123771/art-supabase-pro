@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useMediaQuery } from '@vueuse/core'
   import { ElTag } from 'element-plus'
@@ -253,9 +254,7 @@
     selectedMenuId.value ? treeUtils.findNode(menuTree.value, selectedMenuId.value) : null
   )
   const selectedMenuLabel = computed(() =>
-    selectedMenu.value
-      ? String(selectedMenu.value.meta?.title || selectedMenu.value.name || '未命名菜单')
-      : '全部功能'
+    selectedMenu.value ? resolveMenuLabel(selectedMenu.value) : '全部功能'
   )
   const selectedRuleKeys = computed(() => {
     if (!selectedMenuId.value) return []
@@ -505,7 +504,7 @@
     if (!menuId) return ''
     return treeUtils
       .getAncestors(menuTree.value, menuId)
-      .map((menu) => String(menu.meta?.title || menu.name || '未命名菜单'))
+      .map((menu) => resolveMenuLabel(menu))
       .join(' / ')
   }
 

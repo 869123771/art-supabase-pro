@@ -34,7 +34,7 @@ export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的�
  */
 export interface RunQueryOptions {
   showMessage?: boolean // 是否显示提示，默认 false
-  showErrorMessage?: boolean // 是否显示错误提示，默认 false
+  showErrorMessage?: boolean // 是否显示错误提示；未指定时跟随 showMessage，显式 false 交由调用方处理
   convertToCamel?: boolean // 是否将返回字段从 snake_case 转为 camelCase，默认 true
   convertToCamelShadow?: boolean // 是否只转换最外层的驼峰命名，默认 false（深层转换）
   returnRawError?: boolean // 是否返回原生错误字段，默认 false
@@ -85,13 +85,13 @@ export function useSupabase() {
   ): Promise<QueryResult<T>> {
     const {
       showMessage = false,
-      showErrorMessage = false,
       breakReturn = false,
       convertToCamel = true,
       convertToCamelShadow = false,
       returnRawError = false,
       requireAffected = false
     } = options ?? {}
+    const showErrorMessage = options?.showErrorMessage ?? showMessage
 
     let queryResponse = await queryFactory()
     let sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)
@@ -144,8 +144,7 @@ export function useSupabase() {
       )
       if (referenceContext && referenceHandled)
         mittBus.emit('deleteReferenceBlocked', referenceContext)
-      const showErrorToast =
-        (showMessage || showErrorMessage) && !sessionFailureHandled && !referenceHandled
+      const showErrorToast = showErrorMessage && !sessionFailureHandled && !referenceHandled
       if (showErrorToast) {
         ElMessage.error(message)
       }
@@ -176,22 +175,17 @@ export function useSupabase() {
     const affectedCount = typeof data === 'number' ? data : count
     if (requireAffected && affectedCount === 0) {
       const message = options.noAffectedMessage || '当前账号没有权限操作该数据，或数据不存在'
-      if (showMessage || showErrorMessage) {
+      if (showErrorMessage) {
         ElMessage.error(message)
       }
       if (breakReturn) {
         const noAffectedError = new Error(message)
-        throw showMessage || showErrorMessage
-          ? markErrorAsUserNotified(noAffectedError)
-          : noAffectedError
+        throw showErrorMessage ? markErrorAsUserNotified(noAffectedError) : noAffectedError
       }
       const noAffectedError = new Error(message)
       return {
         data: null,
-        error:
-          showMessage || showErrorMessage
-            ? markErrorAsUserNotified(noAffectedError)
-            : noAffectedError
+        error: showErrorMessage ? markErrorAsUserNotified(noAffectedError) : noAffectedError
       }
     }
 

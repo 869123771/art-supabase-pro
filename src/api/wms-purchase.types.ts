@@ -1,4 +1,5 @@
 import type { WmsInventoryOrganizationOption } from './wms-inventory-organization'
+import type { EmployeeIntegrationItem } from './integration/employees'
 
 export type WmsPurchaseKind =
   | 'initial_inbound'
@@ -72,6 +73,7 @@ export interface WmsPurchaseSourceBatch {
   batchNo: string
   quantity: number
   binId: string | null
+  bin?: { binName: string; binCode: string } | null
   receivedAt: string | null
 }
 
@@ -104,11 +106,15 @@ export interface WmsPurchaseLine {
   movementId?: string | null
   warehouseId: string | null
   binId: string | null
+  bin?: { binName: string; binCode: string } | null
   stockType: string
   ownerType: 'self' | 'supplier' | 'customer'
   ownerId: string | null
   stockStatus: string
   keeperId: string | null
+  keeper?: EmployeeIntegrationItem | null
+  purchaserId?: string | null
+  purchaser?: EmployeeIntegrationItem | null
   auxiliaryUnitId: string | null
   auxiliaryQuantity: number | null
   auxiliaryUnit2Id: string | null

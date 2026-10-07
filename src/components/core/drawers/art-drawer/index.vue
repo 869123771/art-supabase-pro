@@ -24,12 +24,40 @@
     @resize-end="handleResizeEnd"
   >
     <template
-      v-if="$slots.header || hasSubtitle || formCount || options.showFullscreenButton"
+      v-if="
+        $slots.header ||
+        options.headerIcon ||
+        hasSubtitle ||
+        formCount ||
+        options.showFullscreenButton
+      "
       #header="{ titleId, titleClass }"
     >
       <div class="art-drawer__header">
         <div class="art-drawer__header-main">
           <slot v-if="$slots.header" name="header" :data="openData" :api="exposedApi" />
+          <div v-else-if="options.headerIcon" class="flex min-w-0 items-center gap-3">
+            <span
+              class="grid size-10 shrink-0 place-items-center rounded bg-primary/10 text-xl text-primary"
+              aria-hidden="true"
+            >
+              <ArtSvgIcon :icon="options.headerIcon" />
+            </span>
+            <div class="min-w-0">
+              <span
+                :id="titleId"
+                class="block text-base font-semibold text-g-900"
+                role="heading"
+                :aria-level="String(drawerBindings.headerAriaLevel ?? '2')"
+                >{{ drawerTitle }}</span
+              >
+              <div v-if="hasSubtitle && !isFocusMode" class="art-drawer__subtitle">
+                <slot name="subtitle" :data="openData" :api="exposedApi">
+                  {{ drawerSubtitle }}
+                </slot>
+              </div>
+            </div>
+          </div>
           <span
             v-else
             :id="titleId"
@@ -38,7 +66,10 @@
             :aria-level="String(drawerBindings.headerAriaLevel ?? '2')"
             >{{ drawerTitle }}</span
           >
-          <div v-if="hasSubtitle && !isFocusMode" class="art-drawer__subtitle">
+          <div
+            v-if="hasSubtitle && !isFocusMode && ($slots.header || !options.headerIcon)"
+            class="art-drawer__subtitle"
+          >
             <slot name="subtitle" :data="openData" :api="exposedApi">
               {{ drawerSubtitle }}
             </slot>
@@ -140,6 +171,7 @@
   } from './types'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
   import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
@@ -216,6 +248,7 @@
 
   const getDefaultOptions = (): ArtDrawerOptions<T> => ({
     title: props.title,
+    headerIcon: props.headerIcon,
     subtitle: props.subtitle,
     size: props.size,
     fullscreen: props.fullscreen,
@@ -293,6 +326,10 @@
     updateData,
     getData
   } = overlay
+
+  onDeactivated(() => {
+    void handleClose(true)
+  })
 
   const normalizedContentHeight = computed(() => {
     if (isFullscreen.value) return undefined

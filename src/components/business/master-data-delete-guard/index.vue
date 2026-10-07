@@ -74,7 +74,20 @@
 
               <div class="master-delete-guard__record-copy">
                 <strong :title="record.recordNo">{{ record.recordNo || '未编号记录' }}</strong>
-                <span :title="formatRecordMeta(record)">{{ formatRecordMeta(record) }}</span>
+                <span :title="formatRecordMeta(record)">
+                  {{ formatRecordMeta(record) }}
+                  <template v-if="group.meta.statusDictCode">
+                    ·
+                    <ArtDictDisplay
+                      :key="inspectionSequence"
+                      :dict-code="group.meta.statusDictCode"
+                      :value="record.recordStatus"
+                      display="text"
+                      empty-text="状态待核对"
+                      unknown-text="状态待核对"
+                    />
+                  </template>
+                </span>
               </div>
 
               <div class="master-delete-guard__record-actions">
@@ -183,6 +196,7 @@
     description: string
     actionLabel: string
     routeName?: string
+    statusDictCode?: string
     routeParams?: (
       record: MasterDataDeleteDependencyDetail
     ) => Record<string, string> | null | Promise<Record<string, string> | null>
@@ -514,7 +528,9 @@
   })
 
   const formatRecordMeta = (record: MasterDataDeleteDependencyDetail): string => {
-    const parts = [record.recordSummary, record.recordStatus]
+    const hasStatusDictionary =
+      currentOptions.value?.dependencyMeta?.[record.dependencyCode]?.statusDictCode
+    const parts = [record.recordSummary, hasStatusDictionary ? null : record.recordStatus]
     if ((currentOptions.value?.resources.length ?? 0) > 1) {
       const resource = currentOptions.value?.resources.find((item) => item.id === record.resourceId)
       if (resource) parts.unshift(`引用：${resource.label}`)
@@ -739,7 +755,7 @@
       recordId: record.targetId,
       recordNo: record.recordNo,
       dependencyCode: record.dependencyCode,
-      returnPath: route.path,
+      returnPath: route.fullPath,
       resourceId: record.resourceId,
       resourceLabel: options.resourceLabel,
       resourceName:

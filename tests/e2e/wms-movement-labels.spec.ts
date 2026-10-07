@@ -254,7 +254,25 @@ for (const kind of ['inventory', 'project']) {
             section: rpc ? payload.p_construction_no : url.searchParams.get('construction_no')
           })
           return route.fulfill({
-            json: rpc ? { data: [entry.row], total: 21 } : [entry.row],
+            json: rpc
+              ? { data: [entry.row], total: 21 }
+              : [
+                  entry.row,
+                  {
+                    ...entry.row,
+                    id: 'review-stock-missing',
+                    batch_no: 'REVIEW-MISSING',
+                    material_id: '88888888-8888-4888-8888-888888888888',
+                    material: null
+                  },
+                  {
+                    ...entry.row,
+                    id: 'review-stock-code',
+                    batch_no: 'REVIEW-CODE',
+                    material_id: '99999999-9999-4999-8999-999999999999',
+                    material: { material_code: 'STOCK-CODE-ONLY', material_name: '' }
+                  }
+                ],
             headers: {
               'content-range': `${offset}-${offset}/21`,
               'access-control-expose-headers': 'content-range'
@@ -272,6 +290,18 @@ for (const kind of ['inventory', 'project']) {
           .poll(() => requests.filter((request) => request.tab === entry.tab).at(-1)?.offset)
           .toBeGreaterThan(0)
         if (entry.tab === '库存与垛包') {
+          const stockBody = page.locator('.el-table__body')
+          await expect(stockBody.getByText('物料资料不可用', { exact: true })).toBeVisible()
+          await expect(
+            stockBody.getByText('STOCK-CODE-ONLY', { exact: true }).first()
+          ).toBeVisible()
+          await expect(stockBody).not.toContainText('88888888-8888-4888-8888-888888888888')
+          await expect(stockBody).not.toContainText('99999999-9999-4999-8999-999999999999')
+          await stockBody.getByText('物料资料不可用', { exact: true }).scrollIntoViewIfNeeded()
+          await page.screenshot({
+            path: testInfo.outputPath('project-stock-material-fallback.png'),
+            animations: 'disabled'
+          })
           await page.getByRole('combobox', { name: /^施工号/ }).click()
           await page.getByRole('option', { name: 'REVIEW-01 · 复盘分区', exact: true }).click()
           await expect
@@ -329,10 +359,29 @@ for (const kind of ['inventory', 'project']) {
               {
                 id: 'serial-test',
                 serial_no: 'SN-STATUS-001',
+                parent_serial_id: 'parent-unavailable',
                 status: 'in_stock',
                 construction_no: 'REVIEW-01',
                 create_time: '2026-10-05T01:02:03Z',
                 material: { material_code: 'REVIEW-MAT', material_name: '复盘序列号物料' },
+                child_serial_nos: []
+              },
+              {
+                id: 'serial-independent',
+                material_id: '44444444-4444-4444-8444-444444444444',
+                serial_no: 'SN-INDEPENDENT',
+                status: 'in_stock',
+                parent_serial_id: null,
+                child_serial_nos: []
+              },
+              {
+                id: 'serial-parent-readable',
+                material_id: '55555555-5555-4555-8555-555555555555',
+                material: { material_code: 'CODE-ONLY-MATERIAL', material_name: '' },
+                serial_no: 'SN-PARENT-READABLE',
+                status: 'in_stock',
+                parent_serial_id: 'parent-readable',
+                parent: { serial_no: 'SN-READABLE-PARENT' },
                 child_serial_nos: []
               }
             ],
@@ -345,7 +394,7 @@ for (const kind of ['inventory', 'project']) {
         ['序列号', '在库']
       ]) {
         await page.getByRole('tab', { name: tab, exact: true }).click()
-        const cell = page.locator('.el-table__body').getByText(status, { exact: true })
+        const cell = page.locator('.el-table__body').getByText(status, { exact: true }).first()
         await cell.scrollIntoViewIfNeeded()
         await expect(cell).toBeVisible()
         await page.locator('.el-pagination .btn-next').click()
@@ -359,12 +408,83 @@ for (const kind of ['inventory', 'project']) {
           animations: 'disabled'
         })
         await verifyLastReportColumn(page, testInfo, tab)
+        if (tab === '序列号') {
+          for (const [serial, material] of [
+            ['SN-INDEPENDENT', '物料资料不可用'],
+            ['SN-PARENT-READABLE', 'CODE-ONLY-MATERIAL']
+          ]) {
+            const materialCell = page
+              .locator('.el-table__body tr')
+              .filter({
+                has: page.getByText(serial, { exact: true })
+              })
+              .getByText(material, { exact: true })
+            await materialCell.scrollIntoViewIfNeeded()
+            await expect(materialCell).toBeVisible()
+          }
+          await expect(
+            page.getByText('44444444-4444-4444-8444-444444444444', { exact: true })
+          ).toHaveCount(0)
+          if ((page.viewportSize()?.width ?? 0) >= 768) {
+            await page
+              .locator('.el-table .el-scrollbar__wrap')
+              .first()
+              .evaluate((element) => {
+                element.scrollLeft = 0
+              })
+            await expect(
+              page.locator('.el-table__body').getByText('CODE-ONLY-MATERIAL', { exact: true })
+            ).toBeInViewport()
+          }
+          await page.screenshot({
+            path: testInfo.outputPath('project-serial-material-fallback.png'),
+            animations: 'disabled'
+          })
+          for (const [serial, parent] of [
+            ['SN-STATUS-001', '父件资料不可用'],
+            ['SN-INDEPENDENT', '独立件 / 主机'],
+            ['SN-PARENT-READABLE', 'SN-READABLE-PARENT']
+          ]) {
+            const row = page.locator('.el-table__body tr').filter({
+              has: page.getByText(serial, { exact: true })
+            })
+            const parentCell = row.getByText(parent, { exact: true })
+            await parentCell.scrollIntoViewIfNeeded()
+            await expect(parentCell).toBeVisible()
+          }
+          await page.screenshot({
+            path: testInfo.outputPath('project-serial-parent-states.png'),
+            animations: 'disabled'
+          })
+        }
       }
       await page.route('**/rpc/wms_project_movement_page_secure', (route) => {
         const payload = route.request().postDataJSON()
         movementOffset = payload.p_offset
         expect(payload.p_construction_no).toBe('REVIEW-01')
-        return route.fulfill({ json: { data: [row], total: 21 } })
+        return route.fulfill({
+          json: {
+            data: [
+              row,
+              {
+                ...row,
+                id: 'movement-missing-material',
+                reference_no: 'MISSING-MATERIAL-MOVEMENT',
+                movement_type: 'other_in',
+                material_id: '66666666-6666-4666-8666-666666666666',
+                material: null
+              },
+              {
+                ...row,
+                id: 'movement-code-only',
+                reference_no: 'CODE-ONLY-MOVEMENT',
+                movement_type: 'other_out',
+                material: { material_code: 'MOVEMENT-MATERIAL-CODE', material_name: '' }
+              }
+            ],
+            total: 21
+          }
+        })
       })
       await page.getByRole('tab', { name: '收发存记录', exact: true }).click()
       await expect(page.locator('.el-pagination .btn-next')).toBeEnabled()
@@ -377,6 +497,33 @@ for (const kind of ['inventory', 'project']) {
         animations: 'disabled'
       })
       await verifyLastReportColumn(page, testInfo, '收发存记录')
+      for (const [reference, material] of [
+        ['MISSING-MATERIAL-MOVEMENT', '物料资料不可用'],
+        ['CODE-ONLY-MOVEMENT', 'MOVEMENT-MATERIAL-CODE']
+      ]) {
+        const materialCell = page
+          .locator('.el-table__body tr')
+          .filter({
+            has: page.getByText(reference, { exact: true })
+          })
+          .getByText(material, { exact: true })
+        await materialCell.scrollIntoViewIfNeeded()
+        await expect(materialCell).toBeVisible()
+      }
+      await expect(
+        page.getByText('66666666-6666-4666-8666-666666666666', { exact: true })
+      ).toHaveCount(0)
+      if ((page.viewportSize()?.width ?? 0) >= 768)
+        await page
+          .locator('.el-table .el-scrollbar__wrap')
+          .first()
+          .evaluate((element) => {
+            element.scrollLeft = 0
+          })
+      await page.screenshot({
+        path: testInfo.outputPath('project-movement-material-fallback.png'),
+        animations: 'disabled'
+      })
       for (const rpc of ['material', 'pack', 'movement', 'serial']) {
         await page.route(`**/rpc/wms_project_${rpc}_page_secure`, (route) =>
           route.fulfill({ json: { data: [], total: 0 } })

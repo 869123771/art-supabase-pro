@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+  import { resolveMenuLabel } from '@/utils/navigation/menu'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
@@ -177,7 +178,7 @@
           placeholder: '按菜单树选择功能页面',
           onChange: handleMenuChange,
           props: {
-            label: (node: MenuNode) => String(node.meta?.title || node.name || '未命名菜单'),
+            label: (node: MenuNode) => resolveMenuLabel(node),
             value: 'id',
             disabled: 'disabled'
           }
@@ -304,7 +305,7 @@
     if (!form.data.menuId) return ''
     return treeUtils
       .getAncestors<MenuNode>(form.menuTree, form.data.menuId)
-      .map((menu: MenuNode) => String(menu.meta?.title || menu.name || '未命名菜单'))
+      .map((menu: MenuNode) => resolveMenuLabel(menu))
       .join(' / ')
   })
   const previewText = computed(() => {

@@ -12,27 +12,36 @@ const FIELD_ACCESS_RANK: Record<FieldAccessLevel, number> = {
   edit: 3
 }
 
+const isFieldAccessLevel = (value: unknown): value is FieldAccessLevel =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(FIELD_ACCESS_RANK, value)
+
 export const mergeFieldAccessMaps = <TKey extends string>(
   ...maps: Array<FieldAccessMap<TKey> | null | undefined>
 ): FieldAccessMap<TKey> => {
-  const result: FieldAccessMap<TKey> = {}
+  const levels = new Map<string, FieldAccessLevel>()
   maps.forEach((access) => {
     if (!access) return
-    ;(Object.entries(access) as Array<[TKey, FieldAccessLevel]>).forEach(([key, level]) => {
-      const current = result[key]
+    Object.entries(access).forEach(([key, level]) => {
+      if (!isFieldAccessLevel(level)) return
+      const current = levels.get(key)
       if (!current || FIELD_ACCESS_RANK[level] > FIELD_ACCESS_RANK[current]) {
-        result[key] = level
+        levels.set(key, level)
       }
     })
   })
-  return result
+  // Object.fromEntries loses the generic key set; keys originate from the supplied maps.
+  return Object.fromEntries(levels) as FieldAccessMap<TKey>
 }
 
 export const getFieldAccess = <TKey extends string>(
   access: FieldAccessMap<TKey> | null | undefined,
   field: TKey,
   fallback: FieldAccessLevel = 'hidden'
-): FieldAccessLevel => access?.[field] ?? fallback
+): FieldAccessLevel => {
+  if (!access || !Object.prototype.hasOwnProperty.call(access, field)) return fallback
+  const level = access[field]
+  return isFieldAccessLevel(level) ? level : fallback
+}
 
 export const canViewField = <TKey extends string>(
   access: FieldAccessMap<TKey> | null | undefined,

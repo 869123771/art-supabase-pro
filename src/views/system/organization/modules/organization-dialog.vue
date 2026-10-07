@@ -96,6 +96,7 @@
   const dialogRef = ref<ArtDialogExpose<OpenData>>()
   const formRef = ref<ArtFormExpose>()
   const dialogType = ref<DialogType>('add')
+  const editingTenantOption = ref<Api.SystemManage.TenantListItem | null>(null)
 
   const canSelectTenant = computed(() => Boolean(isPlatformSuper.value))
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
@@ -144,6 +145,15 @@
 
   const form = reactive<FormModel>(createInitialForm())
 
+  const fetchTenantOptions = async () => {
+    const response = await fetchEnabledTenantList()
+    const current = editingTenantOption.value
+    if (!current?.id || response.error || response.data?.some((item) => item.id === current.id)) {
+      return response
+    }
+    return { ...response, data: [...(response.data ?? []), current] }
+  }
+
   const rules = computed<FormRules<FormModel>>(() => ({
     tenantId: canSelectTenant.value
       ? [{ required: true, message: '请选择所属租户', trigger: 'change' }]
@@ -189,7 +199,7 @@
       type: 'select',
       span: 24,
       hidden: !canSelectTenant.value,
-      api: fetchEnabledTenantList,
+      api: fetchTenantOptions,
       resultField: 'data',
       labelField: 'tenantName',
       valueField: 'id',
@@ -343,6 +353,7 @@
 
   const resetForm = async (): Promise<void> => {
     Object.assign(form, createInitialForm())
+    editingTenantOption.value = null
     await nextTick()
     formRef.value?.clearValidate()
   }
@@ -353,6 +364,13 @@
 
     if (data.row) {
       const row = cloneDeep(data.row)
+      if (row.tenantId && row.tenant?.tenantName) {
+        editingTenantOption.value = {
+          id: row.tenantId,
+          tenantName: row.tenant.tenantName,
+          tenantCode: row.tenant.tenantCode
+        }
+      }
       Object.assign(form, {
         id: row.id,
         tenantId: row.tenantId,
@@ -442,6 +460,7 @@
       onOpen: async (_openData, api) => {
         try {
           await Promise.all([
+            canSelectTenant.value ? formRef.value?.reloadOptions('tenantId') : undefined,
             formRef.value?.reloadOptions('parentId'),
             formRef.value?.reloadOptions('leaderUserId')
           ])

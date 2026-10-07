@@ -9,12 +9,7 @@ export function useSettingsState() {
 
   // 色弱模式初始化
   const initColorWeak = () => {
-    if (settingStore.colorWeak) {
-      const el = document.getElementsByTagName('html')[0]
-      setTimeout(() => {
-        el.classList.add('color-weak')
-      }, 100)
-    }
+    document.documentElement.classList.toggle('color-weak', settingStore.colorWeak)
   }
 
   // 菜单布局切换

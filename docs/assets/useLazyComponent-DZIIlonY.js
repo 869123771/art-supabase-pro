@@ -1,1 +1,0 @@
-import{Qt as e,Rn as t}from"./framework-BGq_7U6Z.js";function n(n){let r=t();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await e()}}}export{n as t};

@@ -165,12 +165,39 @@ for (const empty of [false, true]) {
       expect(contentBounds).not.toBeNull()
       if (actionBounds && contentBounds) {
         expect(actionBounds.y).toBeGreaterThanOrEqual(contentBounds.y)
-        expect(actionBounds.y + actionBounds.height).toBeLessThanOrEqual(
-          contentBounds.y + contentBounds.height
-        )
+        // Empty-content measurements settle in the next animation frame after loading ends.
+        await expect
+          .poll(async () => {
+            const action = await emptyAction.boundingBox()
+            const region = await content.boundingBox()
+            return Boolean(
+              action &&
+              region &&
+              action.y >= region.y &&
+              action.y + action.height <= region.y + region.height
+            )
+          })
+          .toBe(true)
       }
       await dialog.getByRole('button', { name: '维护测试明细' }).click()
       await expect(page.getByTestId('selector-result')).toHaveText('maintenance-requested')
+      const selectedPanel = dialog.locator('.art-data-select-dialog__selected')
+      const selectedDescription = selectedPanel.getByText('从可选列表选择需要关联的记录。')
+      await selectedDescription.scrollIntoViewIfNeeded()
+      await expect
+        .poll(async () => {
+          const description = await selectedDescription.boundingBox()
+          const region = await selectedPanel
+            .locator('.art-data-select-dialog__selected-scrollbar')
+            .boundingBox()
+          return Boolean(
+            description &&
+            region &&
+            description.y >= region.y &&
+            description.y + description.height <= region.y + region.height
+          )
+        })
+        .toBe(true)
       await page.screenshot({
         path: `.artifacts/data-select-empty-${testInfo.project.name}.png`,
         animations: 'disabled'

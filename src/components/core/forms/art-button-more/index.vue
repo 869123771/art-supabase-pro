@@ -13,8 +13,15 @@
               :disabled="item.disabled"
               @click="handleClick(item)"
             >
-              <div class="art-button-more__item" :style="{ color: item.color }">
-                <ArtSvgIcon v-if="item.icon" :icon="item.icon" :style="{ color: item.iconColor }" />
+              <div
+                class="art-button-more__item"
+                :style="{ color: item.disabled ? undefined : item.color }"
+              >
+                <ArtSvgIcon
+                  v-if="item.icon"
+                  :icon="item.icon"
+                  :style="{ color: item.disabled ? undefined : item.iconColor }"
+                />
                 <span>{{ item.label }}</span>
               </div>
             </ElDropdownItem>

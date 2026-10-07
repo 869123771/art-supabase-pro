@@ -362,18 +362,6 @@ export const useUserStore = defineStore(
       await fetchDictByCode(code)
     }
 
-    const ensureDictValueLoaded = async (
-      dictCode: keyof DictMap | string,
-      value?: string | number | null
-    ): Promise<void> => {
-      if (value === undefined || value === null || value === '') {
-        await ensureDictLoaded(dictCode)
-        return
-      }
-
-      await ensureDictLoaded(dictCode)
-    }
-
     return {
       language,
       isLogin,
@@ -407,8 +395,7 @@ export const useUserStore = defineStore(
       fetchUserInfo,
       ensureUserInfo,
       fetchDictList,
-      ensureDictLoaded,
-      ensureDictValueLoaded
+      ensureDictLoaded
     }
   },
   {

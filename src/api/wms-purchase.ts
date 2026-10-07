@@ -42,6 +42,9 @@ const documentSelect = `*,
  purchaser:mdm_employee!wms_purchase_document_purchaser_id_fkey(employee_name),
  keeper:mdm_employee!wms_purchase_document_keeper_id_fkey(employee_name),
  lines:wms_purchase_document_line(*,
+ purchaser:mdm_employee!wms_purchase_line_purchaser_tenant_fk(id,tenant_id,employee_no,employee_name,employment_status),
+ keeper:mdm_employee!wms_purchase_document_line_keeper_id_fkey(id,tenant_id,employee_no,employee_name,employment_status),
+ bin:mdm_warehouse_bin!wms_purchase_document_line_bin_id_fkey(bin_name,bin_code),
  material:mdm_material!wms_purchase_document_line_material_id_fkey(id,tenant_id,code:material_code,name:material_name,description,specification_model,inventory_unit_id,base_unit_id,auxiliary_unit_id,auxiliary_unit_2_id,unit_conversions,serial_management_enabled),
  project:mdm_project!wms_purchase_document_line_project_id_fkey(id,tenant_id,code:project_code,name:project_name))`
 
@@ -471,6 +474,7 @@ export async function fetchWmsPendingInitializationDocuments(
 export async function fetchWmsPurchaseMaterials(params: {
   tenantId: string
   keyword: string
+  materialCode?: string
   current: number
   size: number
 }): Promise<{ data: WmsPurchaseMaterial[]; total: number }> {
@@ -485,7 +489,8 @@ export async function fetchWmsPurchaseMaterials(params: {
     .eq('status', 'enabled')
     .order('material_code')
     .order('id')
-  if (params.keyword.trim())
+  if (params.materialCode !== undefined) request = request.eq('material_code', params.materialCode)
+  else if (params.keyword.trim())
     request = request.or(
       buildOrIlikeFilter(['material_code', 'material_name', 'description'], params.keyword)
     )

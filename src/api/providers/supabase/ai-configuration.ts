@@ -1,4 +1,5 @@
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
+import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import { useSupabase } from '@/hooks'
 
@@ -213,14 +214,12 @@ export async function benchmarkAiProviderModel(model: string): Promise<AiModelBe
 }
 
 export async function fetchAiFeatureConfigList(params: AiFeatureConfigSearchParams) {
-  const current = Math.max(params.current || 1, 1)
-  const size = Math.min(Math.max(params.size || 20, 1), 100)
-  const from = (current - 1) * size
-  const to = from + size - 1
+  const { from, to } = buildSupabasePageRange(params)
 
   let query = supabase
     .rpc('get_effective_ai_feature_configs', {}, { count: 'exact' })
     .order('feature', { ascending: true })
+    .order('id')
     .range(from, to)
 
   if (params.feature) query = query.eq('feature', params.feature)

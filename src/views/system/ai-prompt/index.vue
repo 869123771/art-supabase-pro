@@ -16,13 +16,22 @@
       :metrics="metricCards"
       refreshable
       refresh-label="刷新 Prompt"
-      :refresh-loading="overview.loading"
+      :refresh-loading="overviewLoading"
       @refresh="refreshAll"
     >
       <template #actions>
         <BusinessTableWorkspaceActions :table="tableQueryRef" />
       </template>
     </BusinessWorkspaceHeader>
+
+    <ArtAsyncState
+      v-if="overviewError"
+      :error="overviewError"
+      error-title="版本概览加载失败"
+      size="compact"
+      :min-height="0"
+      @retry="loadOverview"
+    />
 
     <section class="ai-prompt__governance art-card-xs">
       <div>
@@ -52,11 +61,20 @@
     />
 
     <AiPromptDialog ref="dialogRef" @success="handleDraftSaved" />
+    <MasterDataDeleteGuard ref="deleteGuardRef" />
   </div>
 </template>
 
 <script setup lang="tsx">
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import { DeleteReferenceBlockedError } from '@/utils/supabase/delete-reference'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -80,15 +98,23 @@
   import {
     deleteAiPromptDraft,
     fetchAiPromptList,
+    fetchAiPromptOverview,
     publishAiPrompt,
     type AiPromptSearchParams,
-    type AiPromptTemplate
+    type AiPromptTemplate,
+    type AiPromptOverview
   } from '@/api/ai-prompt'
   import AiPromptDialog, { type AiPromptDialogOpenData } from './modules/ai-prompt-dialog.vue'
 
   defineOptions({ name: 'AiPrompt' })
 
-  const { confirmAction } = useArtFeedback()
+  const { confirmAction, confirmDelete } = useArtFeedback()
+  const { hasAuth } = useAuth()
+  const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
+    'ai_prompt_template',
+    'Prompt 草稿'
+  )
+  const deleteBusy = ref(false)
 
   interface DialogExpose {
     handleOpen: (data: AiPromptDialogOpenData) => Promise<void>
@@ -101,15 +127,22 @@
   }
 
   const userStore = useUserStore()
-  const { getDictMap, getUserInfo, isPlatformSuper } = storeToRefs(userStore)
+  const { getDictMap, isPlatformSuper } = storeToRefs(userStore)
+  const { effectiveTenantId: tenantId } = storeToRefs(useTenantScopeStore())
   const tableQueryRef = ref<ArtTableQueryExpose>()
   const dialogRef = ref<DialogExpose>()
-  const overview = reactive<{ loading: boolean; rows: AiPromptTemplate[] }>({
-    loading: false,
-    rows: []
-  })
-
-  const tenantId = computed(() => getUserInfo.value.tenantId ?? '')
+  const {
+    detail: overviewData,
+    loading: overviewLoading,
+    loadError: overviewError,
+    loadDetail: loadOverviewForScope,
+    openDetail: resetOverview
+  } = useDetailRecord<AiPromptOverview>(
+    async (scope) => ({
+      data: await fetchAiPromptOverview(scope === 'all' ? undefined : scope)
+    }),
+    '版本概览加载失败，请重新加载'
+  )
   const canManage = computed(() => isPlatformSuper.value)
 
   const table: UnwrapNestedRefs<TableGroup> = reactive<TableGroup>({
@@ -157,14 +190,17 @@
   })
 
   const metricCards = computed<BusinessWorkspaceMetric[]>(() => {
-    const published = overview.rows.filter((row) => row.status === 'published').length
-    const drafts = overview.rows.filter((row) => row.status === 'draft').length
-    const archived = overview.rows.filter((row) => row.status === 'archived').length
-    return [
+    const { total, published, drafts, archived } = overviewData.value ?? {
+      total: 0,
+      published: 0,
+      drafts: 0,
+      archived: 0
+    }
+    const metrics: BusinessWorkspaceMetric[] = [
       {
         label: '全部版本',
-        value: `${overview.rows.length} 个`,
-        description: '租户内全部 Prompt 资产',
+        value: `${total} 个`,
+        description: tenantId.value ? '当前租户全部 Prompt 资产' : '全部租户 Prompt 资产',
         icon: 'ri:file-list-3-line',
         tone: 'primary'
       },
@@ -190,27 +226,32 @@
         tone: 'info'
       }
     ]
+    return metrics.map((metric) => ({
+      ...metric,
+      loading: overviewLoading.value,
+      value: overviewError.value ? '—' : metric.value,
+      description: overviewError.value
+        ? '概览暂不可用，请重新加载'
+        : overviewLoading.value
+          ? '正在读取当前范围的完整数据'
+          : metric.description
+    }))
   })
 
   async function fetchTableData(params: Omit<AiPromptSearchParams, 'tenantId'>) {
-    return await fetchAiPromptList({ ...params, tenantId: tenantId.value })
+    if (!tenantId.value && !canManage.value) throw new Error('租户信息尚未就绪，请刷新后重试')
+    return await fetchAiPromptList({ ...params, tenantId: tenantId.value ?? undefined })
   }
 
   async function loadOverview(): Promise<void> {
-    if (!tenantId.value) return
-    overview.loading = true
-    try {
-      const result = await fetchAiPromptList({ current: 1, size: 100, tenantId: tenantId.value })
-      overview.rows = result.data ?? []
-    } finally {
-      overview.loading = false
-    }
+    if (!tenantId.value && !canManage.value) return
+    await loadOverviewForScope(tenantId.value ?? 'all')
   }
 
   async function refreshAll(): Promise<void> {
-    if (overview.loading) return
+    if (overviewLoading.value) return
     await Promise.all([loadOverview(), tableQueryRef.value?.refreshData()])
-    ElMessage.success('Prompt 版本已刷新')
+    if (!overviewError.value) ElMessage.success('Prompt 版本已刷新')
   }
 
   function openDialog(data: AiPromptDialogOpenData): void {
@@ -240,13 +281,36 @@
   }
 
   async function handleDelete(row: AiPromptTemplate): Promise<void> {
-    await confirmAction(`确认删除草稿 ${row.version}？此操作不可恢复。`, '删除 Prompt 草稿', {
-      type: 'warning',
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消'
-    })
-    await deleteAiPromptDraft(row.id)
-    await Promise.all([loadOverview(), tableQueryRef.value?.refreshRemove()])
+    if (deleteBusy.value) return
+    if (
+      !canManage.value ||
+      !hasAuth('System:AiPrompt:Delete') ||
+      !row.id ||
+      row.status !== 'draft'
+    ) {
+      ElMessage.error('当前账号无权删除此草稿，或版本状态已变化，请刷新后重试')
+      return
+    }
+    const resources = [{ id: row.id, label: `${row.name} · ${row.version}` }]
+    deleteBusy.value = true
+    try {
+      if (await inspectDeleteReferences(resources)) return
+      await confirmDelete(`确认删除草稿“${row.name} · ${row.version}”？此操作不可恢复。`)
+      try {
+        await deleteAiPromptDraft(row.id)
+      } catch (error) {
+        if (error instanceof DeleteReferenceBlockedError) return
+        if (await inspectDeleteReferences(resources)) return
+        throw error
+      }
+      ElMessage.success('草稿已删除')
+      await Promise.all([loadOverview(), tableQueryRef.value?.refreshRemove()])
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close')
+        notifyFriendlyError(error, '草稿删除失败，请检查网络后重试')
+    } finally {
+      deleteBusy.value = false
+    }
   }
 
   function getMoreActions(row: AiPromptTemplate): ButtonMoreItem[] {
@@ -264,6 +328,7 @@
         label: '删除草稿',
         icon: 'ri:delete-bin-5-line',
         color: 'var(--el-color-danger)',
+        disabled: deleteBusy.value,
         auth: 'System:AiPrompt:Delete'
       })
     }
@@ -354,7 +419,7 @@
         fixed: 'right',
         showOverflowTooltip: false,
         formatter: (row: AiPromptTemplate) => (
-          <div class="ai-prompt__actions">
+          <BusinessTableRowActions>
             {row.status === 'draft' ? (
               <ArtTooltip content="编辑草稿（发布前可反复修改）" placement="top">
                 <ArtButtonTable
@@ -378,10 +443,11 @@
               </ArtTooltip>
             ) : null}
             <ArtButtonMore
+              trigger="click"
               list={() => getMoreActions(row)}
               onClick={(item) => handleMoreAction(item, row)}
             />
-          </div>
+          </BusinessTableRowActions>
         )
       }
     ].filter(
@@ -391,10 +457,19 @@
   onMounted(async () => {
     await Promise.all([
       userStore.ensureDictLoaded('aiRunFeature'),
-      userStore.ensureDictLoaded('aiPromptStatus'),
-      loadOverview()
+      userStore.ensureDictLoaded('aiPromptStatus')
     ])
   })
+
+  watch(
+    [tenantId, canManage],
+    (_scope, previousScope) => {
+      resetOverview(tenantId.value ?? 'all')
+      void loadOverview()
+      if (previousScope?.length) void tableQueryRef.value?.refreshData()
+    },
+    { immediate: true }
+  )
 </script>
 
 <style scoped lang="scss">
@@ -557,15 +632,6 @@
       small {
         display: block;
         color: var(--art-text-gray-500);
-      }
-    }
-
-    :deep(.ai-prompt__actions) {
-      display: flex;
-      align-items: center;
-
-      .el-tooltip__trigger {
-        display: inline-flex;
       }
     }
   }

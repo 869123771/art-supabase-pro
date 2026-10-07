@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./workspace-DVOvA79M.js";var i=t({name:`WmsCountGain`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`gain`}))}});export{i as default};

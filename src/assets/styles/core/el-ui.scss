@@ -332,6 +332,26 @@ html.dark .el-card {
 
 // 处理移动端组件兼容性
 @media screen and (width <= 640px) {
+  .el-date-range-picker {
+    width: calc(100vw - 24px) !important;
+    max-height: min(480px, 50dvh);
+    overflow-y: auto;
+
+    .el-picker-panel__body {
+      min-width: 0 !important;
+    }
+
+    .el-date-range-picker__content {
+      display: block !important;
+      width: 100% !important;
+
+      &.is-left {
+        border-right: 0;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
+    }
+  }
+
   .el-message-box,
   .el-dialog {
     width: calc(100% - 24px) !important;

@@ -6,7 +6,8 @@ for (const mode of [
   'missing',
   'duplicate',
   'initialization-status',
-  'invalid'
+  'invalid',
+  'invalid-wms'
 ]) {
   test(`库存组织统一读取 ${mode}`, async ({ page }) => {
     const offsets: number[] = []
@@ -54,7 +55,7 @@ for (const mode of [
     await page.goto(`/tests/e2e/fixtures/inventory-organizations.html?mode=${mode}`)
     await page.getByRole('button', { name: '读取组织', exact: true }).click()
     const output = page.getByTestId('result')
-    if (mode === 'invalid') {
+    if (mode === 'invalid' || mode === 'invalid-wms') {
       await expect(output).toHaveText('分页参数无效')
       expect(offsets).toEqual([])
       return

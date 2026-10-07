@@ -1,9 +1,95 @@
 interface RecordReferenceMeta {
   label: string
   routeName?: string
+  statusDictCode?: string
 }
 
 const recordReferences: Record<string, RecordReferenceMeta> = {
+  hr_employee_contract: { label: '劳动合同', routeName: 'HrCompliance' },
+  hr_employee_qualification: { label: '员工资质', routeName: 'HrCompliance' },
+  hr_performance_cycle: { label: '考核周期', routeName: 'HrPerformance' },
+  hr_performance_review: { label: '员工考核', routeName: 'HrPerformance' },
+  hr_performance_goal: { label: '绩效目标', routeName: 'HrPerformance' },
+  hr_performance_check_in: { label: '绩效沟通', routeName: 'HrPerformance' },
+  hr_performance_calibration_session: { label: '校准会议', routeName: 'HrPerformance' },
+  mdm_position: { label: '岗位', routeName: 'HrPosition' },
+  mdm_job_profile: { label: '标准职务', routeName: 'HrJobArchitecture' },
+  mdm_employee: {
+    label: '员工档案',
+    routeName: 'HrEmployeeDetail',
+    statusDictCode: 'hrEmploymentStatus'
+  },
+  mdm_employee_assignment: {
+    label: '员工任职记录',
+    routeName: 'HrEmployeeRoster',
+    statusDictCode: 'hrEmploymentStatus'
+  },
+  hr_external_engagement: { label: '外部用工记录', routeName: 'HrContingentWorkforce' },
+  hr_external_worker: { label: '外部人员', routeName: 'HrContingentWorkforce' },
+  mdm_external_vendor: { label: '外部用工供应商', routeName: 'HrContingentWorkforce' },
+  hr_external_engagement_control: { label: '外部用工控制项', routeName: 'HrContingentWorkforce' },
+  hr_internal_mobility_application: { label: '内部流动申请', routeName: 'HrInternalMobility' },
+  hr_internal_opportunity: { label: '内部机会', routeName: 'HrInternalMobility' },
+  hr_lifecycle_case: { label: '员工入转调离记录', routeName: 'HrLifecycle' },
+  hr_lifecycle_task: { label: '生命周期执行任务', routeName: 'HrLifecycle' },
+  hr_lifecycle_template: { label: '标准任务包', routeName: 'HrLifecycle' },
+  hr_lifecycle_template_task: { label: '任务包任务', routeName: 'HrLifecycle' },
+  hr_personnel_change: { label: '人事异动记录', routeName: 'HrPersonnelChange' },
+  hr_position_competency: { label: '岗位能力要求' },
+  hr_position_headcount: { label: '岗位编制记录', routeName: 'HrHeadcount' },
+  hr_recruitment_handoff: { label: '招聘交接记录', routeName: 'HrRecruitment' },
+  hr_recruitment_requisition: { label: '招聘需求', routeName: 'HrRecruitment' },
+  hr_candidate: { label: '招聘候选人', routeName: 'HrRecruitment' },
+  hr_succession_plan: { label: '继任计划', routeName: 'HrSuccession' },
+  hr_succession_candidate: { label: '继任候选人', routeName: 'HrSuccession' },
+  hr_succession_development_action: { label: '继任发展行动', routeName: 'HrSuccession' },
+  hr_training_plan: { label: '培养计划', routeName: 'HrTalentDevelopment' },
+  hr_learning_course: { label: '课程', routeName: 'HrTalentDevelopment' },
+  hr_learning_course_competency: { label: '课程能力映射', routeName: 'HrTalentDevelopment' },
+  hr_learning_session: { label: '培训班次', routeName: 'HrTalentDevelopment' },
+  hr_training_enrollment: { label: '学习结果', routeName: 'HrTalentDevelopment' },
+  hr_learning_certificate: { label: '学习证书', routeName: 'HrTalentDevelopment' },
+  hr_organization_design_scenario: { label: '组织变革方案', routeName: 'HrOrganizationDesign' },
+  hr_organization_design_change: { label: '组织变更项', routeName: 'HrOrganizationDesign' },
+  hr_shift: { label: '班次规则', routeName: 'HrAttendance' },
+  hr_shift_assignment: { label: '员工排班', routeName: 'HrAttendance' },
+  hr_attendance_record: { label: '日工时记录', routeName: 'HrAttendance' },
+  hr_attendance_correction: { label: '考勤修正单', routeName: 'HrAttendance' },
+  hr_attendance_period: { label: '考勤期间', routeName: 'HrAttendance' },
+  hr_leave_type: { label: '假别定义', routeName: 'HrAbsence' },
+  hr_leave_policy: { label: '休假政策', routeName: 'HrAbsence' },
+  hr_leave_balance: { label: '员工假期余额', routeName: 'HrAbsence' },
+  hr_leave_request: { label: '休假申请', routeName: 'HrAbsence' },
+  hr_leave_ledger: { label: '假期余额台账', routeName: 'HrAbsence' },
+  hr_pay_component: { label: '薪酬项目', routeName: 'HrCompensation' },
+  hr_compensation_plan: { label: '薪酬方案', routeName: 'HrCompensation' },
+  hr_salary_band: { label: '薪级范围', routeName: 'HrCompensation' },
+  hr_employee_compensation: { label: '员工薪酬', routeName: 'HrCompensation' },
+  hr_compensation_review_cycle: { label: '调薪周期', routeName: 'HrCompensationReview' },
+  hr_compensation_review_item: { label: '员工调薪工作表', routeName: 'HrCompensationReview' },
+  hr_compensation_review_budget: { label: '组织调薪预算', routeName: 'HrCompensationReview' },
+  hr_policy_document: { label: '政策版本', routeName: 'HrPolicyAcknowledgement' },
+  hr_policy_receipt: { label: '员工政策签收', routeName: 'HrPolicyAcknowledgement' },
+  hr_self_service_request: { label: '员工服务工单', routeName: 'HrSelfService' },
+  hr_service_catalog: { label: '员工服务目录', routeName: 'HrSelfService' },
+  hr_employee_relation_case: { label: '员工关系案件', routeName: 'HrEmployeeRelations' },
+  hr_employee_relation_action: { label: '员工关系处置行动', routeName: 'HrEmployeeRelations' },
+  hr_workforce_plan_line: { label: '人力规划明细', routeName: 'HrHeadcount' },
+  hr_workforce_plan_cycle: { label: '人力规划周期', routeName: 'HrHeadcount' },
+  smis_emergency_rescue_plan: { label: '应急预案' },
+  smis_emergency_rescue_plan_position: { label: '应急预案适用岗位' },
+  smis_position_risk_control: { label: '岗位风险管控', routeName: 'SmisPositionRiskList' },
+  smis_position_safety_responsibility: {
+    label: '岗位安全责任制',
+    routeName: 'SmisPositionSafetyResponsibility'
+  },
+  smis_position_work_instruction_scope: {
+    label: '岗位作业指导书',
+    routeName: 'SmisPositionWorkInstruction'
+  },
+  smis_ppe_issuance_standard_position: { label: '劳保用品发放标准岗位' },
+  smis_risk_control_measure_position: { label: '风险管控措施适用岗位' },
+  smis_tool_issuance_standard_position: { label: '工器具发放标准岗位' },
   smis_hazardous_waste_document: { label: '危废入出库单据' },
   fms_account_set: { label: '企业账套', routeName: 'FinanceAccountSet' },
   fms_accounting_period: { label: '会计期间', routeName: 'FinanceAccountSet' },
@@ -74,25 +160,33 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   wms_assembly_component: { label: '组装拆卸组件' },
   wms_assembly_document: { label: '组装拆卸单' },
   wms_count_adjustment_line: { label: '盘点调整明细' },
+  wms_count_adjustment_document: { label: '盘点调整单' },
   wms_count_line: { label: '盘点明细' },
+  wms_initial_stock_document: { label: '期初库存单' },
   wms_initial_stock_line: { label: '期初库存明细' },
   wms_inventory_batch: { label: '库存批次' },
   wms_inventory_movement: { label: '库存流水' },
   wms_inventory_reservation: { label: '库存预留' },
   wms_issue_request_line: { label: '领料申请明细' },
+  wms_issue_request: { label: '领料申请单' },
   wms_opening_balance: { label: '期初余额' },
   wms_production_material_line: { label: '生产用料明细' },
+  wms_production_material_document: { label: '生产用料单' },
   wms_project_transfer_document: { label: '项目调拨单' },
   wms_purchase_document_line: { label: '采购入退库明细' },
   wms_sales_document_line: { label: '销售出退库明细' },
+  wms_sales_document: { label: '销售出退库单' },
   wms_sales_outbound_allocation: { label: '销售出库分配' },
   wms_serial_number: { label: '序列号台账' },
   wms_transfer_document: { label: '库存调拨单' },
-  wms_transfer_request_line: { label: '调拨申请明细' }
+  wms_transfer_request_line: { label: '调拨申请明细' },
+  wms_transfer_request_document: { label: '调拨申请单' }
 }
 
 export function getRecordReferenceMeta(table: string): RecordReferenceMeta {
-  return recordReferences[table] ?? { label: '关联业务记录' }
+  return Object.prototype.hasOwnProperty.call(recordReferences, table)
+    ? recordReferences[table]!
+    : { label: '关联业务记录' }
 }
 
 const statuses: Record<string, string> = {
@@ -116,6 +210,9 @@ const statuses: Record<string, string> = {
   cancelled: '已取消',
   pending: '待处理',
   active: '有效',
+  probation: '试用期',
+  leave: '休假中',
+  terminated: '已离职',
   suspended: '已暂停',
   held: '持有中',
   endorsed: '已背书',
@@ -129,9 +226,14 @@ const statuses: Record<string, string> = {
   disposed: '已处置',
   materials_ready: '物料已生成',
   bom_ready: 'BOM 已生成',
-  generated: '工单已生成'
+  generated: '已生成'
 }
 
 export function formatReferenceStatus(status?: string | null): string {
-  return status ? (statuses[status] ?? (/\p{Script=Han}/u.test(status) ? status : '待核对')) : ''
+  if (!status) return ''
+  return Object.prototype.hasOwnProperty.call(statuses, status)
+    ? statuses[status]!
+    : /\p{Script=Han}/u.test(status)
+      ? status
+      : '待核对'
 }

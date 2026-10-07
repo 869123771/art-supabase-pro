@@ -27,6 +27,7 @@ import IssuePostDialog from '../../../modules/art-supabase-wms/src/views/outboun
 import ProjectTransferDialog from '../../../modules/art-supabase-wms/src/views/inventory-trace/stock/modules/project-transfer-dialog.vue'
 import { useUserStore } from '@/store/modules/user'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+import { useMenuStore } from '@/store/modules/menu'
 import ReceiptBinDialog from '@/components/business/scm-receipt-target-workspace/modules/receipt-bin-dialog.vue'
 import ReceiptSerialDialog from '@/components/business/scm-receipt-target-workspace/modules/receipt-serial-dialog.vue'
 import WmsBinPicker from '../../../modules/art-supabase-wms/src/views/shared/wms-bin-picker.vue'
@@ -349,7 +350,37 @@ const app = createApp(
                   'button',
                   {
                     onClick: () =>
-                      countCreate.value?.handleOpen({ ...context, warehouses: [], sections: [] })
+                      countCreate.value?.handleOpen({
+                        ...context,
+                        warehouses: new URLSearchParams(location.search).has('countScope')
+                          ? ['first', 'second'].map((name) => ({
+                              id: `warehouse-${name}`,
+                              tenantId: 'tenant-test',
+                              organizationId: 'org-test',
+                              warehouseCode: name.toUpperCase(),
+                              warehouseName: `测试盘点仓库 ${name}`,
+                              warehouseType: 'normal',
+                              status: 'enabled',
+                              enableLocations: false,
+                              businessScopes: []
+                            }))
+                          : [],
+                        sections: new URLSearchParams(location.search).has('countScope')
+                          ? [
+                              {
+                                id: 'section-active',
+                                tenantId: 'tenant-test',
+                                projectId: 'project-active',
+                                constructionNo: 'COUNT-SECTION',
+                                sectionName: '测试盘点施工号',
+                                status: 'active',
+                                remark: null,
+                                createdAt: '',
+                                updatedAt: ''
+                              }
+                            ]
+                          : []
+                      })
                   },
                   '测试盘点创建'
                 ),
@@ -510,10 +541,49 @@ app.use(store)
 useUserStore(store).setUserInfo({
   userId: 'user-test',
   tenantId: 'tenant-test',
-  platformSuper: true
+  platformSuper: !new URLSearchParams(location.search).has('importPermission')
 })
+if (new URLSearchParams(location.search).get('importPermission') === 'allow') {
+  useMenuStore(store).setButtonList(
+    ['WmsCountGain:Import', 'WmsCountLoss:Import', 'WmsTransfer:Import'].map((name) => ({
+      name,
+      path: '',
+      type: 'button',
+      meta: { title: name }
+    }))
+  )
+}
 useTenantScopeStore(store).selectedTenantId = 'tenant-test'
 useUserStore(store).setDictMap({
+  wmsInitialStockType: [
+    { name: '库存类型', code: 'wmsInitialStockType', label: '普通', value: 'normal', status: '1' }
+  ],
+  wmsInitialStockCondition: [
+    {
+      name: '库存状态',
+      code: 'wmsInitialStockCondition',
+      label: '可用',
+      value: 'available',
+      status: '1'
+    }
+  ],
+  mdmBusinessOwnerType: [
+    { name: '货主类型', code: 'mdmBusinessOwnerType', label: '自有', value: 'self', status: '1' },
+    {
+      name: '货主类型',
+      code: 'mdmBusinessOwnerType',
+      label: '供应商',
+      value: 'supplier',
+      status: '1'
+    },
+    {
+      name: '货主类型',
+      code: 'mdmBusinessOwnerType',
+      label: '客户',
+      value: 'customer',
+      status: '1'
+    }
+  ],
   wmsAdjustmentCondition: [
     {
       name: '测试库存状态',

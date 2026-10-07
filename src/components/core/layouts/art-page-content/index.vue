@@ -49,6 +49,7 @@
   } from 'vue'
   import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
   import { ElScrollbar } from 'element-plus'
+  import { useTimeoutFn } from '@vueuse/core'
   import { useAutoLayoutHeight } from '@/hooks/core/useLayoutHeight'
   import { useSettingStore } from '@/store/modules/setting'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
@@ -97,6 +98,13 @@
   const isRefresh = shallowRef(true)
   const isOpenRouteInfo = import.meta.env.VITE_OPEN_ROUTE_INFO
   const showTransitionMask = ref(false)
+  const { start: scheduleMaskClose } = useTimeoutFn(
+    () => {
+      showTransitionMask.value = false
+    },
+    50,
+    { immediate: false }
+  )
 
   // 标记是否是首次加载（浏览器刷新）
   const isFirstLoad = ref(true)
@@ -117,9 +125,7 @@
     if (val !== oldVal) {
       showTransitionMask.value = true
       // 延迟隐藏遮罩，给足时间让页面完成切换
-      setTimeout(() => {
-        showTransitionMask.value = false
-      }, 50)
+      scheduleMaskClose()
     }
 
     nextTick(() => {

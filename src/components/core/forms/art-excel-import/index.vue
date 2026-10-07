@@ -48,10 +48,12 @@
     'file-change': [file: File, uploadFile: UploadFile]
     'import-success': [data: Array<Record<string, unknown>>, file: File, uploadFile: UploadFile]
     'import-error': [error: Error]
+    'parsing-change': [parsing: boolean]
   }>()
 
   const fileInputRef = ref<HTMLInputElement>()
   const isParsing = ref(false)
+  watch(isParsing, (value) => emit('parsing-change', value), { flush: 'sync' })
   let parseRequest = 0
   watch(
     () => props.contextKey,
@@ -63,6 +65,7 @@
   )
   onBeforeUnmount(() => {
     parseRequest += 1
+    isParsing.value = false
   })
   const isDisabled = computed(
     () => props.disabled || isParsing.value || Boolean(props.buttonProps?.loading)
@@ -73,7 +76,7 @@
   }
 
   const handleFileChange = async (event: Event): Promise<void> => {
-    if (isParsing.value) return
+    if (isDisabled.value) return
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
     if (!file) return

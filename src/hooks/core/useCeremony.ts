@@ -39,12 +39,11 @@
  * @module useCeremony
  */
 
-import { useTimeoutFn, useIntervalFn, useDateFormat } from '@vueuse/core'
+import { useTimeoutFn, useIntervalFn, tryOnScopeDispose } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
 import { useSettingStore } from '@/store/modules/setting'
 import { mittBus } from '@/utils/sys'
-import { festivalConfigList } from '@/config/modules/festival'
+import { useCurrentFestival } from './useCurrentFestival'
 
 /**
  * 节日庆祝配置常量
@@ -67,46 +66,27 @@ const FESTIVAL_CONFIG = {
 export function useCeremony() {
   const settingStore = useSettingStore()
   const { holidayFireworksLoaded, isShowFireworks } = storeToRefs(settingStore)
+  const { currentFestivalData, currentFestivalDate } = useCurrentFestival()
 
   let fireworksInterval: { pause: () => void } | null = null
+  let initialTimer: { stop: () => void } | null = null
+  let textTimer: { stop: () => void } | null = null
 
-  /**
-   * 检查日期是否在节日范围内
-   * @param currentDate 当前日期
-   * @param festivalDate 节日开始日期
-   * @param festivalEndDate 节日结束日期（可选）
-   */
-  const isDateInRange = (
-    currentDate: string,
-    festivalDate: string,
-    festivalEndDate?: string
-  ): boolean => {
-    if (!festivalEndDate) {
-      // 单日节日
-      return currentDate === festivalDate
-    }
-
-    // 跨日期节日
-    const current = new Date(currentDate)
-    const start = new Date(festivalDate)
-    const end = new Date(festivalEndDate)
-
-    return current >= start && current <= end
+  const stopTimers = (): void => {
+    initialTimer?.stop()
+    textTimer?.stop()
+    fireworksInterval?.pause()
+    initialTimer = null
+    textTimer = null
+    fireworksInterval = null
   }
-
-  /**
-   * 获取当前日期对应的节日数据
-   */
-  const currentFestivalData = computed(() => {
-    const currentDate = useDateFormat(new Date(), 'YYYY-MM-DD').value
-    return festivalConfigList.find((item) => isDateInRange(currentDate, item.date, item.endDate))
-  })
+  tryOnScopeDispose(stopTimers)
 
   /**
    * 更新节日日期到 store
    */
   const updateFestivalDate = () => {
-    settingStore.setFestivalDate(currentFestivalData.value?.date || '')
+    settingStore.setFestivalDate(currentFestivalData.value ? currentFestivalDate.value : '')
   }
 
   /**
@@ -120,9 +100,11 @@ export function useCeremony() {
    * 完成烟花效果后显示文本
    */
   const showFestivalText = () => {
-    settingStore.setholidayFireworksLoaded(true)
+    settingStore.setHolidayFireworksLoaded(true)
 
-    useTimeoutFn(() => {
+    textTimer?.stop()
+    textTimer = useTimeoutFn(() => {
+      textTimer = null
       settingStore.setShowFestivalText(true)
       updateFestivalDate()
     }, FESTIVAL_CONFIG.TEXT_DELAY)
@@ -157,18 +139,18 @@ export function useCeremony() {
       return
     }
 
-    const { start } = useTimeoutFn(startFireworksLoop, FESTIVAL_CONFIG.INITIAL_DELAY)
-    start()
+    stopTimers()
+    initialTimer = useTimeoutFn(() => {
+      initialTimer = null
+      startFireworksLoop()
+    }, FESTIVAL_CONFIG.INITIAL_DELAY)
   }
 
   /**
    * 清理烟花效果
    */
   const cleanup = () => {
-    if (fireworksInterval) {
-      fireworksInterval.pause()
-      fireworksInterval = null
-    }
+    stopTimers()
     settingStore.setShowFestivalText(false)
     updateFestivalDate()
   }

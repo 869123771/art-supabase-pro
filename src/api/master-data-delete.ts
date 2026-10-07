@@ -15,14 +15,20 @@ export async function fetchRecordDeleteDependencies(
 ): Promise<RecordDeleteDependency[]> {
   const { data, error } = await fetchAllRangePages<RecordDeleteDependency>(({ from, to }) =>
     responseHandle<RecordDeleteDependency[]>(
-      () =>
-        supabase
-          .rpc('get_record_delete_dependency_details', {
-            p_table: context.table,
-            p_ids: context.ids,
-            p_constraint: context.constraint ?? null
-          })
-          .range(from, to),
+      () => {
+        const query =
+          context.table === 'mdm_position'
+            ? supabase.rpc('hr_get_position_delete_dependencies_secure', {
+                p_ids: context.ids,
+                p_constraint: context.constraint ?? null
+              })
+            : supabase.rpc('get_record_delete_dependency_details', {
+                p_table: context.table,
+                p_ids: context.ids,
+                p_constraint: context.constraint ?? null
+              })
+        return query.range(from, to)
+      },
       { breakReturn: true, showErrorMessage: false, errorMessage: '关联记录检查失败，请重试' }
     )
   )

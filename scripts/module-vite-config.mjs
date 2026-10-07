@@ -10,6 +10,7 @@ import ElementPlus from 'unplugin-element-plus/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { createViteWatchPolicy } from './vite-watch-policy.mjs'
+import { matchElementPlusStyles } from './element-plus-style-chunks.mjs'
 
 function createSourceTransformPattern(...roots) {
   const rootPattern = roots
@@ -112,7 +113,8 @@ export async function createModuleViteConfig({
     server: {
       host: true,
       port,
-      watch: createViteWatchPolicy(outDir),
+      watch: mode === 'e2e' ? null : createViteWatchPolicy(outDir),
+      hmr: mode === 'e2e' ? false : undefined,
       fs: { allow: [applicationRoot, platformRoot] }
     },
     preview: { host: true, port },
@@ -163,7 +165,14 @@ export async function createModuleViteConfig({
       emptyOutDir: true,
       reportCompressedSize: false,
       chunkSizeWarningLimit: buildLogPolicy?.chunkSizeWarningLimit ?? 2000,
-      ...(buildLogPolicy ? { rolldownOptions: buildLogPolicy.rolldownOptions } : {})
+      rolldownOptions: {
+        ...buildLogPolicy?.rolldownOptions,
+        output: {
+          codeSplitting: {
+            groups: [{ name: 'element-plus-styles', test: matchElementPlusStyles, priority: 95 }]
+          }
+        }
+      }
     },
     css: {
       preprocessorOptions: {

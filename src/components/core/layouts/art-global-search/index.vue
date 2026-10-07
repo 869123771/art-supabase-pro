@@ -172,6 +172,7 @@
   import { router } from '@/router'
   import { isNavigationFailure, NavigationFailureType } from 'vue-router'
   import { ElMessage, type ScrollbarInstance } from 'element-plus'
+  import { useTimeoutFn } from '@vueuse/core'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
 
   defineOptions({ name: 'ArtGlobalSearch' })
@@ -194,6 +195,27 @@
   const navigationPending = ref(false)
   const navigationTargetKey = ref<string | null>(null)
   const navigationTargetTitle = ref('')
+  const { start: focusInput, stop: stopFocusInput } = useTimeoutFn(
+    () => {
+      if (showSearchDialog.value) searchInput.value?.focus()
+    },
+    100,
+    { immediate: false }
+  )
+  const { start: finishKeyboardNavigation, stop: stopKeyboardNavigation } = useTimeoutFn(
+    () => {
+      isKeyboardNavigating.value = false
+    },
+    100,
+    { immediate: false }
+  )
+  watch(showSearchDialog, (open) => {
+    if (!open) {
+      stopFocusInput()
+      stopKeyboardNavigation()
+      isKeyboardNavigating.value = false
+    }
+  })
 
   const getItemKey = (item: AppRouteRecord) =>
     item.path || String(item.meta.link || item.name || '')
@@ -236,12 +258,6 @@
         showSearchDialog.value = false
       }
     }
-  }
-
-  const focusInput = () => {
-    setTimeout(() => {
-      searchInput.value?.focus()
-    }, 100)
   }
 
   // 搜索逻辑
@@ -312,12 +328,6 @@
       scrollToHighlightedHistoryItem()
     }
     finishKeyboardNavigation()
-  }
-
-  const finishKeyboardNavigation = () => {
-    setTimeout(() => {
-      isKeyboardNavigating.value = false
-    }, 100)
   }
 
   const scrollToHighlightedItem = () => {

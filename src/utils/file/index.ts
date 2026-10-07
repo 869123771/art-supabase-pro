@@ -200,21 +200,26 @@ export const mapExcelRowsToRecords = <TRecord extends ExcelRecord>(
 ): TRecord[] => {
   return rows
     .map((row) => {
-      const output: Record<string, unknown> = {}
+      const entries: Array<[string, unknown]> = []
 
       columns.forEach((column) => {
         const key = String(column.key)
-        const rawValue = row[column.title] ?? row[key]
+        const titledValue = Object.prototype.hasOwnProperty.call(row, column.title)
+          ? row[column.title]
+          : undefined
+        const rawValue =
+          titledValue ?? (Object.prototype.hasOwnProperty.call(row, key) ? row[key] : undefined)
         if (rawValue === undefined || rawValue === null) return
 
-        output[key] = typeof rawValue === 'string' ? rawValue.trim() : rawValue
+        entries.push([key, typeof rawValue === 'string' ? rawValue.trim() : rawValue])
       })
 
-      return output as TRecord
+      return Object.fromEntries(entries) as TRecord
     })
     .filter((row) =>
       columns.every((column) => {
         if (!column.required) return true
+        if (!Object.prototype.hasOwnProperty.call(row, String(column.key))) return false
         const value = row[String(column.key)]
         return value !== undefined && value !== null && String(value).trim() !== ''
       })

@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-DAXXjFlN.js";import{En as t,Nt as n,Ut as r,fn as i,ln as a}from"./framework-CQuaCGL1.js";import{t as o}from"./business-table-row-actions-DJhdiHFz.js";var s=r({name:`HrTableActions`,__name:`hr-table-actions`,setup(e){return(e,r)=>(a(),n(o,null,{default:t(()=>[i(e.$slots,`default`)]),_:3}))}}),c=e({default:()=>l}),l=s;export{c as n,l as t};

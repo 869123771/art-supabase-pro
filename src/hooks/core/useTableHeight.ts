@@ -32,62 +32,8 @@ interface TableHeightOptions {
   paginationSpacing: Ref<number>
 }
 
-/**
- * 表格高度计算器类
- */
-class TableHeightCalculator {
-  // 常量配置
-  private static readonly DEFAULT_TABLE_HEADER_HEIGHT = 44
-  private static readonly TABLE_HEADER_SPACING = 12
-
-  constructor(private options: TableHeightOptions) {}
-
-  /**
-   * 计算容器高度
-   */
-  calculate(): { height: string } {
-    const offset = this.calculateOffset()
-    return {
-      height: offset === 0 ? '100%' : `calc(100% - ${offset}px)`
-    }
-  }
-
-  /**
-   * 计算偏移量
-   */
-  private calculateOffset(): number {
-    const additionalHeightOffset = Math.max(0, this.options.additionalHeightOffset.value)
-
-    if (!this.options.showTableHeader.value) {
-      return additionalHeightOffset + this.calculatePaginationOffset()
-    }
-
-    const headerHeight = this.getHeaderHeight()
-    const paginationOffset = this.calculatePaginationOffset()
-
-    return (
-      additionalHeightOffset +
-      headerHeight +
-      paginationOffset +
-      TableHeightCalculator.TABLE_HEADER_SPACING
-    )
-  }
-
-  /**
-   * 获取表格头部高度
-   */
-  private getHeaderHeight(): number {
-    return this.options.tableHeaderHeight.value || TableHeightCalculator.DEFAULT_TABLE_HEADER_HEIGHT
-  }
-
-  /**
-   * 计算分页器偏移量
-   */
-  private calculatePaginationOffset(): number {
-    const { paginationHeight, paginationSpacing } = this.options
-    return paginationHeight.value === 0 ? 0 : paginationHeight.value + paginationSpacing.value
-  }
-}
+const DEFAULT_TABLE_HEADER_HEIGHT = 44
+const TABLE_HEADER_SPACING = 12
 
 /**
  * 表格高度计算 Hook
@@ -102,8 +48,15 @@ class TableHeightCalculator {
  */
 export function useTableHeight(options: TableHeightOptions) {
   const containerHeight = computed(() => {
-    const calculator = new TableHeightCalculator(options)
-    return calculator.calculate()
+    const paginationHeight = options.paginationHeight.value
+    const paginationOffset =
+      paginationHeight === 0 ? 0 : paginationHeight + options.paginationSpacing.value
+    const headerOffset = options.showTableHeader.value
+      ? (options.tableHeaderHeight.value || DEFAULT_TABLE_HEADER_HEIGHT) + TABLE_HEADER_SPACING
+      : 0
+    const offset =
+      Math.max(0, options.additionalHeightOffset.value) + headerOffset + paginationOffset
+    return { height: offset === 0 ? '100%' : `calc(100% - ${offset}px)` }
   })
 
   return {

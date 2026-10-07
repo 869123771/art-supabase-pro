@@ -54,6 +54,35 @@ for (const trigger of [
         animations: 'disabled'
       })
     }
+    const dateWidths = await dialog.locator('.art-form .el-date-editor').evaluateAll((elements) =>
+      elements.map((element) => ({
+        label: element.closest('.el-form-item')?.querySelector('.el-form-item__label')?.textContent,
+        ratio:
+          element.getBoundingClientRect().width /
+          element.closest('.el-form-item__content')!.getBoundingClientRect().width
+      }))
+    )
+    for (const date of dateWidths)
+      expect(date.ratio, date.label ?? '日期控件').toBeGreaterThan(0.95)
+    if (trigger === '测试盘盈单创建') {
+      await dialog.getByRole('button', { name: '全屏', exact: true }).click()
+      await expect(dialog.getByRole('button', { name: '退出全屏', exact: true })).toBeVisible()
+      const lowerDescription = dialog.getByText('支持多选物料，编码、规格和默认单位自动带入。', {
+        exact: true
+      })
+      await lowerDescription.scrollIntoViewIfNeeded()
+      await expect(lowerDescription).toBeInViewport()
+      const lowerBounds = await lowerDescription.boundingBox()
+      const footerBounds = await dialog.locator('.el-drawer__footer').boundingBox()
+      expect(lowerBounds).not.toBeNull()
+      expect(footerBounds).not.toBeNull()
+      expect(lowerBounds!.y + lowerBounds!.height).toBeLessThanOrEqual(footerBounds!.y)
+      await page.screenshot({
+        path: testInfo.outputPath('gain-fullscreen-bottom.png'),
+        animations: 'disabled'
+      })
+      await dialog.getByRole('button', { name: '退出全屏', exact: true }).click()
+    }
     if (trigger === '测试施工号创建') {
       await expect(dialog.getByText('启用', { exact: true })).toBeVisible()
       await expect(dialog.getByText('关闭', { exact: true })).toBeVisible()

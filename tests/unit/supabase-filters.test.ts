@@ -184,3 +184,32 @@ test('filter maps build stable specs with matching normalized operation keys', (
     { col: 'tenantId', op: 'eq', val: 7 }
   ])
 })
+
+test('inherited operator names fall back to equality without changing the query instance', () => {
+  for (const operation of ['__proto__', 'constructor', 'toString']) {
+    const query = new QueryRecorder()
+    assert.equal(applyFilters(query, [{ col: 'status', op: operation, val: 'active' }]), query)
+    assert.deepEqual(query.calls, [{ operation: 'eq', column: 'status', value: 'active' }])
+  }
+})
+
+test('key conversion preserves special own keys without changing object prototypes', () => {
+  const source = JSON.parse('{"__proto__":{"marker":true},"tenantId":7}')
+  const converted = convertKeysToSnake(source)
+  assert.equal(Object.getPrototypeOf(converted), Object.prototype)
+  assert.equal(Object.hasOwn(converted, '__proto__'), true)
+  assert.equal(converted.tenant_id, 7)
+})
+
+test('filter specs use only explicit operator mappings for special column names', () => {
+  const filters: Filters = JSON.parse('{"__proto__":"active","constructor":"open"}')
+  const operations: Record<string, Op> = JSON.parse('{"__proto__":"neq"}')
+  assert.deepEqual(buildSpecsFromMap(filters, operations, false), [
+    { col: '__proto__', op: 'neq', val: 'active' },
+    { col: 'constructor', op: 'eq', val: 'open' }
+  ])
+  assert.deepEqual(buildSpecsFromMap(filters, operations), [
+    { col: '__proto__', op: 'neq', val: 'active' },
+    { col: 'constructor', op: 'eq', val: 'open' }
+  ])
+})

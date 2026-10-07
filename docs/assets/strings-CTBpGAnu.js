@@ -1,1 +1,0 @@
-import{qn as e}from"./framework-BGq_7U6Z.js";var t=(e=``)=>e.replace(/[|\\{}()[\]^$+*?.]/g,`\\$&`).replace(/-/g,`\\x2d`),n=t=>e(t);export{t as n,n as t};

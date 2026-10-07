@@ -70,7 +70,7 @@
   const { showDrawer } = settingsPanel
 
   // 获取各种处理器
-  const { handleOpen, handleClose, closeDrawer } = settingsPanel.useDrawerControl()
+  const { handleOpen, handleClose, closeDrawer } = settingsPanel.drawerControl
   const { initializeSettings, cleanupSettings } = settingsPanel.useSettingsInitializer()
 
   // 监听 props 变化

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expectInputTextUnclipped } from './support/input-text-width'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(120_000)
@@ -6,6 +7,8 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
   test(`${kind}详情失败恢复及两行编辑复制保持布局`, async ({ page }, testInfo) => {
     let failure = true
     let serialFailure = true
+    let batchSerialFailure = true
+    const batchSerialRequests: string[] = []
     let writes = 0
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
@@ -34,7 +37,7 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       batch_no: `BATCH-TEST-${n}`,
       warehouse_id: 'warehouse-test',
       bin_id: null,
-      source_batch_id: null,
+      source_batch_id: outbound && n === 1 ? 'source-batch-test' : null,
       pack_id: null,
       source_line_id: null,
       return_type: negative ? 'good' : null,
@@ -44,9 +47,9 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       stock_status: 'available',
       keeper_id: null,
       auxiliary_unit_id: null,
-      auxiliary_quantity: null,
+      auxiliary_quantity: null as number | null,
       auxiliary_unit_2_id: null,
-      auxiliary_quantity_2: null,
+      auxiliary_quantity_2: null as number | null,
       production_date: null,
       expiry_date: null,
       tracking_no: null,
@@ -168,8 +171,65 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         ? route.fulfill({ status: 503, json: { message: '测试单据读取失败', code: 'XX000' } })
         : route.fulfill({ json: document })
     )
+    await page.route('**/rest/v1/mdm_warehouse?*', (route) =>
+      route.fulfill({
+        headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' },
+        json: [1, 2].map((n) => ({
+          id: n === 1 ? 'warehouse-test' : 'warehouse-second',
+          tenant_id: 'tenant-test',
+          organization_id: 'org-test',
+          warehouse_code: `WH-${n}`,
+          warehouse_name: `行内仓库${n}`,
+          warehouse_type: 'raw_material',
+          status: 'enabled',
+          enable_locations: false
+        }))
+      })
+    )
+    await page.route('**/rest/v1/wms_inventory_batch?*', (route) =>
+      route.fulfill({
+        headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' },
+        json: [
+          {
+            id: 'source-batch-new',
+            tenant_id: 'tenant-test',
+            material_id: 'material-1',
+            warehouse_id: 'warehouse-test',
+            batch_no: 'NEW-SOURCE-BATCH',
+            quantity: 5,
+            stock_type: 'normal',
+            owner_type: 'self',
+            owner_id: null,
+            stock_status: 'available',
+            status: 'normal',
+            material: {
+              material_code: 'MAT-1',
+              material_name: '新来源物料',
+              serial_management_enabled: true
+            },
+            warehouse: { warehouse_code: 'WH-1', warehouse_name: '行内仓库1' },
+            bin: null
+          }
+        ]
+      })
+    )
     await page.route('**/rest/v1/wms_serial_number?*', (route) => {
       const url = new URL(route.request().url())
+      if (url.searchParams.has('batch_id')) {
+        batchSerialRequests.push(url.searchParams.get('batch_id')!)
+        expect(['eq.source-batch-test', 'eq.source-batch-new']).toContain(
+          url.searchParams.get('batch_id')
+        )
+        return batchSerialFailure
+          ? route.fulfill({ status: 503, json: { code: 'XX000', message: '测试来源序列号失败' } })
+          : route.fulfill({
+              json: [1, 2].map((n) => ({
+                id: `serial-${n}`,
+                serial_no: `SN-TEST-00${n}`,
+                status: 'in_stock'
+              }))
+            })
+      }
       expect(url.searchParams.get('id')).toContain('serial-1')
       expect(url.searchParams.has('status')).toBe(false)
       if (serialFailure)
@@ -187,7 +247,36 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         }))
       })
     })
+    await page.route('**/rest/v1/sys_dictionary?*', (route) => {
+      const code = new URL(route.request().url()).searchParams
+        .get('dict_type_table.code')
+        ?.replace(/^eq\./, '')
+      const samples: Record<string, Array<[string, string]>> = {
+        wmsInitialStockType: [['normal', '普通']],
+        wmsInitialStockCondition: [['available', '可用']],
+        mdmBusinessOwnerType: [
+          ['self', '自有'],
+          ['supplier', '供应商'],
+          ['customer', '客户']
+        ]
+      }
+      return route.fulfill({
+        json: (samples[code || ''] || []).map(([value, label], index) => ({
+          id: `${code}-${value}`,
+          code: value,
+          value,
+          label,
+          status: '1',
+          sort: index,
+          dict_type_table: { code, name: code }
+        }))
+      })
+    })
     await page.goto(`/tests/e2e/fixtures/wms-operation-retry.html?kind=${kind}`)
+    const originalBaseQuantity = lines[0].base_quantity
+    lines[0].base_quantity = negative ? -12345678.1234 : 12345678.1234
+    lines[0].auxiliary_quantity = lines[0].base_quantity
+    lines[0].auxiliary_quantity_2 = lines[0].base_quantity
     await page.getByRole('button', { name: '测试生产单据 view', exact: true }).click()
     const drawer = page.locator('.el-drawer:visible')
     await expect(drawer.getByText('单据加载失败', { exact: true })).toBeVisible()
@@ -195,11 +284,112 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
     failure = false
     await drawer.getByRole('button', { name: '重新加载', exact: true }).click()
     await expect(drawer.getByText(document.document_no, { exact: true }).first()).toBeVisible()
+    const baseColumn = await drawer
+      .getByRole('columnheader', { name: '基本数量', exact: true })
+      .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+    const baseCell = drawer
+      .locator('.el-table__body tr')
+      .first()
+      .locator('td')
+      .nth(baseColumn)
+      .locator('.cell')
+    await expect(baseCell).toHaveText(String(lines[0].base_quantity))
+    expect(
+      await baseCell.evaluate((element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return (
+          new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size ===
+            1 && element.scrollWidth <= element.clientWidth
+        )
+      }),
+      '基本数量长值必须完整单行显示'
+    ).toBe(true)
+    lines[0].base_quantity = originalBaseQuantity
+    await baseCell.scrollIntoViewIfNeeded()
+    await baseCell.evaluate((element) => {
+      const wrap = element.closest('.el-table')?.querySelector('.el-scrollbar__wrap')
+      if (!(wrap instanceof HTMLElement)) throw new Error('基本数量滚动容器缺失')
+      const left = Math.max(
+        wrap.getBoundingClientRect().left,
+        ...Array.from(
+          element.closest('tr')?.querySelectorAll('.el-table-fixed-column--left') ?? []
+        ).map((cell) => cell.getBoundingClientRect().right)
+      )
+      wrap.scrollLeft += element.getBoundingClientRect().left - left - 16
+    })
+    await page.screenshot({
+      path: testInfo.outputPath('production-readonly-base-long.png'),
+      animations: 'allow'
+    })
+    for (const label of ['辅助数量', '辅助数量2']) {
+      const column = await drawer
+        .getByRole('columnheader', { name: label, exact: true })
+        .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+      const cell = drawer
+        .locator('.el-table__body tr')
+        .first()
+        .locator('td')
+        .nth(column)
+        .locator('.cell')
+      await expect(cell).toHaveText(String(negative ? -12345678.1234 : 12345678.1234))
+      expect(
+        await cell.evaluate((element) => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          return (
+            new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size ===
+              1 && element.scrollWidth <= element.clientWidth
+          )
+        }),
+        `${label}长值必须完整单行显示`
+      ).toBe(true)
+      await cell.scrollIntoViewIfNeeded()
+      await cell.evaluate((element) => {
+        const wrap = element.closest('.el-table')?.querySelector('.el-scrollbar__wrap')
+        if (!(wrap instanceof HTMLElement)) throw new Error('辅助数量滚动容器缺失')
+        const left = Math.max(
+          wrap.getBoundingClientRect().left,
+          ...Array.from(
+            element.closest('tr')?.querySelectorAll('.el-table-fixed-column--left') ?? []
+          ).map((fixedCell) => fixedCell.getBoundingClientRect().right)
+        )
+        wrap.scrollLeft += element.getBoundingClientRect().left - left - 16
+      })
+      await expect
+        .poll(() =>
+          cell.evaluate((element) => {
+            const rect = element.getBoundingClientRect()
+            return element.contains(
+              document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+            )
+          })
+        )
+        .toBe(true)
+      await page.screenshot({
+        path: testInfo.outputPath(`production-readonly-${label}-long.png`),
+        animations: 'allow'
+      })
+    }
+    lines[0].auxiliary_quantity = null
+    lines[0].auxiliary_quantity_2 = null
     await expect(drawer.locator('.art-descriptions table')).toHaveClass(/is-bordered/)
     const remarkRow = drawer.locator('.art-descriptions tr').filter({ hasText: document.remark })
     await expect(remarkRow.locator('td')).toHaveCount(2)
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
     await expect(drawer.locator('.el-table__body').getByRole('checkbox')).toHaveCount(0)
+    for (const [header, label] of [
+      ['库存类型', '普通'],
+      ['库存状态', '可用'],
+      ['货主类型', '供应商']
+    ]) {
+      const column = await drawer
+        .getByRole('columnheader', { name: new RegExp(header) })
+        .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+      const cell = drawer.locator('.el-table__body tr').first().locator('td').nth(column)
+      await cell.scrollIntoViewIfNeeded()
+      await expect(cell.getByText(label, { exact: true })).toBeVisible()
+    }
     await expect(
       drawer.locator('.el-table__body').getByText('测试生产供应商', { exact: true })
     ).toHaveCount(1)
@@ -244,10 +434,114 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       animations: 'disabled'
     })
     await serialDialog.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+    if (outbound) {
+      let reopenReads = 0
+      let releaseOld = () => {}
+      const delayed = new Promise<void>((resolve) => {
+        releaseOld = resolve
+      })
+      await page.route('**/rest/v1/wms_serial_number?*', async (route) => {
+        if (!new URL(route.request().url()).searchParams.has('id') || reopenReads >= 2)
+          return route.fallback()
+        const read = ++reopenReads
+        if (read === 1) await delayed
+        if (read === 1 && kind === 'finished_return')
+          return route.fulfill({
+            status: 400,
+            json: { code: 'P0001', message: '旧序列号读取失败' }
+          })
+        return route.fulfill({
+          json: [1, 2].map((n) => ({
+            id: `serial-${n}`,
+            serial_no: read === 1 ? `OLD-SN-${n}` : `CURRENT-SN-${n}`,
+            status: 'consumed'
+          }))
+        })
+      })
+      await drawer.getByRole('button', { name: '序列号 2', exact: true }).click()
+      await expect.poll(() => reopenReads).toBe(1)
+      await serialDialog.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+      await expect(serialDialog).toBeHidden()
+      await drawer.getByRole('button', { name: '序列号 2', exact: true }).click()
+      const currentText = serialDialog.getByRole('textbox', { name: '当前明细序列号', exact: true })
+      await expect(currentText).toHaveValue('CURRENT-SN-1\nCURRENT-SN-2')
+      const oldResponse = page.waitForResponse('**/rest/v1/wms_serial_number?*')
+      releaseOld()
+      await oldResponse
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      )
+      await expect(currentText).toHaveValue('CURRENT-SN-1\nCURRENT-SN-2')
+      await expect(serialDialog.getByText('序列号加载失败', { exact: true })).toHaveCount(0)
+      await serialDialog.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+    }
     await drawer.getByRole('button', { name: '序列号 0', exact: true }).click()
     await expect(serialDialog.getByText('暂无序列号', { exact: true })).toBeVisible()
     await serialDialog.getByRole('button', { name: '关闭此对话框', exact: true }).click()
     await drawer.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+    let optionReads = 0
+    let releaseOptions!: () => void
+    const heldOptions = new Promise<void>((resolve) => (releaseOptions = resolve))
+    let finishOldOptions!: () => void
+    const oldOptionsFinished = new Promise<void>((resolve) => (finishOldOptions = resolve))
+    await page.route('**/rest/v1/mdm_warehouse?*', async (route) => {
+      optionReads++
+      if (optionReads !== 1) return route.fallback()
+      await heldOptions
+      if (kind === 'issue')
+        await route.fulfill({
+          json: [{ id: 'warehouse-old', warehouse_name: '已关闭窗口旧仓库', status: 'enabled' }]
+        })
+      else await route.fulfill({ status: 503, json: { code: 'XX000', message: '旧窗口读取失败' } })
+      finishOldOptions()
+    })
+    await page.getByRole('button', { name: '测试生产单据 edit', exact: true }).click()
+    await expect.poll(() => optionReads).toBe(1)
+    await drawer.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+    await page.getByRole('button', { name: '测试生产单据 edit', exact: true }).click()
+    await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
+    releaseOptions()
+    await oldOptionsFinished
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    )
+    await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
+    await expect(drawer.getByText(/^基础资料加载失败/)).toHaveCount(0)
+    const reopenedTable = drawer.locator('.art-table.wms-editable-line-table')
+    const reopenedWarehouseIndex = await reopenedTable
+      .getByRole('columnheader', { name: /^仓库/ })
+      .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+    const reopenedWarehouse = reopenedTable
+      .locator('.el-table__body tr')
+      .first()
+      .locator('td')
+      .nth(reopenedWarehouseIndex)
+      .getByRole('combobox')
+    await expect(
+      reopenedTable
+        .locator('.el-table__body tr')
+        .first()
+        .locator('td')
+        .nth(reopenedWarehouseIndex)
+        .getByText('行内仓库1', { exact: true })
+    ).toBeVisible()
+    if (kind === 'finished_return') await expect(reopenedWarehouse).toBeDisabled()
+    else {
+      await reopenedWarehouse.focus()
+      await reopenedWarehouse.press('ArrowDown')
+      await expect(page.getByRole('option', { name: '行内仓库1', exact: true })).toBeVisible()
+      await expect(page.getByRole('option', { name: '已关闭窗口旧仓库', exact: true })).toHaveCount(
+        0
+      )
+      await page.keyboard.press('Escape')
+    }
+    await drawer.getByRole('button', { name: '取消', exact: true }).click()
     for (const mode of ['edit', 'copy']) {
       await page.getByRole('button', { name: `测试生产单据 ${mode}`, exact: true }).click()
       await expect(
@@ -256,6 +550,208 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       await expect(
         drawer.getByRole('button', { name: mode === 'copy' ? '保存副本' : '保存', exact: true })
       ).toBeEnabled()
+      if (outbound) {
+        batchSerialFailure = true
+        const serialEntry = drawer.getByRole('button', { name: '序列号 2', exact: true })
+        await serialEntry.click()
+        const serialEdit = page.getByRole('dialog', { name: '第 1 行序列号', exact: true })
+        await expect(serialEdit.getByText('序列号加载失败', { exact: true })).toBeVisible()
+        await expect(
+          serialEdit.getByRole('button', { name: '保存序列号', exact: true })
+        ).toBeDisabled()
+        batchSerialFailure = false
+        await serialEdit.getByRole('button', { name: '重新加载', exact: true }).click()
+        const selection = serialEdit.getByRole('combobox', { name: '选择来源序列号', exact: true })
+        await selection.focus()
+        await selection.press('ArrowDown')
+        await page.getByRole('option', { name: 'SN-TEST-001', exact: true }).click()
+        await page.keyboard.press('Escape')
+        await serialEdit.getByRole('button', { name: '保存序列号', exact: true }).click()
+        await expect(page.getByText(/SN 数量须与.*一致且不能重复/)).toBeVisible()
+        await serialEdit.getByRole('button', { name: '取消', exact: true }).click()
+        await serialEntry.click()
+        await expect(serialEdit.locator('.el-tag')).toHaveCount(2)
+        await serialEdit.getByRole('button', { name: '保存序列号', exact: true }).click()
+        await expect(serialEdit).toBeHidden()
+      }
+      if (!outbound) {
+        const serialEntry = drawer.getByRole('button', { name: '序列号 2', exact: true })
+        await serialEntry.click()
+        const serialEdit = page.getByRole('dialog', { name: '第 1 行序列号', exact: true })
+        const input = serialEdit.getByRole('textbox', { name: '逐行录入序列号', exact: true })
+        await expect(input).toHaveValue('SN-TEST-001\nSN-TEST-002')
+        await input.fill('取消草稿')
+        await serialEdit.getByRole('button', { name: '取消', exact: true }).click()
+        await serialEntry.click()
+        await expect(input).toHaveValue('SN-TEST-001\nSN-TEST-002')
+        await input.fill('DUPLICATE-SN\nDUPLICATE-SN')
+        await serialEdit.getByRole('button', { name: '保存序列号', exact: true }).click()
+        await expect(serialEdit).toBeVisible()
+        await expect(page.getByText(/SN 数量须与.*一致且不能重复/)).toBeVisible()
+        await input.fill('UPDATED-SN-1\nUPDATED-SN-2')
+        await serialEdit.getByRole('button', { name: '保存序列号', exact: true }).click()
+        await expect(serialEdit).toBeHidden()
+        await serialEntry.click()
+        await expect(input).toHaveValue('UPDATED-SN-1\nUPDATED-SN-2')
+        await input.fill('SN-TEST-001\nSN-TEST-002')
+        await serialEdit.getByRole('button', { name: '保存序列号', exact: true }).click()
+      }
+      if (kind === 'issue') {
+        const editableTable = drawer.locator('.art-table.wms-editable-line-table')
+        const batchIndex = await editableTable
+          .getByRole('columnheader', { name: '来源库存批次', exact: true })
+          .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+        await editableTable
+          .locator('.el-table__body tr')
+          .first()
+          .locator('td')
+          .nth(batchIndex)
+          .getByRole('textbox')
+          .click()
+        const batchPicker = page.getByRole('dialog', { name: '选择来源库存批次', exact: true })
+        await batchPicker.getByText('NEW-SOURCE-BATCH', { exact: true }).click()
+        await batchPicker.getByRole('button', { name: '确定', exact: true }).click()
+        await expect(batchPicker).toBeHidden()
+        await expect(drawer.getByRole('button', { name: '序列号 2', exact: true })).toHaveCount(0)
+        await expect(
+          drawer.locator('.el-table__body tr').first().getByPlaceholder('批号')
+        ).toHaveValue('NEW-SOURCE-BATCH')
+        const serialReadCount = batchSerialRequests.filter(
+          (id) => id === 'eq.source-batch-new'
+        ).length
+        await drawer
+          .locator('.el-table__body tr')
+          .first()
+          .getByRole('button', { name: '序列号 0', exact: true })
+          .click()
+        const currentSerialDialog = page.getByRole('dialog', { name: '第 1 行序列号', exact: true })
+        await expect
+          .poll(() => batchSerialRequests.filter((id) => id === 'eq.source-batch-new').length)
+          .toBe(serialReadCount + 1)
+        await expect(
+          currentSerialDialog.getByRole('button', { name: '保存序列号', exact: true })
+        ).toBeEnabled()
+        await currentSerialDialog.getByRole('button', { name: '取消', exact: true }).click()
+      }
+      if (kind !== 'finished_return') {
+        const editableTable = drawer.locator('.art-table.wms-editable-line-table')
+        const warehouseIndex = await editableTable
+          .getByRole('columnheader', { name: /^仓库/ })
+          .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
+        expect(warehouseIndex).toBeGreaterThanOrEqual(0)
+        const warehouse = editableTable
+          .locator('.el-table__body tr')
+          .first()
+          .locator('td')
+          .nth(warehouseIndex)
+          .getByRole('combobox')
+        await warehouse.focus()
+        await warehouse.press('ArrowDown')
+        await page.getByRole('option', { name: '行内仓库2', exact: true }).click()
+        await expect(drawer.getByRole('button', { name: '序列号 2', exact: true })).toHaveCount(0)
+        await warehouse.focus()
+        await warehouse.press('ArrowDown')
+        await page.getByRole('option', { name: '行内仓库1', exact: true }).click()
+        await expect(drawer.getByRole('button', { name: '序列号 2', exact: true })).toHaveCount(0)
+      }
+      if (kind === 'issue' && mode === 'edit') {
+        await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) => {
+          const second =
+            new URL(route.request().url()).searchParams.get('warehouse_id') ===
+            'eq.warehouse-second'
+          return route.fulfill({
+            json: [
+              {
+                id: second ? 'bin-second' : 'bin-first',
+                bin_name: second ? '第二仓位' : '第一仓位',
+                bin_code: second ? 'B2' : 'A1',
+                status: 'available'
+              }
+            ]
+          })
+        })
+        const table = drawer.locator('.art-table.wms-editable-line-table')
+        const binColumn = await table
+          .getByRole('columnheader', { name: '仓位', exact: true })
+          .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+        const warehouseColumn = await table
+          .getByRole('columnheader', { name: /^仓库/ })
+          .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+        const rows = table.locator('.el-table__body tr')
+        const firstBin = rows.first().locator('td').nth(binColumn).getByRole('combobox')
+        await firstBin.focus()
+        await firstBin.press('ArrowDown')
+        await page.getByRole('option', { name: '第一仓位 · A1', exact: true }).click()
+        const secondWarehouse = rows.nth(1).locator('td').nth(warehouseColumn).getByRole('combobox')
+        await secondWarehouse.focus()
+        await secondWarehouse.press('ArrowDown')
+        await page.getByRole('option', { name: '行内仓库2', exact: true }).click()
+        const secondBin = rows.nth(1).locator('td').nth(binColumn).getByRole('combobox')
+        await secondBin.focus()
+        await secondBin.press('ArrowDown')
+        await page.getByRole('option', { name: '第二仓位 · B2', exact: true }).click()
+        await expect(rows.first().locator('td').nth(binColumn)).toContainText('第一仓位 · A1')
+        let releaseFirst = () => {}
+        let firstPending = false
+        const heldFirst = new Promise<void>((resolve) => {
+          releaseFirst = resolve
+        })
+        await page.route('**/rest/v1/mdm_warehouse_bin?*', async (route) => {
+          const first =
+            new URL(route.request().url()).searchParams.get('warehouse_id') === 'eq.warehouse-test'
+          if (first) {
+            firstPending = true
+            await heldFirst
+          }
+          return route.fulfill({
+            json: [
+              {
+                id: first ? 'late-first' : 'current-second',
+                bin_name: first ? '迟到第一行仓位' : '当前第二行仓位',
+                bin_code: first ? 'OLD' : 'NEW',
+                status: 'available'
+              }
+            ]
+          })
+        })
+        await firstBin.focus()
+        await firstBin.press('ArrowDown')
+        await expect.poll(() => firstPending).toBe(true)
+        await firstBin.press('Tab')
+        await secondBin.focus()
+        await secondBin.press('ArrowDown')
+        await expect(
+          page
+            .locator('[id="' + (await secondBin.getAttribute('aria-controls')) + '"]')
+            .getByRole('option', { name: '当前第二行仓位 · NEW', exact: true })
+        ).toBeVisible()
+        const oldResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/mdm_warehouse_bin?') &&
+            new URL(response.url()).searchParams.get('warehouse_id') === 'eq.warehouse-test'
+        )
+        releaseFirst()
+        await oldResponse
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+            )
+        )
+        await expect(
+          page
+            .locator('[id="' + (await secondBin.getAttribute('aria-controls')) + '"]')
+            .getByRole('option', { name: '当前第二行仓位 · NEW', exact: true })
+        ).toBeVisible()
+        await expect(
+          page.getByRole('option', { name: '迟到第一行仓位 · OLD', exact: true })
+        ).toHaveCount(0)
+        await page.screenshot({
+          path: testInfo.outputPath('production-row-bin-late-response.png'),
+          animations: 'allow'
+        })
+        await secondBin.press('Tab')
+      }
       if (testInfo.project.name.includes('mobile')) {
         await expect(
           drawer.locator(
@@ -266,6 +762,52 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       if (mode === 'copy')
         await expect(drawer.getByText('保存后自动生成', { exact: true })).toBeVisible()
       const table = drawer.locator('.art-table.wms-editable-line-table')
+      await expect(page.locator('.el-message')).toHaveCount(0, { timeout: 10000 })
+      for (const input of await table
+        .locator('.el-table__body tr')
+        .first()
+        .getByRole('spinbutton')
+        .all()) {
+        if (await input.isDisabled()) continue
+        const original = await input.inputValue()
+        await input.fill('12345678.1234')
+        await input.press('Tab')
+        await expect(input).toHaveValue(negative ? '-12345678.1234' : '12345678.1234')
+        await expectInputTextUnclipped(input)
+        await input.focus()
+        await input.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+            )
+        )
+        await page.screenshot({
+          path: testInfo.outputPath(
+            `production-long-quantity-${mode}-${await input.evaluate((element) => element.closest('td')?.cellIndex)}.png`
+          ),
+          animations: 'allow'
+        })
+        await input.fill(original)
+        await input.press('Tab')
+      }
+      for (const label of ['生产日期', '有效期至']) {
+        const column = await table
+          .getByRole('columnheader', { name: label, exact: true })
+          .evaluate((element) => (element as HTMLTableCellElement).cellIndex)
+        const cell = table.locator('.el-table__body tr').first().locator('td').nth(column)
+        const dateInput = cell.locator('.el-date-editor input')
+        await dateInput.scrollIntoViewIfNeeded()
+        await dateInput.fill('2026-10-07')
+        await dateInput.press('Enter')
+        await expect(page.locator('.el-message')).toHaveCount(0)
+        await expect(dateInput).toHaveValue('2026-10-07')
+        await dateInput.hover()
+        await expectInputTextUnclipped(dateInput)
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`wms-production-line-dates-${mode}.png`),
+        animations: 'disabled'
+      })
       await expect(table.locator('.art-table__required-marker')).toHaveCount(3)
       const sizes = await table.locator('.el-select').evaluateAll((els) =>
         els.map((el) => ({
@@ -491,8 +1033,7 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       expect(entry.p_payload.lines[0]).toMatchObject({
         material_id: 'material-2',
         serial_ids: [],
-        serial_nos: [],
-        line_no: 10
+        serial_nos: []
       })
     }
     expect(saves.map((entry) => entry.p_payload.save_action)).toEqual([
@@ -598,6 +1139,26 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         await expect(
           picker.getByRole('checkbox', { name: '选择所有行', exact: true })
         ).toBeChecked()
+        if (draft === 1) {
+          await picker.getByRole('button', { name: '取消', exact: true }).click()
+          await expect(picker).toBeHidden()
+          await expect(drawer.locator('.el-table__body tr')).toHaveCount(0)
+          await drawer
+            .getByRole('button', {
+              name:
+                kind === 'finished_inbound'
+                  ? '选生产工单'
+                  : kind === 'finished_return'
+                    ? '选单'
+                    : '选择物料',
+              exact: true
+            })
+            .click()
+          await expect(
+            picker.getByRole('checkbox', { name: '选择所有行', exact: true })
+          ).not.toBeChecked()
+          await picker.locator('.el-table__header-wrapper .el-checkbox').click()
+        }
         await page.screenshot({
           path: testInfo.outputPath(`production-new-picker-${draft}.png`),
           animations: 'disabled'
@@ -626,10 +1187,10 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         await drawer.getByRole('button', { name: '保存', exact: true }).click()
         await expect(drawer).toBeHidden()
       }
-      expect(saves).toHaveLength(8)
+      expect(saves).toHaveLength(12)
       expect(
         saves
-          .slice(4)
+          .slice(8)
           .every(
             (entry) => entry.p_payload.save_action === 'add' && entry.p_payload.lines.length === 2
           )

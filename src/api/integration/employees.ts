@@ -32,10 +32,63 @@ export interface EmployeeSelectorContractParams {
 interface EmployeeSelectorContractPayload {
   records?: EmployeeIntegrationItem[]
   total?: number
-  fieldAccess?: Record<string, boolean>
+  fieldAccess?: Record<string, Api.Common.FieldAccessLevel>
+}
+
+export type EmployeeSelectorContractResult = {
+  data: EmployeeIntegrationItem[]
+  total: number
+  error: unknown
+  fieldAccess: Record<string, Api.Common.FieldAccessLevel>
 }
 
 const { supabase, responseHandle } = useSupabase()
+
+interface EmployeeReference {
+  id: string
+  tenantId?: string
+  code?: string | null
+  name?: string | null
+  jobTitle?: string | null
+  organizationName?: string | null
+}
+
+/** Adapt a business-authorized reference endpoint without using the account-binding roster. */
+export function createEmployeeReferenceSelector(
+  fetchReferences: (
+    tenantId: string
+  ) => Promise<{ data?: EmployeeReference[] | null; error: unknown }>
+): (params?: EmployeeSelectorContractParams) => Promise<EmployeeSelectorContractResult> {
+  return async (params = {}) => {
+    const tenantId = params.tenantId
+    if (!tenantId) return { data: [], total: 0, error: null, fieldAccess: {} }
+    const result = await fetchReferences(tenantId)
+    const keyword = params.keyword?.trim().toLocaleLowerCase() ?? ''
+    const records = (result.data ?? []).filter(
+      (item) =>
+        item.tenantId === tenantId &&
+        (!keyword ||
+          [item.name, item.code, item.jobTitle, item.organizationName].some((value) =>
+            value?.toLocaleLowerCase().includes(keyword)
+          ))
+    )
+    const from = Math.max(params.from ?? 0, 0)
+    const to = Math.max(params.to ?? from + 9, from)
+    return {
+      data: records.slice(from, to + 1).map((item) => ({
+        id: item.id,
+        tenantId,
+        employeeNo: item.code ?? '',
+        employeeName: item.name ?? '未命名员工',
+        jobTitle: item.jobTitle,
+        employmentStatus: ''
+      })),
+      total: records.length,
+      error: result.error,
+      fieldAccess: {}
+    }
+  }
+}
 
 /**
  * 平台级员工只读契约。
@@ -43,12 +96,15 @@ const { supabase, responseHandle } = useSupabase()
  * 调用方只依赖稳定 RPC/HTTP 形状，不引用 HR 的页面、provider 或业务类型。
  * 将来 HR 独立成服务时，只需替换本适配器。
  */
-export async function fetchEmployeeSelectorList(params: EmployeeSelectorContractParams = {}) {
+export async function fetchEmployeeSelectorList(
+  params: EmployeeSelectorContractParams = {}
+): Promise<EmployeeSelectorContractResult> {
   const { tenantId, keyword, from = 0, to = 9 } = params
+  const range = buildSupabaseRpcRange(from, to)
   const result = await responseHandle<EmployeeSelectorContractPayload>(
     () =>
       supabase.rpc('hr_list_employee_selector_secure', {
-        ...buildSupabaseRpcRange(from, to),
+        ...range,
         p_tenant_id: tenantId || null,
         p_keyword: normalizeNullableText(keyword)
       }),

@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type {
     ArtTableQueryExpose,
@@ -57,6 +57,7 @@
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import {
+    activateTenant,
     deactivateTenant,
     deactivateTenantBatch,
     fetchTenantList
@@ -208,7 +209,8 @@
       width: 50,
       fixed: 'left',
       reserveSelection: true,
-      selectable: (row: Tenant) => hasAuth('System:Tenant:Delete') && !isSystemTenant(row)
+      selectable: (row: Tenant) =>
+        hasAuth('System:Tenant:Delete') && !isSystemTenant(row) && row.status === '1'
     },
     {
       type: 'globalIndex',
@@ -344,13 +346,20 @@
             icon: 'ri:notification-badge-line',
             auth: 'System:NotificationReminder:View'
           },
-          {
-            key: 'delete',
-            label: '停用租户',
-            icon: 'ri:pause-circle-line',
-            color: 'var(--el-color-danger)',
-            auth: 'System:Tenant:Delete'
-          }
+          row.status === '1'
+            ? {
+                key: 'delete',
+                label: '停用租户',
+                icon: 'ri:pause-circle-line',
+                color: 'var(--el-color-danger)',
+                auth: 'System:Tenant:Delete'
+              }
+            : {
+                key: 'enable',
+                label: '启用租户',
+                icon: 'ri:play-circle-line',
+                auth: 'System:Tenant:Edit'
+              }
         ]
   }
 
@@ -361,6 +370,9 @@
         break
       case 'delete':
         void handleDelete(row)
+        break
+      case 'enable':
+        void handleEnable(row)
         break
       case 'reminder':
         void router.push({
@@ -400,10 +412,26 @@
           confirmButtonType: 'danger'
         }
       )
-      await deactivateTenant(row.id)
-      await tableQueryRef.value?.refreshUpdate()
     } catch {
       // 用户取消删除时无需额外提示。
+      return
+    }
+
+    try {
+      await deactivateTenant(row.id)
+      await tableQueryRef.value?.refreshUpdate()
+    } catch (error) {
+      notifyFriendlyError(error, '租户停用失败，请刷新后重试')
+    }
+  }
+
+  const handleEnable = async (row: Tenant): Promise<void> => {
+    if (!row.id) return
+    try {
+      await activateTenant(row.id)
+      await tableQueryRef.value?.refreshUpdate()
+    } catch (error) {
+      notifyFriendlyError(error, '租户启用失败，请刷新后重试')
     }
   }
 </script>

@@ -174,6 +174,7 @@
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { ElMessage, ElTag } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
+  import { useRouteDocumentDrawer } from '@/hooks/core/useRouteDocumentDrawer'
   import { chunk } from 'lodash-es'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
@@ -239,9 +240,10 @@
     permissions: Record<PurchaseAction, string>
   }>()
   const { confirmAction } = useArtFeedback()
+  const deleteResourceLabel = ref('')
   const { deleteGuardRef, inspectDeleteReferences } = useRecordDeleteGuard(
     'wms_purchase_document',
-    '采购入退库单'
+    () => deleteResourceLabel.value || title.value
   )
   const { hasAuth } = useAuth()
   const route = useRoute()
@@ -576,9 +578,16 @@
       typeof documentId === 'string' ? [{ documentId, kind, status }] : []
     )
   }
-  async function openDocument(mode: 'view' | 'edit' | 'copy', documentId: string): Promise<void> {
+  async function openDocument(
+    mode: 'view' | 'edit' | 'copy',
+    row: WmsPurchaseListRow
+  ): Promise<void> {
     try {
-      await drawerRef.value?.handleOpen({ mode, documentId })
+      const target =
+        props.kind === 'other_inbound' && row.kind === 'other_return'
+          ? returnDrawerRef.value
+          : drawerRef.value
+      await target?.handleOpen({ mode, documentId: row.documentId })
     } catch {
       ElMessage.error('单据加载失败，请重试')
     }
@@ -666,24 +675,21 @@
       ElMessage.error('受托加工后续业务草稿生成失败，请重试')
     }
   }
+  useRouteDocumentDrawer({
+    routeName: () => permission.value.View.split(':')[0],
+    canOpen: () => props.kind.startsWith('initial_') && hasAuth(permission.value.View),
+    fetchDocument: async (id) => {
+      const document = await fetchWmsPurchaseDocument(id)
+      if (document.kind !== props.kind) throw new Error('单据类型不匹配')
+      return document
+    },
+    openDocument: async (document) => {
+      await drawerRef.value?.handleOpen({ mode: 'view', document })
+    },
+    onError: () => ElMessage.error(`${title.value}加载失败，请刷新后重试`)
+  })
   onMounted(async () => {
-    const documentId = route.query.documentId
-    if (typeof documentId === 'string' && props.kind.startsWith('initial_')) {
-      if (hasAuth(permission.value.View)) {
-        try {
-          await router.replace({
-            path: route.path,
-            query: { ...route.query, documentId: undefined }
-          })
-          const document = await fetchWmsPurchaseDocument(documentId)
-          if (document.kind !== props.kind) throw new Error('单据类型不匹配')
-          await drawerRef.value?.handleOpen({ mode: 'view', document })
-        } catch {
-          ElMessage.error('期初采购单加载失败，请刷新后重试')
-        }
-      }
-      return
-    }
+    if (typeof route.query.documentId === 'string' && props.kind.startsWith('initial_')) return
     const targetId = route.query.targetId
     if (
       !['purchase_inbound', 'other_inbound'].includes(props.kind) ||
@@ -703,13 +709,18 @@
     if (workingId.value) return
     const label = { submit: '提交', approve: '审核', delete: '删除' }[action]
     const resources = [{ id: row.documentId, label: row.documentNo }]
+    deleteResourceLabel.value = row.kind === 'other_return' ? '其他入库退回单' : title.value
     workingId.value = row.documentId
     try {
       if (action === 'delete' && (await inspectDeleteReferences(resources))) return
-      await confirmAction(`确定${label} ${row.documentNo}？`, `${label}${title.value}`, {
-        type: action === 'delete' ? 'warning' : 'info',
-        confirmButtonText: `确定${label}`
-      })
+      await confirmAction(
+        `确定${label} ${row.documentNo}？`,
+        `${label}${deleteResourceLabel.value}`,
+        {
+          type: action === 'delete' ? 'warning' : 'info',
+          confirmButtonText: `确定${label}`
+        }
+      )
       await changeWmsPurchaseStatus(row.documentId, action)
       await refresh()
     } catch (error) {
@@ -756,7 +767,9 @@
       buttonProps: { type: 'warning', plain: true },
       exportFilename: title.value,
       exportData: async () =>
-        (await fetchRows({ ...search, current: 1, size: 500, exportAll: true })).data,
+        (await fetchRows({ ...search, current: 1, size: 500, exportAll: true })).data.map(
+          (row) => ({ ...row, status: statusLabel(row.status) })
+        ),
       exportColumns: [
         { title: '单据编号', key: 'documentNo' },
         { title: '业务日期', key: 'businessDate' },
@@ -840,7 +853,7 @@
   }
   function onMoreAction(item: ButtonMoreItem, row: WmsPurchaseListRow): void {
     if (item.key === 'copy' || item.key === 'edit') {
-      void openDocument(item.key, row.documentId)
+      void openDocument(item.key, row)
     } else if (item.key === 'submit' || item.key === 'approve' || item.key === 'delete') {
       void transition(row, item.key)
     }
@@ -859,7 +872,7 @@
         formatter: (row) => (
           <BusinessTableIdentityCell
             primary={row.documentNo}
-            secondary={`${displayMode.value === 'document' ? `共 ${row.lineNo} 项物料` : `第 ${row.lineNo} 行`} · ${isEntrustedProcessing.value ? row.customerName : row.supplierName}`}
+            secondary={`${displayMode.value === 'document' ? `共 ${row.lineNo} 项物料` : `第 ${row.lineNo} 行`} · ${isEntrustedProcessing.value ? row.customerName || '未关联客户' : row.supplierName || '未关联供应商'}`}
             icon={isReturn.value ? 'ri:inbox-unarchive-line' : 'ri:inbox-archive-line'}
           />
         )
@@ -1006,7 +1019,7 @@
               label="查看"
               icon="ri:eye-line"
               permission={permission.value.View}
-              onClick={() => openDocument('view', row.documentId)}
+              onClick={() => openDocument('view', row)}
             />
             <ArtButtonMore
               list={moreActions(row)}

@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./production-material-workspace-DhznOwws.js";var i=t({name:`WmsProductionIssue`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`issue`}))}});export{i as default};

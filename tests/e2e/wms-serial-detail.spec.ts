@@ -50,6 +50,7 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
     ]
   })
   let fail = true
+  let showChild = false
   let parentFailed = true
   let hold = false
   let release: (() => void) | undefined
@@ -63,8 +64,8 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
     serial_no: `TEST-SN-${name}`,
     parent_serial_id: `parent-${name}`,
     status: 'in_stock',
-    material_id: 'material-test',
-    material: { material_code: 'TEST-MAT', material_name: '测试追溯物料' }
+    material_id: name === 'B' ? '77777777-7777-4777-8777-777777777777' : 'material-test',
+    material: name === 'B' ? null : { material_code: 'TEST-MAT', material_name: '测试追溯物料' }
   }))
   await page.route('**/rest/v1/wms_serial_number?*', async (route) => {
     const query = new URL(route.request().url()).searchParams
@@ -91,7 +92,13 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
       })
     }
     return route.fulfill(
-      fail ? { status: 503, json: { message: '测试子件读取失败', code: 'XX000' } } : { json: [] }
+      fail
+        ? { status: 503, json: { message: '测试子件读取失败', code: 'XX000' } }
+        : {
+            json: showChild
+              ? [{ id: 'current-child', serial_no: '当前子件', status: 'in_stock' }]
+              : []
+          }
     )
   })
   const longReference = 'TEST-REFERENCE-' + '0123456789'.repeat(12)
@@ -142,13 +149,21 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
   const rowA = page.locator('.el-table__body tr').filter({ hasText: 'TEST-SN-A' })
   const rowB = page.locator('.el-table__body tr').filter({ hasText: 'TEST-SN-B' })
   await expect(rowA).toContainText('TEST-PARENT-A')
-  await expect(rowB).toContainText('独立件 / 主机')
+  await expect(rowB).toContainText('父件资料不可用')
+  await expect(rowB).toContainText('物料资料不可用')
+  await expect(rowB).not.toContainText('77777777-7777-4777-8777-777777777777')
+  await rowB.getByText('物料资料不可用', { exact: true }).scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: testInfo.outputPath('serial-missing-material.png'),
+    animations: 'disabled'
+  })
   await expect(page.getByText('不应显示的跨租户父件', { exact: true })).toHaveCount(0)
   await rowA.getByRole('button', { name: '追溯', exact: true }).click()
   const drawer = page.locator('.el-drawer:visible')
   await expect(drawer.getByText('子件加载失败，请重试', { exact: true })).toBeVisible()
   await expect(drawer.getByText('流水加载失败，请重试', { exact: true })).toBeVisible()
   fail = false
+  showChild = true
   movementOffsets.length = 0
   for (const title of ['装配子件', '逐件业务流水']) {
     await drawer
@@ -157,7 +172,15 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
       .getByRole('button', { name: '重新加载', exact: true })
       .click()
   }
-  await expect(drawer.getByText('暂无绑定子件', { exact: true })).toBeVisible()
+  const childrenCard = drawer.locator('.art-section-card').filter({ hasText: '装配子件' })
+  await expect(childrenCard.getByText('当前子件', { exact: true })).toBeVisible()
+  await expect(childrenCard.getByText('在库', { exact: true })).toBeVisible()
+  await childrenCard.scrollIntoViewIfNeeded()
+  await page.screenshot({
+    path: testInfo.outputPath('serial-child-status.png'),
+    animations: 'disabled'
+  })
+  showChild = false
   const reference = drawer.getByText(longReference, { exact: false })
   await expect(reference).toBeVisible()
   await expect(reference).toContainText('采购入库')
@@ -189,6 +212,11 @@ test('SN 详情错误重试、长流水与切换后旧请求隔离', async ({ pa
   await drawer.getByRole('button', { name: /关闭.*对话框|Close this dialog/, exact: true }).click()
   await rowB.getByRole('button', { name: '追溯', exact: true }).click()
   await expect(drawer.getByText('TEST-SN-B', { exact: true }).first()).toBeVisible()
+  await expect(drawer.getByText('父件：父件资料不可用', { exact: true })).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath('serial-parent-unavailable.png'),
+    animations: 'disabled'
+  })
   await expect(drawer.getByText('暂无绑定子件', { exact: true })).toBeVisible()
   const lateResponses = Promise.all([
     page

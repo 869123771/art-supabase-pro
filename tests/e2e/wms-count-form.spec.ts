@@ -3,6 +3,136 @@ import { expect, test } from '@playwright/test'
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(120_000)
 
+for (const action of ['保存', '记账'] as const) {
+  test(`盘点${action}进行中关闭重开不会刷新或锁住当前抽屉`, async ({ page }, testInfo) => {
+    await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+    let reads = 0
+    await page.route('**/rest/v1/wms_count_line?*', (route) => {
+      reads++
+      return route.fulfill({
+        json: [
+          {
+            id: 'save-line',
+            batch_id: 'batch-save',
+            material_id: 'material-save',
+            expected_quantity: 2,
+            counted_quantity: 1,
+            expected_serial_ids: [],
+            counted_serial_ids: [],
+            new_serial_nos: [],
+            material: {
+              material_name: '保存上下文物料',
+              material_code: 'SAVE-MAT',
+              serial_management_enabled: false
+            }
+          }
+        ]
+      })
+    })
+    let release = () => {}
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let saves = 0
+    const rpc = action === '保存' ? 'wms_record_count_line_secure' : 'wms_post_count_plan_secure'
+    const payloads: unknown[] = []
+    await page.route(`**/rpc/${rpc}`, async (route) => {
+      saves++
+      payloads.push(route.request().postDataJSON())
+      await pending
+      await route.fulfill({ json: true })
+    })
+    await page.goto('/tests/e2e/fixtures/wms-count-form.html?counting=true')
+    const open = page.getByRole('button', { name: '打开已记账盘点详情', exact: true })
+    await open.click()
+    const drawer = page.getByRole('dialog', { name: '盘点表', exact: true })
+    const missingBatch = drawer.getByText('批次资料不可用', { exact: true })
+    await expect(missingBatch).toBeVisible()
+    await expect(drawer).not.toContainText('batch-save')
+    await missingBatch.scrollIntoViewIfNeeded()
+    await page.screenshot({
+      path: testInfo.outputPath('count-missing-batch.png'),
+      animations: 'disabled'
+    })
+    const save = drawer.getByRole('button', { name: '保存实盘', exact: true })
+    if (action === '保存') await save.click()
+    else {
+      await drawer.getByRole('button', { name: '确认盘盈盘亏', exact: true }).click()
+      await page.getByRole('button', { name: '确认记账', exact: true }).click()
+    }
+    await expect.poll(() => saves).toBe(1)
+    await drawer
+      .getByRole('button', { name: /关闭此对话框|Close this dialog/, exact: true })
+      .click()
+    await open.click()
+    await expect(save).toBeEnabled()
+    await expect.poll(() => reads).toBe(2)
+    await drawer.getByRole('spinbutton').fill('3')
+    await drawer.getByRole('spinbutton').blur()
+    const response = page.waitForResponse((item) => item.url().includes(`/rpc/${rpc}`))
+    release()
+    await (await response).finished()
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    )
+    expect(reads).toBe(2)
+    await expect(drawer.getByRole('spinbutton')).toHaveValue('3.000')
+    await expect(save).toBeEnabled()
+    await expect(drawer.getByRole('button', { name: '确认盘盈盘亏', exact: true })).toBeEnabled()
+    expect(payloads).toHaveLength(1)
+    if (action === '记账')
+      expect(payloads[0]).toEqual({ p_plan_id: '33333333-3333-4333-8333-333333333333' })
+  })
+}
+
+test('盘点详情关闭重开同一单据隔离旧读取', async ({ page }) => {
+  await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+  let release = () => {}
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let reads = 0
+  await page.route('**/rest/v1/wms_count_line?*', async (route) => {
+    const old = ++reads === 1
+    if (old) await pending
+    await route.fulfill({
+      json: [
+        {
+          id: old ? 'old-line' : 'new-line',
+          batch_id: 'batch-test',
+          material_id: 'material-test',
+          expected_quantity: 2,
+          counted_quantity: null,
+          expected_serial_ids: [],
+          counted_serial_ids: [],
+          new_serial_nos: [],
+          material: {
+            material_code: 'COUNT-MAT',
+            material_name: old ? '旧盘点物料' : '当前盘点物料',
+            serial_management_enabled: false
+          }
+        }
+      ]
+    })
+  })
+  await page.goto('/tests/e2e/fixtures/wms-count-form.html?counting=true')
+  const open = page.getByRole('button', { name: '打开已记账盘点详情', exact: true })
+  await open.click()
+  await expect.poll(() => reads).toBe(1)
+  const drawer = page.getByRole('dialog', { name: '盘点表', exact: true })
+  await drawer.getByRole('button', { name: /关闭此对话框|Close this dialog/, exact: true }).click()
+  await open.click()
+  await expect(drawer.getByText('当前盘点物料', { exact: true })).toBeVisible()
+  const response = page.waitForResponse((item) => item.url().includes('/wms_count_line?'))
+  release()
+  await (await response).finished()
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  )
+  await expect(drawer.getByText('当前盘点物料', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('旧盘点物料', { exact: true })).toHaveCount(0)
+})
+
 test('盘点详情未录入不保存，明确零值失败后可重试', async ({ page }, testInfo) => {
   const payloads: unknown[] = []
   let failed = true
@@ -107,7 +237,7 @@ test('已记账盘点详情完整显示盘盈盘亏和新增序列号', async ({
         new_serial_nos: kind === 'gain' ? ['COUNT-SN-001', 'COUNT-SN-002'] : [],
         gain_movement_id: kind === 'gain' ? 'move-gain' : null,
         loss_movement_id: kind === 'loss' ? 'move-loss' : null,
-        batch: { batch_no: `BATCH-${kind.toUpperCase()}` },
+        batch: kind === 'gain' ? null : { batch_no: `BATCH-${kind.toUpperCase()}` },
         material: {
           material_code: `MAT-${kind}`,
           material_name: `测试${kind === 'gain' ? '盘盈' : '盘亏'}物料`,
@@ -144,6 +274,9 @@ test('已记账盘点详情完整显示盘盈盘亏和新增序列号', async ({
   for (const quantity of ['+2', '−3', '+4㎡', '−6㎡']) {
     await expect(drawer.getByText(quantity, { exact: true })).toBeVisible()
   }
+  await expect(drawer.getByText('批次资料不可用', { exact: true })).toHaveCount(1)
+  await expect(drawer).not.toContainText('batch-gain')
+  await expect(drawer).toContainText('BATCH-LOSS')
   await drawer.getByText('−3', { exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({
     path: testInfo.outputPath('count-variance-lines.png'),

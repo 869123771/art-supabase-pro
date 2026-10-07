@@ -135,9 +135,7 @@ export function useSettingsHandlers() {
         return
       }
 
-      setTimeout(() => {
-        settingStore.setBorderMode()
-      }, 50)
+      settingStore.setBorderMode()
     }
   }
 

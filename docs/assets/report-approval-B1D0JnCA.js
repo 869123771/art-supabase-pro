@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./report-ledger-Dps1pAF-.js";var i=t({name:`MesReportApproval`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`approval`}))}});export{i as default};

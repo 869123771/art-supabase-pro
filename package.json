@@ -14,6 +14,8 @@
     "scripts/ui-audit.ts",
     "scripts/generate-offline-icons.ts",
     "scripts/module-vite-config.mjs",
+    "scripts/element-plus-style-chunks.mjs",
+    "scripts/element-plus-style-chunks.d.mts",
     "scripts/vite-watch-policy.mjs",
     "scripts/build-log-policy.mjs",
     "scripts/build-log-policy.d.mts"
