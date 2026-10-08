@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./production-material-workspace-DhznOwws.js";var i=t({name:`WmsFinishedReturn`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`finished_return`}))}});export{i as default};

@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { resolveMenuLabel } from '@/utils/navigation/menu'
+  import { createMenuPathResolver, resolveMenuLabel } from '@/utils/navigation/menu'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { useMediaQuery } from '@vueuse/core'
   import { ElTag } from 'element-plus'
@@ -366,8 +366,8 @@
       minWidth: 230,
       formatter: (row) => (
         <div class="number-rule-menu">
-          <strong title={resolveMenuPath(row.scene?.menuId)}>
-            {resolveMenuPath(row.scene?.menuId) || '--'}
+          <strong title={menuPathResolver.value.resolve(row.scene?.menuId)}>
+            {menuPathResolver.value.resolve(row.scene?.menuId) || '--'}
           </strong>
           <small>
             {row.scene?.fieldLabel || row.targetColumn} · {row.scene?.menu?.component || '--'}
@@ -500,13 +500,7 @@
     scenes.value = data ?? []
   }
 
-  const resolveMenuPath = (menuId?: string): string => {
-    if (!menuId) return ''
-    return treeUtils
-      .getAncestors(menuTree.value, menuId)
-      .map((menu) => resolveMenuLabel(menu))
-      .join(' / ')
-  }
+  const menuPathResolver = computed(() => createMenuPathResolver(menuTree.value))
 
   const handleCategoryChange = async (value: string | number): Promise<void> => {
     table.searchQuery.category = (String(value) || undefined) as Category | undefined

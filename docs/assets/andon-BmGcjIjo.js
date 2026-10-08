@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./execution-event-workspace-DJSZ8vuX.js";var i=t({name:`MesAndon`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`andon`}))}});export{i as default};

@@ -1,1 +1,0 @@
-import{Ft as e,Ut as t,fn as n,ln as r}from"./framework-CQuaCGL1.js";import{t as i}from"./_plugin-vue_export-helper-B8BmMbpX.js";var a={class:`business-table-row-actions`},o=i(t({name:`BusinessTableRowActions`,__name:`index`,setup(t){return(t,i)=>(r(),e(`div`,a,[n(t.$slots,`default`,{},void 0,!0)]))}}),[[`__scopeId`,`data-v-c2a22c0a`]]);export{o as t};

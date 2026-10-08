@@ -1,0 +1,1 @@
+import{Bn as e,en as t}from"./framework-DZqGOvEn.js";function n(n){let r=e();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await t()}}}export{n as t};

@@ -1,1 +1,0 @@
-import{Gn as e,Nt as t,Ut as n,ln as r}from"./framework-CQuaCGL1.js";import{t as i}from"./wms-purchase-document-workspace-D3iJ3KPy.js";import{i as a}from"./permissions-Sz_iM0GD.js";var o=n({name:`WmsPurchaseInbound`,__name:`index`,setup(n){let o=a;return(n,a)=>(r(),t(i,{kind:`purchase_inbound`,permissions:e(o)},null,8,[`permissions`]))}});export{o as default};

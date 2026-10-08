@@ -1,4 +1,5 @@
 import { createApp, defineComponent, h, nextTick, ref } from 'vue'
+import WmsInitializationReconciliation from '@/components/business/wms-initialization-reconciliation/index.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { setupGlobDirectives } from '@/directives'
 import language from '@/locales'
@@ -222,6 +223,20 @@ if (query.get('storedReturnQuantity') === 'true') {
     }
   }
 }
+if (query.get('openingReturnValues') === 'true') {
+  for (const lines of [document.lines, purchaseDocument.lines]) {
+    for (const line of lines) {
+      line.quantity = -2
+      line.baseQuantity = -4
+      line.auxiliaryQuantity = -6
+      line.auxiliaryQuantity2 = -8
+      line.amount = -20
+      line.discountAmount = -1
+      line.taxAmount = -2.6
+      line.totalAmount = -22.6
+    }
+  }
+}
 if (query.get('missingStockWarehouse') === 'true') {
   initialStockDocument.lines.forEach((line) => {
     line.warehouseId = null
@@ -277,145 +292,165 @@ const Preview = defineComponent({
     const purchaseDrawer = ref<InstanceType<typeof PurchaseDocumentDrawer> | null>(null)
     const initialStockDrawer = ref<InstanceType<typeof InitialStockDrawer> | null>(null)
     return () =>
-      h('main', [
-        h(
-          'button',
-          { type: 'button', onClick: () => void drawer.value?.handleOpen({ mode: 'create' }) },
-          '新增销售单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => void purchaseDrawer.value?.handleOpen({ mode: 'create' })
-          },
-          '新增采购单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void initialStockDrawer.value?.handleOpen({
-                mode: 'edit',
-                document: initialStockDocument
+      h(
+        'main',
+        query.get('reconciliation') === 'true'
+          ? [
+              h(WmsInitializationReconciliation, {
+                organizationId: document.organizationId,
+                organizationName: '测试库存组织'
               })
-          },
-          '打开初始库存单'
-        ),
-        h(InitialStockDrawer, { ref: initialStockDrawer }),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => void initialStockDrawer.value?.handleOpen({ mode: 'create' })
-          },
-          '新增初始库存单'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void initialStockDrawer.value?.handleOpen({
-                mode: 'view',
-                document: initialStockDocument
+            ]
+          : [
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void drawer.value?.handleOpen({ mode: 'create' })
+                },
+                '新增销售单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void purchaseDrawer.value?.handleOpen({ mode: 'create' })
+                },
+                '新增采购单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void initialStockDrawer.value?.handleOpen({
+                      mode: 'edit',
+                      document: initialStockDocument
+                    })
+                },
+                '打开初始库存单'
+              ),
+              h(InitialStockDrawer, { ref: initialStockDrawer }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void initialStockDrawer.value?.handleOpen({ mode: 'create' })
+                },
+                '新增初始库存单'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void initialStockDrawer.value?.handleOpen({
+                      mode: 'view',
+                      document: initialStockDocument
+                    })
+                },
+                '查看初始库存单'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void drawer.value?.handleOpen({ mode: 'copy', document })
+                },
+                '复制销售单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void purchaseDrawer.value?.handleOpen({
+                      mode: 'copy',
+                      document: purchaseDocument
+                    })
+                },
+                '复制采购单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void drawer.value?.handleOpen(
+                      query.get('loadFromApi') === 'true'
+                        ? { mode: 'view', documentId: document.id }
+                        : { mode: 'view', document }
+                    )
+                },
+                '查看销售单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void purchaseDrawer.value?.handleOpen(
+                      query.get('loadFromApi') === 'true'
+                        ? { mode: 'view', documentId: purchaseDocument.id }
+                        : { mode: 'view', document: purchaseDocument }
+                    )
+                },
+                '查看采购单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void drawer.value?.handleOpen({ mode: 'edit', document })
+                },
+                '打开销售单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void purchaseDrawer.value?.handleOpen({
+                      mode: 'edit',
+                      document: purchaseDocument
+                    })
+                },
+                '打开采购单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void drawer.value?.handleOpen({ mode: 'edit', documentId: document.id })
+                },
+                '读取销售单据'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () =>
+                    void purchaseDrawer.value?.handleOpen({
+                      mode: 'edit',
+                      documentId: purchaseDocument.id
+                    })
+                },
+                '读取采购单据'
+              ),
+              h(InitialSalesDrawer, {
+                ref: drawer,
+                kind: salesKind,
+                importPermission: 'WmsInitialSalesOutbound:Import'
+              }),
+              h(PurchaseDocumentDrawer, {
+                ref: purchaseDrawer,
+                kind: purchaseKind,
+                permissionPrefix: 'WmsInitialPurchaseInbound',
+                importPermission: 'WmsInitialPurchaseInbound:Import'
               })
-          },
-          '查看初始库存单'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => void drawer.value?.handleOpen({ mode: 'copy', document })
-          },
-          '复制销售单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void purchaseDrawer.value?.handleOpen({ mode: 'copy', document: purchaseDocument })
-          },
-          '复制采购单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void drawer.value?.handleOpen(
-                query.get('loadFromApi') === 'true'
-                  ? { mode: 'view', documentId: document.id }
-                  : { mode: 'view', document }
-              )
-          },
-          '查看销售单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void purchaseDrawer.value?.handleOpen(
-                query.get('loadFromApi') === 'true'
-                  ? { mode: 'view', documentId: purchaseDocument.id }
-                  : { mode: 'view', document: purchaseDocument }
-              )
-          },
-          '查看采购单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => void drawer.value?.handleOpen({ mode: 'edit', document })
-          },
-          '打开销售单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void purchaseDrawer.value?.handleOpen({ mode: 'edit', document: purchaseDocument })
-          },
-          '打开采购单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () => void drawer.value?.handleOpen({ mode: 'edit', documentId: document.id })
-          },
-          '读取销售单据'
-        ),
-        h(
-          'button',
-          {
-            type: 'button',
-            onClick: () =>
-              void purchaseDrawer.value?.handleOpen({
-                mode: 'edit',
-                documentId: purchaseDocument.id
-              })
-          },
-          '读取采购单据'
-        ),
-        h(InitialSalesDrawer, {
-          ref: drawer,
-          kind: salesKind,
-          importPermission: 'WmsInitialSalesOutbound:Import'
-        }),
-        h(PurchaseDocumentDrawer, {
-          ref: purchaseDrawer,
-          kind: purchaseKind,
-          permissionPrefix: 'WmsInitialPurchaseInbound',
-          importPermission: 'WmsInitialPurchaseInbound:Import'
-        })
-      ])
+            ]
+      )
   }
 })
 

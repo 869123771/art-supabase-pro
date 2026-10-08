@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-  import { resolveMenuLabel } from '@/utils/navigation/menu'
+  import { createMenuPathResolver, resolveMenuLabel } from '@/utils/navigation/menu'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
@@ -301,13 +301,8 @@
     form.scenes.find((scene: NumberScene) => scene.ruleKey === form.data.ruleKey)
   )
   const selectedTenantCount = computed(() => form.data.tenantIds.length)
-  const selectedMenuPath = computed(() => {
-    if (!form.data.menuId) return ''
-    return treeUtils
-      .getAncestors<MenuNode>(form.menuTree, form.data.menuId)
-      .map((menu: MenuNode) => resolveMenuLabel(menu))
-      .join(' / ')
-  })
+  const menuPathResolver = computed(() => createMenuPathResolver(form.menuTree))
+  const selectedMenuPath = computed(() => menuPathResolver.value.resolve(form.data.menuId))
   const previewText = computed(() => {
     if (!form.data.autoEnabled) return '手工填写'
     try {

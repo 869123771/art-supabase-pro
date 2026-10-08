@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   buildSupabaseRpcRange,
   buildSupabasePageRange,
+  withSupabaseTableRange,
   fetchAllRangePages,
   type SupabaseRange
 } from '../../src/utils/supabase/pagination'
@@ -26,6 +27,29 @@ test('page ranges reject invalid pages and integer overflow', () => {
     () => buildSupabasePageRange({ current: Number.MAX_SAFE_INTEGER, size: 2 }),
     /分页范围无效/
   )
+})
+
+test('table range conversion accepts both pagination key pairs and preserves filters', () => {
+  assert.deepEqual(withSupabaseTableRange({ current: 3, size: 10, status: 'draft' }), {
+    current: 3,
+    size: 10,
+    status: 'draft',
+    from: 20,
+    to: 29
+  })
+  assert.deepEqual(withSupabaseTableRange({ page: 2, pageSize: 5, keyword: 'A' }), {
+    page: 2,
+    pageSize: 5,
+    keyword: 'A',
+    from: 5,
+    to: 9
+  })
+  assert.deepEqual(withSupabaseTableRange({ status: 'all' }), {
+    status: 'all',
+    from: 0,
+    to: 19
+  })
+  assert.throws(() => withSupabaseTableRange({ current: 0, size: 10 }), /分页范围无效/)
 })
 
 test('RPC ranges remain inclusive and ordered after clamping negative offsets', () => {

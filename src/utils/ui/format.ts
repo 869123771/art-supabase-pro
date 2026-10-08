@@ -70,6 +70,22 @@ export function formatCnyCurrencyValue(value: unknown): string {
   return formatCurrencyValue(value ?? 0)
 }
 
+/** Preserve masked amounts while showing empty business values as unavailable. */
+export function formatSensitiveCurrencyValue(
+  value: unknown,
+  currency = 'CNY',
+  locale = 'zh-CN'
+): string {
+  if (value === null || value === undefined || value === '') return '--'
+  return formatCurrencyValue(value, currency, locale)
+}
+
+/** Preserve server-provided count text and masks; format only numeric counts. */
+export function formatSensitiveCountValue(value: number | string | null | undefined): string {
+  if (isEmptyValue(value)) return '--'
+  return typeof value === 'number' ? value.toLocaleString('zh-CN') : String(value)
+}
+
 export function formatPercentValue(
   value: unknown,
   options: PercentValueFormatOptions = {}

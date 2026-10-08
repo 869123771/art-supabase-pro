@@ -58,6 +58,14 @@ export const canEditField = <TKey extends string>(
 export const isMaskedValue = (value: unknown): value is string =>
   typeof value === 'string' && value.trim() === MASK_PLACEHOLDER
 
+/** Only readable finite values may participate in aggregates; masked values stay unavailable. */
+export const parseReadableSensitiveNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'string' || !value.trim() || value.includes('*')) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 export const formatSensitiveNumber = (
   value: number | string | null | undefined,
   options: Intl.NumberFormatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 }

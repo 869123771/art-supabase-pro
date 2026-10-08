@@ -111,7 +111,7 @@ for (const [mode, targetTenantId] of [
     const dialog = page.locator('.el-dialog:visible').filter({ hasText: '新增岗位编制' })
     await expect(dialog).toBeVisible()
     await expectRpcTenant(requests, 'hr_list_position_options_secure', targetTenantId)
-    await expectRpcTenant(requests, 'hr_list_employee_organization_scope_secure', targetTenantId)
+    await expectRpcTenant(requests, 'hr_list_business_organization_options_secure', targetTenantId)
 
     await dialog.getByRole('button', { name: '创建记录' }).click()
     await expect
@@ -142,7 +142,7 @@ test('全部租户编辑其他租户记录时关联选项与更新条件保持�
   const dialog = page.locator('.el-dialog:visible').filter({ hasText: '编辑岗位编制' })
   await expect(dialog).toBeVisible()
   await expectRpcTenant(requests, 'hr_list_position_options_secure', businessTenantId)
-  await expectRpcTenant(requests, 'hr_list_employee_organization_scope_secure', businessTenantId)
+  await expectRpcTenant(requests, 'hr_list_business_organization_options_secure', businessTenantId)
 
   await dialog.getByRole('button', { name: '保存更改' }).click()
   await expect
@@ -184,7 +184,7 @@ test('全部租户编辑人事异动时组织、职级和编号规则跟随记�
   await page.goto('/tests/e2e/fixtures/hr-personnel-change-tenant.html')
   const dialog = page.locator('.el-dialog:visible').filter({ hasText: '编辑人事异动单' })
   await expect(dialog).toBeVisible()
-  await expectRpcTenant(requests, 'hr_list_employee_organization_scope_secure', businessTenantId)
+  await expectRpcTenant(requests, 'hr_list_business_organization_options_secure', businessTenantId)
   await expectRpcTenant(requests, 'hr_list_job_architecture_options_secure', businessTenantId)
   await expect
     .poll(

@@ -17,15 +17,17 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
 import { createViteWatchPolicy } from './scripts/vite-watch-policy.mjs'
 import { matchElementPlusStyles } from './scripts/element-plus-style-chunks.mjs'
-import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries'
-import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync'
+import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries.ts'
+import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync.ts'
 import {
   hostedApplicationSourceDirectories,
   hostedModuleSharedDependencies
-} from './scripts/hosted-module-dependencies'
+} from './scripts/hosted-module-dependencies.ts'
 
 // 添加插件用于生成 .nojekyll 文件
-import { createNoJekyllPlugin } from './src/plugins/nojekyll'
+import { createNoJekyllPlugin } from './src/plugins/nojekyll.ts'
+
+const configDirectory = path.dirname(fileURLToPath(import.meta.url))
 
 const normalizeModuleId = (id: string) => id.replace(/\\/g, '/')
 
@@ -99,6 +101,21 @@ export default ({ mode }: { mode: string }) => {
   )
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
   const buildLogPolicy = createBuildLogPolicy()
+  const fileViewerPlugin = enableFileViewerPlugin
+    ? fileViewerRenderers({
+        preset: 'all',
+        inject: false,
+        copyAssets: enableFileViewerAssets
+          ? { mode: 'build', outDir: fileViewerAssetStageDir }
+          : false,
+        chunkStrategy: 'none'
+      })
+    : null
+  if (isProduction && fileViewerPlugin) {
+    // Direct preset imports and our chunk rules already cover the config hook's work.
+    // Skip its repeated optional-package resolution; retain build hooks for viewer assets.
+    fileViewerPlugin.config = undefined
+  }
   const hostedApplicationAliases = Object.fromEntries(
     Object.entries(hostedApplicationSourceDirectories)
       .filter(([, sourceDirectory]) => existsSync(path.resolve(root, sourceDirectory)))
@@ -118,6 +135,8 @@ export default ({ mode }: { mode: string }) => {
     base: VITE_BASE_URL,
     server: {
       port: Number(VITE_PORT),
+      // 大型模块宿主按浏览器请求转换，避免启动时预转换抢占交互请求。
+      preTransformRequests: false,
       // 浏览器回归期间固定页面，避免并发文件修改导致弹窗与测试输入丢失。
       watch: isE2E ? null : createViteWatchPolicy(outDir),
       hmr: isE2E ? false : undefined,
@@ -256,19 +275,7 @@ export default ({ mode }: { mode: string }) => {
       vue({ ...templateCompilerOptions }),
       vueJsx(),
       tailwindcss(),
-      ...(enableFileViewerPlugin
-        ? [
-            fileViewerRenderers({
-              inject: false,
-              copyAssets: enableFileViewerAssets
-                ? { mode: 'build', outDir: fileViewerAssetStageDir }
-                : false,
-              // Rolldown's native code splitting already preserves renderer-level lazy chunks.
-              // Disabling the plugin's Rollup manualChunks avoids an ignored-option warning.
-              chunkStrategy: 'none'
-            })
-          ]
-        : []),
+      ...(fileViewerPlugin ? [fileViewerPlugin] : []),
       createFileViewerAssetSyncPlugin({
         enabled: enableFileViewerPlugin && enableFileViewerAssets,
         sourceRoot: fileViewerAssetStageDir,
@@ -335,12 +342,23 @@ export default ({ mode }: { mode: string }) => {
     ],
     // 依赖预构建：避免运行时重复请求与转换，提升首次加载速度
     optimizeDeps: {
-      entries: ['index.html'],
+      // 路由 glob 包含全部业务模块；启动时不递归扫描所有页面，保留按需发现。
+      entries: [],
       ignoreOutdatedRequests: true,
       // Element Plus 的按需样式入口会导入 Sass 源码。让 Vite 直接按需处理它们，
       // 避免懒加载页面首次访问时触发依赖重优化和整页刷新。
       exclude: elementPlusStyleDeps,
       include: [
+        ...hostedModuleSharedDependencies,
+        'element-plus',
+        'element-plus/es/locale/lang/en',
+        'element-plus/es/locale/lang/zh-cn',
+        'pinia-plugin-persistedstate',
+        'vue-i18n',
+        'mitt',
+        'nprogress',
+        'dayjs/plugin/utc',
+        'dayjs/plugin/timezone',
         'echarts/core',
         'echarts/charts',
         'echarts/components',
@@ -355,8 +373,8 @@ export default ({ mode }: { mode: string }) => {
         'vue-img-cutter',
         'element-plus/es',
         // 预打包 SQL 控制台实际使用的 Monaco 核心与 JSON Worker。
-        'monaco-editor/esm/vs/editor/editor.worker',
-        'monaco-editor/esm/vs/language/json/json.worker'
+        'monaco-editor/esm/vs/editor/editor.worker.js',
+        'monaco-editor/esm/vs/language/json/json.worker.js'
       ]
     },
     css: {
@@ -388,5 +406,5 @@ export default ({ mode }: { mode: string }) => {
 }
 
 function resolvePath(paths: string) {
-  return path.resolve(__dirname, paths)
+  return path.resolve(configDirectory, paths)
 }

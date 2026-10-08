@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue'
-  import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+  import * as monaco from 'monaco-editor/editor/editor.api'
   import { ElMessage } from 'element-plus'
   import VueMonacoEditor from '@guolao/vue-monaco-editor'
   import { useSettingStore } from '@/store/modules/setting'

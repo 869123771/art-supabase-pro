@@ -1,1 +1,0 @@
-var e=null,t=null,n=null,r=t=>{e=t},i=()=>e,a=e=>{t=e},o=()=>t,s=e=>{n=e},c=()=>n;export{r as a,a as i,i as n,s as o,c as r,o as t};

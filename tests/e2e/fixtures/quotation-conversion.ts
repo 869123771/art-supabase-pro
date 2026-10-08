@@ -1,4 +1,4 @@
-import { createApp, h, ref } from 'vue'
+import { createApp, defineAsyncComponent, h, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import language from '@/locales'
 import { store } from '@/store'
@@ -20,6 +20,11 @@ const material = ref<InstanceType<typeof QuotationMaterial>>()
 const workOrder = ref<InstanceType<typeof QuotationWorkOrder>>()
 const salesDocument = ref<InstanceType<typeof ScmDocumentDialog>>()
 const successes = ref(0)
+const workspaceVisible = ref(false)
+const QuotationWorkspace = defineAsyncComponent(
+  () =>
+    import('../../../modules/art-supabase-scm/src/views/sales-document/scm-document-workspace.vue')
+)
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }]
@@ -38,7 +43,18 @@ const quotation: ScmSalesDocument = {
   deliveryDate: null,
   currency: 'CNY',
   details: {},
-  lines: [],
+  lines: [
+    {
+      lineId: 'line-a',
+      lineNo: 10,
+      materialId: 'component-a',
+      materialCode: 'C1',
+      materialDescription: '转单物料',
+      quantity: 2,
+      unitPrice: 1,
+      taxRate: 0
+    }
+  ],
   fees: [],
   paymentPlans: [],
   deliveryPlans: [],
@@ -56,7 +72,22 @@ const quotation: ScmSalesDocument = {
 }
 const app = createApp({
   render: () =>
-    h('main', { class: 'p-4' }, [
+    h('main', { class: 'art-page-view p-4 h-screen flex flex-col' }, [
+      h(
+        'button',
+        {
+          onClick: () => {
+            useUserStore(store).setUserInfo({
+              userId: 'scope-test-user',
+              tenantId: 'tenant-a',
+              platformSuper: true
+            })
+            workspaceVisible.value = true
+          }
+        },
+        '报价列表验证'
+      ),
+      workspaceVisible.value ? h(QuotationWorkspace, { kind: 'sales_quotation' }) : null,
       h(
         'button',
         {
@@ -92,6 +123,24 @@ const app = createApp({
             })
         },
         '编辑报价'
+      ),
+      h(
+        'button',
+        {
+          onClick: () => {
+            useUserStore(store).setUserInfo({
+              userId: 'scope-test-user',
+              tenantId: 'tenant-a',
+              platformSuper: true
+            })
+            void salesDocument.value?.handleOpen({
+              kind: 'project_quotation',
+              effectiveTenantId: 'tenant-a',
+              tenantOptions: [{ label: '测试租户', value: 'tenant-a' }]
+            })
+          }
+        },
+        '新增项目报价单验证'
       ),
       h(ScmDocumentDialog, { ref: salesDocument, onSuccess: () => successes.value++ }),
       h('button', { onClick: () => router.push('/away') }, '离开报价页面'),
@@ -145,8 +194,25 @@ const app = createApp({
                   materialId: '',
                   materialCode: '',
                   materialDescription: '待编码物料',
+                  lineNo: 10,
+                  baseUnit: '米',
+                  specification: 'M10×30',
+                  brand: '测试品牌',
                   quantity: 2,
                   unitPrice: 1,
+                  taxRate: 0
+                },
+                {
+                  lineId: 'line-b',
+                  lineNo: 20,
+                  materialId: '',
+                  materialCode: '',
+                  materialDescription: '下批待编码物料',
+                  baseUnit: '件',
+                  specification: 'M8',
+                  brand: '另一品牌',
+                  quantity: 3,
+                  unitPrice: 2,
                   taxRate: 0
                 }
               ]

@@ -34,6 +34,7 @@ Examples:
 
 - `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display. `allowAllTenantRead` enables aggregate search only for platform super administrators in the all-tenant scope; write targets still come from the owning form.
 - `BusinessWorkspaceHeader`: shared business workspace identity and overview metrics.
+- `BusinessMenuFilter`: menu-tree search, selection, counts and complete states; each feature supplies its own visible menus and business statistics.
 - Business record links, history, and permission-aware action surfaces.
 
 An employee selector belongs in `business`, not `core/forms`, because it depends on the employee domain and its API contract. A generic paged table selector remains in `core/forms`.

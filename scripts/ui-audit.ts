@@ -68,10 +68,60 @@ interface TemplateNode {
     type: number
     name?: string
     arg?: { content?: string }
+    exp?: { content?: string }
     value?: { content?: string }
   }>
   children?: TemplateNode[]
   loc?: { start: { offset: number } }
+}
+
+function findNestedWholeOverlayLoading(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+  const offsets: number[] = []
+  const bodyChildren = (node: TemplateNode): TemplateNode[] =>
+    (node.children ?? []).filter(
+      (child) =>
+        child.type === 1 &&
+        !(
+          child.tag === 'template' &&
+          child.props?.some(
+            (property) =>
+              property.name === 'slot' &&
+              property.arg?.content &&
+              property.arg.content !== 'default'
+          )
+        )
+    )
+  const visit = (node: TemplateNode): void => {
+    if (node.type === 1 && (node.tag === 'ArtDrawer' || node.tag === 'ArtDialog')) {
+      let children = bodyChildren(node)
+      while (
+        children.length === 1 &&
+        ['div', 'main', 'section', 'template'].includes(children[0].tag ?? '')
+      ) {
+        children = bodyChildren(children[0])
+      }
+      const state = children.length === 1 ? children[0] : undefined
+      if (
+        state &&
+        ['ArtAsyncState', 'ArtOverlayLoading'].includes(state.tag ?? '') &&
+        state.props?.some(
+          (property) =>
+            (property.type === 6 && property.name === 'loading') ||
+            (property.type === 7 &&
+              property.name === 'bind' &&
+              property.arg?.content === 'loading' &&
+              property.exp?.content !== 'false')
+        )
+      ) {
+        offsets.push(state.loc?.start.offset ?? 0)
+      }
+    }
+    node.children?.forEach(visit)
+  }
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
 }
 
 function hasStaticClass(node: TemplateNode, className: string): boolean {
@@ -223,6 +273,9 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
   }
 
   if (path.extname(file) === '.vue') {
+    findNestedWholeOverlayLoading(file, content).forEach((offset) => {
+      addFinding(offset, 'feedback/whole-overlay-loading-owner')
+    })
     findMissingEmptyDescriptions(file, content).forEach(({ offset, rule }) => {
       addFinding(offset, rule)
     })

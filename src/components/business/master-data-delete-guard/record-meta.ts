@@ -139,7 +139,8 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   mdm_process_route: { label: '工艺路线' },
   mdm_cargo: { label: '货物档案' },
   mdm_esop_binding: { label: 'ESOP 适用范围' },
-  mdm_warehouse_bin: { label: '固定物料仓位' },
+  mdm_warehouse_bin: { label: '库位' },
+  wms_package_placement: { label: '垛包落位' },
   mes_work_order: { label: '生产工单', routeName: 'MesWorkOrder' },
   smis_ppe_issuance_record_item: { label: '劳保用品发放明细' },
   smis_ppe_issuance_standard_detail: { label: '劳保用品发放标准明细' },
@@ -190,6 +191,11 @@ export function getRecordReferenceMeta(table: string): RecordReferenceMeta {
 }
 
 const statuses: Record<string, string> = {
+  available: '可存',
+  locked: '锁定',
+  occupied: '占用',
+  in_stock: '在库',
+  placed: '已落位',
   draft: '草稿',
   design: '设计',
   changing: '变更中',

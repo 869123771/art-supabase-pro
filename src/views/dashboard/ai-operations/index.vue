@@ -334,6 +334,7 @@
 <script setup lang="tsx">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -865,9 +866,7 @@
     )
   }
 
-  function formatDateTime(value?: string | null): string {
-    return value ? dayjs(value).format('YYYY-MM-DD HH:mm:ss') : '--'
-  }
+  const formatDateTime = createDateTimeFormatter()
 
   onMounted(async () => {
     await Promise.all([

@@ -138,19 +138,32 @@
           icon="ri:file-transfer-line"
           eyebrow="DOCUMENT PUSH"
           :title="
-            isEntrustedProcessing
-              ? '下推受托加工后续业务'
-              : isReturn
-                ? '下推采购退货业务'
-                : '下推采购入库业务'
+            isInitial
+              ? '下推期初暂估应付'
+              : isEntrustedProcessing
+                ? '下推受托加工后续业务'
+                : isReturn
+                  ? '下推采购退货业务'
+                  : '下推采购入库业务'
           "
           :description="
-            isEntrustedProcessing
-              ? '勾选一张已审核单据，生成对应的受托收料或退料草稿。'
-              : '选择后续业务目标。目标模块接入后将按当前已审核单据生成关联草稿。'
+            isInitial
+              ? '登记上线前未结清暂估应付；退货冲减应付，不影响库存。可在结束初始化的对账表核对。'
+              : isEntrustedProcessing
+                ? '勾选一张已审核单据，生成对应的受托收料或退料草稿。'
+                : '选择后续业务目标。目标模块接入后将按当前已审核单据生成关联草稿。'
           "
         />
-        <div v-if="isEntrustedProcessing" class="mt-5">
+        <div v-if="isInitial" class="mt-5">
+          <ElButton
+            type="primary"
+            class="w-full!"
+            :loading="pushingInitialObligation"
+            @click="pushInitialObligation"
+            >{{ isReturn ? '期初暂估应付冲减' : '期初暂估应付单' }}</ElButton
+          >
+        </div>
+        <div v-else-if="isEntrustedProcessing" class="mt-5">
           <ElButton type="primary" class="w-full!" @click="pushEntrustedCounterpart">
             {{ kind === 'entrusted_processing_inbound' ? '受托退料' : '受托收料' }}
           </ElButton>
@@ -168,6 +181,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useWmsInitialObligationPush } from '@/hooks/business/useWmsInitialObligationPush'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
   import { formatCurrencyValue } from '@/utils/ui/format'
@@ -178,6 +192,7 @@
   import { chunk } from 'lodash-es'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { useDocumentBulkDelete } from '@/hooks/business/useDocumentBulkDelete'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
   import { useMasterDataDeleteProcessingContext } from '@/hooks/core/useMasterDataDeleteProcessing'
   import MasterDeleteProcessingNotice from '@/components/business/master-delete-processing-notice/index.vue'
@@ -278,6 +293,10 @@
     'specificationModel',
     'inventoryUnitName',
     'quantity',
+    'baseQuantity',
+    'auxiliaryQuantity',
+    'auxiliaryQuantity2',
+    'discountAmount',
     'receivedQuantity',
     'unreceivedQuantity',
     'returnedQuantity',
@@ -334,6 +353,14 @@
   const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
   const selectedRows = ref<Array<{ documentId: string; kind: unknown; status: unknown }>>([])
+  const { pushing: pushingInitialObligation, push: pushInitialObligation } =
+    useWmsInitialObligationPush({
+      area: 'purchase',
+      getSelection: () => selectedRows.value,
+      afterPush: async () => {
+        await pushDialogRef.value?.handleClose()
+      }
+    })
   const returnKinds: WmsPurchaseKind[] = [
     'initial_return',
     'purchase_return',
@@ -365,9 +392,11 @@
       })[props.kind]
   )
   const description = computed(() =>
-    isReturn.value
-      ? `${isInitial.value ? '登记库存初始化前' : '登记入库业务过程'}的退料，数量以负数醒目标识，税价与折扣自动核算。`
-      : `${isInitial.value ? '登记库存初始化前' : '登记日常'}的入库业务，支持供应商、项目与物料组合查询。`
+    isInitial.value
+      ? '记录上线前未结清采购往来，只初始化暂估应付，不更新库存。退货表单录入正数，列表以红色负数呈现。'
+      : isReturn.value
+        ? `${isInitial.value ? '登记库存初始化前' : '登记入库业务过程'}的退料，数量以负数醒目标识，税价与折扣自动核算。`
+        : `${isInitial.value ? '登记库存初始化前' : '登记日常'}的入库业务，支持供应商、项目与物料组合查询。`
   )
   const permission = computed(() => props.permissions)
   const search = reactive({
@@ -542,6 +571,7 @@
       materialCode: '',
       materialDescription: `共 ${group.length} 项物料`,
       amount: group.reduce((sum, line) => sum + Number(line.amount || 0), 0),
+      discountAmount: group.reduce((sum, line) => sum + Number(line.discountAmount || 0), 0),
       taxAmount: group.reduce((sum, line) => sum + Number(line.taxAmount || 0), 0),
       totalAmount: group.reduce((sum, line) => sum + Number(line.totalAmount || 0), 0)
     }))
@@ -560,6 +590,7 @@
     }
   }
   async function refresh(): Promise<void> {
+    tableRef.value?.clearSelection()
     await tableRef.value?.refreshUpdate()
   }
   function purchaseCellClassName({
@@ -569,6 +600,19 @@
     row: Record<string, unknown>
     column: { property?: string }
   }): string {
+    if (
+      row.kind === 'initial_return' &&
+      [
+        'quantity',
+        'baseQuantity',
+        'auxiliaryQuantity',
+        'auxiliaryQuantity2',
+        'amount',
+        'discountAmount',
+        'totalAmount'
+      ].includes(column.property || '')
+    )
+      return 'opening-return-negative-cell'
     return column.property === 'quantity' && returnKinds.some((kind) => kind === row.kind)
       ? 'wms-purchase-negative-cell'
       : ''
@@ -706,7 +750,7 @@
     row: WmsPurchaseListRow,
     action: 'submit' | 'approve' | 'delete'
   ): Promise<void> {
-    if (workingId.value) return
+    if (workingId.value || bulkDeleting.value) return
     const label = { submit: '提交', approve: '审核', delete: '删除' }[action]
     const resources = [{ id: row.documentId, label: row.documentNo }]
     deleteResourceLabel.value = row.kind === 'other_return' ? '其他入库退回单' : title.value
@@ -732,7 +776,18 @@
       workingId.value = undefined
     }
   }
+  const { bulkDeleteAction, bulkDeleting } = useDocumentBulkDelete({
+    permission: () => permission.value.Delete,
+    resourceLabel: () => title.value,
+    idKey: 'documentId',
+    busy: () => Boolean(workingId.value),
+    inspect: inspectDeleteReferences,
+    remove: (id) => changeWmsPurchaseStatus(id, 'delete'),
+    refresh,
+    clearSelection: () => tableRef.value?.clearSelection()
+  })
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    bulkDeleteAction(),
     ...(['purchase_inbound', 'other_inbound'].includes(props.kind)
       ? [
           {
@@ -860,10 +915,7 @@
   }
   function columnsFactory(): ColumnOption<WmsPurchaseListRow>[] {
     const columns: ColumnOption<WmsPurchaseListRow>[] = [
-      ...(displayMode.value === 'document' &&
-      (props.kind === 'other_inbound' || isEntrustedProcessing.value)
-        ? [{ type: 'selection' as const, width: 48, fixed: 'left' as const }]
-        : []),
+      { type: 'selection', width: 48, fixed: 'left' },
       {
         prop: 'documentNo',
         label: '单据编号',
@@ -933,6 +985,13 @@
           </span>
         )
       },
+      ...(displayMode.value === 'line' && props.kind === 'initial_return'
+        ? ([
+            { prop: 'baseQuantity', label: '基本数量', minWidth: 115, align: 'right' },
+            { prop: 'auxiliaryQuantity', label: '辅助数量', minWidth: 115, align: 'right' },
+            { prop: 'auxiliaryQuantity2', label: '辅助数量2', minWidth: 125, align: 'right' }
+          ] as ColumnOption<WmsPurchaseListRow>[])
+        : []),
       ...(isEntrustedProcessing.value
         ? [
             {
@@ -971,6 +1030,17 @@
         align: 'right',
         formatter: (row) => formatCurrencyValue(row.amount)
       },
+      ...(props.kind === 'initial_return'
+        ? ([
+            {
+              prop: 'discountAmount',
+              label: '折扣额(元)',
+              minWidth: 115,
+              align: 'right',
+              formatter: (row) => formatCurrencyValue(row.discountAmount)
+            }
+          ] as ColumnOption<WmsPurchaseListRow>[])
+        : []),
       {
         prop: 'taxAmount',
         label: '税额(元)',
@@ -1076,6 +1146,11 @@
 
   :deep(.wms-purchase-negative) {
     font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--el-color-danger);
+  }
+
+  :deep(td.el-table__cell.opening-return-negative-cell) {
     font-variant-numeric: tabular-nums;
     color: var(--el-color-danger);
   }

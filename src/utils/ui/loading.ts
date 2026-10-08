@@ -51,12 +51,7 @@ const DEFAULT_LOADING_CONFIG = {
   customClass: 'art-loading-fix art-global-loading'
 } as const
 
-interface LoadingInstance {
-  close: () => void
-  $el?: HTMLElement
-}
-
-let loadingInstance: LoadingInstance | null = null
+let loadingInstance: ReturnType<typeof ElLoading.service> | null = null
 
 export const loadingService = {
   /**
@@ -72,10 +67,11 @@ export const loadingService = {
         background: getLoadingBackground(),
         text: text || getLoadingTitle()
       }
-      loadingInstance = ElLoading.service(config)
-      loadingInstance.$el?.setAttribute('role', 'status')
-      loadingInstance.$el?.setAttribute('aria-live', 'polite')
-      loadingInstance.$el?.setAttribute('aria-label', '系统正在加载，请稍候')
+      const instance = ElLoading.service(config)
+      loadingInstance = instance
+      instance.$el?.setAttribute('role', 'status')
+      instance.$el?.setAttribute('aria-live', 'polite')
+      instance.$el?.setAttribute('aria-label', '系统正在加载，请稍候')
     } else if (text && loadingInstance.$el) {
       const textElement = loadingInstance.$el.querySelector<HTMLElement>('.el-loading-text')
       if (textElement) textElement.textContent = text

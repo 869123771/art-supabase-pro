@@ -1,8 +1,6 @@
 <template>
-  <ArtDrawer ref="drawerRef" :show-footer="false">
+  <ArtDrawer :loading="loading" ref="drawerRef" :show-footer="false">
     <ArtAsyncState
-      :loading="loading"
-      loading-mode="skeleton"
       :error="loadError"
       :empty="!detail"
       empty-text="暂无 AI 运行详情"
@@ -229,7 +227,7 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -449,9 +447,7 @@
     return Number(value ?? 0).toLocaleString('zh-CN')
   }
 
-  function formatDateTime(value?: string | null): string {
-    return value ? dayjs(value).format('YYYY-MM-DD HH:mm:ss') : '--'
-  }
+  const formatDateTime = createDateTimeFormatter()
 
   function formatJson(value: unknown): string {
     return JSON.stringify(value ?? {}, null, 2)

@@ -1,0 +1,1 @@
+import{E as e,Rn as t,an as n,rn as r}from"./framework-DZqGOvEn.js";function i(){let i=t(!1),a=e=>{i.value=e};return e(document,`keydown`,e=>{e.key===`Escape`&&i.value&&a(!1)}),n(()=>a(!1)),r(()=>a(!1)),{focusMode:i,setFocusMode:a}}export{i as t};

@@ -67,22 +67,27 @@
       </div>
     </template>
 
-    <ElScrollbar
-      v-if="shouldUseScrollbar"
-      ref="scrollbarRef"
-      :height="normalizedContentHeight"
-      :max-height="normalizedContentMaxHeight"
-      :always="options.scrollbarAlways"
-      :native="options.nativeScrollbar"
-      class="art-dialog__scrollbar"
-      @wheel.capture="handleWheelBoundary"
+    <div
+      class="art-dialog__viewport"
+      :class="{ 'is-loading': contentLoading }"
+      :style="{ '--art-dialog-loading-min-height': normalizedContentHeight || undefined }"
+      :aria-busy="contentLoading"
     >
-      <div ref="contentRef" class="art-dialog__content">
-        <ArtOverlayLoading
-          :loading="contentLoading"
-          :text="options.loadingText"
-          :background="options.loadingBackground"
-          :custom-class="options.loadingCustomClass"
+      <ElScrollbar
+        v-if="shouldUseScrollbar"
+        ref="scrollbarRef"
+        :height="normalizedContentHeight"
+        :max-height="normalizedContentMaxHeight"
+        :always="options.scrollbarAlways"
+        :native="options.nativeScrollbar"
+        class="art-dialog__scrollbar"
+        @wheel.capture="handleWheelBoundary"
+      >
+        <div
+          ref="contentRef"
+          class="art-dialog__content"
+          :inert="contentLoading"
+          :aria-hidden="contentLoading"
         >
           <component
             :is="options.content"
@@ -92,16 +97,14 @@
             :dialog-api="exposedApi"
           />
           <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
-        </ArtOverlayLoading>
-      </div>
-    </ElScrollbar>
-
-    <div v-else ref="contentRef" class="art-dialog__content">
-      <ArtOverlayLoading
-        :loading="contentLoading"
-        :text="options.loadingText"
-        :background="options.loadingBackground"
-        :custom-class="options.loadingCustomClass"
+        </div>
+      </ElScrollbar>
+      <div
+        v-else
+        ref="contentRef"
+        class="art-dialog__content"
+        :inert="contentLoading"
+        :aria-hidden="contentLoading"
       >
         <component
           :is="options.content"
@@ -111,7 +114,15 @@
           :dialog-api="exposedApi"
         />
         <slot v-else :data="openData" :loading="contentLoading" :api="exposedApi" />
-      </ArtOverlayLoading>
+      </div>
+      <ArtOverlayLoading
+        v-if="contentLoading"
+        loading
+        overlay
+        :text="options.loadingText"
+        :background="options.loadingBackground"
+        :custom-class="options.loadingCustomClass"
+      />
     </div>
 
     <template v-if="options.showFooter" #footer>
@@ -598,6 +609,12 @@
     overflow: hidden;
   }
 
+  :global(.art-dialog.is-fullscreen .art-dialog__viewport),
+  :global(.art-dialog.is-fullscreen .art-dialog__scrollbar) {
+    height: 100%;
+    min-height: 0;
+  }
+
   :global(.art-dialog.is-focus-mode .art-dialog__content) {
     box-sizing: border-box;
     width: min(100%, 1120px);
@@ -642,6 +659,18 @@
 
     &__fullscreen-button {
       right: 52px !important;
+    }
+
+    &__viewport {
+      position: relative;
+      min-width: 0;
+
+      &.is-loading {
+        min-height: min(
+          var(--art-dialog-loading-min-height, clamp(320px, 54dvh, 580px)),
+          calc(100dvh - 220px)
+        );
+      }
     }
 
     &__content {
@@ -746,10 +775,7 @@
     border-radius: 0;
   }
 
-  :global(.art-dialog > .el-dialog__body > .art-dialog__content > .art-form),
-  :global(
-    .art-dialog > .el-dialog__body > .art-dialog__scrollbar .art-dialog__content > .art-form
-  ) {
+  :global(.art-dialog > .el-dialog__body .art-dialog__content > .art-form) {
     padding: 0 !important;
   }
 </style>

@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./analysis-workspace-B29OexOt.js";var i=t({name:`PmisPatrolAnalysis`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`}))}});export{i as default};

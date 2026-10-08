@@ -302,7 +302,9 @@ for (const [movementType, title] of [
     })
     await page.route('**/rest/v1/mdm_material?*', async (route) => {
       const query = new URL(route.request().url()).searchParams
-      if (query.get('select') === 'id,tenant_id,serial_management_enabled') {
+      if (
+        query.get('select') === 'id,tenant_id,serial_management_enabled,batch_management_enabled'
+      ) {
         controlReads += 1
         if (controlReads === 1) await firstControlGate
         if (!rejectControl) successfulControlReads += 1
@@ -311,7 +313,14 @@ for (const [movementType, title] of [
             ? currentDraft === 2
               ? { json: null }
               : { status: 503, json: { code: 'XX000', message: '测试物料规则读取失败' } }
-            : { json: { id: material.id, tenant_id: tenantId, serial_management_enabled: true } }
+            : {
+                json: {
+                  id: material.id,
+                  tenant_id: tenantId,
+                  serial_management_enabled: true,
+                  batch_management_enabled: currentDraft === 2
+                }
+              }
         )
       }
       return route.fulfill({ headers: { 'content-range': '0-0/1' }, json: [material] })
@@ -370,9 +379,24 @@ for (const [movementType, title] of [
       const serials = form.getByPlaceholder('每行一个 SN；件数须等于入库数量', { exact: true })
       await expect(serials).toBeVisible()
       await expect(remark).toHaveValue(`采购库存新增 ${draft}`)
-      await form
-        .getByPlaceholder('供应商批号或生产批号', { exact: true })
-        .fill(`PURCHASE-NEW-${draft}`, { timeout: 10_000 })
+      if (draft === 1) {
+        const batch = form.getByPlaceholder('可留空或手工填写批号', { exact: true })
+        await expect(batch).toBeEnabled()
+        if (movementType === 'purchase_in') {
+          await batch.fill(`PURCHASE-NEW-${draft}`, { timeout: 10_000 })
+        } else {
+          await expect(batch).toHaveValue('')
+        }
+      } else {
+        await expect(
+          form.getByPlaceholder('入库时按物料批号规则自动生成', { exact: true })
+        ).toBeDisabled()
+      }
+      await form.getByRole('textbox', { name: '批号', exact: true }).scrollIntoViewIfNeeded()
+      await page.screenshot({
+        path: testInfo.outputPath(`stock-batch-rule-${draft}.png`),
+        animations: 'disabled'
+      })
       await form.getByRole('spinbutton', { name: '业务数量', exact: false }).fill('2')
       await save.click()
       await expect(
@@ -396,7 +420,7 @@ for (const [movementType, title] of [
       expect(payloads.at(-1)).toEqual(payloads.at(-2))
       expect(payloads.at(-1)).toMatchObject({
         movement_type: movementType,
-        batch_no: `PURCHASE-NEW-${draft}`,
+        batch_no: draft === 1 && movementType === 'purchase_in' ? `PURCHASE-NEW-${draft}` : '',
         quantity: 2,
         serial_nos: [`PURCHASE-SN-${draft}-1`, `PURCHASE-SN-${draft}-2`]
       })
@@ -543,7 +567,7 @@ test('生产入库两张新增承接工单和确认垛包保存重试', async ({
       await expect(form.getByText('MO-PRODUCTION · 待入库 8', { exact: true })).toBeVisible()
     }
     await expect(save).toBeEnabled()
-    const batch = form.getByPlaceholder('供应商批号或生产批号', { exact: true })
+    const batch = form.getByPlaceholder('可留空或手工填写批号', { exact: true })
     if (draft === 2) {
       await choose(page, form, '确认垛包', 'PACK-PRODUCTION · 2 块')
       await expect(batch).toHaveValue('PACK-PRODUCTION')
@@ -666,7 +690,7 @@ for (const oldFailure of [false, true]) {
         )
     )
     await choose(page, form, '确认垛包', 'CURRENT-eq.order-A · 2 块')
-    await expect(form.getByPlaceholder('供应商批号或生产批号', { exact: true })).toHaveValue(
+    await expect(form.getByPlaceholder('可留空或手工填写批号', { exact: true })).toHaveValue(
       'CURRENT-eq.order-A'
     )
     await expect(

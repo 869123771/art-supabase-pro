@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./defect-management-CPQXCorC.js";var i=t({name:`MesReportDefects`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-tab":`details`}))}});export{i as default};

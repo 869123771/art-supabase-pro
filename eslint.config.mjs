@@ -27,6 +27,7 @@ export default [
   // 指定全局变量和环境
   {
     languageOptions: {
+      parserOptions: { tsconfigRootDir: __dirname },
       globals: {
         ...globals.browser,
         ...globals.node

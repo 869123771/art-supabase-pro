@@ -9,6 +9,7 @@ import FundTransferDetailDrawer from '../../../modules/art-supabase-fms/src/view
 import BankReconciliationDetailDrawer from '../../../modules/art-supabase-fms/src/views/treasury/bank-reconciliation/modules/bank-reconciliation-detail-drawer.vue'
 import AccountingPeriodDrawer from '../../../modules/art-supabase-fms/src/views/accounting/account-set/modules/accounting-period-drawer.vue'
 import CommercialBillDetailDrawer from '../../../modules/art-supabase-fms/src/views/specialized-accounting/commercial-bill/modules/commercial-bill-detail-drawer.vue'
+import PeriodCloseDetailDrawer from '../../../modules/art-supabase-fms/src/views/specialized-accounting/period-close/modules/period-close-detail-drawer.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -97,6 +98,7 @@ const Preview = defineComponent({
     const bankDrawer = ref<InstanceType<typeof BankReconciliationDetailDrawer> | null>(null)
     const periodDrawer = ref<InstanceType<typeof AccountingPeriodDrawer> | null>(null)
     const billDrawer = ref<InstanceType<typeof CommercialBillDetailDrawer> | null>(null)
+    const closeDrawer = ref<InstanceType<typeof PeriodCloseDetailDrawer> | null>(null)
     return () =>
       h('main', [
         h(
@@ -119,6 +121,24 @@ const Preview = defineComponent({
           { type: 'button', onClick: () => void billDrawer.value?.handleOpen(commercialBill) },
           '打开商业票据详情'
         ),
+        h(
+          'button',
+          {
+            type: 'button',
+            onClick: () =>
+              void closeDrawer.value?.handleOpen({
+                id: '88888888-8888-4888-8888-888888888888',
+                tenantId,
+                accountSetId,
+                accountingPeriodId: '99999999-9999-4999-8999-999999999999',
+                runNo: 'TEST-CLOSE-001',
+                status: 'checking',
+                createTime: '2026-10-02T08:00:00Z'
+              })
+          },
+          '打开关账检查详情'
+        ),
+        h(PeriodCloseDetailDrawer, { ref: closeDrawer }),
         h(FundTransferDetailDrawer, { ref: transferDrawer }),
         h(BankReconciliationDetailDrawer, { ref: bankDrawer }),
         h(AccountingPeriodDrawer, { ref: periodDrawer }),

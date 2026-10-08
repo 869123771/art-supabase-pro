@@ -46,7 +46,7 @@
 <script setup lang="ts">
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage, type FormRules } from 'element-plus'
   import type { ComputedRef } from 'vue'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -212,9 +212,7 @@
     formRef.value?.clearValidate()
   }
 
-  function formatDateTime(value?: string | null): string {
-    return value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '--'
-  }
+  const formatDateTime = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm' })
 
   defineExpose({ handleOpen })
 </script>

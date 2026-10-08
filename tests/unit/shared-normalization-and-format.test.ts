@@ -11,6 +11,8 @@ import {
   createDateTimeFormatter,
   formatCnyCurrencyValue,
   formatCurrencyValue,
+  formatSensitiveCurrencyValue,
+  formatSensitiveCountValue,
   formatDateTimeValue,
   formatPercentValue
 } from '../../src/utils/ui/format'
@@ -41,6 +43,13 @@ test('shared UI formatters keep repeated display policies consistent', () => {
   assert.equal(formatCnyCurrencyValue(null), '¥0.00')
   assert.equal(formatCurrencyValue(1234.5, 'USD', 'en-US'), '$1,234.50')
   assert.equal(formatCurrencyValue('invalid'), 'invalid')
+  assert.equal(formatSensitiveCurrencyValue(null), '--')
+  assert.equal(formatSensitiveCurrencyValue(''), '--')
+  assert.equal(formatSensitiveCurrencyValue('***'), '***')
+  assert.equal(formatSensitiveCurrencyValue(1234.5), '¥1,234.50')
+  assert.equal(formatSensitiveCurrencyValue(1234.5, 'USD', 'en-US'), '$1,234.50')
+  assert.equal(formatSensitiveCurrencyValue('***', 'USD'), '***')
+  assert.equal(formatSensitiveCurrencyValue(undefined, 'USD'), '--')
   assert.equal(formatPercentValue(null), '--')
   assert.equal(formatPercentValue(12.34), '12.3%')
   assert.equal(formatDateTimeValue(null), '--')
@@ -56,6 +65,17 @@ test('shared UI formatters keep repeated display policies consistent', () => {
   assert.equal(formatMinute('invalid'), '—')
   assert.equal(formatMinute('2026-09-13T08:30:00Z').length, 16)
   assert.equal(createDateTimeFormatter({ format: 'YYYY-MM-DD' })('2026-09-13'), '2026-09-13')
+})
+
+test('sensitive counts preserve masks, numeric strings and unavailable values', () => {
+  assert.equal(formatSensitiveCountValue(undefined), '--')
+  assert.equal(formatSensitiveCountValue(null), '--')
+  assert.equal(formatSensitiveCountValue(''), '--')
+  assert.equal(formatSensitiveCountValue('***'), '***')
+  assert.equal(formatSensitiveCountValue('01234'), '01234')
+  assert.equal(formatSensitiveCountValue('不可用'), '不可用')
+  assert.equal(formatSensitiveCountValue(1234), '1,234')
+  assert.equal(formatSensitiveCountValue(0), '0')
 })
 
 test('tenant labels share one fallback and composition rule', () => {

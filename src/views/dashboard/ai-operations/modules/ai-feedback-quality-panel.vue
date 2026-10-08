@@ -144,7 +144,7 @@
 
 <script setup lang="ts">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
@@ -221,9 +221,7 @@
     return 'var(--el-color-danger)'
   }
 
-  function formatDateTime(value?: string | null): string {
-    return value ? dayjs(value).format('MM-DD HH:mm') : '--'
-  }
+  const formatDateTime = createDateTimeFormatter({ format: 'MM-DD HH:mm' })
 </script>
 
 <style scoped lang="scss">

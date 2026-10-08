@@ -328,7 +328,10 @@ export default class TreeUtils {
    * Map in preorder over one isolated snapshot, preserving the input structure.
    * Mappers may read children but must not mutate them; returned children are rebuilt.
    */
-  mapTree<T extends object = TreeNode>(tree: T[], mapper: (node: T) => T): T[] {
+  mapTree<T extends object = TreeNode, TResult extends object = T>(
+    tree: T[],
+    mapper: (node: T) => TResult
+  ): TResult[] {
     const snapshot = this.normalizeTreeData<TreeNode>(tree)
     const roots: TreeNode[] = []
     const mappedNodes = new WeakMap<TreeVisit, TreeNode>()
@@ -341,7 +344,7 @@ export default class TreeUtils {
       if (visit.parent) this.ensureChildren(mappedNodes.get(visit.parent)!).push(mapped)
       else roots.push(mapped)
     }
-    return roots as T[]
+    return roots as TResult[]
   }
 
   /**
@@ -457,6 +460,23 @@ export default class TreeUtils {
       return records.reverse() as T[]
     }
     return []
+  }
+
+  /** Index display paths in one traversal, preserving the first occurrence of each ID. */
+  getLabelPathIndex<T extends object = TreeNode>(
+    tree: T[],
+    resolveLabel: (node: T) => string,
+    separator = ' / '
+  ): Map<ID, string> {
+    const paths = new Map<ID, string>()
+    const labels: string[] = []
+    this.traverse(tree, (node, depth) => {
+      labels.length = depth
+      labels.push(resolveLabel(node))
+      const id = this.getNodeId(node as TreeNode)
+      if (id !== undefined && id !== null && !paths.has(id)) paths.set(id, labels.join(separator))
+    })
+    return paths
   }
 
   /**

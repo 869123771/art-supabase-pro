@@ -27,6 +27,7 @@ test('standalone module builds include the platform region data and document exa
           import path from 'node:path'
           import { build, createServer } from 'vite'
           const { createModuleViteConfig } = await import(${JSON.stringify(factoryUrl)})
+          console.info('Module configuration factory loaded')
           const root = ${JSON.stringify(fixtureRoot)}
           const platformRoot = ${JSON.stringify(projectRoot)}
           const config = await createModuleViteConfig({
@@ -34,10 +35,12 @@ test('standalone module builds include the platform region data and document exa
             mode: 'test', platformRoot
           })
           assert.equal(config.publicDir, path.join(platformRoot, 'public'))
+          console.info('Module configuration created')
           await build({
             ...config, root, configFile: false, logLevel: 'silent',
             build: { ...config.build, outDir: path.join(root, 'dist') }
           })
+          console.info('Module public assets built')
           for (const asset of [
             'data/pca-code.json',
             'data/equipment-accessory-demo/safety-valve-photo.png',
@@ -50,10 +53,13 @@ test('standalone module builds include the platform region data and document exa
           }
           const server = await createServer({
             ...config, root, configFile: false, logLevel: 'silent',
-            server: { ...config.server, host: '127.0.0.1', port: 0 }
+            plugins: [],
+            optimizeDeps: { noDiscovery: true, include: [] },
+            server: { ...config.server, host: '127.0.0.1', port: 0, watch: null, hmr: false }
           })
           try {
             await server.listen()
+            console.info('Module public server started')
             const url = server.resolvedUrls?.local[0]
             assert.ok(url, '未启动模块资源服务器')
             const response = await fetch(new URL('data/pca-code.json', url))
@@ -69,6 +75,9 @@ test('standalone module builds include the platform region data and document exa
         `
       ],
       { cwd: projectRoot, encoding: 'utf8', timeout: 60_000 }
+    )
+    assert.ifError(
+      result.error && new Error(`${result.error.message}\n${result.stdout}\n${result.stderr}`)
     )
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /Shared module public assets verified/)

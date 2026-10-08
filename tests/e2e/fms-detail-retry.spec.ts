@@ -5,7 +5,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 const fixtureUrl = '/tests/e2e/fixtures/fms-detail-retry.html'
 
 async function openFixture(page: Page, projectName: string): Promise<void> {
-  await page.goto(fixtureUrl)
+  await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 })
   await page.evaluate(
     ({ dark, shadow }) => {
       if (dark) document.documentElement.classList.add('dark')
@@ -14,6 +14,54 @@ async function openFixture(page: Page, projectName: string): Promise<void> {
     { dark: projectName.includes('dark'), shadow: projectName.includes('shadow') }
   )
 }
+
+test('关账数量保留权限掩码并区分数字和原始文本', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
+  let attempts = 0
+  await page.route('**/rest/v1/rpc/fms_get_period_close_run_secure', async (route) => {
+    attempts += 1
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'PGRST000', message: 'technical failure' })
+      })
+      return
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: '88888888-8888-4888-8888-888888888888',
+        runNo: 'TEST-CLOSE-001',
+        status: 'checking',
+        createTime: '2026-10-02T08:00:00Z',
+        passedCount: 1234,
+        warningCount: '01234',
+        blockingCount: '***',
+        fieldAccess: { closeDiagnostics: 'read' }
+      })
+    })
+  })
+  await page.route('**/rest/v1/rpc/fms_list_period_close_checks_secure', (route) =>
+    route.fulfill({ contentType: 'application/json', body: '[]' })
+  )
+  await openFixture(page, testInfo.project.name)
+  await page.getByRole('button', { name: '打开关账检查详情' }).click()
+  const drawer = page.locator('.el-drawer')
+  await expect(
+    drawer.getByText('关账检查详情加载失败，请重新加载。', { exact: true })
+  ).toBeVisible()
+  await expect(drawer.getByText('technical failure')).toHaveCount(0)
+  await drawer.getByRole('button', { name: '重新加载' }).click()
+  await expect(drawer.getByText('1,234', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('01234', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('***', { exact: true })).toBeVisible()
+  await expectNoViewportOverflow(page)
+  await page.screenshot({
+    path: `.artifacts/fms-period-close-count-${testInfo.project.name}.png`,
+    animations: 'disabled'
+  })
+})
 
 async function expectNoViewportOverflow(page: Page): Promise<void> {
   const widths = await page.evaluate(() => ({

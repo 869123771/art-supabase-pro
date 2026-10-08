@@ -8,7 +8,8 @@ import {
   getFieldAccess,
   isMaskedValue,
   mergeFieldAccessMaps,
-  omitNonEditableFields
+  omitNonEditableFields,
+  parseReadableSensitiveNumber
 } from '../../src/utils/field-permission'
 
 test('field access defaults to hidden and keeps explicit levels', () => {
@@ -54,6 +55,15 @@ test('sensitive number formatting preserves masks and formats numeric values', (
   assert.equal(formatSensitiveNumber(null), '--')
   assert.equal(formatSensitiveNumber(1234.5), '1,234.50')
   assert.equal(formatSensitiveNumber('12.3456', { maximumFractionDigits: 4 }), '12.3456')
+})
+
+test('masked or invalid sensitive amounts cannot enter financial aggregates', () => {
+  assert.equal(parseReadableSensitiveNumber(1234.5), 1234.5)
+  assert.equal(parseReadableSensitiveNumber(' 1234.5 '), 1234.5)
+  assert.equal(parseReadableSensitiveNumber(0), 0)
+  for (const value of [null, undefined, '', '  ', '***', '12*4', 'invalid', Infinity, NaN, true]) {
+    assert.equal(parseReadableSensitiveNumber(value), undefined)
+  }
 })
 
 test('adds currency and unit affixes without decorating masked or empty values', () => {

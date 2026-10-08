@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./scm-document-workspace-Bas3Yg_w.js";var i=t({name:`ScmSalesContract`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`sales_contract`}))}});export{i as default};

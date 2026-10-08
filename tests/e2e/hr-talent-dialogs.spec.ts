@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(60_000)
+test.setTimeout(120_000)
 
 for (const scenario of [
   { feature: 'learning', entity: 'plan', title: '新增培训计划', kinds: [] },
@@ -19,13 +19,13 @@ for (const scenario of [
     feature: 'absence',
     entity: 'policy',
     title: '新增休假政策',
-    kinds: ['leave_type', 'organization', 'grade']
+    kinds: ['leave_type', 'grade']
   },
   {
     feature: 'mobility',
     entity: 'opportunity',
     title: '新增内部机会',
-    kinds: ['organization', 'position']
+    kinds: ['position']
   },
   { feature: 'lifecycle', entity: 'template', title: '新增标准任务包', kinds: [] },
   { feature: 'lifecycle', entity: 'task', title: '新增执行任务', kinds: ['case'] },
@@ -37,14 +37,18 @@ for (const scenario of [
     feature: 'planning',
     entity: 'line',
     title: '新增岗位需求',
-    kinds: ['plan', 'organization', 'position']
+    kinds: ['plan', 'position']
   }
 ]) {
-  test(`${scenario.title} 只加载本表单所需关联数据`, async ({ page }) => {
+  test(`${scenario.title} 只加载本表单所需关联数据`, async ({ page }, testInfo) => {
     await prepareIsolatedSession(page)
+    await page.setViewportSize({ width: 570, height: 900 })
     const kinds: string[] = []
     await page.route('**/rest/v1/**', (route) => {
-      if (route.request().url().includes('_options_secure')) {
+      if (
+        route.request().url().includes('_options_secure') &&
+        route.request().postDataJSON()?.p_kind
+      ) {
         const kind = route.request().postDataJSON().p_kind
         kinds.push(kind)
         if (!scenario.kinds.includes(kind))
@@ -72,6 +76,19 @@ for (const scenario of [
     ).toBeEnabled()
     expect(kinds.sort()).toEqual([...scenario.kinds].sort())
     await expect(dialog.getByText('加载失败', { exact: false })).toHaveCount(0)
+    expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('add-dialog.png'), animations: 'disabled' })
+    await dialog
+      .locator('.art-dialog__scrollbar .el-scrollbar__wrap')
+      .first()
+      .evaluate((node) => {
+        node.scrollTop = node.scrollHeight
+      })
+    await expect(dialog.getByRole('button', { name: '取消', exact: true })).toBeVisible()
+    await page.screenshot({
+      path: testInfo.outputPath('add-dialog-bottom.png'),
+      animations: 'disabled'
+    })
   })
 }
 

@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./workspace-CujG6Wzi.js";var i=t({name:`WmsSalesReturnDocument`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`return`}))}});export{i as default};

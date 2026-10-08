@@ -131,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+  import { uniq } from 'lodash-es'
   import { Background } from '@vue-flow/background'
   import { Controls } from '@vue-flow/controls'
   import {
@@ -400,7 +401,7 @@
     const assignedNames = (taskMap.value.get(node.key) ?? [])
       .map((task) => task.assigneeNameSnapshot?.trim())
       .filter((name): name is string => Boolean(name))
-    const uniqueNames = [...new Set(assignedNames)]
+    const uniqueNames = uniq(assignedNames)
     if (uniqueNames.length) return uniqueNames.join('、')
     if (node.assignee.type === 'initiator') return '发起人'
     const count =

@@ -45,10 +45,10 @@
     DataSelectApiFn,
     DataSelectColumn,
     DataSelectKey,
-    DataSelectNavigation,
     DataSelectRecord
   } from '@/components/core/forms/art-data-select/types'
   import { normalizeStringList } from '@/utils/form/normalize'
+  import { buildMaterialCategoryNavigation } from '@/utils/business/material-category'
 
   defineOptions({ name: 'ArtMaterialSelect' })
 
@@ -170,19 +170,7 @@
     }
   ]
 
-  const navigation = computed<DataSelectNavigation>(() => ({
-    data: props.categories.map((category) => ({ ...category })),
-    title: '物料分类',
-    rowKey: 'id',
-    parentKey: 'parentId',
-    labelKey: 'categoryName',
-    descriptionKey: 'categoryCode',
-    filterKey: 'categoryId',
-    allLabel: '全部分类',
-    allDescription: `${props.categories.length} 个分类节点`,
-    searchPlaceholder: '搜索分类名称或编码',
-    emptyText: '暂无物料分类'
-  }))
+  const navigation = computed(() => buildMaterialCategoryNavigation(props.categories))
 
   const normalizeValue = (
     value: DataSelectKey | DataSelectKey[] | undefined

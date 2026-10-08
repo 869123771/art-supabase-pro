@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./report-ledger-Dps1pAF-.js";var i=t({name:`MesReportAllocation`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`allocation`}))}});export{i as default};

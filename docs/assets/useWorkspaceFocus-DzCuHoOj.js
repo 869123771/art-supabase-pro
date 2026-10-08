@@ -1,1 +1,0 @@
-import{E as e,Ln as t,in as n,nn as r}from"./framework-CQuaCGL1.js";function i(){let i=t(!1),a=e=>{i.value=e};return e(document,`keydown`,e=>{e.key===`Escape`&&i.value&&a(!1)}),n(()=>a(!1)),r(()=>a(!1)),{focusMode:i,setFocusMode:a}}export{i as t};

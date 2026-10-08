@@ -1,6 +1,6 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
-    <div class="notification-channel-dialog">
+    <div class="notification-channel-dialog grid gap-4">
       <ElAlert
         :title="channelHelp.title"
         :description="channelHelp.description"
@@ -284,10 +284,3 @@
 
   defineExpose({ handleOpen })
 </script>
-
-<style scoped lang="scss">
-  .notification-channel-dialog {
-    display: grid;
-    gap: 16px;
-  }
-</style>

@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./calendar-workspace-BU2NStlh.js";var i=t({name:`PmisInspectionDetail`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`detail`}))}});export{i as default};

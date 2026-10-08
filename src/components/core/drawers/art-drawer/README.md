@@ -4,6 +4,8 @@
 
 `loading` covers the drawer's visible content viewport, centers the loading state there, and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
 
+Whole-drawer fetches bind `loading` on `ArtDrawer`. A root `ArtAsyncState` inside it owns error, empty, and retry states; do not give that root state another loading mask. Local table or card fetches continue to use the corresponding shared component's loading state.
+
 ```vue
 <ArtDrawer
   ref="drawerRef"

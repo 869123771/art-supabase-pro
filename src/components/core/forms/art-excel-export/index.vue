@@ -216,7 +216,7 @@
       isExporting.value = false
       emit('export-progress', 0)
     }
-  }, 1000)
+  }, 1000, false)
 
   // 暴露方法供父组件调用
   defineExpose({

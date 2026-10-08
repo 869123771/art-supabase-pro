@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="lg">
+  <ArtDialog ref="dialogRef" size="lg" :loading="state.loading">
     <div class="workflow-delegation">
       <section class="workflow-delegation__intro">
         <span><ArtSvgIcon icon="ri:user-shared-line" /></span>
@@ -20,8 +20,7 @@
           </div>
         </template>
         <ArtAsyncState
-          v-if="state.loading || loadError"
-          :loading="state.loading"
+          v-if="loadError"
           :error="loadError"
           size="compact"
           :skeleton-rows="2"
@@ -41,10 +40,8 @@
 
       <ArtSectionCard
         class="workflow-delegation__history"
-        :loading="state.loading"
         :error="loadError"
         @retry="loadData"
-        loading-mode="mask"
         preserve-content-structure
       >
         <template #header>

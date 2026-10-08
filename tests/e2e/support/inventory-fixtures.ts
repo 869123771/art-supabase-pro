@@ -161,7 +161,8 @@ const binRows = [
   {
     ...bin,
     id: 'ed276e75-d9d4-4742-a667-d758731d15f9',
-    bin_code: 'RAW-A-SH-1-1',
+    bin_code: 'A01-01-01',
+    code_separator: '-',
     bin_name: '货架 1-1',
     bin_type: 'shelf',
     shelf_code: 'A01',
@@ -184,7 +185,8 @@ const binRows = [
   {
     ...bin,
     id: 'ed276e75-d9d4-4742-a667-d758731d15fa',
-    bin_code: 'RAW-A-SH-1-2',
+    bin_code: 'A01-01-02',
+    code_separator: '-',
     bin_name: '定容货位',
     bin_type: 'shelf',
     shelf_code: 'A01',
@@ -196,7 +198,8 @@ const binRows = [
   {
     ...bin,
     id: 'ed276e75-d9d4-4742-a667-d758731d15fb',
-    bin_code: 'RAW-A-SH-2-1',
+    bin_code: 'A01-02-01',
+    code_separator: '-',
     bin_name: '锁定货位',
     bin_type: 'shelf',
     shelf_code: 'A01',
@@ -208,7 +211,8 @@ const binRows = [
   {
     ...bin,
     id: 'ed276e75-d9d4-4742-a667-d758731d15fc',
-    bin_code: 'RAW-A-SH-2-2',
+    bin_code: 'A01-02-02',
+    code_separator: '-',
     bin_name: '停用货位',
     bin_type: 'shelf',
     shelf_code: 'A01',

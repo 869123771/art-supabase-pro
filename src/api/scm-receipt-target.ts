@@ -1,5 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { fetchAllRangePages } from '@/utils/supabase/pagination'
+import { uniq } from 'lodash-es'
 
 export type ScmReceiptTargetKind = 'inbound' | 'asset_payable'
 export type ScmReceiptTargetStatus = 'draft' | 'confirmed' | 'approved'
@@ -122,11 +123,9 @@ export async function fetchScmReceiptTargetLines(targetId: string) {
     { breakReturn: true, showErrorMessage: true, errorMessage: '目标单据明细加载失败' }
   )
   const lines = result.data ?? []
-  const materialIds = [
-    ...new Set(
-      lines.map((line) => line.lineSnapshot.materialId).filter((id): id is string => Boolean(id))
-    )
-  ]
+  const materialIds = uniq(
+    lines.map((line) => line.lineSnapshot.materialId).filter((id): id is string => Boolean(id))
+  )
   if (!materialIds.length) return result
   const controls = await responseHandle<Array<{ id: string; serialManagementEnabled: boolean }>>(
     () =>

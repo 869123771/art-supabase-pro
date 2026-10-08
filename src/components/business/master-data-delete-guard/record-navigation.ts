@@ -1,7 +1,7 @@
 import {
   fetchEquipmentInspectionDeleteDestination,
   fetchScmPurchaseDeleteDestination,
-  fetchWmsPurchaseDeleteDestination
+  fetchWmsDocumentDeleteDestination
 } from '@/api/master-data-delete'
 import type { MasterDataDeleteDependencyMeta } from './index.vue'
 
@@ -23,11 +23,72 @@ const scmPurchaseReferenceRoutes: Record<string, string> = {
   receipt_notice: 'ScmReceiptNotice'
 }
 
+const warehouseDocumentRoutes = {
+  wms_purchase_document: purchaseReferenceRoutes,
+  wms_sales_document: {
+    initial_outbound: 'WmsInitialSalesOutbound',
+    initial_return: 'WmsInitialSalesReturn',
+    outbound: 'WmsSalesOutbound',
+    return: 'WmsSalesReturnDocument',
+    other_outbound: 'WmsOtherOutbound',
+    other_return: 'WmsOtherOutbound'
+  },
+  wms_production_material_document: {
+    issue: 'WmsProductionIssue',
+    return: 'WmsProductionReturn',
+    finished_inbound: 'WmsFinishedInbound',
+    finished_return: 'WmsFinishedReturn'
+  },
+  wms_count_adjustment_document: { gain: 'WmsCountGain', loss: 'WmsCountLoss' }
+} satisfies Record<Parameters<typeof fetchWmsDocumentDeleteDestination>[0], Record<string, string>>
+
 export function createRecordReferenceNavigation(
   hasAuth: (permission: string) => boolean
 ): Record<string, Partial<MasterDataDeleteDependencyMeta>> {
   const permitted = (permission: string) => ({ canNavigate: () => hasAuth(permission) })
+  const warehouseReferences = Object.fromEntries(
+    Object.entries(warehouseDocumentRoutes).map(([table, routes]) => [
+      table,
+      {
+        routeNames: Object.values(routes),
+        canNavigate: () => Object.values(routes).some((name) => hasAuth(`${name}:View`)),
+        resolveRouteName: async (record: { targetId: string }) => {
+          // Keys originate from the closed route catalog above, never from record data.
+          const destination = await fetchWmsDocumentDeleteDestination(
+            table as keyof typeof warehouseDocumentRoutes,
+            record.targetId
+          )
+          const name = destination
+            ? (routes as Record<string, string>)[destination.kind]
+            : undefined
+          return name && hasAuth(`${name}:View`) ? name : null
+        }
+      }
+    ])
+  )
   return {
+    ...warehouseReferences,
+    mdm_warehouse_bin: { routeName: 'MdmWarehouseBin', ...permitted('MdmWarehouseBin:View') },
+    wms_inventory_batch: { routeName: 'MdmInventoryBatch', ...permitted('MdmInventoryBatch:View') },
+    wms_inventory_reservation: {
+      routeName: 'MdmInventoryReservation',
+      ...permitted('MdmInventoryReservation:View')
+    },
+    wms_package_placement: {
+      routeName: 'MdmInventoryPackage',
+      ...permitted('MdmInventoryPackage:View')
+    },
+    wms_serial_number: { routeName: 'MdmInventorySerial', ...permitted('MdmInventorySerial:View') },
+    wms_opening_balance: { routeName: 'WmsInitialStock', ...permitted('WmsInitialStock:View') },
+    wms_initial_stock_document: {
+      routeName: 'WmsInitialStock',
+      ...permitted('WmsInitialStock:View')
+    },
+    wms_transfer_request_document: { routeName: 'WmsTransfer', ...permitted('WmsTransfer:View') },
+    wms_transfer_document: {
+      routeName: 'WmsDirectTransfer',
+      ...permitted('WmsDirectTransfer:View')
+    },
     wms_issue_request: {
       routeName: 'WmsIssueRequest',
       routeQuery: { resourceType: 'wms_issue_request' },
@@ -108,16 +169,6 @@ export function createRecordReferenceNavigation(
       resolveRouteName: async (record) => {
         const destination = await fetchScmPurchaseDeleteDestination(record.targetId)
         const name = destination ? scmPurchaseReferenceRoutes[destination.kind] : undefined
-        return name && hasAuth(`${name}:View`) ? name : null
-      }
-    },
-    wms_purchase_document: {
-      routeNames: Object.values(purchaseReferenceRoutes),
-      canNavigate: () =>
-        Object.values(purchaseReferenceRoutes).some((name) => hasAuth(`${name}:View`)),
-      resolveRouteName: async (record) => {
-        const destination = await fetchWmsPurchaseDeleteDestination(record.targetId)
-        const name = destination ? purchaseReferenceRoutes[destination.kind] : undefined
         return name && hasAuth(`${name}:View`) ? name : null
       }
     },

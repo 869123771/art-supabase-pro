@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="xl" :show-footer="false" show-fullscreen-button>
+  <ArtDrawer
+    :loading="state.loading"
+    ref="drawerRef"
+    size="xl"
+    :show-footer="false"
+    show-fullscreen-button
+  >
     <template #header>
       <div class="workflow-instance__title">
         <span><ArtSvgIcon icon="ri:file-history-line" /></span>
@@ -8,8 +14,6 @@
     </template>
 
     <ArtAsyncState
-      :loading="state.loading"
-      loading-mode="skeleton"
       :error="state.error"
       :empty="!state.detail"
       empty-text="未找到审批实例"

@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" class="project-assistant-history" size="sm" :show-footer="false">
+  <ArtDrawer
+    :loading="loading"
+    ref="drawerRef"
+    class="project-assistant-history"
+    size="sm"
+    :show-footer="false"
+  >
     <div class="project-assistant-history__toolbar">
       <ElInput
         :model-value="query"
@@ -13,8 +19,6 @@
     </div>
 
     <ArtAsyncState
-      :loading="loading"
-      :loading-mode="items.length ? 'mask' : 'skeleton'"
       :error="error"
       :empty="!loading && !error && !items.length"
       empty-text="暂无项目助手会话"

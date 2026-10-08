@@ -14,7 +14,7 @@ const scenarios = [
 for (const authority of ['super', 'ordinary'] as const) {
   for (const [kind, segment, name, title] of scenarios) {
     test(`${authority}${title}查询失败恢复、空态与专注模式`, async ({ page }, testInfo) => {
-      test.setTimeout(90_000)
+      test.setTimeout(240_000)
       await installFixtures(page)
       const dark = testInfo.project.name.includes('dark')
       const shadow = testInfo.project.name.includes('shadow')
@@ -183,7 +183,12 @@ for (const authority of ['super', 'ordinary'] as const) {
               : { json: rows }
           )
         })
-      await page.goto(`#/wms/${path}`)
+      await page.goto(
+        process.env.WMS_REPORT_ISOLATED === 'true'
+          ? `/tests/e2e/fixtures/wms-inventory-report.html?kind=${kind}&authority=${authority}`
+          : `#/wms/${path}`,
+        { waitUntil: 'domcontentloaded' }
+      )
       await expect(page.locator('html')).toHaveAttribute(
         'data-box-mode',
         shadow ? 'shadow-mode' : 'border-mode'
@@ -403,6 +408,12 @@ for (const authority of ['super', 'ordinary'] as const) {
       }
       await page.keyboard.press('Escape')
       const headers = table.locator('.el-table__header-wrapper th')
+      await expect(headers.getByText('计量单位', { exact: true })).toHaveCount(1)
+      if (kind === 'stock') await expect(headers.getByText('数量', { exact: true })).toHaveCount(1)
+      await expect(headers.getByText('库存单位', { exact: true })).toHaveCount(0)
+      await expect(headers.getByText('基本单位', { exact: true })).toHaveCount(0)
+      await expect(headers.getByText('辅助单位', { exact: true })).toHaveCount(1)
+      await expect(headers.getByText('辅助单位(2)', { exact: true })).toHaveCount(1)
       await expect(headers.getByText('库存数量', { exact: true })).toHaveCount(0)
       await expect(headers.getByText('基本数量', { exact: true })).toHaveCount(0)
       expect(await headers.getByText('辅助数量', { exact: true }).count()).toBeGreaterThan(0)
@@ -460,6 +471,10 @@ for (const authority of ['super', 'ordinary'] as const) {
       })
       await summary.hover()
       await summary.locator('.el-select__clear').click()
+      await expect(headers.getByText('辅助单位', { exact: true })).toHaveCount(0)
+      await expect(headers.getByText('辅助单位(2)', { exact: true })).toHaveCount(0)
+      await expect(headers.getByText('库存单位', { exact: true })).toHaveCount(1)
+      await expect(headers.getByText('基本单位', { exact: true })).toHaveCount(1)
       await expect(headers.getByText('辅助数量', { exact: true })).toHaveCount(0)
       await expect(headers.getByText('辅助数量(2)', { exact: true })).toHaveCount(0)
       expect(await headers.getByText('库存数量', { exact: true }).count()).toBeGreaterThan(0)

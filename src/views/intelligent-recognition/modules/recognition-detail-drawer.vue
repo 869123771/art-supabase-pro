@@ -1,8 +1,6 @@
 <template>
-  <ArtDrawer ref="drawerRef">
+  <ArtDrawer :loading="detail.loading" ref="drawerRef">
     <ArtAsyncState
-      :loading="detail.loading"
-      loading-mode="skeleton"
       :error="loadError"
       :empty="!detail.data"
       empty-text="识别记录不存在或无权查看"

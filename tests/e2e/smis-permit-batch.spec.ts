@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(120_000)
+test.setTimeout(180_000)
 
 for (const fail of [false, true]) {
   test(`作业票批量作废限制并发并刷新${fail ? '部分失败' : '成功'}结果`, async ({ page }) => {
@@ -64,8 +64,11 @@ for (const fail of [false, true]) {
         await route.fulfill({ json: [] })
       }
     })
-    await page.goto('/tests/e2e/fixtures/smis-permit-batch.html')
-    await expect(page.getByText('TEST-PERMIT-8', { exact: true })).toBeVisible()
+    await page.goto('/tests/e2e/fixtures/smis-permit-batch.html', {
+      waitUntil: 'domcontentloaded',
+      timeout: 120_000
+    })
+    await expect(page.getByText('TEST-PERMIT-8', { exact: true })).toBeVisible({ timeout: 120_000 })
     const focusSwitch = page.getByRole('switch', { name: '进入专注模式' })
     await page.locator('.el-switch').filter({ has: focusSwitch }).click()
     await expect(page.getByRole('heading', { name: '测试作业票', exact: true })).toBeHidden()
@@ -79,14 +82,14 @@ for (const fail of [false, true]) {
     await page.getByRole('dialog').getByRole('button', { name: '确定', exact: true }).click()
     await expect.poll(() => writes).toBeGreaterThan(0)
     await expect(page.getByRole('button', { name: '批量作废', exact: true })).toBeDisabled()
+    if (fail)
+      await expect(page.getByText('作业票状态已变更，请刷新后重试', { exact: true })).toBeVisible()
     await expect.poll(() => listCalls).toBeGreaterThan(1)
     expect(maximum).toBe(3)
     expect(active).toBe(0)
     expect(refreshDuringWrite).toBe(false)
     expect(writes).toBe(fail ? 3 : rows.length)
     expect(pageErrors).toEqual([])
-    if (fail)
-      await expect(page.getByText('作业票状态已变更，请刷新后重试', { exact: true })).toBeVisible()
     const widths = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth

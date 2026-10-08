@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-CQuaCGL1.js";import{t as r}from"./governance-center-DIwJJI-r.js";var i=t({name:`MdmDataQuality`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`quality`}))}});export{i as default};

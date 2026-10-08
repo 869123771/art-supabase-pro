@@ -13,6 +13,78 @@ interface Node {
 
 const utils = new TreeUtils({ parentKey: 'parentId' })
 
+test('mapTree changes business DTO types while rebuilding isolated hierarchy', () => {
+  interface Option {
+    id: number
+    label: string
+    children: Option[]
+  }
+  const source: Node[] = [
+    { id: 1, detail: { title: '部门' }, children: [{ id: 2, detail: { title: '班组' } }] }
+  ]
+  const before = structuredClone(source)
+  const options = utils.mapTree<Node, Option>(source, (node) => ({
+    id: node.id,
+    label: node.detail?.title ?? '',
+    children: []
+  }))
+  assert.deepEqual(options, [
+    { id: 1, label: '部门', children: [{ id: 2, label: '班组', children: [] }] }
+  ])
+  options[0].children[0].label = '已修改'
+  assert.deepEqual(source, before)
+})
+
+test('label path indexes preserve branches, first matching IDs and input data in one traversal', () => {
+  const tree: Node[] = [
+    {
+      id: 0,
+      detail: { title: '根目录' },
+      children: [
+        {
+          id: 1,
+          detail: { title: '第一分支' },
+          children: [{ id: 2, detail: { title: '叶节点' } }]
+        },
+        {
+          id: 3,
+          detail: { title: '第二分支' },
+          children: [{ id: 2, detail: { title: '重复 ID' } }]
+        }
+      ]
+    },
+    { id: 4, detail: { title: '另一根目录' } }
+  ]
+  const before = structuredClone(tree)
+  let calls = 0
+  const paths = utils.getLabelPathIndex(tree, (node) => {
+    calls += 1
+    return node.detail?.title ?? ''
+  })
+  assert.equal(calls, 6)
+  assert.equal(paths.get(0), '根目录')
+  assert.equal(paths.get(2), '根目录 / 第一分支 / 叶节点')
+  assert.equal(paths.get(3), '根目录 / 第二分支')
+  assert.equal(paths.get(4), '另一根目录')
+  assert.equal(paths.get(999), undefined)
+  assert.deepEqual(tree, before)
+  tree[0].detail!.title = '新目录'
+  assert.equal(paths.get(0), '根目录')
+  assert.equal(
+    utils.getLabelPathIndex(tree, (node) => node.detail?.title ?? '', ' > ').get(1),
+    '新目录 > 第一分支'
+  )
+})
+
+test('label path indexes honor custom tree keys and reject structural cycles', () => {
+  const custom = new TreeUtils({ idKey: 'key', childrenKey: 'nodes' })
+  const tree = [{ key: 'root', label: '目录', nodes: [{ key: 'leaf', label: '页面' }] }]
+  assert.equal(custom.getLabelPathIndex(tree, (node) => node.label).get('leaf'), '目录 / 页面')
+  const cyclic: Node = { id: 1 }
+  cyclic.children = [cyclic]
+  assert.throws(() => utils.getLabelPathIndex([cyclic], () => '循环'), { code: 'TREE_CYCLE' })
+})
+
 test('descendant and ancestor queries return isolated flat records without repeated subtrees', () => {
   const tree: Node[] = [
     {

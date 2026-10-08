@@ -156,7 +156,7 @@
 
 <script setup lang="ts">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
@@ -196,8 +196,7 @@
     return diffWorkflowConfigs(comparisonVersion.value?.config, selected.config)
   })
 
-  const formatDate = (value?: string | null) =>
-    value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '--'
+  const formatDate = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm' })
 
   function versionStatusLabel(status: Api.Workflow.VersionStatus): string {
     return { draft: '草稿', published: '已发布', retired: '已归档' }[status]

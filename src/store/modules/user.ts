@@ -296,7 +296,20 @@ export const useUserStore = defineStore(
         if (error) throw error
         if (!data || loadVersion !== dictCacheVersion) return
 
-        const groupData = groupBy(data, (dictItem) => dictItem.dictTypeTable.code) as DictMap
+        const { fetchMaterialUnitCompatibilityOptions } = await import('@/api/unit-of-measure')
+        const units = await fetchMaterialUnitCompatibilityOptions()
+        if (units.error) throw units.error
+        if (loadVersion !== dictCacheVersion) return
+
+        const groupData = groupBy(
+          [
+            ...data.filter(
+              (item) => !['tmsCargoUnit', 'smisMaterialUnit'].includes(item.dictTypeTable.code)
+            ),
+            ...(units.data ?? [])
+          ],
+          (dictItem) => dictItem.dictTypeTable.code
+        ) as DictMap
         Object.keys(groupData).forEach((key) => {
           groupData[key] = (groupData[key] ?? []).slice().sort((a, b) => {
             return Number(a.sort) - Number(b.sort)
@@ -323,7 +336,10 @@ export const useUserStore = defineStore(
       const loadVersion = dictCacheVersion
       const request = (async () => {
         const { fetchDictionaryListByTypeCode } = await import('@/api/data-center')
-        const { data, error } = await fetchDictionaryListByTypeCode(dictCode)
+        const { fetchMaterialUnitCompatibilityOptions } = await import('@/api/unit-of-measure')
+        const { data, error } = ['tmsCargoUnit', 'smisMaterialUnit'].includes(dictCode)
+          ? await fetchMaterialUnitCompatibilityOptions(dictCode)
+          : await fetchDictionaryListByTypeCode(dictCode)
         if (error) throw error
         if (loadVersion !== dictCacheVersion) return
 

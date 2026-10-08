@@ -5,6 +5,17 @@ import type { UnitDisplayOption } from '@/utils/business/unit-display'
 
 const { supabase, responseHandle } = useSupabase()
 
+/** Historical TMS/SMIS field values resolve through tenant-owned MDM units, never dictionaries. */
+export async function fetchMaterialUnitCompatibilityOptions(sourceCode?: string) {
+  return responseHandle<
+    Array<Api.DataCenter.DictListItem & { dictTypeTable: { code: string; name: string } }>
+  >(
+    () =>
+      supabase.rpc('material_unit_compatibility_options', { p_source_code: sourceCode ?? null }),
+    { breakReturn: true, showErrorMessage: false, errorMessage: '计量单位加载失败，请重试' }
+  )
+}
+
 export async function fetchUnitDisplayOptions(tenantIds: string[]): Promise<UnitDisplayOption[]> {
   const tenants = uniq(tenantIds.filter(Boolean))
   const unitBatches: UnitDisplayOption[][] = []

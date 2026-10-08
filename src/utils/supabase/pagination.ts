@@ -29,6 +29,15 @@ export function buildSupabasePageRange(page: { current: number; size: number }):
   return { from, to }
 }
 
+/** Preserve table filters while accepting either ArtTableQuery pagination key pair. */
+export function withSupabaseTableRange<
+  T extends { current?: number; page?: number; size?: number; pageSize?: number }
+>(params: T): T & SupabaseRange {
+  const current = params.current ?? params.page ?? 1
+  const size = params.size ?? params.pageSize ?? 20
+  return { ...params, ...buildSupabasePageRange({ current, size }) }
+}
+
 /** Keep inclusive RPC bounds ordered after clamping the offset to zero. */
 export function buildSupabaseRpcRange(from: number, to: number): { p_from: number; p_to: number } {
   if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to)) {

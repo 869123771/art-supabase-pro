@@ -29,11 +29,17 @@ const canonicalDeclarations = new Map<string, string>([
   ['normalizeNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableNumber', 'src/utils/form/normalize.ts'],
   ['normalizeStringList', 'src/utils/form/normalize.ts'],
+  ['toDictionaryOption', 'src/utils/form/option.ts'],
+  ['toNameCodeOption', 'src/utils/form/option.ts'],
   ['formatTenantLabel', 'src/utils/tenant-display.ts'],
   ['formatCnyCurrencyValue', 'src/utils/ui/format.ts'],
+  ['formatSensitiveCurrencyValue', 'src/utils/ui/format.ts'],
+  ['formatSensitiveCountValue', 'src/utils/ui/format.ts'],
+  ['parseReadableSensitiveNumber', 'src/utils/field-permission.ts'],
   ['formatDateTimeValue', 'src/utils/ui/format.ts'],
   ['formatPercentValue', 'src/utils/ui/format.ts'],
-  ['createDateTimeFormatter', 'src/utils/ui/format.ts']
+  ['createDateTimeFormatter', 'src/utils/ui/format.ts'],
+  ['createMenuPathResolver', 'src/utils/navigation/menu.ts']
 ])
 
 async function collectFiles(directory: string): Promise<string[]> {
@@ -90,6 +96,72 @@ function collectScriptHelpers(
 ): void {
   const relative = relativeFile(file)
   const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+
+  const inspectDictionaryMapping = (node: ts.Node): void => {
+    if (
+      ts.isArrowFunction(node) &&
+      node.parameters.length === 1 &&
+      ts.isIdentifier(node.parameters[0].name) &&
+      ts.isCallExpression(node.parent) &&
+      ts.isPropertyAccessExpression(node.parent.expression) &&
+      node.parent.expression.name.text === 'map'
+    ) {
+      const item = node.parameters[0].name.text
+      if (
+        normalizeBody(node.body, source) ===
+        `({label:${item}.label||${item}.name,value:${item}.value})`
+      ) {
+        findings.push({
+          file: relative,
+          rule: 'repeated-dictionary-option-mapping',
+          detail: '字典选项的标签回退与值保留请复用主仓 toDictionaryOption。'
+        })
+      }
+      const body = ts.isParenthesizedExpression(node.body) ? node.body.expression : node.body
+      if (ts.isObjectLiteralExpression(body) && body.properties.length === 2) {
+        const label = body.properties.find(
+          (property) =>
+            ts.isPropertyAssignment(property) && property.name.getText(source) === 'label'
+        )
+        const value = body.properties.find(
+          (property) =>
+            ts.isPropertyAssignment(property) && property.name.getText(source) === 'value'
+        )
+        if (
+          label &&
+          ts.isPropertyAssignment(label) &&
+          value &&
+          ts.isPropertyAssignment(value) &&
+          value.initializer.getText(source) === `${item}.id` &&
+          [
+            ts.SyntaxKind.TemplateExpression,
+            ts.SyntaxKind.ConditionalExpression,
+            ts.SyntaxKind.CallExpression
+          ].includes(label.initializer.kind) &&
+          normalizeBody(label.initializer, source).includes(`${item}.name`) &&
+          normalizeBody(label.initializer, source).includes(`${item}.code`)
+        ) {
+          const fields: string[] = []
+          const inspectFields = (child: ts.Node): void => {
+            if (ts.isPropertyAccessExpression(child) && child.expression.getText(source) === item) {
+              fields.push(child.name.text)
+            }
+            ts.forEachChild(child, inspectFields)
+          }
+          inspectFields(label.initializer)
+          if (fields.every((field) => field === 'name' || field === 'code')) {
+            findings.push({
+              file: relative,
+              rule: 'repeated-name-code-option-mapping',
+              detail: '名称、编码与 ID 的关联选项请复用主仓 toNameCodeOption。'
+            })
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, inspectDictionaryMapping)
+  }
+  inspectDictionaryMapping(source)
 
   if (relative.includes('/api/') && !/\.(?:test|spec)\./.test(relative)) {
     const inspectApiPolicy = (node: ts.Node): void => {
@@ -231,6 +303,13 @@ for (const file of files) {
       file: relative,
       rule: 'raw-nullable-text-normalization',
       detail: '请按数据库列语义使用 normalizeNullableText 或 normalizeNonNullableText。'
+    })
+  }
+  if (/\[\s*\.\.\.\s*new Set\s*\(|Array\.from\(\s*new Set\s*\(/.test(content)) {
+    findings.push({
+      file: relative,
+      rule: 'manual-array-deduplication',
+      detail: '数组去重请复用 lodash-es 的 uniq 或 uniqBy；保留 Set 用于集合成员判断。'
     })
   }
 

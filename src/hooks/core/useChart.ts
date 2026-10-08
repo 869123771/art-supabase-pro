@@ -56,6 +56,7 @@ import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
 import { h, render, type WatchSource } from 'vue'
 import { usePreferredReducedMotion } from '@vueuse/core'
+import { debounce } from 'lodash-es'
 import type { SeriesOption } from 'echarts'
 
 // 图表主题配置
@@ -128,7 +129,6 @@ export function useChart(options: UseChartOptions = {}) {
   let intersectionObserver: IntersectionObserver | null = null
   let containerResizeObserver: ResizeObserver | null = null
   let pendingOptions: EChartsOption | null = null
-  let resizeTimeoutId: number | null = null
   let resizeFrameId: number | null = null
   let initTimerId: number | null = null
   let isDestroyed = false
@@ -147,10 +147,7 @@ export function useChart(options: UseChartOptions = {}) {
 
   // 清理定时器的统一方法
   const clearTimers = () => {
-    if (resizeTimeoutId !== null) {
-      clearTimeout(resizeTimeoutId)
-      resizeTimeoutId = null
-    }
+    debouncedResize.cancel()
     if (resizeFrameId !== null) {
       cancelAnimationFrame(resizeFrameId)
       resizeFrameId = null
@@ -177,15 +174,7 @@ export function useChart(options: UseChartOptions = {}) {
   }
 
   // 防抖的resize处理（用于窗口resize事件）
-  const debouncedResize = () => {
-    if (resizeTimeoutId !== null) {
-      clearTimeout(resizeTimeoutId)
-    }
-    resizeTimeoutId = window.setTimeout(() => {
-      requestAnimationResize()
-      resizeTimeoutId = null
-    }, RESIZE_DEBOUNCE_DELAY)
-  }
+  const debouncedResize = debounce(requestAnimationResize, RESIZE_DEBOUNCE_DELAY)
 
   // 多延迟resize处理 - 统一方法
   const multiDelayResize = (delays: readonly number[]) => {

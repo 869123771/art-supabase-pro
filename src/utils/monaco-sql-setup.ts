@@ -1,12 +1,12 @@
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import * as monaco from 'monaco-editor/editor/editor.api'
 import { loader } from '@guolao/vue-monaco-editor'
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import 'monaco-editor/esm/vs/language/json/monaco.contribution.js'
+import editorWorker from 'monaco-editor/editor/editor.worker?worker'
+import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
+import 'monaco-editor/language/json/monaco.contribution'
 import {
   conf as pgsqlConfiguration,
   language as pgsqlLanguage
-} from 'monaco-sql-languages/esm/languages/pgsql/pgsql'
+} from 'monaco-sql-languages/esm/languages/pgsql/pgsql.js'
 import {
   buildJoinSuggestions,
   buildSqlTemplateSuggestions,

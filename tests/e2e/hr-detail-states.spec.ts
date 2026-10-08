@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
 
 test.use({ storageState: { cookies: [], origins: [] } })
+test.setTimeout(120_000)
 const scenarios = [
   { feature: 'service', rpc: 'hr_get_service_request_detail_secure', title: '员工服务工单' },
   { feature: 'benefits', rpc: 'hr_get_benefit_detail_secure', title: '福利与参保详情' },

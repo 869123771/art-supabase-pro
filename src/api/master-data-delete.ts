@@ -108,11 +108,16 @@ export async function fetchEquipmentInspectionDeleteDestination(
   return data ?? null
 }
 
-export async function fetchWmsPurchaseDeleteDestination(
+export async function fetchWmsDocumentDeleteDestination(
+  table:
+    | 'wms_purchase_document'
+    | 'wms_sales_document'
+    | 'wms_production_material_document'
+    | 'wms_count_adjustment_document',
   documentId: string
 ): Promise<{ kind: string } | null> {
   const { data } = await responseHandle<{ kind: string }>(
-    () => supabase.from('wms_purchase_document').select('kind').eq('id', documentId).maybeSingle(),
+    () => supabase.from(table).select('kind').eq('id', documentId).maybeSingle(),
     { breakReturn: true, showErrorMessage: false }
   )
   return data && typeof data.kind === 'string' ? data : null

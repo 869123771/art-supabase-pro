@@ -2,7 +2,9 @@
 
 ## Content Loading
 
-`loading` controls the dialog content mask and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.
+`loading` covers the visible dialog body outside its scrollable content and disables the default footer buttons. Long content, scrolling, and fullscreen mode do not move the loading state away from the body viewport center. It is independent from the confirm button's `confirmLoading`.
+
+Whole-dialog fetches bind `loading` on `ArtDialog`. A root `ArtAsyncState` inside it owns error, empty, and retry states; do not give that root state another loading mask. Local table or card fetches continue to use the corresponding shared component's loading state.
 
 ```vue
 <ArtDialog

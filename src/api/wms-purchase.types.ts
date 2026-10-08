@@ -42,6 +42,7 @@ export interface WmsPurchaseMaterial extends WmsPurchaseOption {
   auxiliaryUnit2Id: string | null
   unitConversions: Array<{ sourceUnitId: string; sourceFactor: number; baseFactor: number }>
   serialManagementEnabled: boolean
+  batchManagementEnabled?: boolean
 }
 
 export interface WmsPurchaseWarehouse {
@@ -212,6 +213,9 @@ export interface WmsPurchaseListRow {
   projectName: string | null
   inventoryUnitName: string | null
   quantity: number
+  baseQuantity: number
+  auxiliaryQuantity: number | null
+  auxiliaryQuantity2: number | null
   batchNo: string | null
   warehouseName: string | null
   binName: string | null

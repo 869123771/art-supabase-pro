@@ -143,17 +143,16 @@
             v-if="mode !== 'view' && form.tenantId"
             class="flex flex-wrap items-center justify-end gap-2 whitespace-nowrap lg:flex-nowrap"
           >
-            <ArtTableMultipleSelect
-              v-model="materialPickerIds"
+            <ArtMaterialSelect
+              v-model:model-values="materialPickerIds"
               v-model:selected-data="materialPickerRows"
               class="w-auto! shrink-0"
               title="选择采购物料"
               subtitle="可按物料编码、名称和描述检索并多选。"
               search-placeholder="搜索物料编码或描述"
-              row-key="id"
               label-key="name"
-              description-key="code"
-              :columns="materialColumns"
+              multiple
+              :categories="materialCategories"
               :api-fn="materialApi"
               @confirm="addMaterials"
             >
@@ -162,7 +161,7 @@
                   ><ArtSvgIcon icon="ri:add-line" />添加物料</ElButton
                 ></template
               >
-            </ArtTableMultipleSelect>
+            </ArtMaterialSelect>
             <span
               v-auth="importPermission"
               class="shrink-0"
@@ -232,7 +231,8 @@
             <template #quantity="{ row }">
               <ElInputNumber
                 v-if="mode !== 'view'"
-                v-model="row.quantity"
+                :model-value="Math.abs(Number(row.quantity || 0))"
+                @update:model-value="row.quantity = Math.abs(Number($event || 0))"
                 :min="0"
                 :precision="4"
                 :controls="false"
@@ -272,14 +272,24 @@
               </ElSelect>
               <span v-else>{{ unitName(row.baseUnitId) }}</span>
             </template>
-            <template #baseQuantity="{ row }">{{ baseQuantity(row) }}</template>
+            <template #baseQuantity="{ row }">{{
+              mode === 'view' ? Math.abs(Number(row.baseQuantity || 0)) : baseQuantity(row)
+            }}</template>
             <template #auxiliaryUnitId="{ row }">{{ unitName(row.auxiliaryUnitId) }}</template>
             <template #auxiliaryQuantity="{ row }">{{
-              auxQuantity(row, row.auxiliaryUnitId)
+              mode === 'view'
+                ? row.auxiliaryQuantity == null
+                  ? '—'
+                  : Math.abs(Number(row.auxiliaryQuantity))
+                : auxQuantity(row, row.auxiliaryUnitId)
             }}</template>
             <template #auxiliaryUnit2Id="{ row }">{{ unitName(row.auxiliaryUnit2Id) }}</template>
             <template #auxiliaryQuantity2="{ row }">{{
-              auxQuantity(row, row.auxiliaryUnit2Id)
+              mode === 'view'
+                ? row.auxiliaryQuantity2 == null
+                  ? '—'
+                  : Math.abs(Number(row.auxiliaryQuantity2))
+                : auxQuantity(row, row.auxiliaryUnit2Id)
             }}</template>
             <template #unitPrice="{ row }"
               ><ElInputNumber
@@ -339,6 +349,10 @@
                 class="w-full!"
               /><span v-else>{{ row.unitDiscountRate }}</span></template
             >
+            <template #discountAmount="{ row }">{{
+              lineFinancial(row).discount.toFixed(2)
+            }}</template>
+            <template #amount="{ row }">{{ lineFinancial(row).amount.toFixed(2) }}</template>
             <template #totalAmount="{ row }">{{ lineFinancial(row).total.toFixed(2) }}</template>
             <template #gift="{ row }"
               ><ElCheckbox v-if="mode !== 'view'" v-model="row.gift" aria-label="赠品" /><span
@@ -350,7 +364,12 @@
               ><ElInput
                 v-if="mode !== 'view'"
                 v-model="row.batchNo"
-                placeholder="批号"
+                :disabled="!isInitial && !isReturn && row.material?.batchManagementEnabled"
+                :placeholder="
+                  !isInitial && !isReturn && row.material?.batchManagementEnabled
+                    ? '入库时自动生成'
+                    : '可留空或手工填写'
+                "
                 @change="row.sourceBatchId = null"
               /><span v-else>{{ row.batchNo || '—' }}</span></template
             >
@@ -587,6 +606,7 @@
 </template>
 
 <script setup lang="ts">
+  import { getMaterialCategoryIds } from '@/utils/business/material-category'
   import { readWmsDocumentImportRows } from '@/utils/wms/document-import'
   import { formatWmsOwnerName } from '@/utils/wms/owner-display'
   import { replaceReactiveModel } from '@/utils/form/model'
@@ -618,8 +638,12 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+  import ArtMaterialSelect, {
+    type MaterialSelectCategory,
+    type MaterialSelectRecord
+  } from '@/components/business/art-material-select/index.vue'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import { fetchWmsMaterialCategories } from '@/api/wms-material-category'
   import type {
     DataSelectColumn,
     DataSelectRecord,
@@ -780,6 +804,8 @@
     { prop: 'taxRate', label: '税率', width: 100, align: 'right', useSlot: true },
     { prop: 'discountMethod', label: '折扣方式', width: 130, useSlot: true },
     { prop: 'unitDiscountRate', label: '单位折扣', width: 120, useSlot: true },
+    { prop: 'discountAmount', label: '折扣额', width: 110, align: 'right', useSlot: true },
+    { prop: 'amount', label: '金额', width: 110, align: 'right', useSlot: true },
     { prop: 'totalAmount', label: '价税合计', width: 124, align: 'right', useSlot: true },
     { prop: 'gift', label: '赠品', width: 68, align: 'center', useSlot: true },
     { prop: 'batchNo', label: '批号', width: 145, useSlot: true },
@@ -823,7 +849,8 @@
     }
   ])
   const materialPickerIds = ref<string[]>([])
-  const materialPickerRows = ref<DataSelectRecord[]>([])
+  const materialPickerRows = ref<MaterialSelectRecord[]>([])
+  const materialCategories = ref<MaterialSelectCategory[]>([])
   const selectedSupplier = ref<DataSelectRecord[]>([])
   const selectedHeaderCustomer = ref<DataSelectRecord[]>([])
   const selectedPurchaser = ref<EmployeeIntegrationItem[]>([])
@@ -880,6 +907,7 @@
     )
   )
   const isInitial = computed(() => props.kind.startsWith('initial_'))
+  const isOpeningReturn = computed(() => props.kind === 'initial_return')
   const isEntrustedProcessing = computed(() => props.kind.startsWith('entrusted_processing_'))
   const title = computed(
     () =>
@@ -999,6 +1027,19 @@
     lines.value.reduce((sum, item) => sum + lineFinancial(item).total, 0)
   )
   function purchaseLineCellClassName({ column }: { column: { property?: string } }): string {
+    if (
+      isOpeningReturn.value &&
+      [
+        'quantity',
+        'baseQuantity',
+        'auxiliaryQuantity',
+        'auxiliaryQuantity2',
+        'discountAmount',
+        'amount',
+        'totalAmount'
+      ].includes(column.property || '')
+    )
+      return 'opening-return-value-cell'
     return isReturn.value && column.property === 'quantity' ? 'purchase-return-quantity-cell' : ''
   }
   const purchaseUnitOptions = computed(() =>
@@ -1149,11 +1190,6 @@
       ? { customerId: [{ required: true, message: '请选择客户', trigger: 'change' }] }
       : { supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }] })
   }))
-  const materialColumns = [
-    { prop: 'code', label: '物料编码', width: 165 },
-    { prop: 'name', label: '物料描述', minWidth: 220 },
-    { prop: 'specificationModel', label: '规格型号', minWidth: 140 }
-  ]
   const partyColumns = [
     { prop: 'code', label: '编码', width: 150 },
     { prop: 'name', label: '名称', minWidth: 220 }
@@ -1168,7 +1204,9 @@
     return Math.round((value + Number.EPSILON) * factor) / factor
   }
   function displayQuantity(value: number): number {
-    return isReturn.value ? -Math.abs(Number(value || 0)) : Math.abs(Number(value || 0))
+    return isReturn.value && !isOpeningReturn.value
+      ? -Math.abs(Number(value || 0))
+      : Math.abs(Number(value || 0))
   }
   function processingQuantities(line?: WmsPurchaseLine): {
     received: number
@@ -1220,6 +1258,13 @@
     tax: number
     total: number
   } {
+    if (mode.value === 'view' && isOpeningReturn.value)
+      return {
+        discount: Math.abs(Number(line.discountAmount || 0)),
+        amount: Math.abs(Number(line.amount || 0)),
+        tax: Math.abs(Number(line.taxAmount || 0)),
+        total: Math.abs(Number(line.totalAmount || 0))
+      }
     if (line.gift) return { discount: 0, amount: 0, tax: 0, total: 0 }
     const quantity = displayQuantity(line.quantity)
     const rate = line.discountMethod === 'none' ? 0 : Number(line.unitDiscountRate || 0)
@@ -1444,25 +1489,46 @@
     serialEntryVisible.value = mode.value !== 'view'
     if (mode.value === 'view') serialViewVisible.value = true
   }
-  function materialApi(params: DataSelectFetchParams) {
-    return fetchWmsPurchaseMaterials({
+  async function materialApi(params: DataSelectFetchParams) {
+    const result = await fetchWmsPurchaseMaterials({
       tenantId: form.tenantId,
       keyword: params.keyword || '',
+      categoryIds: getMaterialCategoryIds(
+        materialCategories.value,
+        String(params.filters.categoryId || '')
+      ),
       current: params.page,
       size: params.pageSize
     })
+    return {
+      ...result,
+      data: result.data.map((material) => ({
+        ...material,
+        materialCode: material.code,
+        materialName: material.name
+      }))
+    }
   }
   async function loadTenantOptions(tenantId: string): Promise<void> {
-    const [unitRows, documentRows, businessRows, projectRows, supplierRows, customerRows, menuId] =
-      await Promise.all([
-        fetchWmsPurchaseUnits(tenantId),
-        fetchWmsPurchaseDocumentTypes(tenantId, documentTypeMenuName.value),
-        fetchWmsPurchaseOptions('mdm_business_type', tenantId),
-        fetchWmsPurchaseOptions('mdm_project', tenantId),
-        fetchWmsPurchaseOptions('mdm_supplier', tenantId),
-        fetchWmsPurchaseOptions('mdm_customer', tenantId),
-        fetchWmsPurchaseMenuId(documentTypeMenuName.value)
-      ])
+    const [
+      unitRows,
+      documentRows,
+      businessRows,
+      projectRows,
+      supplierRows,
+      customerRows,
+      menuId,
+      categories
+    ] = await Promise.all([
+      fetchWmsPurchaseUnits(tenantId),
+      fetchWmsPurchaseDocumentTypes(tenantId, documentTypeMenuName.value),
+      fetchWmsPurchaseOptions('mdm_business_type', tenantId),
+      fetchWmsPurchaseOptions('mdm_project', tenantId),
+      fetchWmsPurchaseOptions('mdm_supplier', tenantId),
+      fetchWmsPurchaseOptions('mdm_customer', tenantId),
+      fetchWmsPurchaseMenuId(documentTypeMenuName.value),
+      fetchWmsMaterialCategories(tenantId)
+    ])
     units.value = unitRows
     documentTypes.value =
       props.kind === 'other_return'
@@ -1475,6 +1541,7 @@
     projects.value = projectRows
     suppliers.value = supplierRows
     customers.value = customerRows
+    materialCategories.value = categories
     if (!documentTypes.value.some((item) => item.id === form.documentTypeId))
       form.documentTypeId = documentTypes.value.find((item) => item.isDefault)?.id || ''
     onDocumentTypeChange()
@@ -1643,6 +1710,10 @@
         return false
       }
       for (const line of lines.value) {
+        if (isInitial.value && line.material?.batchManagementEnabled && !line.batchNo?.trim()) {
+          ElMessage.warning(`第 ${line.lineNo} 行批次管理物料请填写期初历史批次`)
+          return false
+        }
         if (line.projectId && !line.constructionNo?.trim()) {
           ElMessage.warning(`第 ${line.lineNo} 行选择项目后请填写施工号`)
           return false
@@ -1863,5 +1934,10 @@
 
   :deep(td.el-table__cell.purchase-return-quantity-cell) {
     background-color: var(--el-color-warning-light-9) !important;
+  }
+
+  :deep(td.el-table__cell.opening-return-value-cell),
+  :deep(td.el-table__cell.opening-return-value-cell .el-input__inner) {
+    color: var(--el-color-danger);
   }
 </style>
