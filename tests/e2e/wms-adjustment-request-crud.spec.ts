@@ -180,7 +180,10 @@ for (const kind of ['gain', 'loss', 'transfer']) {
           await expect(historical).toHaveCount(1)
           await historical.scrollIntoViewIfNeeded()
           await expect(historical).toBeInViewport()
-          await page.screenshot({ path: testInfo.outputPath(`transfer-${mode}-historical-label.png`), animations: 'disabled' })
+          await page.screenshot({
+            path: testInfo.outputPath(`transfer-${mode}-historical-label.png`),
+            animations: 'disabled'
+          })
         }
         if (kind === 'transfer' && mode === 'edit') {
           const headers = await drawer.locator('.el-table__header th').allTextContents()
