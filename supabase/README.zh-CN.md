@@ -19,7 +19,7 @@
 ## 首次准备
 
 1. 安装 [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) 和 Docker Desktop，启动 Docker Desktop。在 PowerShell 中确认 `supabase --version`、`supabase db query --help`、`docker version` 均可运行。本仓库脚本使用的 CLI 参数已用 2.106.0 核对。脚本通过 Docker 使用 `psql`，无需另外安装 PostgreSQL 客户端。
-2. **备份所有者**执行 `supabase login`，登录对原项目有权限的账号。登录令牌留在所有者电脑上。接收者恢复到本地时不需要登录。
+2. **备份所有者**运行备份脚本即可：已有有效登录时直接继续；未登录、令牌失效或账号没有来源项目权限时，脚本启动 CLI 浏览器登录，完成验证后自动继续。网络请求失败会提示检查网络/代理，取消登录或仍无权限时会停止，不会伪造成功备份。登录令牌留在所有者电脑上。接收者恢复到本地时运行 `restore-local-supabase.ps1`，不需要来源项目登录。
 3. 准备原项目的**数据库密码**。它不是 Supabase 登录密码，也不是 API key；在 Supabase Dashboard 的 Database Settings 中管理。
 4. 从仓库根目录 `D:\spa\art-supabase-pro` 运行以下命令。不要把密码直接写进命令或保存到仓库里；脚本会交互式提示输入。
 

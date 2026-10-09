@@ -48,10 +48,21 @@ function Test-SupabaseCliProjectVisible {
   param([Parameter(Mandatory = $true)][string]$ProjectRef)
 
   $result = Invoke-SupabaseQuiet @('projects', 'list', '--agent=no', '--output-format', 'json')
-  if (-not $result.Succeeded) { return $false }
+  $script:SupabaseProjectAccessState = 'request-failed'
+  if (-not $result.Succeeded) {
+    # Inspect captured output only; never print tokens or raw CLI payloads.
+    if ("$($result.Output) $($result.Error)" -match 'Invalid access token|Access token not provided|not logged in|Unauthorized|authentication required') {
+      $script:SupabaseProjectAccessState = 'login-required'
+    }
+    return $false
+  }
 
   try {
-    $projects = @((ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop).projects)
+    $parsed = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop
+    if ($parsed -is [System.Array]) { $projects = @($parsed) }
+    elseif ($parsed.PSObject.Properties['projects']) { $projects = @($parsed.projects) }
+    else { throw 'Unexpected project-list response.' }
+    $script:SupabaseProjectAccessState = 'project-missing'
     return @($projects | Where-Object { $_.ref -eq $ProjectRef }).Count -gt 0
   }
   catch {
@@ -60,7 +71,10 @@ function Test-SupabaseCliProjectVisible {
 }
 
 function Assert-SupabaseCliProjectAccess {
-  param([Parameter(Mandatory = $true)][string]$ProjectRef)
+  param(
+    [Parameter(Mandatory = $true)][string]$ProjectRef,
+    [switch]$NonInteractive
+  )
 
   if (Test-SupabaseCliProjectVisible -ProjectRef $ProjectRef) { return }
 
@@ -80,10 +94,40 @@ function Assert-SupabaseCliProjectAccess {
     }
   }
 
-  throw "Supabase CLI cannot access project $ProjectRef. Run 'supabase login --agent=no --output-format text' and confirm the project appears in 'supabase projects list'."
+  if ($script:SupabaseProjectAccessState -eq 'request-failed') {
+    throw 'Supabase project lookup failed. Check your network and HTTP proxy, then run the script again.'
+  }
+  if ($NonInteractive -or $env:CI) {
+    throw "Supabase login or project access is required for $ProjectRef. Run 'supabase login --agent=no --output-format text' in an interactive terminal, then retry."
+  }
+
+  Write-Host "Supabase login needs attention. Complete the browser login using an account with access to project $ProjectRef; the script will then continue."
+  # An inherited token overrides the saved login, including a newly refreshed one.
+  Remove-Item Env:SUPABASE_ACCESS_TOKEN -ErrorAction SilentlyContinue
+  $loginWorks = $false
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    & supabase login --agent=no --output-format text
+    $loginExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+    if ($loginExitCode -eq 0) {
+      $loginWorks = Test-SupabaseCliProjectVisible -ProjectRef $ProjectRef
+    }
+  }
+  finally {
+    $ErrorActionPreference = $previousPreference
+    if (-not $loginWorks -and -not [string]::IsNullOrWhiteSpace($inheritedToken)) {
+      $env:SUPABASE_ACCESS_TOKEN = $inheritedToken
+    }
+  }
+  if ($loginWorks) { return }
+  throw "Login was cancelled, failed, or the account cannot access project $ProjectRef. Use an account with source-project access and retry. Local backup recipients should run restore-local-supabase.ps1 instead; no source login is required."
 }
 
 function Enable-SystemProxyForSupabaseCli {
+  $env:NO_PROXY = (@($env:NO_PROXY -split ',' | Where-Object { $_ }) + @('localhost', '127.0.0.1', '::1') | Select-Object -Unique) -join ','
+  if ($env:HTTP_PROXY -or $env:HTTPS_PROXY) { return }
   # The Supabase CLI does not inherit the Windows Internet Settings proxy.
   $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
   try {
