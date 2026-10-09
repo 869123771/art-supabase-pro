@@ -1,6 +1,7 @@
 import {
   fetchEquipmentInspectionDeleteDestination,
   fetchScmPurchaseDeleteDestination,
+  fetchScmSalesDeleteDestination,
   fetchWmsDocumentDeleteDestination
 } from '@/api/master-data-delete'
 import type { MasterDataDeleteDependencyMeta } from './index.vue'
@@ -21,6 +22,15 @@ const scmPurchaseReferenceRoutes: Record<string, string> = {
   purchase_contract: 'ScmPurchaseContract',
   purchase_order: 'ScmPurchaseOrder',
   receipt_notice: 'ScmReceiptNotice'
+}
+
+const scmSalesReferenceRoutes: Record<string, string> = {
+  sales_quotation: 'ScmSalesQuotationDoc',
+  project_quotation: 'ScmProjectQuotation',
+  sales_contract: 'ScmSalesContract',
+  sales_order: 'ScmSalesOrder',
+  shipping_notice: 'ScmShippingNotice',
+  loading: 'ScmLoading'
 }
 
 const warehouseDocumentRoutes = {
@@ -169,6 +179,16 @@ export function createRecordReferenceNavigation(
       resolveRouteName: async (record) => {
         const destination = await fetchScmPurchaseDeleteDestination(record.targetId)
         const name = destination ? scmPurchaseReferenceRoutes[destination.kind] : undefined
+        return name && hasAuth(`${name}:View`) ? name : null
+      }
+    },
+    scm_sales_document: {
+      routeNames: Object.values(scmSalesReferenceRoutes),
+      canNavigate: () =>
+        Object.values(scmSalesReferenceRoutes).some((name) => hasAuth(`${name}:View`)),
+      resolveRouteName: async (record) => {
+        const destination = await fetchScmSalesDeleteDestination(record.targetId)
+        const name = destination ? scmSalesReferenceRoutes[destination.kind] : undefined
         return name && hasAuth(`${name}:View`) ? name : null
       }
     },

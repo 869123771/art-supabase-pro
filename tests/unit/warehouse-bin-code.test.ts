@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { formatWarehouseBinCode } from '../../modules/art-supabase-mdm/src/utils/warehouse-bin-code'
+import { formatWarehouseBinCode } from '../../modules/art-supabase-mdm/src/domain/warehouse-bin-code'
 
 test('库位坐标按层、列组合，列递增后进入下一层', () => {
   const codes = [1, 2].flatMap((level) =>

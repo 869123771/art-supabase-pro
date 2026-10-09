@@ -5,11 +5,14 @@ import language from '@/locales'
 import { store } from '@/store'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
+import { useMenuStore } from '@/store/modules/menu'
 import FundTransferDetailDrawer from '../../../modules/art-supabase-fms/src/views/treasury/fund-transfer/modules/fund-transfer-detail-drawer.vue'
 import BankReconciliationDetailDrawer from '../../../modules/art-supabase-fms/src/views/treasury/bank-reconciliation/modules/bank-reconciliation-detail-drawer.vue'
 import AccountingPeriodDrawer from '../../../modules/art-supabase-fms/src/views/accounting/account-set/modules/accounting-period-drawer.vue'
 import CommercialBillDetailDrawer from '../../../modules/art-supabase-fms/src/views/specialized-accounting/commercial-bill/modules/commercial-bill-detail-drawer.vue'
 import PeriodCloseDetailDrawer from '../../../modules/art-supabase-fms/src/views/specialized-accounting/period-close/modules/period-close-detail-drawer.vue'
+import FundTransferDialog from '../../../modules/art-supabase-fms/src/views/treasury/fund-transfer/modules/fund-transfer-dialog.vue'
+import CommercialBillDialog from '../../../modules/art-supabase-fms/src/views/specialized-accounting/commercial-bill/modules/commercial-bill-dialog.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -99,8 +102,29 @@ const Preview = defineComponent({
     const periodDrawer = ref<InstanceType<typeof AccountingPeriodDrawer> | null>(null)
     const billDrawer = ref<InstanceType<typeof CommercialBillDetailDrawer> | null>(null)
     const closeDrawer = ref<InstanceType<typeof PeriodCloseDetailDrawer> | null>(null)
+    const transferDialog = ref<InstanceType<typeof FundTransferDialog> | null>(null)
+    const billDialog = ref<InstanceType<typeof CommercialBillDialog> | null>(null)
     return () =>
       h('main', [
+        ...(new URLSearchParams(location.search).has('currency')
+          ? [
+              h(
+                'button',
+                { type: 'button', onClick: () => void transferDialog.value?.handleOpen(transfer) },
+                '打开资金调拨编辑'
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => void billDialog.value?.handleOpen(commercialBill)
+                },
+                '打开商业票据编辑'
+              ),
+              h(FundTransferDialog, { ref: transferDialog }),
+              h(CommercialBillDialog, { ref: billDialog })
+            ]
+          : []),
         h(
           'button',
           { type: 'button', onClick: () => void transferDrawer.value?.handleOpen(transfer) },
@@ -166,5 +190,15 @@ userStore.setUserInfo({
   platformSuper: false
 })
 useTenantScopeStore(store).selectedTenantId = tenantId
+if (new URLSearchParams(location.search).has('readability')) {
+  useMenuStore(store).setButtonList([
+    {
+      name: 'FinanceBankReconciliation:Match',
+      path: '',
+      type: 'button',
+      meta: { title: '手工匹配' }
+    }
+  ])
+}
 
 app.mount('#fms-detail-preview')

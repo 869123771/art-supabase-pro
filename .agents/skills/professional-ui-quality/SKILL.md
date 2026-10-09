@@ -91,6 +91,8 @@ Do not declare completion from source review alone. If browser verification is i
 
 ## Report The Outcome
 
+For a requested comprehensive UI audit or substantial refinement, also read the local `impeccable` skill's project adapter and the relevant audit/polish references. Use its diagnostic methods to deepen hierarchy, cognitive-load, design-system drift, state, and content review. This skill's baseline, evidence requirements, severity, scoring, and verification gates remain authoritative. Deterministic detector findings are candidates until verified in context; unfamiliar fonts, dense tables, semantic colors, intentional internal scrolling, and approved page shapes are not defects merely because they differ from upstream aesthetic defaults.
+
 For implementation, lead with the visible result, then list verification evidence and limitations. For reviews, use the severity, scoring, evidence, and verdict format in [review-rubric.md](references/review-rubric.md). Keep findings concrete and tied to a rendered or source artifact.
 
 ## Design Tool Policy

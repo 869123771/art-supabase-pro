@@ -17,8 +17,8 @@
 
     <ArtAsyncState
       v-if="state.loading || state.error"
-      :loading="state.loading"
-      loading-mode="skeleton"
+      :loading="!externalLoading && state.loading"
+      :loading-mode="externalLoading ? 'mask' : 'skeleton'"
       :skeleton-rows="5"
       :error="state.error"
       error-title="审批运营分析加载失败"
@@ -256,6 +256,8 @@
   import { getWorkflowBusinessTypeLabel } from './workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowAnalyticsPanel' })
+  withDefaults(defineProps<{ externalLoading?: boolean }>(), { externalLoading: false })
+  const emit = defineEmits<{ loadingChange: [loading: boolean] }>()
 
   const periodOptions = [
     { label: '7 天', value: 7 },
@@ -290,6 +292,12 @@
     data: computed(() => request.state.value?.data ?? null),
     bottleneck: computed(() => request.state.value?.bottleneck ?? null)
   })
+
+  watch(
+    () => state.loading,
+    (loading) => emit('loadingChange', loading),
+    { immediate: true }
+  )
 
   const riskMeta: Record<
     Api.Workflow.WorkflowAnalyticsRiskLevel,

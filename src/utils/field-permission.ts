@@ -4,6 +4,10 @@ export type FieldAccessLevel = 'hidden' | 'masked' | 'read' | 'edit'
 
 export type FieldAccessMap<TKey extends string = string> = Partial<Record<TKey, FieldAccessLevel>>
 
+/** Masked values may be displayed, but only read/edit grants expose usable source data. */
+export const isReadableFieldAccess = (access: unknown): access is 'read' | 'edit' =>
+  access === 'read' || access === 'edit'
+
 const MASK_PLACEHOLDER = '***'
 const FIELD_ACCESS_RANK: Record<FieldAccessLevel, number> = {
   hidden: 0,
@@ -81,6 +85,7 @@ export const formatSensitiveNumber = (
 }
 
 export interface SensitiveNumberAffixOptions {
+  emptyText?: string
   prefix?: string
   suffix?: string
   numberFormat?: Intl.NumberFormatOptions
@@ -92,7 +97,8 @@ export const formatSensitiveNumberWithAffix = (
   options: SensitiveNumberAffixOptions = {}
 ): string => {
   const formatted = formatSensitiveNumber(value, options.numberFormat)
-  if (formatted === MASK_PLACEHOLDER || formatted === '--') return formatted
+  if (formatted === MASK_PLACEHOLDER) return formatted
+  if (formatted === '--') return options.emptyText ?? formatted
   return `${options.prefix ?? ''}${formatted}${options.suffix ?? ''}`
 }
 

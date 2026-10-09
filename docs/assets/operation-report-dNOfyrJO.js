@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./production-workspace-CG_EK9GF.js";var i=t({name:`MesOperationReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{entry:`report`}))}});export{i as default};

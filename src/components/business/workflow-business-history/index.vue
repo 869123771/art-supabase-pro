@@ -1,8 +1,8 @@
 <template>
   <section class="workflow-business-history" aria-label="审批历程">
     <ArtAsyncState
-      :loading="state.loading"
-      loading-mode="skeleton"
+      :loading="!externalLoading && state.loading"
+      :loading-mode="externalLoading ? 'mask' : 'skeleton'"
       :skeleton-rows="8"
       :error="state.error"
       error-title="审批历程加载失败"
@@ -141,7 +141,7 @@
   import ArtProcessTimeline from '@/components/core/layouts/art-process-timeline/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import WorkflowFlowMap from '@/components/business/workflow-flow-map/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import {
     createWorkflowActionTimelineItems,
     summarizeWorkflowHistory
@@ -155,8 +155,9 @@
       businessType: string
       businessId: string
       minHeight?: number
+      externalLoading?: boolean
     }>(),
-    { minHeight: 320 }
+    { minHeight: 320, externalLoading: false }
   )
 
   const state = reactive<{
@@ -168,6 +169,12 @@
     error: null,
     instances: []
   })
+  const emit = defineEmits<{ loadingChange: [loading: boolean] }>()
+  watch(
+    () => state.loading,
+    (loading) => emit('loadingChange', loading),
+    { immediate: true }
+  )
   const expandedInstances = ref<string[]>([])
   let requestId = 0
 
@@ -204,9 +211,7 @@
     }
   }
 
-  function formatDate(value?: string | null): string {
-    return value ? String(formatWithDayjs(value) ?? '--') : '--'
-  }
+  const formatDate = createDateTimeFormatter()
 
   function formatDuration(startedAt: string, finishedAt: string): string {
     const minutes = Math.max(dayjs(finishedAt).diff(dayjs(startedAt), 'minute'), 0)

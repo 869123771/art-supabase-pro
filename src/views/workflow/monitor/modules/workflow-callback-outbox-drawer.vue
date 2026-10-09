@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" size="min(1240px, 82vw)" :show-footer="false">
+  <ArtDrawer
+    :loading="state.loading"
+    loading-text="正在检查回调队列…"
+    ref="drawerRef"
+    size="min(1240px, 82vw)"
+    :show-footer="false"
+  >
     <div class="workflow-callback-outbox">
       <section class="workflow-callback-outbox__intro art-card-xs">
         <span><ArtSvgIcon icon="ri:inbox-archive-line" /></span>
@@ -49,14 +55,6 @@
       </ElAlert>
 
       <section class="workflow-callback-outbox__metrics" :aria-busy="state.loading">
-        <ArtOverlayLoading
-          v-if="state.loading"
-          loading
-          overlay
-          size="compact"
-          text="正在加载指标…"
-          description=""
-        />
         <button
           v-for="metric in metricCards"
           :key="metric.key"
@@ -86,12 +84,7 @@
             </div>
             <div class="workflow-callback-outbox__tools">
               <ArtTooltip content="刷新投递事件" placement="top">
-                <ArtIconButton
-                  icon="ri:refresh-line"
-                  label="刷新投递事件"
-                  :loading="state.loading"
-                  @click="loadData"
-                />
+                <ArtIconButton icon="ri:refresh-line" label="刷新投递事件" @click="loadData" />
               </ArtTooltip>
               <ElSelect
                 v-model="state.status"
@@ -114,7 +107,6 @@
         <ArtTable
           :data="visibleItems"
           :columns="columns"
-          :loading="state.loading"
           :pagination="false"
           row-key="id"
           table-layout="fixed"

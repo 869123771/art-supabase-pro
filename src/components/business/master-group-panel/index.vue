@@ -2,8 +2,9 @@
   <ArtSectionCard
     :show-scrollbar="loading || Boolean(error) || !groups.length"
     class="master-group-panel"
+    :class="{ 'is-narrow': isNarrow, 'is-collapsed': collapsed, 'has-groups': groups.length }"
     :title="title"
-    subtitle="选择分组后查看本级及下级数据"
+    :subtitle="panelSubtitle"
     :loading="loading"
     :error="error"
     :empty="!loading && !error && !groups.length"
@@ -20,7 +21,7 @@
     <template #actions>
       <div class="master-group-panel__actions">
         <ArtTreeExpandToggle
-          v-if="showTreeToggle"
+          v-if="showTreeToggle && !collapsed"
           :tree="treeRef"
           :data="treeData"
           label="分组树"
@@ -34,6 +35,13 @@
           @click="$emit('add')"
         />
         <ArtIconButton icon="ri:refresh-line" label="刷新分组" @click="$emit('refresh')" />
+        <ArtIconButton
+          v-if="isNarrow"
+          :icon="collapsed ? 'ri:arrow-down-s-line' : 'ri:arrow-up-s-line'"
+          :label="collapsed ? '展开分组' : '收起分组'"
+          :aria-expanded="!collapsed"
+          @click="expanded = !expanded"
+        />
       </div>
     </template>
 
@@ -115,6 +123,7 @@
 <script setup lang="ts">
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import type { ElTree } from 'element-plus'
+  import { useMediaQuery } from '@vueuse/core'
   import TreeUtils from '@/utils/tree'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
@@ -143,6 +152,16 @@
   }>()
 
   const keyword = ref('')
+  const isNarrow = useMediaQuery('(max-width: 900px)')
+  const expanded = ref(false)
+  const collapsed = computed(() => isNarrow.value && !expanded.value)
+  const panelSubtitle = computed(() => {
+    if (!isNarrow.value) return '选择分组后查看本级及下级数据'
+    if (props.error) return '分组加载失败，请刷新重试'
+    if (props.loading) return '正在加载分组…'
+    const selected = props.groups.find((group) => group.id === props.selectedId)
+    return `当前：${selected?.name || (props.selectedId ? '已选分组' : '全部分组')} · ${props.groups.length} 个节点`
+  })
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const treeUtils = new TreeUtils({ parentKey: 'parentId' })
   const treeData = computed(() => treeUtils.listToTree(props.groups))
@@ -169,6 +188,34 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+
+    &.is-narrow {
+      height: auto;
+
+      &.has-groups:not(.is-collapsed) {
+        height: min(440px, 70dvh);
+      }
+
+      :deep(.art-icon-button) {
+        width: 44px;
+        height: 44px;
+      }
+
+      .master-group-panel__node-actions {
+        opacity: 1;
+      }
+    }
+
+    &.is-collapsed {
+      :deep(.art-section-card__header) {
+        margin-bottom: 0;
+      }
+
+      :deep(.art-section-card__scrollbar),
+      :deep(.master-group-panel__body) {
+        display: none;
+      }
+    }
 
     :deep(.art-section-card__header) {
       display: grid;

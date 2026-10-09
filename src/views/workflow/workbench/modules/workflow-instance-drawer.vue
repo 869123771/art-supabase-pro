@@ -1,6 +1,6 @@
 <template>
   <ArtDrawer
-    :loading="state.loading"
+    :loading="state.loading || state.snapshotLoading"
     ref="drawerRef"
     size="xl"
     :show-footer="false"
@@ -49,10 +49,7 @@
         </section>
 
         <ArtAsyncState
-          v-if="state.snapshotLoading || state.snapshotError"
-          :loading="state.snapshotLoading"
-          loading-mode="skeleton"
-          :skeleton-rows="3"
+          v-if="state.snapshotError"
           :error="state.snapshotError"
           error-title="业务资料暂时不可用"
           :min-height="132"

@@ -17,7 +17,7 @@ export const dataSelectDefaults = {
   childrenKey: 'children',
   resultField: 'data',
   totalField: 'total',
-  dialogWidth: 'xl',
+  dialogWidth: undefined,
   fullscreen: false,
   pageSize: 10,
   pageSizes: () => [10, 20, 30, 50],

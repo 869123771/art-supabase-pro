@@ -22,6 +22,8 @@ Shared components are organized by responsibility, not by the page that first ne
 
 `core/others` is legacy only. Do not add a new component there. Move a legacy component only when it is already being materially refactored and the move can be verified without broad unrelated churn.
 
+`ArtButtonMore` adapts its default trigger to the device: touch devices use click, while devices with hover use hover. Set `trigger` explicitly only when the interaction requires an override; business pages should reuse this behavior rather than implement their own mobile dropdown.
+
 ## Cross-repository import paths
 
 Business modules under `modules/**` also build against a pinned, separately distributed `art-supabase-pro` package. A shared component's source path is therefore part of their integration contract. Before relocating one, verify that the pinned platform package contains the new path, update every module import and dependency pin together, and run the standalone module typechecks. `ArtIconButton` currently stays under `core/widget/art-icon-button` for this reason.
@@ -32,7 +34,9 @@ Use `src/components/business` for components reused across pages that understand
 
 Examples:
 
-- `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display. `allowAllTenantRead` enables aggregate search only for platform super administrators in the all-tenant scope; write targets still come from the owning form.
+- `MasterGroupPanel`: shared group navigation, filtering, async states, and permission-aware management actions. Pair it with `ArtWorkspaceSplitter` using a 900px breakpoint and `stacked-primary-size="auto"`; narrow screens reuse its collapsible summary rather than page-local fixed-height group regions. See [the component contract](business/master-group-panel/README.md).
+- `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display. `allowAllTenantRead` enables aggregate search only for platform super administrators in the all-tenant scope; write targets still come from the owning form. `displayFields` can include `gender` and `age` when the authorized source supplies these fields, such as accident employee snapshots; the selector preserves the source records when emitting selections.
+- `ArtEmployeeSelect` and `ArtMaterialSelect` configure the same `ArtDataSelect` table workspace directly. Employee events retain `EmployeeIntegrationItem`; material events infer the complete record type from `apiFn` and `selectedData`, including domain-specific fields. Their `change` values are strings for single selection and string arrays for multiple selection. Reuse these record types in callbacks instead of converting generic rows with assertions or adding DTO index signatures.
 - `BusinessWorkspaceHeader`: shared business workspace identity and overview metrics.
 - `BusinessMenuFilter`: menu-tree search, selection, counts and complete states; each feature supplies its own visible menus and business statistics.
 - Business record links, history, and permission-aware action surfaces.

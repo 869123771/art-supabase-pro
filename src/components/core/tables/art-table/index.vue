@@ -8,9 +8,10 @@
     class="art-table"
     :class="{
       'is-empty': isEmpty,
+      'is-max-height': usesMaxHeight,
       'is-row-selection-dragging': isRowSelectionDragging
     }"
-    :style="containerHeight"
+    :style="tableContainerStyle"
     :aria-busy="!!loading"
     @mousedown="handleTableMouseDown"
     @wheel.capture="handleWheelBoundary"
@@ -28,7 +29,14 @@
         <!-- 渲染展开行 -->
         <ElTableColumn v-else-if="col.type === 'expand'" v-bind="cleanColumnProps(col)">
           <template #default="{ row }">
-            <component :is="col.formatter ? col.formatter(row) : null" />
+            <div
+              class="art-table__expand-content"
+              :style="{
+                width: containerWidth > 0 ? `${Math.max(0, containerWidth - 2)}px` : '100%'
+              }"
+            >
+              <component :is="col.formatter ? col.formatter(row) : null" />
+            </div>
           </template>
         </ElTableColumn>
 
@@ -273,6 +281,7 @@
     doLayout: () => void
     sort: (prop: string, order: string) => void
     setScrollTop: (top?: number) => void
+    setScrollLeft: (left?: number) => void
   }
 
   export interface ArtTableValidationError {
@@ -469,6 +478,11 @@
   const size = computed(() => props.size ?? tableSize.value)
   // 数据是否为空
   const isEmpty = computed(() => props.data?.length === 0)
+  watch(isEmpty, async (empty) => {
+    if (!empty) return
+    await nextTick()
+    if (isEmpty.value) elTableRef.value?.setScrollLeft(0)
+  })
 
   const paginationHeight = ref(0)
   const tableHeaderHeight = ref(0)
@@ -540,6 +554,14 @@
     paginationSpacing: PAGINATION_SPACING
   })
 
+  // 最大高度表格由内容撑开，再由 Element Plus 限高；不能同时强制 100% 高度。
+  const usesMaxHeight = computed(
+    () => props.maxHeight != null && !props.height && !isFullScreen.value
+  )
+  const tableContainerStyle = computed(() =>
+    usesMaxHeight.value ? { height: 'auto' } : containerHeight.value
+  )
+
   // 表格高度逻辑
   const height = computed(() => {
     // 全屏模式下占满全屏
@@ -551,6 +573,8 @@
     if (isEmpty.value && !props.height) return props.emptyHeight
     // 使用传入的高度
     if (props.height) return props.height
+    // 显式清除空表格留下的内联高度；undefined 不会重置 Element Plus 的旧高度。
+    if (usesMaxHeight.value) return ''
     // 默认占满容器高度
     return '100%'
   })
@@ -598,6 +622,7 @@
     return {
       ...tableProps,
       height: height.value,
+      scrollbarAlwaysOn: hasExplicitTableProp('scrollbarAlwaysOn') ? props.scrollbarAlwaysOn : true,
       stripe: stripe.value,
       border: border.value,
       size: size.value,
@@ -848,9 +873,31 @@
     if (!(target instanceof HTMLElement) || !target.matches('input, textarea, button, [tabindex]'))
       return
     const cell = target.closest<HTMLElement>('td')
-    if (!cell) return
+    if (!cell || target.closest('.art-table') !== containerRef.value) return
+    // 展开行的单元格跨越整张宽表，滚动它会把左侧输入框带到最右端。
+    const region = cell.classList.contains('el-table__expanded-cell')
+      ? (target.closest<HTMLElement>('.el-input, .el-textarea, .el-select, .el-date-editor') ??
+        target)
+      : cell
     requestAnimationFrame(() => {
-      if (target.isConnected && document.activeElement === target) revealTableCell(cell)
+      if (!target.isConnected || document.activeElement !== target) return
+      if (region !== cell) {
+        const viewport = cell
+          .closest('.el-table__body-wrapper')
+          ?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+        if (viewport) {
+          const bounds = viewport.getBoundingClientRect()
+          const control = region.getBoundingClientRect()
+          if (
+            control.left >= bounds.left &&
+            control.right <= bounds.left + viewport.clientWidth &&
+            control.top >= bounds.top &&
+            control.bottom <= bounds.top + viewport.clientHeight
+          )
+            return
+        }
+      }
+      revealTableCell(region)
     })
   }
 
@@ -1272,6 +1319,13 @@
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ArtTableColumn) => {
     const columnProps = { ...col }
+    if (columnProps.sortable) {
+      // Reserve room for the header label and Element Plus sorting controls.
+      const minimumWidth = Math.max(100, (columnProps.label?.length ?? 0) * 14 + 52)
+      const configuredWidth = Number(columnProps.width)
+      if (configuredWidth > 0) columnProps.width = Math.max(configuredWidth, minimumWidth)
+      columnProps.minWidth = Math.max(Number(columnProps.minWidth) || 0, minimumWidth)
+    }
     if (containerWidth.value > 0 && containerWidth.value < props.fixedColumnMinWidth) {
       columnProps.fixed = false
     }

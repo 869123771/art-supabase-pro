@@ -1,6 +1,8 @@
 <template>
-  <component
-    :is="selectorComponent"
+  <ArtDataSelect
+    mode="table"
+    :multiple="multiple"
+    :show-selected-panel="multiple"
     :model-value="multiple ? modelValues : modelValue"
     :selected-data="selectedData"
     :api-fn="fetchEmployees"
@@ -32,23 +34,22 @@
     <template v-if="!apiFn" #empty>
       <ArtDataSourceEmptyActions resource-name="员工花名册" :actions="employeeMaintenanceActions" />
     </template>
-  </component>
+  </ArtDataSelect>
 </template>
 
 <script setup lang="ts">
-  import { normalizeStringList } from '@/utils/form/normalize'
+  import { buildSupabasePageRange } from '@/utils/supabase/pagination'
+  import { normalizeSingleStringKey, normalizeStringList } from '@/utils/form/normalize'
 
-  import type { Component } from 'vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+  import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import ArtDataSourceEmptyActions, {
     type ArtDataSourceEmptyAction
   } from '@/components/business/art-data-source-empty-actions/index.vue'
   import type {
     DataSelectColumn,
+    DataSelectFetchResult,
     DataSelectFetchParams,
-    DataSelectKey,
-    DataSelectRecord
+    DataSelectKey
   } from '@/components/core/forms/art-data-select/types'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
@@ -74,7 +75,9 @@
     clearable?: boolean
     apiFn?: typeof fetchEmployeeSelectorList
     /** Available display fields for this source; never a substitute for server authorization. */
-    displayFields?: readonly ('organization' | 'jobTitle' | 'phone' | 'employmentStatus')[]
+    displayFields?: readonly (
+      'organization' | 'jobTitle' | 'gender' | 'age' | 'phone' | 'employmentStatus'
+    )[]
   }
 
   const props = withDefaults(defineProps<Props>(), {
@@ -98,17 +101,12 @@
     'update:modelValues': [value: string[]]
     confirmMultiple: [value: string[], rows: EmployeeIntegrationItem[]]
     'update:selectedData': [rows: EmployeeIntegrationItem[]]
-    change: [value: string | undefined, rows: EmployeeIntegrationItem[]]
+    change: [value: string | string[] | undefined, rows: EmployeeIntegrationItem[]]
     confirm: [value: string | undefined, rows: EmployeeIntegrationItem[]]
     clear: []
   }>()
 
   const tenantScopeStore = useTenantScopeStore()
-  // Single and multiple selectors have different value types; the dynamic component
-  // boundary is intentional and values are normalized by the handlers below.
-  const selectorComponent = computed<Component>(() =>
-    props.multiple ? ArtTableMultipleSelect : ArtTableSingleSelect
-  )
   const { effectiveTenantId } = storeToRefs(tenantScopeStore)
   const resolvedTenantId = computed(() => props.tenantId || effectiveTenantId.value || '')
   const canFetchEmployees = computed(
@@ -127,17 +125,12 @@
     }
   ] as const satisfies readonly ArtDataSourceEmptyAction[]
 
-  const getEmployee = (row: DataSelectRecord): EmployeeIntegrationItem =>
-    row as EmployeeIntegrationItem
-
-  const getEmployeeLabel = (row: DataSelectRecord): string => {
-    const employee = getEmployee(row)
+  const getEmployeeLabel = (employee: EmployeeIntegrationItem): string => {
     const employeeName = employee.employeeName || '未命名员工'
     return employee.employeeNo ? `${employeeName} · ${employee.employeeNo}` : employeeName
   }
 
-  const getEmployeeDescription = (row: DataSelectRecord): string => {
-    const employee = getEmployee(row)
+  const getEmployeeDescription = (employee: EmployeeIntegrationItem): string => {
     return [
       props.displayFields.includes('organization') && employee.organization?.organizationName,
       props.displayFields.includes('jobTitle') && employee.jobTitle,
@@ -147,15 +140,15 @@
       .join(' · ')
   }
 
-  const allColumns: DataSelectColumn[] = [
+  const allColumns: DataSelectColumn<EmployeeIntegrationItem>[] = [
     { prop: 'employeeName', label: '员工姓名', minWidth: 130 },
     { prop: 'employeeNo', label: '员工工号', minWidth: 130 },
     {
       prop: 'organization',
       label: '所属组织',
       minWidth: 160,
-      formatter: (row) => {
-        const organization = getEmployee(row).organization
+      formatter: (row: EmployeeIntegrationItem) => {
+        const organization = row.organization
         return organization === undefined
           ? '未提供组织信息'
           : organization?.organizationName || '未分配组织'
@@ -165,11 +158,13 @@
       prop: 'jobTitle',
       label: '工作岗位',
       minWidth: 140,
-      formatter: (row) => {
-        const jobTitle = getEmployee(row).jobTitle
+      formatter: (row: EmployeeIntegrationItem) => {
+        const jobTitle = row.jobTitle
         return jobTitle === undefined ? '未提供岗位信息' : jobTitle || '未分配岗位'
       }
     },
+    { prop: 'gender', label: '性别', width: 80, dict: { code: 'sex', display: 'text' } },
+    { prop: 'age', label: '年龄', width: 80 },
     { prop: 'phone', label: '手机号码', width: 140 },
     {
       prop: 'employmentStatus',
@@ -187,44 +182,47 @@
     )
   )
 
-  const normalizeValue = (
-    value: DataSelectKey | DataSelectKey[] | undefined
-  ): string | undefined => {
-    const selectedValue = Array.isArray(value) ? value[0] : value
-    return selectedValue == null ? undefined : String(selectedValue)
-  }
-
   const updateValue = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
     if (props.multiple) emit('update:modelValues', normalizeStringList(value))
-    else emit('update:modelValue', normalizeValue(value))
+    else emit('update:modelValue', normalizeSingleStringKey(value))
   }
 
-  const fetchEmployees = async (params: DataSelectFetchParams) => {
+  const fetchEmployees = async (
+    params: DataSelectFetchParams
+  ): Promise<DataSelectFetchResult<EmployeeIntegrationItem>> => {
     if (!canFetchEmployees.value) return { data: [], total: 0 }
-    const from = Math.max((params.page - 1) * params.pageSize, 0)
-    const result = await (props.apiFn ?? fetchEmployeeSelectorList)({
-      tenantId: resolvedTenantId.value,
-      keyword: params.keyword,
-      from,
-      to: from + params.pageSize - 1
-    })
+    const { from, to } = buildSupabasePageRange({ current: params.page, size: params.pageSize })
+    const result = await (props.apiFn ?? fetchEmployeeSelectorList)(
+      {
+        tenantId: resolvedTenantId.value,
+        keyword: params.keyword,
+        from,
+        to
+      },
+      { showErrorMessage: false }
+    )
     if (result.error) throw result.error
     return { data: result.data, total: result.total }
   }
 
-  const handleSelectedDataChange = (rows: DataSelectRecord[]): void =>
-    emit('update:selectedData', rows.map(getEmployee))
+  const handleSelectedDataChange = (rows: EmployeeIntegrationItem[]): void =>
+    emit('update:selectedData', rows)
 
   const handleChange = (
     value: DataSelectKey | DataSelectKey[] | undefined,
-    rows: DataSelectRecord[]
-  ): void => emit('change', normalizeValue(value), rows.map(getEmployee))
+    rows: EmployeeIntegrationItem[]
+  ): void =>
+    emit(
+      'change',
+      props.multiple ? normalizeStringList(value) : normalizeSingleStringKey(value),
+      rows
+    )
 
   const handleConfirm = (
     value: DataSelectKey | DataSelectKey[] | undefined,
-    rows: DataSelectRecord[]
+    rows: EmployeeIntegrationItem[]
   ): void => {
-    if (props.multiple) emit('confirmMultiple', normalizeStringList(value), rows.map(getEmployee))
-    else emit('confirm', normalizeValue(value), rows.map(getEmployee))
+    if (props.multiple) emit('confirmMultiple', normalizeStringList(value), rows)
+    else emit('confirm', normalizeSingleStringKey(value), rows)
   }
 </script>

@@ -27,6 +27,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import type { DictDisplayMode } from '@/types/component'
+  import { toDictionaryOption } from '@/utils/form/option'
 
   defineOptions({ name: 'ArtDictDisplay' })
 
@@ -65,7 +66,10 @@
     () => props.item ?? userStore.getDictItemByValue(props.dictCode, props.value ?? undefined)
   )
   const label = computed(() => {
-    if (dictItem.value?.label) return dictItem.value.label
+    if (dictItem.value) {
+      const optionLabel = toDictionaryOption(dictItem.value).label
+      if (optionLabel) return optionLabel
+    }
     if (props.value === undefined || props.value === null || props.value === '') {
       return props.emptyText
     }

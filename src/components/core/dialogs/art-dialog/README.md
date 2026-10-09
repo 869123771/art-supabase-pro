@@ -1,5 +1,13 @@
 # ArtDialog
 
+## Reading Exposed State
+
+Vue unwraps exposed refs on a template component instance. Read boolean state with `unref(dialogRef.value?.visible)` (likewise `loading`, `confirmLoading`, and `fullscreen`), rather than adding another `.value`. `unref` also works with the ref-based API supplied to lifecycle callbacks. Use `getData()` to read opening data and the public methods to update state.
+
+The UI audit rejects repeated `.value` reads on state belonging to template-bound `ArtDialog` and `ArtDrawer` instances. It permits lifecycle callback APIs and cached internal APIs.
+
+`useScrollbar: false` is preserved in fullscreen mode. Components that own their scrolling, maps, and embedded viewers keep the same content subtree when entering or leaving fullscreen.
+
 ## Content Loading
 
 `loading` covers the visible dialog body outside its scrollable content and disables the default footer buttons. Long content, scrolling, and fullscreen mode do not move the loading state away from the body viewport center. It is independent from the confirm button's `confirmLoading`.

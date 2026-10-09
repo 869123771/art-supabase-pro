@@ -15,6 +15,9 @@ import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
+import WorkflowAnalyticsDialog from '@/views/workflow/monitor/modules/workflow-analytics-dialog.vue'
+import WorkflowHistoryDrawer from '@/components/business/workflow-business-history/workflow-business-history-drawer.vue'
+
 type OverlayKind = 'drawer' | 'dialog'
 const tenantId = '11111111-1111-4111-8111-111111111111'
 const quotation: ScmSalesDocument = {
@@ -61,6 +64,8 @@ const Preview = defineComponent({
     const drawer = ref<ArtDrawerExpose>()
     const scmDrawer = ref<InstanceType<typeof ScmDocumentDetailDrawer>>()
     const dialog = ref<ArtDialogExpose>()
+    const analytics = ref<InstanceType<typeof WorkflowAnalyticsDialog>>()
+    const history = ref<InstanceType<typeof WorkflowHistoryDrawer>>()
     const drawerLoading = ref(false)
     const dialogLoading = ref(false)
     useEventListener(window, 'overlay-preview-loading', (event) => {
@@ -84,6 +89,26 @@ const Preview = defineComponent({
           '打开长销售报价详情'
         ),
         h(ScmDocumentDetailDrawer, { ref: scmDrawer }),
+        h(
+          'button',
+          { type: 'button', onClick: () => analytics.value?.handleOpen() },
+          '打开审批分析'
+        ),
+        h(WorkflowAnalyticsDialog, { ref: analytics }),
+        h(
+          'button',
+          {
+            type: 'button',
+            onClick: () =>
+              history.value?.handleOpen({
+                businessType: 'expense',
+                businessId: 'test-business',
+                businessTitle: '测试审批历程'
+              })
+          },
+          '打开审批历程'
+        ),
+        h(WorkflowHistoryDrawer, { ref: history }),
         h(
           'button',
           { type: 'button', onClick: () => void drawer.value?.handleOpen() },

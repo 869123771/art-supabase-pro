@@ -461,7 +461,7 @@
     {
       type: 'import',
       importColumns: excelColumns,
-      importTransformer: (rows) =>
+      importRecordTransformer: (rows) =>
         rows.map((row, index) => ({
           ...row,
           id: Date.now() + index,

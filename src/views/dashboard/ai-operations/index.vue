@@ -213,17 +213,29 @@
         </div>
       </article>
 
-      <article class="ai-operations__features art-card-xs">
-        <header class="ai-operations__card-header">
-          <div class="min-w-0">
-            <span>能力清单</span>
-            <h2>可用 AI 能力与调用情况</h2>
-            <p class="ai-operations__card-hint">
-              普通用户与管理员能力清单一致，调用数据按当前账号统计
-            </p>
-          </div>
-          <strong class="shrink-0 whitespace-nowrap">{{ featureInventory.length }} 项可用</strong>
-        </header>
+      <ArtSectionCard
+        class="ai-operations__features"
+        :class="{ 'max-md:h-auto!': !featureInventory.length }"
+        preserve-content-structure
+        :empty="!featureInventory.length"
+        empty-title="暂无可用 AI 能力"
+        empty-description="请联系平台管理员启用所需能力。"
+        :empty-visual-size="54"
+        :min-height="250"
+        body-class="flex-1"
+      >
+        <template #header>
+          <header class="ai-operations__card-header">
+            <div class="min-w-0">
+              <span>能力清单</span>
+              <h2>可用 AI 能力与调用情况</h2>
+              <p class="ai-operations__card-hint">
+                普通用户与管理员能力清单一致，调用数据按当前账号统计
+              </p>
+            </div>
+            <strong class="shrink-0 whitespace-nowrap">{{ featureInventory.length }} 项可用</strong>
+          </header>
+        </template>
         <div class="ai-operations__feature-content">
           <div class="ai-operations__feature-chart">
             <ArtRingChart
@@ -241,36 +253,28 @@
               <small>平均耗时</small>
             </div>
             <ElScrollbar class="ai-operations__feature-scrollbar">
-              <ArtAsyncState
-                :empty="!featureInventory.length"
-                empty-text="暂无可用 AI 能力"
-                empty-description="请联系平台管理员启用所需能力。"
-                :empty-image-size="54"
-                :min-height="250"
-              >
-                <div class="ai-operations__feature-list">
-                  <div
-                    v-for="item in featureInventory"
-                    :key="item.feature"
-                    :class="{ 'is-unused': item.total === 0 }"
-                  >
-                    <span
-                      ><i /><ArtDictDisplay
-                        dict-code="aiRunFeature"
-                        :value="item.feature"
-                        display="text"
-                    /></span>
-                    <strong>{{ item.total }} 次</strong>
-                    <small>{{
-                      item.total ? formatDuration(item.averageLatencyMs) : '未调用'
-                    }}</small>
-                  </div>
+              <div class="ai-operations__feature-list">
+                <div
+                  v-for="item in featureInventory"
+                  :key="item.feature"
+                  :class="{ 'is-unused': item.total === 0 }"
+                >
+                  <span
+                    ><i /><ArtDictDisplay
+                      dict-code="aiRunFeature"
+                      :value="item.feature"
+                      display="text"
+                  /></span>
+                  <strong>{{ formatNumberValue(item.total) }} 次</strong>
+                  <small>{{
+                    item.total ? formatDurationMs(item.averageLatencyMs) : '未调用'
+                  }}</small>
                 </div>
-              </ArtAsyncState>
+              </div>
             </ElScrollbar>
           </div>
         </div>
-      </article>
+      </ArtSectionCard>
     </section>
 
     <ArtSectionCard
@@ -334,7 +338,7 @@
 <script setup lang="tsx">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import dayjs from 'dayjs'
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { formatDurationMs, formatNumberValue, createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage } from 'element-plus'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -490,7 +494,7 @@
     {
       key: 'runs',
       label: '总运行次数',
-      value: formatNumber(overview.data.totalRuns),
+      value: formatNumberValue(overview.data.totalRuns || 0),
       hint: `${overview.data.runningRuns} 个任务正在运行`,
       icon: 'ri:flashlight-line',
       tone: 'primary'
@@ -506,16 +510,20 @@
     {
       key: 'latency',
       label: '平均响应',
-      value: formatDuration(overview.data.averageLatencyMs),
-      hint: `P95 ${formatDuration(overview.data.p95LatencyMs)}`,
+      value: formatDurationMs(overview.data.averageLatencyMs),
+      hint: `P95 ${formatDurationMs(overview.data.p95LatencyMs)}`,
       icon: 'ri:speed-up-line',
       tone: 'warning'
     },
     {
       key: 'tokens',
       label: 'Token 消耗',
-      value: formatCompactNumber(overview.data.inputTokens + overview.data.outputTokens),
-      hint: `输入 ${formatCompactNumber(overview.data.inputTokens)} · 输出 ${formatCompactNumber(overview.data.outputTokens)}`,
+      value: formatNumberValue(
+        overview.data.inputTokens + overview.data.outputTokens || 0,
+        'zh-CN',
+        { notation: 'compact', maximumFractionDigits: 1 }
+      ),
+      hint: `输入 ${formatNumberValue(overview.data.inputTokens || 0, 'zh-CN', { notation: 'compact', maximumFractionDigits: 1 })} · 输出 ${formatNumberValue(overview.data.outputTokens || 0, 'zh-CN', { notation: 'compact', maximumFractionDigits: 1 })}`,
       icon: 'ri:coins-line',
       tone: 'primary'
     }
@@ -534,7 +542,7 @@
     {
       key: 'artifacts',
       label: 'AI 草稿',
-      value: formatNumber(overview.data.quality.totalArtifacts),
+      value: formatNumberValue(overview.data.quality.totalArtifacts || 0),
       hint: `${overview.data.quality.pendingArtifacts} 条等待形成最终结果`,
       icon: 'ri:file-list-3-line',
       tone: 'primary'
@@ -702,14 +710,14 @@
       label: '耗时',
       width: 90,
       formatter: (row) => (
-        <span class={getLatencyClass(row.latencyMs)}>{formatDuration(row.latencyMs)}</span>
+        <span class={getLatencyClass(row.latencyMs)}>{formatDurationMs(row.latencyMs)}</span>
       )
     },
     {
       prop: 'tokens',
       label: 'Token',
       width: 92,
-      formatter: (row) => <span>{formatNumber(row.inputTokens + row.outputTokens)}</span>
+      formatter: (row) => <span>{formatNumberValue(row.inputTokens + row.outputTokens || 0)}</span>
     },
     {
       prop: 'toolCalls',
@@ -848,22 +856,6 @@
     if (rate >= 85) return 'var(--el-color-success)'
     if (rate >= 60) return 'var(--el-color-warning)'
     return 'var(--el-color-danger)'
-  }
-
-  function formatDuration(value?: number | null): string {
-    if (value == null) return '--'
-    if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 1 : 2)} s`
-    return `${value} ms`
-  }
-
-  function formatNumber(value: number): string {
-    return Number(value || 0).toLocaleString('zh-CN')
-  }
-
-  function formatCompactNumber(value: number): string {
-    return Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 }).format(
-      value || 0
-    )
   }
 
   const formatDateTime = createDateTimeFormatter()

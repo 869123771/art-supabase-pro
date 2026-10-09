@@ -864,19 +864,8 @@
     { deep: true }
   )
 
-  watch(
-    () => dialogRef.value?.fullscreen.value,
-    async () => {
-      await nextTick()
-      mapRef.value?.resize()
-      requestAnimationFrame(() => {
-        mapRef.value?.resize()
-      })
-    }
-  )
-
   const handleViewportResize = (): void => {
-    if (!dialogRef.value?.visible.value) return
+    if (!unref(dialogRef.value?.visible)) return
     void nextTick(() => {
       mapRef.value?.resize()
     })

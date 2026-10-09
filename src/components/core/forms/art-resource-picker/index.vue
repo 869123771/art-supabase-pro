@@ -117,7 +117,7 @@
         return
       }
 
-      if (dialogRef.value?.visible.value) {
+      if (unref(dialogRef.value?.visible)) {
         void closeDialog()
       }
     },

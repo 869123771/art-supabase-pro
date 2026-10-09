@@ -66,6 +66,8 @@
 </template>
 
 <script setup lang="tsx">
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
@@ -75,7 +77,6 @@
   import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
-  import dayjs from 'dayjs'
   import { ElMessage } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -105,6 +106,12 @@
     type AiPromptOverview
   } from '@/api/ai-prompt'
   import AiPromptDialog, { type AiPromptDialogOpenData } from './modules/ai-prompt-dialog.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   defineOptions({ name: 'AiPrompt' })
 
@@ -398,7 +405,7 @@
         formatter: (row: AiPromptTemplate) =>
           row.publishedAt ? (
             <div class="ai-prompt__publish-cell">
-              <strong>{dayjs(row.publishedAt).format('YYYY-MM-DD HH:mm')}</strong>
+              <strong>{formatTableDateTime(row.publishedAt)}</strong>
               <small>{row.publishedBy || '--'}</small>
             </div>
           ) : (
@@ -410,7 +417,7 @@
         label: '最近更新',
         width: 160,
         showOverflowTooltip: false,
-        formatter: (row: AiPromptTemplate) => dayjs(row.updateTime).format('YYYY-MM-DD HH:mm')
+        formatter: (row: AiPromptTemplate) => formatTableDateTime(row.updateTime)
       },
       {
         prop: 'operation',

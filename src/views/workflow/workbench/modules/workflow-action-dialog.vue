@@ -1,5 +1,10 @@
 <template>
-  <ArtDialog ref="dialogRef" size="md">
+  <ArtDialog
+    ref="dialogRef"
+    size="md"
+    :loading="state.snapshotLoading"
+    loading-text="正在加载审批资料…"
+  >
     <div :class="['workflow-action', `is-${state.action}`]">
       <div class="workflow-action__summary">
         <span
@@ -59,10 +64,7 @@
         </article>
       </div>
       <ArtAsyncState
-        v-if="state.snapshotLoading || state.snapshotError"
-        :loading="state.snapshotLoading"
-        loading-mode="skeleton"
-        :skeleton-rows="3"
+        v-if="state.snapshotError"
         :error="state.snapshotError"
         error-title="业务资料暂时不可用"
         :min-height="132"
@@ -88,10 +90,13 @@
       <div class="workflow-action__footer">
         <span><ArtSvgIcon icon="ri:history-line" />本次决定将写入审批审计轨迹</span>
         <div>
-          <ElButton @click="api.handleClose()">取消</ElButton>
+          <ElButton :disabled="state.snapshotLoading || loading" @click="api.handleClose()"
+            >取消</ElButton
+          >
           <ElButton
             :type="state.action === 'reject' ? 'danger' : 'primary'"
             :loading="loading"
+            :disabled="state.snapshotLoading"
             @click="api.handleConfirm()"
           >
             {{ confirmText }}

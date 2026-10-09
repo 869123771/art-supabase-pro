@@ -13,11 +13,7 @@
     }"
     @paste="handlePasteFiles"
   >
-    <div
-      v-if="!readonly"
-      class="art-upload-file__controls"
-      :class="{ 'has-resource-mode': canPickResource }"
-    >
+    <div v-if="!readonly" class="art-upload-file__controls">
       <ElUpload
         v-if="!resourceMode || !canPickResource"
         ref="uploadRef"
@@ -70,7 +66,8 @@
           class="art-upload-file__source-toggle"
           :disabled="uploadDisabled || uploading"
           aria-label="从资源管理器选择文件"
-        />
+          >资源库</ElCheckbox
+        >
       </ArtTooltip>
     </div>
     <div v-if="!readonly && showTip" class="art-upload-file__tip">
@@ -487,23 +484,25 @@
 
     &__controls {
       display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
       align-items: center;
       max-width: 100%;
     }
 
     &__source-toggle {
       display: inline-flex;
-      flex: 0 0 38px;
+      flex: 0 0 auto;
       align-items: center;
       justify-content: center;
-      width: 38px;
+      width: auto;
       min-height: 34px;
+      padding: 0 10px;
       margin: 0;
       cursor: pointer;
       background: var(--el-bg-color);
       border: 1px solid color-mix(in srgb, var(--el-color-primary) 62%, transparent);
-      border-left: 0;
-      border-radius: 0 var(--el-border-radius-base) var(--el-border-radius-base) 0;
+      border-radius: var(--el-border-radius-base);
       transition: background-color 160ms ease;
 
       &:hover,
@@ -568,10 +567,6 @@
         background: var(--el-fill-color-light);
         border-color: var(--el-border-color-light);
       }
-    }
-
-    &__controls.has-resource-mode &__trigger {
-      border-radius: var(--el-border-radius-base) 0 0 var(--el-border-radius-base);
     }
 
     &__tip {

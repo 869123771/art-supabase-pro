@@ -155,7 +155,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
-  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatDateTimeValue as formatDate } from '@/utils/ui/format'
   import { navigateToApplication } from '@/utils/application-navigation'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useLazyComponent } from '@/hooks/core/useLazyComponent'
@@ -172,6 +172,12 @@
     getWorkflowBusinessContract,
     getWorkflowBusinessTypeLabel
   } from '../modules/workflow-business-contracts'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   defineOptions({ name: 'WorkflowWorkbench' })
 
@@ -429,7 +435,7 @@
                 : dayjs(row.dueAt).diff(dayjs(), 'hour', true) <= 24
                   ? '即将超时 · '
                   : ''}
-              {dayjs(row.dueAt).format('MM-DD HH:mm')}
+              {formatTableDateTime(row.dueAt)}
             </span>
           ) : (
             <span>--</span>

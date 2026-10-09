@@ -25,15 +25,15 @@
         <section class="ai-run-detail__metrics">
           <div>
             <span>总耗时</span>
-            <strong>{{ formatDuration(detail.latencyMs) }}</strong>
+            <strong>{{ formatDurationMs(detail.latencyMs) }}</strong>
           </div>
           <div>
             <span>输入 Token</span>
-            <strong>{{ formatNumber(detail.inputTokens) }}</strong>
+            <strong>{{ formatNumberValue(detail.inputTokens ?? 0) }}</strong>
           </div>
           <div>
             <span>输出 Token</span>
-            <strong>{{ formatNumber(detail.outputTokens) }}</strong>
+            <strong>{{ formatNumberValue(detail.outputTokens ?? 0) }}</strong>
           </div>
           <div>
             <span>工具调用</span>
@@ -77,7 +77,7 @@
             <small>
               诊断服务 {{ diagnosis.provider }} · 模型 {{ diagnosis.model }} · Prompt
               {{ diagnosis.promptVersion }} ·
-              {{ formatDuration(diagnosis.durationMs) }}
+              {{ formatDurationMs(diagnosis.durationMs) }}
             </small>
           </section>
 
@@ -165,7 +165,7 @@
                   <strong>{{ tool.toolName }}</strong>
                 </div>
                 <div>
-                  <span>{{ formatDuration(tool.latencyMs) }}</span>
+                  <span>{{ formatDurationMs(tool.latencyMs) }}</span>
                   <ElTag :type="tool.status === 'succeeded' ? 'success' : 'danger'" size="small">
                     {{ tool.status === 'succeeded' ? '成功' : '失败' }}
                   </ElTag>
@@ -227,7 +227,7 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { formatDurationMs, formatNumberValue, createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage } from 'element-plus'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
@@ -436,15 +436,6 @@
 
   function ownerLabel(owner: AiDiagnosisOwner): string {
     return { platform: '平台处理', tenant: '租户处理', provider: '服务商处理' }[owner]
-  }
-
-  function formatDuration(value?: number | null): string {
-    if (!value && value !== 0) return '--'
-    return value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 1 : 2)} s` : `${value} ms`
-  }
-
-  function formatNumber(value?: number | null): string {
-    return Number(value ?? 0).toLocaleString('zh-CN')
   }
 
   const formatDateTime = createDateTimeFormatter()

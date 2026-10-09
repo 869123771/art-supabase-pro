@@ -47,7 +47,7 @@
             <footer>
               <span>{{ formatHistoryTime(item.updateTime) }}</span>
               <span v-if="item.lastRun">
-                {{ item.lastRun.model }} · {{ formatDuration(item.lastRun.latencyMs) }}
+                {{ item.lastRun.model }} · {{ formatDurationMs(item.lastRun.latencyMs) }}
               </span>
             </footer>
           </article>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatDurationMs } from '@/utils/ui/format'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
@@ -82,11 +83,6 @@
   }>()
 
   const drawerRef = ref<ArtDrawerExpose>()
-
-  function formatDuration(value?: number | null): string {
-    if (value == null) return '-'
-    return value < 1000 ? `${value}ms` : `${(value / 1000).toFixed(1)}s`
-  }
 
   function formatHistoryTime(value?: string): string {
     if (!value) return '-'

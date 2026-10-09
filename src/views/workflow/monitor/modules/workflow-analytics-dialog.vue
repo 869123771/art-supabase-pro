@@ -1,6 +1,6 @@
 <template>
-  <ArtDialog ref="dialogRef" size="xl">
-    <WorkflowAnalyticsPanel />
+  <ArtDialog ref="dialogRef" size="xl" :loading="loading" loading-text="正在加载审批分析…">
+    <WorkflowAnalyticsPanel external-loading @loading-change="loading = $event" />
   </ArtDialog>
 </template>
 
@@ -10,6 +10,7 @@
   import WorkflowAnalyticsPanel from '../../modules/workflow-analytics-panel.vue'
 
   defineOptions({ name: 'WorkflowAnalyticsDialog' })
+  const loading = ref(false)
   const dialogRef = ref<ArtDialogExpose>()
 
   async function handleOpen(): Promise<void> {

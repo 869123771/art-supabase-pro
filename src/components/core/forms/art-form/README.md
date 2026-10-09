@@ -88,7 +88,7 @@
 | `enableExpand` | `boolean` | `false` | 是否启用展开/收起能力 |
 | `isExpand` | `boolean` | `false` | 是否强制展开全部表单项 |
 | `defaultExpanded` | `boolean` | `false` | 非强制展开时，初始是否展开 |
-| `showExpand` | `boolean` | `true` | 是否显示展开/收起按钮 |
+| `showExpand` | `boolean` | `true` | 是否显示展开/收起按钮；为 `false` 时显示全部字段，避免出现无法展开的筛选项 |
 | `sanitizeOutput` | `Partial<SanitizeOutputOptions>` | `{}` | 提交输出清洗策略 |
 
 ## ElForm Props 透传

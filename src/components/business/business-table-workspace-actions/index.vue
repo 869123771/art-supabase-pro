@@ -185,6 +185,7 @@
     &__actions {
       flex-wrap: wrap;
       gap: 8px;
+      justify-content: flex-end;
       min-width: 0;
 
       &:not(:empty) {
@@ -198,8 +199,6 @@
     }
 
     @media (width <= 640px) {
-      justify-content: flex-start;
-
       &__actions:not(:empty) {
         padding-left: 0;
         border-left: 0;

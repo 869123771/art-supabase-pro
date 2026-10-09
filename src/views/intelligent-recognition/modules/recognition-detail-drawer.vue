@@ -119,7 +119,8 @@
 </template>
 
 <script setup lang="ts">
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatArtValue, formatDurationMs } from '@/utils/ui/format'
+  import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
 
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -266,7 +267,7 @@
 
   const auditData = computed(() => ({
     model: detail.data?.run?.model || '未记录',
-    latency: detail.data?.run?.latencyMs ? `${detail.data.run.latencyMs} ms` : '-',
+    latency: formatDurationMs(detail.data?.run?.latencyMs),
     creator: detail.data?.createBy || '-',
     createTime: formatDateTime(detail.data?.createTime),
     reviewedAt: formatDateTime(detail.data?.reviewedAt),
@@ -288,10 +289,11 @@
   function formatValue(key: string, value: unknown): string {
     if (typeof value === 'number' && key === 'taxRate') return `${value}%`
     if (typeof value === 'number' && /amount/i.test(key)) {
-      return `¥${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      return formatSensitiveNumberWithAffix(value, { prefix: '¥' })
     }
-    if (typeof value === 'boolean') return value ? '是' : '否'
-    return String(value || '未识别')
+    return formatArtValue(value, typeof value === 'boolean' ? 'boolean' : 'text', {
+      emptyText: '未识别'
+    })
   }
 
   const formatDateTime = createDateTimeFormatter({ format: 'YYYY-MM-DD HH:mm', emptyText: '-' })
@@ -670,8 +672,8 @@
       }
 
       small {
-        font-size: 10px;
-        color: var(--art-text-gray-400);
+        font-size: 11px;
+        color: var(--art-text-gray-600);
       }
 
       small.is-high {

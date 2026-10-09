@@ -157,7 +157,7 @@
                       <ArtSvgIcon icon="ri:cpu-line" /> {{ message.model }}
                     </span>
                     <span v-if="message.latencyMs != null">
-                      <ArtSvgIcon icon="ri:timer-line" /> {{ formatDuration(message.latencyMs) }}
+                      <ArtSvgIcon icon="ri:timer-line" /> {{ formatDurationMs(message.latencyMs) }}
                     </span>
                     <span v-if="message.usage">
                       <ArtSvgIcon icon="ri:braces-line" /> {{ getTokenTotal(message) }} tokens
@@ -230,7 +230,7 @@
                     <i></i><i></i><i></i>
                   </span>
                   <span>{{ thinkingText }}</span>
-                  <small>{{ formatDuration(state.elapsedMs) }}</small>
+                  <small>{{ formatDurationMs(state.elapsedMs) }}</small>
                 </div>
               </div>
             </article>
@@ -292,6 +292,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatDurationMs } from '@/utils/ui/format'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Refresh } from '@element-plus/icons-vue'
   import { useIntervalFn, useNetwork, useWindowSize } from '@vueuse/core'
@@ -701,11 +702,6 @@
 
   function getTokenTotal(message: ChatMessage): number {
     return (message.usage?.inputTokens || 0) + (message.usage?.outputTokens || 0)
-  }
-
-  function formatDuration(value?: number | null): string {
-    if (value == null) return '-'
-    return value < 1000 ? `${value}ms` : `${(value / 1000).toFixed(1)}s`
   }
 
   async function sendMessage(): Promise<void> {

@@ -1,4 +1,4 @@
-import dayjs from 'dayjs'
+import { createDateTimeFormatter } from '@/utils/ui/format'
 import { countBy, groupBy, orderBy } from 'lodash-es'
 import type { TagProps } from 'element-plus'
 import type { DictMap } from '@/types/store'
@@ -103,9 +103,11 @@ export function createProjectPlannerFilters(): ProjectPlannerFilters {
   }
 }
 
-export function formatProjectPlannerTime(value: string): string {
-  return value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—'
-}
+export const formatProjectPlannerTime = createDateTimeFormatter({
+  format: 'YYYY-MM-DD HH:mm',
+  emptyText: '—',
+  invalidText: '—'
+})
 
 export function createProjectPlannerBatchView(
   state: Pick<AiPlannerState, 'latestBatch' | 'suggestions'>,

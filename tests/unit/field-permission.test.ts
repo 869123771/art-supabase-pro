@@ -7,6 +7,7 @@ import {
   formatSensitiveNumberWithAffix,
   getFieldAccess,
   isMaskedValue,
+  isReadableFieldAccess,
   mergeFieldAccessMaps,
   omitNonEditableFields,
   parseReadableSensitiveNumber
@@ -49,6 +50,24 @@ test('view and edit checks distinguish hidden, masked, read and edit', () => {
   assert.equal(canEditField(access, 'price'), true)
 })
 
+test('source-data readability rejects masks, missing grants and malformed runtime levels', () => {
+  for (const access of ['read', 'edit']) assert.equal(isReadableFieldAccess(access), true)
+  for (const access of [
+    'hidden',
+    'masked',
+    'unsupported',
+    '',
+    null,
+    undefined,
+    true,
+    1,
+    ['read'],
+    { level: 'edit' }
+  ]) {
+    assert.equal(isReadableFieldAccess(access), false)
+  }
+})
+
 test('sensitive number formatting preserves masks and formats numeric values', () => {
   assert.equal(isMaskedValue('***'), true)
   assert.equal(formatSensitiveNumber('***'), '***')
@@ -71,6 +90,9 @@ test('adds currency and unit affixes without decorating masked or empty values',
   assert.equal(formatSensitiveNumberWithAffix('1234.5', { suffix: ' 元' }), '1,234.50 元')
   assert.equal(formatSensitiveNumberWithAffix('***', { prefix: '¥' }), '***')
   assert.equal(formatSensitiveNumberWithAffix(null, { suffix: ' km' }), '--')
+  assert.equal(formatSensitiveNumberWithAffix(null, { prefix: '¥', emptyText: '—' }), '—')
+  assert.equal(formatSensitiveNumberWithAffix('invalid', { suffix: ' 元', emptyText: '—' }), '—')
+  assert.equal(formatSensitiveNumberWithAffix('***', { prefix: '¥', emptyText: '—' }), '***')
 })
 
 test('write payload helper removes every field without edit permission', () => {

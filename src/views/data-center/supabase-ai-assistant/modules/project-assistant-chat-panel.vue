@@ -88,7 +88,7 @@
             class="project-assistant__message-trace"
           >
             <span v-if="message.model">{{ message.model }}</span>
-            <span v-if="message.latencyMs != null">{{ formatDuration(message.latencyMs) }}</span>
+            <span v-if="message.latencyMs != null">{{ formatDurationMs(message.latencyMs) }}</span>
             <span v-if="message.usage">
               {{ (message.usage.inputTokens || 0) + (message.usage.outputTokens || 0) }} tokens
             </span>
@@ -124,7 +124,7 @@
         <span><ArtSvgIcon icon="ri:sparkling-2-fill" /></span>
         <div class="project-assistant__typing">
           <i></i><i></i><i></i>
-          <small>{{ chatPhase }} · {{ formatDuration(chat.elapsedMs) }}</small>
+          <small>{{ chatPhase }} · {{ formatDurationMs(chat.elapsedMs) }}</small>
         </div>
       </article>
     </ElScrollbar>
@@ -190,6 +190,7 @@
 
 <script setup lang="ts">
   import type { ScrollbarInstance } from 'element-plus'
+  import { formatDurationMs } from '@/utils/ui/format'
   import ArtAiFeedback from '@/components/core/base/art-ai-feedback/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import type {
@@ -197,7 +198,6 @@
     ProjectDatabaseObject
   } from '@/types/supabase-ai-assistant'
   import {
-    formatProjectAssistantDuration as formatDuration,
     getProjectAssistantToolLabel as getToolLabel,
     getProjectObjectIcon as getObjectIcon,
     type ProjectAssistantChatMessage,

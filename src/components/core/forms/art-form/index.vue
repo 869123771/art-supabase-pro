@@ -1234,7 +1234,8 @@
    * 可见的表单项
    */
   const visibleFormItems = computed(() => {
-    const shouldShowLess = props.enableExpand && !props.isExpand && !isExpanded.value
+    const shouldShowLess =
+      props.enableExpand && props.showExpand && !props.isExpand && !isExpanded.value
 
     if (shouldShowLess) {
       const maxItemsPerRow = Math.floor(24 / props.span) - 1

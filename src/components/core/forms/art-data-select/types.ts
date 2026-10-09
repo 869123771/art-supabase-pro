@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- ArtDataSelect 是通用选择器，需要兼容没有索引签名的业务 DTO；后续可在组件泛型化时进一步收紧。 */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Legacy dynamic-field callbacks keep their indexable contract; data sources and selection events carry the caller's generic DTO type. */
 import type { Component } from 'vue'
 import type { DictColumnOption } from '@/types/component'
 import type { ArtDialogSize } from '@/components/core/dialogs/art-dialog/types'
@@ -12,21 +12,21 @@ export interface DataSelectRecord {
   [key: string]: any
 }
 
-export interface DataSelectColumn {
+export interface DataSelectColumn<T extends object = DataSelectRecord> {
   prop: string
   label: string
   width?: string | number
   minWidth?: string | number
   align?: 'left' | 'center' | 'right'
-  formatter?: (row: DataSelectRecord) => string | number | Component
-  dict?: DictColumnOption<DataSelectRecord>
+  formatter?: (row: T) => string | number | Component
+  dict?: DictColumnOption<T>
   tagType?:
     | 'primary'
     | 'success'
     | 'info'
     | 'warning'
     | 'danger'
-    | ((row: DataSelectRecord) => 'primary' | 'success' | 'info' | 'warning' | 'danger')
+    | ((row: T) => 'primary' | 'success' | 'info' | 'warning' | 'danger')
 }
 
 export interface DataSelectFilterOption {
@@ -59,28 +59,28 @@ export interface DataSelectFetchParams {
   filters: Record<string, string | number | undefined>
 }
 
-export interface DataSelectFetchResult {
-  data?: DataSelectRecord[]
-  list?: DataSelectRecord[]
-  records?: DataSelectRecord[]
+export interface DataSelectFetchResult<T extends object = DataSelectRecord> {
+  data?: T[]
+  list?: T[]
+  records?: T[]
   total?: number
-  [key: string]: unknown
+  error?: unknown
 }
 
-export type DataSelectApiFn = (
+export type DataSelectApiFn<T extends object = DataSelectRecord> = (
   params: DataSelectFetchParams
-) => MaybePromise<DataSelectFetchResult | DataSelectRecord[]>
+) => MaybePromise<DataSelectFetchResult<T> | T[]>
 
-export interface ArtDataSelectProps {
+export interface ArtDataSelectProps<T extends object = DataSelectRecord> {
   modelValue?: DataSelectModelValue
-  selectedData?: DataSelectRecord[]
+  selectedData?: T[]
   mode?: DataSelectMode
   multiple?: boolean
-  data?: DataSelectRecord[]
+  data?: T[]
   /** Loading state for data fetched by the caller instead of apiFn. */
   loading?: boolean
-  apiFn?: DataSelectApiFn
-  columns?: DataSelectColumn[]
+  apiFn?: DataSelectApiFn<T>
+  columns?: DataSelectColumn<T>[]
   title?: string
   subtitle?: string
   placeholder?: string
@@ -89,10 +89,10 @@ export interface ArtDataSelectProps {
   filterKey?: string
   filterOptions?: DataSelectFilterOption[]
   navigation?: DataSelectNavigation
-  rowKey?: string | ((row: DataSelectRecord) => DataSelectKey)
-  labelKey?: string | ((row: DataSelectRecord) => string)
-  descriptionKey?: string | ((row: DataSelectRecord) => string)
-  disabledKey?: string | ((row: DataSelectRecord) => boolean)
+  rowKey?: string | ((row: T) => DataSelectKey)
+  labelKey?: string | ((row: T) => string)
+  descriptionKey?: string | ((row: T) => string)
+  disabledKey?: string | ((row: T) => boolean)
   childrenKey?: string
   resultField?: string
   totalField?: string
@@ -114,25 +114,25 @@ export interface ArtDataSelectProps {
   emptyDescription?: string
 }
 
-export interface ArtDataSelectMultipleProps extends Omit<
-  ArtDataSelectProps,
+export interface ArtDataSelectMultipleProps<T extends object = DataSelectRecord> extends Omit<
+  ArtDataSelectProps<T>,
   'mode' | 'multiple' | 'modelValue'
 > {
   modelValue?: DataSelectKey[]
 }
 
-export interface ArtDataSelectSingleProps extends Omit<
-  ArtDataSelectProps,
+export interface ArtDataSelectSingleProps<T extends object = DataSelectRecord> extends Omit<
+  ArtDataSelectProps<T>,
   'mode' | 'multiple' | 'modelValue'
 > {
   modelValue?: DataSelectKey
 }
 
-export interface ArtDataSelectEmits {
+export interface ArtDataSelectEmits<T extends object = DataSelectRecord> {
   (e: 'update:modelValue', value: DataSelectModelValue): void
-  (e: 'update:selectedData', value: DataSelectRecord[]): void
-  (e: 'change', value: DataSelectModelValue, rows: DataSelectRecord[]): void
-  (e: 'confirm', value: DataSelectModelValue, rows: DataSelectRecord[]): void
+  (e: 'update:selectedData', value: T[]): void
+  (e: 'change', value: DataSelectModelValue, rows: T[]): void
+  (e: 'confirm', value: DataSelectModelValue, rows: T[]): void
   (e: 'clear'): void
   (e: 'open'): void
   (e: 'close'): void

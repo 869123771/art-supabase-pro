@@ -7,9 +7,29 @@
     margin-top: var(--art-space-3);
   }
 
+  &.is-max-height .el-table {
+    height: auto;
+  }
+
+  :deep(th.is-sortable .cell) {
+    white-space: nowrap;
+  }
+
   :deep(.el-table__empty-text) {
     width: 100%;
     line-height: normal;
+  }
+
+  :deep(.el-table__expanded-cell) {
+    padding: 0;
+  }
+
+  &__expand-content {
+    position: sticky;
+    left: 0;
+    box-sizing: border-box;
+    min-width: 0;
+    white-space: normal;
   }
 
   &__cell-content {
@@ -25,6 +45,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  :deep(.art-table__cell-content:has(.el-input, .el-textarea, .el-select, .el-date-editor)) {
+    display: flex;
+    width: 100%;
+
+    > .art-table__cell-value {
+      flex: 1;
+    }
   }
 
   :deep(.art-table__cell-link) {

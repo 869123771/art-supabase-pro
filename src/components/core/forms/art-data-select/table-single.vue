@@ -23,19 +23,24 @@
   </ArtDataSelect>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object = DataSelectRecord">
   import { dataSelectDefaults } from './defaults'
   import ArtDataSelect from './index.vue'
-  import type { ArtDataSelectEmits, ArtDataSelectExpose, ArtDataSelectSingleProps } from './types'
+  import type {
+    DataSelectRecord,
+    ArtDataSelectEmits,
+    ArtDataSelectExpose,
+    ArtDataSelectSingleProps
+  } from './types'
 
   defineOptions({ name: 'ArtTableSingleSelect' })
 
-  const props = withDefaults(defineProps<ArtDataSelectSingleProps>(), {
+  const props = withDefaults(defineProps<ArtDataSelectSingleProps<T>>(), {
     ...dataSelectDefaults,
     showPagination: undefined,
     showSelectedPanel: false
   })
-  const emit = defineEmits<ArtDataSelectEmits>()
+  const emit = defineEmits<ArtDataSelectEmits<T>>()
   const selectRef = ref<ArtDataSelectExpose>()
 
   defineExpose<ArtDataSelectExpose>({

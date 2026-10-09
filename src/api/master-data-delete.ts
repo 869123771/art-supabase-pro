@@ -133,6 +133,16 @@ export async function fetchScmPurchaseDeleteDestination(
   return data && typeof data.kind === 'string' ? data : null
 }
 
+export async function fetchScmSalesDeleteDestination(
+  documentId: string
+): Promise<{ kind: string } | null> {
+  const { data } = await responseHandle<{ kind: string }>(
+    () => supabase.from('scm_sales_document').select('kind').eq('id', documentId).maybeSingle(),
+    { breakReturn: true, showErrorMessage: false }
+  )
+  return data && typeof data.kind === 'string' ? data : null
+}
+
 export async function fetchVehicleReminderDeleteDestination(
   workOrderId: string
 ): Promise<VehicleReminderDeleteDestination | null> {

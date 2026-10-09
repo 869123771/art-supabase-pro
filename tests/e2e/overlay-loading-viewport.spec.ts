@@ -140,3 +140,37 @@ test('长正文滚动后的整体加载始终位于可视正文中心', async ({
   }
   expect(errors).toEqual([])
 })
+
+test('子组件加载统一由审批分析弹窗和审批历程抽屉承接', async ({ page }, testInfo) => {
+  let release: () => void = () => undefined
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/rest/v1/**', async (route) => {
+    if (route.request().url().includes('sys_dictionary')) return route.fulfill({ json: [] })
+    await held
+    return route.fulfill({ status: 503, json: { code: 'XX000', message: 'synthetic unavailable' } })
+  })
+  await page.goto('/tests/e2e/fixtures/overlay-loading-viewport.html')
+  try {
+    for (const kind of ['dialog', 'drawer'] as const) {
+      await page
+        .getByRole('button', {
+          name: kind === 'dialog' ? '打开审批分析' : '打开审批历程',
+          exact: true
+        })
+        .click()
+      const root = page.locator(kind === 'dialog' ? '.el-dialog:visible' : '.el-drawer:visible')
+      await expectViewportCentered(root, kind)
+      await expect(root.locator('.el-skeleton')).toHaveCount(0)
+      await expect(root.locator('.art-async-state > .art-overlay-loading')).toHaveCount(0)
+      await root.screenshot({
+        path: testInfo.outputPath(`workflow-${kind}-loading.png`),
+        animations: 'disabled'
+      })
+      await root.getByRole('button', { name: 'Close this dialog', exact: true }).click()
+    }
+  } finally {
+    release()
+  }
+})

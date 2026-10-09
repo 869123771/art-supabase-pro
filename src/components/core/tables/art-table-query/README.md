@@ -490,6 +490,7 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
 | `onImportSuccess` | `(data, ctx) => void \| Promise<void>` | 导入成功回调。公共导入流程结束后触发。 |
 | `importColumns` | `ArtTableQueryExcelColumns` | 导入列映射配置。 |
 | `importTransformer` | `(rows, ctx) => rows \| Promise<rows>` | 导入数据转换。优先级高于 `importColumns` 默认映射。 |
+| `importRecordTransformer` | `(records, ctx) => records \| Promise<records>` | 接收 `importColumns` 映射后的业务记录，用于数值、状态、默认值等转换；与原始行 `importTransformer` 二选一。 |
 | `importApi` | `(rows, ctx) => void \| Promise<void>` | 导入接口。执行成功后内管模式会自动 `refreshCreate()`。 |
 | `onImportError` | `(error, ctx) => void \| Promise<void>` | 导入失败回调。 |
 | `content` | `string \| Component \| (ctx) => VNodeChild` | 确认框内容。常用于 `delete`。 |
@@ -560,7 +561,7 @@ const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
 
 导入处理优先级：
 
-1. 如果传 `importTransformer`，使用它转换原始 Excel 行。
+1. 如果传 `importTransformer`，使用它转换原始 Excel 行。普通业务字段转换使用 `importRecordTransformer`：公共组件先按 `importColumns` 将中文表头映射成字段名，再调用转换函数；不需要调用方重复映射。映射后转换会在缺少必填字段时阻止整批提交并提示缺失行数，避免静默跳过错误行后部分写入。
 2. 否则如果传 `importColumns`，按列配置把 Excel 表头映射为业务字段。
 3. 如果传 `importApi`，提交转换后的 rows。
 4. `importApi` 成功后，内管模式自动 `refreshCreate()`。

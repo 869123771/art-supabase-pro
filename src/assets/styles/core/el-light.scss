@@ -1,21 +1,26 @@
 // https://github.com/element-plus/element-plus/blob/dev/packages/theme-chalk/src/common/var.scss
 // 自定义Element 亮色主题
+// 状态文字需要同时在白底与 light-9 底色上可读；light-3 保留实心按钮悬停对比度。
 
 @forward 'element-plus/theme-chalk/src/common/var.scss' with (
   $colors: (
     'white': #ffffff,
     'black': #000000,
     'success': (
-      'base': #13deb9
+      'base': #066e5c,
+      'light-3': #167968
     ),
     'warning': (
-      'base': #ffae1f
+      'base': #805000,
+      'light-3': #966000
     ),
     'danger': (
-      'base': #ff4d4f
+      'base': #b5232a,
+      'light-3': #c2373d
     ),
     'error': (
-      'base': #fa896b
+      'base': #ae3d23,
+      'light-3': #b94b32
     )
   ),
   $button: (

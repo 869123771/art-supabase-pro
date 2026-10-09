@@ -75,6 +75,7 @@ test('调薪周期新增使用认证租户，编辑保留跨租户记录的实�
     return route.fulfill({ json: [] })
   })
   await page.goto('/tests/e2e/fixtures/hr-all-pages.html?page=operations/compensation-review')
+  await expect(page.locator('.business-workspace-page')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('#review-command-title')).toHaveText(cycle.cycle_name)
   await page.getByRole('button', { name: '新增调薪周期', exact: true }).first().click()
   const add = page.getByRole('dialog', { name: '新增调薪周期', exact: true })

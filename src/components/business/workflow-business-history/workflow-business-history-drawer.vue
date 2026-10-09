@@ -1,5 +1,11 @@
 <template>
-  <ArtDrawer ref="drawerRef" :show-footer="false" show-fullscreen-button>
+  <ArtDrawer
+    :loading="loading"
+    loading-text="正在加载审批历程…"
+    ref="drawerRef"
+    :show-footer="false"
+    show-fullscreen-button
+  >
     <template #header>
       <div class="workflow-history-drawer__header">
         <span><ArtSvgIcon icon="ri:file-history-line" /></span>
@@ -15,6 +21,8 @@
       :business-type="target.businessType"
       :business-id="target.businessId"
       :min-height="180"
+      external-loading
+      @loading-change="loading = $event"
     />
   </ArtDrawer>
 </template>
@@ -28,6 +36,7 @@
 
   defineOptions({ name: 'WorkflowBusinessHistoryDrawer' })
 
+  const loading = ref(false)
   const drawerRef = ref<ArtDrawerExpose<WorkflowBusinessHistoryTarget>>()
   const target = reactive<WorkflowBusinessHistoryTarget>({
     businessType: '',

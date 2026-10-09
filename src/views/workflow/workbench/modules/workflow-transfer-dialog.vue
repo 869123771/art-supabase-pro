@@ -1,5 +1,5 @@
 <template>
-  <ArtDialog ref="dialogRef" size="sm">
+  <ArtDialog ref="dialogRef" size="sm" :loading="usersLoading" loading-text="正在加载审批人…">
     <div class="workflow-transfer">
       <section class="workflow-transfer__summary">
         <span><ArtSvgIcon icon="ri:user-received-2-line" /></span>
@@ -24,11 +24,9 @@
       </div>
 
       <ArtAsyncState
-        v-if="usersLoading || usersError"
-        :loading="usersLoading"
+        v-if="usersError"
         :error="usersError"
         size="compact"
-        :skeleton-rows="2"
         error-title="审批人加载失败"
         @retry="retryUsers"
       />

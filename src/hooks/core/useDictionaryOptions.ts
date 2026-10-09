@@ -1,6 +1,7 @@
 import { shallowReactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/modules/user'
+import { toDictionaryOption } from '@/utils/form/option'
 
 export interface DictionarySelectOption<T extends string | number | boolean = string> {
   label: string
@@ -16,16 +17,15 @@ export function useDictionaryOptions<T extends string | number | boolean = strin
   const options = shallowReactive<DictionarySelectOption<T>[]>([])
 
   watch(
-    () => userStore.getDictMap,
-    (dictMap) => {
-      const items = dictMap[code]
+    () => userStore.getDictMap[code],
+    (items) => {
       options.splice(
         0,
         options.length,
         ...(items ?? [])
           .filter((item) => !item.status || item.status === '1')
           .map((item) => ({
-            label: item.label || item.value,
+            label: toDictionaryOption(item).label || item.value,
             value: mapValue ? mapValue(item.value) : (item.value as T)
           }))
       )

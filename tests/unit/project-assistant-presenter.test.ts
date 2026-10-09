@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  formatProjectAssistantDuration,
   getProjectAssistantChatPhase,
   getProjectAssistantFailureMessage,
   getProjectAssistantStats,
@@ -16,10 +15,7 @@ import type {
   ProjectRelationship
 } from '../../src/types/supabase-ai-assistant'
 
-test('assistant presentation formats duration and progress phases consistently', () => {
-  assert.equal(formatProjectAssistantDuration(), '-')
-  assert.equal(formatProjectAssistantDuration(820), '820ms')
-  assert.equal(formatProjectAssistantDuration(1250), '1.3s')
+test('assistant presentation keeps progress phases consistent', () => {
   assert.equal(getProjectAssistantChatPhase(2499), '正在理解问题')
   assert.equal(getProjectAssistantChatPhase(2500), '正在查询项目元数据')
   assert.equal(getProjectAssistantChatPhase(8000), '正在整理分析结果')

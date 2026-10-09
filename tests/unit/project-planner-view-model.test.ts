@@ -9,9 +9,17 @@ import {
   createProjectPlannerFilters,
   createProjectPlannerMetrics,
   filterAndSortProjectSuggestions,
+  formatProjectPlannerTime,
   getProjectPlannerPrioritySuggestion,
   hasProjectPlannerActiveFilters
 } from '../../src/views/system/ai-project-planner/modules/project-planner-view-model'
+
+test('planner timestamps share minute precision and do not display invalid dates', () => {
+  assert.equal(formatProjectPlannerTime('2026-10-08 08:30:59'), '2026-10-08 08:30')
+  assert.equal(formatProjectPlannerTime('invalid'), '—')
+  assert.equal(formatProjectPlannerTime(''), '—')
+  assert.equal(formatProjectPlannerTime(null), '—')
+})
 
 function suggestion(id: string, patch: Partial<AiProjectSuggestion> = {}): AiProjectSuggestion {
   return {

@@ -246,6 +246,17 @@ test('会计期间查询失败后可重试到业务空态', async ({ page }, tes
   await expect(drawer.getByText('technical failure')).toHaveCount(0)
   await drawer.getByRole('button', { name: '重新加载' }).click()
   await expect(drawer.getByText('暂无会计期间')).toBeVisible()
+  await expect(drawer.getByRole('combobox', { name: '会计年度' })).toBeDisabled()
+  await expect(drawer.getByText('暂无会计年度', { exact: true })).toBeVisible()
+  const card = drawer.locator('.art-section-card').filter({ hasText: '暂无会计期间' })
+  const identity = await card.locator('.art-section-card__identity').boundingBox()
+  const actions = await card.locator('.art-section-card__actions').boundingBox()
+  expect(identity).not.toBeNull()
+  expect(actions).not.toBeNull()
+  if (page.viewportSize()!.width <= 640) {
+    expect(identity!.width).toBeGreaterThan(240)
+    expect(actions!.y).toBeGreaterThanOrEqual(identity!.y + identity!.height)
+  }
   expect(attempts).toBe(2)
   await expectNoViewportOverflow(page)
   await page.screenshot({

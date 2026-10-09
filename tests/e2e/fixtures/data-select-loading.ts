@@ -85,17 +85,25 @@ const app = createApp({
               h(ArtTableSingleSelect, {
                 ref: selector,
                 title: '单选分页测试',
+                ...(singleMode === 'unresolved' ? { modelValue: 'not-loaded' } : {}),
                 columns: [{ prop: 'label', label: '名称' }],
                 data: singleMode === 'local' ? singleRows : [],
                 apiFn:
                   singleMode === 'local'
                     ? undefined
                     : ({ page, pageSize }) => ({
-                        data: singleRows.slice((page - 1) * pageSize, page * pageSize),
-                        total: singleRows.length
+                        data:
+                          singleMode === 'unresolved'
+                            ? []
+                            : singleRows.slice((page - 1) * pageSize, page * pageSize),
+                        total: singleMode === 'unresolved' ? 0 : singleRows.length
                       }),
+                onConfirm: (value: unknown, records: object[]) => {
+                  result.value = JSON.stringify({ value, records })
+                },
                 ...(singleMode === 'explicit' ? { showPagination: false } : {})
-              })
+              }),
+              h('output', { 'data-testid': 'selector-result' }, result.value)
             ])
           : h('main', { class: 'p-4' }, [
               h('button', { onClick: () => selector.value?.open() }, '打开选择器'),

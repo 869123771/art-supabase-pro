@@ -113,11 +113,6 @@ export function getProjectAssistantToolLabel(name: string): string {
   )
 }
 
-export function formatProjectAssistantDuration(value?: number | null): string {
-  if (value == null) return '-'
-  return value < 1000 ? `${value}ms` : `${(value / 1000).toFixed(1)}s`
-}
-
 export function getProjectAssistantChatPhase(elapsedMs: number): string {
   if (elapsedMs < 2500) return '正在理解问题'
   if (elapsedMs < 8000) return '正在查询项目元数据'

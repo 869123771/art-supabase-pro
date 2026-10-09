@@ -184,6 +184,7 @@
         font-size: var(--art-font-size-caption);
         line-height: 20px;
         color: var(--el-text-color-secondary);
+        overflow-wrap: anywhere;
       }
     }
 
@@ -196,6 +197,7 @@
       justify-content: flex-end;
       min-width: 0;
       max-width: 100%;
+      margin-left: auto;
     }
 
     &__body {

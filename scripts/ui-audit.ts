@@ -124,6 +124,55 @@ function findNestedWholeOverlayLoading(file: string, content: string): number[] 
   return offsets
 }
 
+function findOverlaySkeletonLoading(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+  const offsets: number[] = []
+  const visit = (node: TemplateNode, insideOverlay = false): void => {
+    const inOverlay = insideOverlay || ['ArtDialog', 'ArtDrawer'].includes(node.tag ?? '')
+    if (inOverlay && node.type === 1) {
+      const skeletonState =
+        node.tag === 'ArtAsyncState' &&
+        node.props?.some(
+          (property) => property.name === 'loading-mode' && property.value?.content === 'skeleton'
+        )
+      if (
+        ['ElSkeleton', 'el-skeleton', 'ElSkeletonItem', 'el-skeleton-item'].includes(
+          node.tag ?? ''
+        ) ||
+        skeletonState
+      ) {
+        offsets.push(node.loc?.start.offset ?? 0)
+      }
+    }
+    node.children?.forEach((child) => visit(child, inOverlay))
+  }
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
+}
+
+function findSelfUnmountingFocusToggles(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+  const offsets: number[] = []
+  const visit = (node: TemplateNode): void => {
+    if (node.type === 1 && node.tag === 'BusinessWorkspaceFocusToggle') {
+      const condition = node.props?.find((property) => property.name === 'if')?.exp?.content
+      const model = node.props?.find((property) => property.name === 'model')?.exp?.content
+      if (
+        condition &&
+        model &&
+        condition.replace(/[()!\s]/g, '') === model.replace(/[()\s]/g, '')
+      ) {
+        offsets.push(node.loc?.start.offset ?? 0)
+      }
+    }
+    node.children?.forEach(visit)
+  }
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
+}
+
 function hasStaticClass(node: TemplateNode, className: string): boolean {
   const classAttribute = node.props?.find(
     (property) => property.type === 6 && property.name === 'class'
@@ -273,6 +322,12 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
   }
 
   if (path.extname(file) === '.vue') {
+    findSelfUnmountingFocusToggles(file, content).forEach((offset) => {
+      addFinding(offset, 'interaction/focus-toggle-lifecycle')
+    })
+    findOverlaySkeletonLoading(file, content).forEach((offset) => {
+      addFinding(offset, 'feedback/use-overlay-shared-loading')
+    })
     findNestedWholeOverlayLoading(file, content).forEach((offset) => {
       addFinding(offset, 'feedback/whole-overlay-loading-owner')
     })
@@ -329,6 +384,10 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
   if (tooltipOnly) return findings
 
   const rules = [
+    {
+      name: 'styles/no-parent-suffix-in-deep',
+      pattern: /:deep\(\s*&[\w-]+/g
+    },
     {
       name: 'motion/no-transition-all',
       pattern: /(?:-webkit-)?transition\s*:\s*all\b|\btransition-all\b/g
@@ -476,7 +535,7 @@ function checkComponentFileName(file: string): Finding[] {
     }
   ]
 }
-function checkComponentName(file: string, content: string): Finding[] {
+function checkComponentScript(file: string, content: string): Finding[] {
   if (!file.endsWith('.vue')) return []
   const { descriptor } = parseSfc(content, { filename: file })
   const script = descriptor.scriptSetup
@@ -488,8 +547,40 @@ function checkComponentName(file: string, content: string): Finding[] {
     true,
     ts.ScriptKind.TSX
   )
-  const duplicates: Finding[] = []
+  const scriptFindings: Finding[] = []
+  const overlayRefs = new Set<string>()
+  const collectOverlayRefs = (node: TemplateNode): void => {
+    if (node.type === 1 && ['ArtDialog', 'ArtDrawer'].includes(node.tag ?? '')) {
+      const binding = node.props?.find(
+        (property) =>
+          property.name === 'ref' || (property.name === 'bind' && property.arg?.content === 'ref')
+      )
+      const name = binding?.value?.content ?? binding?.exp?.content
+      if (name && /^[A-Za-z_$][\w$]*$/.test(name)) overlayRefs.add(name)
+    }
+    node.children?.forEach(collectOverlayRefs)
+  }
+  if (descriptor.template?.ast) collectOverlayRefs(descriptor.template.ast as TemplateNode)
   const visit = (node: ts.Node): void => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text === 'value') {
+      const state = node.expression
+      if (
+        ts.isPropertyAccessExpression(state) &&
+        ['visible', 'loading', 'confirmLoading', 'fullscreen'].includes(state.name.text) &&
+        ts.isPropertyAccessExpression(state.expression) &&
+        state.expression.name.text === 'value' &&
+        ts.isIdentifier(state.expression.expression) &&
+        overlayRefs.has(state.expression.expression.text)
+      ) {
+        const offset = script.loc.start.offset + node.getStart(source)
+        scriptFindings.push({
+          file: path.relative(projectRoot, file).replace(/\\/g, '/'),
+          line: lineAt(content, offset),
+          rule: 'quality/no-double-unref-overlay-state',
+          excerpt: excerptAt(content, offset)
+        })
+      }
+    }
     if (
       ts.isCallExpression(node) &&
       ts.isIdentifier(node.expression) &&
@@ -518,9 +609,9 @@ function checkComponentName(file: string, content: string): Finding[] {
           }
           const previous = componentNames.get(name)
           if (!/^[A-Z][A-Za-z0-9]*$/.test(name))
-            duplicates.push({ ...finding, rule: 'naming/pascal-case-component-name' })
+            scriptFindings.push({ ...finding, rule: 'naming/pascal-case-component-name' })
           if (previous)
-            duplicates.push({
+            scriptFindings.push({
               ...finding,
               excerpt: `${name} also declared at ${previous.file}:${previous.line}`
             })
@@ -531,7 +622,7 @@ function checkComponentName(file: string, content: string): Finding[] {
     ts.forEachChild(node, visit)
   }
   visit(source)
-  return duplicates
+  return scriptFindings
 }
 const findings = (
   await Promise.all([
@@ -540,7 +631,7 @@ const findings = (
       return [
         ...checkComponentFileName(file),
         ...scanFile(file, content),
-        ...checkComponentName(file, content)
+        ...checkComponentScript(file, content)
       ]
     }),
     ...moduleUiFiles.map(async (file) => {
@@ -548,7 +639,7 @@ const findings = (
       return [
         ...checkComponentFileName(file),
         ...scanFile(file, content, true),
-        ...checkComponentName(file, content)
+        ...checkComponentScript(file, content)
       ]
     })
   ])

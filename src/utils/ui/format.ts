@@ -3,6 +3,7 @@ import { formatWithDayjs, isValidDateTimeValue } from '@/utils/time'
 export type ArtValueFormat = 'text' | 'number' | 'money' | 'date' | 'datetime' | 'boolean'
 
 export interface ArtValueFormatOptions {
+  numberFormat?: Intl.NumberFormatOptions
   currency?: string
   emptyText?: string
   locale?: string
@@ -18,6 +19,7 @@ export interface DateTimeValueFormatOptions {
 }
 
 export interface PercentValueFormatOptions {
+  numberFormat?: Intl.NumberFormatOptions
   emptyText?: string
   fractionDigits?: number
 }
@@ -26,9 +28,20 @@ const isEmptyValue = (value: unknown): boolean =>
   value === undefined || value === null || value === ''
 const currencyFormatters = new Map<string, Intl.NumberFormat>()
 
-export function formatNumberValue(value: unknown, locale = 'zh-CN'): string {
+/** Keep telemetry latency readable across AI, benchmark and chat surfaces. */
+export function formatDurationMs(value?: number | null): string {
+  if (value == null || !Number.isFinite(value) || value < 0) return '--'
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 1 : 2)} s`
+  return `${Math.round(value)} ms`
+}
+
+export function formatNumberValue(
+  value: unknown,
+  locale = 'zh-CN',
+  options?: Intl.NumberFormatOptions
+): string {
   const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue.toLocaleString(locale) : String(value)
+  return Number.isFinite(numberValue) ? numberValue.toLocaleString(locale, options) : String(value)
 }
 
 /** Format operational measurements with bounded precision and without trailing zeroes. */
@@ -46,18 +59,23 @@ export function formatCompactNumberValue(
     .replace(/\.$/, '')
 }
 
-export function formatCurrencyValue(value: unknown, currency = 'CNY', locale = 'zh-CN'): string {
+export function formatCurrencyValue(
+  value: unknown,
+  currency = 'CNY',
+  locale = 'zh-CN',
+  fractionDigits = 2
+): string {
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) return String(value)
 
-  const formatterKey = `${locale}\0${currency}`
+  const formatterKey = `${locale}\0${currency}\0${fractionDigits}`
   let formatter = currencyFormatters.get(formatterKey)
   if (!formatter) {
     formatter = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
     })
     currencyFormatters.set(formatterKey, formatter)
   }
@@ -74,10 +92,21 @@ export function formatCnyCurrencyValue(value: unknown): string {
 export function formatSensitiveCurrencyValue(
   value: unknown,
   currency = 'CNY',
-  locale = 'zh-CN'
+  locale = 'zh-CN',
+  fractionDigits = 2
 ): string {
   if (value === null || value === undefined || value === '') return '--'
-  return formatCurrencyValue(value, currency, locale)
+  return formatCurrencyValue(value, currency, locale, fractionDigits)
+}
+
+/** Display currency codes while preserving protected amount text returned by the server. */
+export function formatCurrencyCodeValue(
+  value: number | string | null | undefined,
+  currency = 'CNY'
+): string {
+  if (value == null) return '--'
+  if (typeof value === 'string') return value
+  return `${currency} ${formatNumberValue(value, 'zh-CN', { minimumFractionDigits: 2 })}`
 }
 
 /** Preserve server-provided count text and masks; format only numeric counts. */
@@ -94,6 +123,9 @@ export function formatPercentValue(
   if (isEmptyValue(value)) return emptyText
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) return String(value)
+  if (options.numberFormat) {
+    return `${formatNumberValue(numberValue, 'zh-CN', options.numberFormat)}%`
+  }
   return `${numberValue.toFixed(options.fractionDigits ?? 1)}%`
 }
 
@@ -126,7 +158,7 @@ export function formatArtValue(
 
   switch (format) {
     case 'number':
-      return formatNumberValue(value, options.locale)
+      return formatNumberValue(value, options.locale, options.numberFormat)
     case 'money':
       return formatCurrencyValue(value, options.currency, options.locale)
     case 'date':

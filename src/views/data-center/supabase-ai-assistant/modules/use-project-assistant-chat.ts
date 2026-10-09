@@ -10,6 +10,7 @@ import {
 } from '@/api/supabase-ai-assistant'
 import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 import { downloadBlob } from '@/utils/file'
+import { formatDurationMs } from '@/utils/ui/format'
 import type {
   ProjectAssistantCapabilities,
   ProjectAssistantConversationSummary,
@@ -18,7 +19,6 @@ import type {
   ProjectOverview
 } from '@/types/supabase-ai-assistant'
 import {
-  formatProjectAssistantDuration,
   getProjectAssistantChatPhase,
   getProjectAssistantFailureMessage,
   getProjectAssistantQuickActions,
@@ -171,7 +171,7 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
         '',
         ...(message.runId
           ? [
-              `> Run: ${message.runId} · ${message.model || '-'} · ${formatProjectAssistantDuration(message.latencyMs)}`,
+              `> Run: ${message.runId} · ${message.model || '-'} · ${formatDurationMs(message.latencyMs)}`,
               ''
             ]
           : [])

@@ -1,0 +1,45 @@
+BEGIN;
+SELECT set_config('request.jwt.claims','{"sub":"0a872664-874c-447d-a256-d0dbdca6ed45","role":"authenticated"}',true);
+SELECT set_config('request.headers','{}',true);
+SET LOCAL ROLE authenticated;
+DO $test$
+DECLARE quotation uuid; sourced_contract uuid; source public.scm_sales_document%rowtype; source_line jsonb; tenant uuid; type_id uuid; material uuid; material2 uuid; customer uuid; unit_name text; contract uuid; order_id uuid; line1 uuid:=gen_random_uuid(); line2 uuid:=gen_random_uuid(); lines jsonb;
+BEGIN
+ SELECT tenant_id,id INTO tenant,type_id FROM public.mdm_document_type WHERE document_type_name='框架销售合同' LIMIT 1;
+ SELECT m.id,coalesce(s.unit_name,b.unit_name,m.basic_unit) INTO material,unit_name FROM public.mdm_material m LEFT JOIN public.mdm_unit_of_measure s ON s.id=m.sales_unit_id LEFT JOIN public.mdm_unit_of_measure b ON b.id=m.base_unit_id WHERE m.tenant_id=tenant LIMIT 1;
+ SELECT id INTO customer FROM public.mdm_customer WHERE tenant_id=tenant LIMIT 1;
+ lines:=jsonb_build_array(jsonb_build_object('line_id',line1,'line_no',10,'material_id',material,'material_code','QA-SALES','material_description','销售测试','base_unit',unit_name,'quantity',null,'unit_price',5,'tax_rate',13,'discount_mode','none','discount_rate',0),jsonb_build_object('line_id',line2,'line_no',20,'material_id',material,'material_code','QA-SALES2','material_description','销售测试2','base_unit',unit_name,'quantity',null,'unit_price',5,'tax_rate',13,'discount_mode','none','discount_rate',0));
+ INSERT INTO public.scm_sales_document(tenant_id,kind,document_no,document_type_id,customer_id,document_date,lines) VALUES(tenant,'sales_contract','',type_id,customer,current_date,lines) RETURNING id INTO contract;
+ IF (SELECT d.total_amount FROM public.scm_sales_document d WHERE id=contract)<>0 OR (SELECT d.lines->0->>'sales_unit' FROM public.scm_sales_document d WHERE id=contract)<>unit_name THEN RAISE EXCEPTION 'Nullable framework quantity or material sales unit mismatch'; END IF;
+ SELECT id INTO type_id FROM public.mdm_document_type WHERE tenant_id=tenant AND document_type_name='价值合同' LIMIT 1;
+ UPDATE public.scm_sales_document SET document_type_id=type_id WHERE id=contract;
+ SELECT id INTO type_id FROM public.mdm_document_type WHERE tenant_id=tenant AND document_type_name='标准销售合同' LIMIT 1;
+ BEGIN UPDATE public.scm_sales_document SET document_type_id=type_id WHERE id=contract; RAISE EXCEPTION 'Standard contract accepted null quantity'; EXCEPTION WHEN check_violation THEN NULL; END;
+ PERFORM public.scm_sales_delete_secure(jsonb_build_array(jsonb_build_object('document_id',contract,'line_ids',jsonb_build_array(line2))));
+ IF (SELECT jsonb_array_length(d.lines) FROM public.scm_sales_document d WHERE id=contract)<>1 THEN RAISE EXCEPTION 'Contract selected-line deletion mismatch'; END IF;
+ SELECT id INTO material2 FROM public.mdm_material WHERE tenant_id=tenant AND id<>material LIMIT 1;
+ lines:=jsonb_set(jsonb_set(jsonb_set(lines,'{0,quantity}','10'),'{1,quantity}','20'),'{1,material_id}',to_jsonb(material2::text));
+ INSERT INTO public.scm_sales_document(tenant_id,kind,document_no,customer_id,document_date,lines) VALUES(tenant,'sales_order','QA-SALES-ORDER',customer,current_date,lines) RETURNING id INTO order_id;
+ IF NOT EXISTS(SELECT 1 FROM public.scm_sales_order_line_progress_secure(array[order_id]) p WHERE p.line_id=line1::text AND p.shipping_notice_quantity=0 AND p.outbound_quantity=0 AND p.returned_quantity=0) THEN RAISE EXCEPTION 'Order progress mismatch'; END IF;
+ PERFORM public.scm_sales_delete_secure(jsonb_build_array(jsonb_build_object('document_id',order_id,'line_ids',jsonb_build_array(line1))));
+ IF (SELECT d.lines->0->>'line_id' FROM public.scm_sales_document d WHERE id=order_id)<>line2::text THEN RAISE EXCEPTION 'Order selected-line deletion mismatch'; END IF;
+ SELECT * INTO source FROM public.scm_sales_document WHERE id='18631a03-d234-40d6-a4c6-968f74380fda';
+ INSERT INTO public.scm_sales_document(tenant_id,kind,document_no,document_type_id,project_id,customer_id,document_date,details,lines) VALUES(source.tenant_id,'sales_quotation','QA-SALES-ALLOCATION',source.document_type_id,source.project_id,source.customer_id,current_date,source.details,source.lines) RETURNING id INTO quotation;
+ PERFORM set_config('app.scm_quotation_approval',quotation::text,true);
+ UPDATE public.scm_sales_document SET status='effective' WHERE id=quotation;
+ PERFORM set_config('app.scm_quotation_approval','',true);
+ source_line:=source.lines->0 || jsonb_build_object('line_id',gen_random_uuid(),'quantity',8,'source_document_id',quotation,'source_line_id',source.lines->0->>'line_id','source_document_no','QA-SALES-ALLOCATION');
+ INSERT INTO public.scm_sales_document(tenant_id,kind,document_no,project_id,customer_id,document_date,lines) VALUES(source.tenant_id,'sales_contract','QA-SALES-SOURCED',source.project_id,source.customer_id,current_date,jsonb_build_array(source_line)) RETURNING id INTO sourced_contract;
+ IF NOT EXISTS(SELECT 1 FROM public.scm_quote_line_allocations_secure(array[quotation],'sales_contract',null) a WHERE a.line_id=source.lines->0->>'line_id' AND a.quantity=8) THEN RAISE EXCEPTION 'Actual quotation allocation mismatch'; END IF;
+ BEGIN UPDATE public.scm_sales_document d SET lines=jsonb_set(d.lines,'{0,quantity}',to_jsonb(((source.lines->0->>'quantity')::numeric+1))) WHERE id=sourced_contract; RAISE EXCEPTION 'Quote quantity oversubscription accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+ PERFORM public.scm_sales_delete_secure(jsonb_build_array(jsonb_build_object('document_id',sourced_contract,'line_ids',null)));
+ IF EXISTS(SELECT 1 FROM public.scm_quote_line_allocations_secure(array[quotation],'sales_contract',null) a WHERE a.quantity<>0) THEN RAISE EXCEPTION 'Deleted contract retained quotation reservation'; END IF;
+ PERFORM set_config('request.headers','{"x-art-tenant-scope":"6675a0d6-3ff6-4ab7-bb09-232d85ae96ad"}',true);
+ BEGIN PERFORM public.scm_sales_delete_secure(jsonb_build_array(jsonb_build_object('document_id',contract,'line_ids',null))); RAISE EXCEPTION 'Selected tenant scope bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('request.jwt.claims','{"sub":"5774aa51-3bbb-4da5-abd4-7ea44b44ea6a","role":"authenticated"}',true);
+ IF app_private.current_read_tenant_id()<>tenant THEN RAISE EXCEPTION 'Forged ordinary scope accepted'; END IF;
+ IF NOT app_private.has_permission('ScmSalesContract:Delete') THEN
+  BEGIN PERFORM public.scm_sales_delete_secure(jsonb_build_array(jsonb_build_object('document_id',contract,'line_ids',null))); RAISE EXCEPTION 'Delete permission bypass'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ END IF;
+END $test$;
+ROLLBACK;

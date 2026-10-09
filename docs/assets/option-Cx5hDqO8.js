@@ -1,1 +1,0 @@
-import{Mt as e}from"./common-utils-C9-OwdGG.js";function t(e){return{label:[e.name,e.code].filter(Boolean).join(` · `),value:e.id}}function n(e){return{label:e.label||e.name,value:e.value}}function r(t,n,r){let i=String(e(t,n)??``),a=String(e(t,r)??``);return a?`${i}（${a}）`:i}export{n,t as r,r as t};

@@ -181,6 +181,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { wmsDocumentClassificationColumns } from '@/utils/business/wms-document-columns'
   import { useWmsInitialObligationPush } from '@/hooks/business/useWmsInitialObligationPush'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
@@ -249,6 +250,7 @@
     | 'Push'
     | 'Submit'
     | 'Approve'
+    | 'Withdraw'
 
   const props = defineProps<{
     kind: WmsPurchaseKind
@@ -748,17 +750,17 @@
   })
   async function transition(
     row: WmsPurchaseListRow,
-    action: 'submit' | 'approve' | 'delete'
+    action: 'submit' | 'approve' | 'withdraw' | 'delete'
   ): Promise<void> {
     if (workingId.value || bulkDeleting.value) return
-    const label = { submit: '提交', approve: '审核', delete: '删除' }[action]
+    const label = { submit: '提交', withdraw: '撤回提交', approve: '审核', delete: '删除' }[action]
     const resources = [{ id: row.documentId, label: row.documentNo }]
     deleteResourceLabel.value = row.kind === 'other_return' ? '其他入库退回单' : title.value
     workingId.value = row.documentId
     try {
       if (action === 'delete' && (await inspectDeleteReferences(resources))) return
       await confirmAction(
-        `确定${label} ${row.documentNo}？`,
+        `${action === 'withdraw' ? '撤回后恢复暂存，可修改或删除；关联审批待办将取消。' : ''}确定${label} ${row.documentNo}？`,
         `${label}${deleteResourceLabel.value}`,
         {
           type: action === 'delete' ? 'warning' : 'info',
@@ -870,9 +872,7 @@
   function statusLabel(value: WmsPurchaseListRow['status']): string {
     return { draft: '暂存', submitted: '已提交', approved: '已审核' }[value]
   }
-  function dictionaryLabel(code: string, value: string): string {
-    return userStore.getDictMap[code]?.find((item) => item.value === value)?.label || value
-  }
+
   function moreActions(row: WmsPurchaseListRow): ButtonMoreItem[] {
     return [
       { key: 'copy', label: '复制单据', icon: 'ri:file-copy-line', auth: permission.value.Copy },
@@ -897,6 +897,12 @@
       ...(row.status === 'submitted'
         ? [
             {
+              key: 'withdraw',
+              label: '撤回提交',
+              icon: 'ri:arrow-go-back-line',
+              auth: permission.value.Withdraw
+            },
+            {
               key: 'approve',
               label: '审核单据',
               icon: 'ri:checkbox-circle-line',
@@ -909,7 +915,12 @@
   function onMoreAction(item: ButtonMoreItem, row: WmsPurchaseListRow): void {
     if (item.key === 'copy' || item.key === 'edit') {
       void openDocument(item.key, row)
-    } else if (item.key === 'submit' || item.key === 'approve' || item.key === 'delete') {
+    } else if (
+      item.key === 'submit' ||
+      item.key === 'approve' ||
+      item.key === 'withdraw' ||
+      item.key === 'delete'
+    ) {
       void transition(row, item.key)
     }
   }
@@ -929,6 +940,7 @@
           />
         )
       },
+      ...(isInitial.value ? wmsDocumentClassificationColumns<WmsPurchaseListRow>() : []),
       { prop: 'businessDate', label: '业务日期', minWidth: 118 },
       {
         prop: 'status',
@@ -1062,13 +1074,16 @@
         prop: 'stockType',
         label: '库存类型',
         minWidth: 100,
-        formatter: (row) => dictionaryLabel('wmsInitialStockType', row.stockType)
+        formatter: (row) =>
+          userStore.getDictItemByValue('wmsInitialStockType', row.stockType)?.label || row.stockType
       },
       {
         prop: 'stockStatus',
         label: '库存状态',
         minWidth: 100,
-        formatter: (row) => dictionaryLabel('wmsInitialStockCondition', row.stockStatus)
+        formatter: (row) =>
+          userStore.getDictItemByValue('wmsInitialStockCondition', row.stockStatus)?.label ||
+          row.stockStatus
       },
       {
         prop: 'gift',

@@ -2480,6 +2480,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Delete', '删除'),
       button('Export', '导出'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2495,6 +2496,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2510,6 +2512,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2525,6 +2528,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2540,6 +2544,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2562,6 +2567,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   })),
@@ -2578,6 +2584,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Select', '选单'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2594,6 +2601,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Select', '选单'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   },
@@ -2657,6 +2665,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Select', '选单'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核'),
       button('Close', '关闭'),
       button('Void', '作废')
@@ -2675,6 +2684,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Select', '选单'),
       button('Push', '过账'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核'),
       button('Close', '关闭'),
       button('Void', '作废')
@@ -2700,6 +2710,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Export', '导出'),
       button('Push', '下推'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核'),
       button('Dispatch', '确认调出'),
       button('Receive', '确认入库')
@@ -2716,6 +2727,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Import', '导入'),
       button('Export', '导出'),
       button('Submit', '提交'),
+      button('Withdraw', '撤回提交'),
       button('Approve', '审核')
     ]
   })),
@@ -2936,6 +2948,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('GenerateWorkOrder', '转生产工单'),
       button('GenerateBom', '转报价BOM'),
       button('Submit', '提交审批'),
+      button('Withdraw', '撤回提交'),
       button('Activate', '生效'),
       button('Expire', '失效')
     ]
@@ -3023,7 +3036,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Copy', '复制'),
       button('Import', '导入'),
       button('Push', '下推'),
-      button('Select', '选单')
+      button('Submit', '提交'),
+      button('Print', '打印')
     ]
   },
   {
@@ -3033,7 +3047,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Copy', '复制'),
       button('Import', '导入'),
       button('Push', '下推'),
-      button('Select', '选单'),
       button('Submit', '提交'),
       button('Withdraw', '撤回'),
       button('Approve', '审核'),
@@ -3052,8 +3065,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('GenerateBatch', '生成批号'),
       button('GenerateSerial', '生成序列号'),
       button('Import', '导入'),
-      button('Push', '下推'),
-      button('Select', '选单')
+      button('Push', '下推')
     ]
   }
 ]

@@ -1,3 +1,4 @@
+import type { WmsDocumentClassification } from '@/api/wms-document.types'
 import type { WmsInventoryOrganizationOption } from './wms-inventory-organization'
 import type { EmployeeIntegrationItem } from './integration/employees'
 
@@ -187,7 +188,7 @@ export interface WmsPurchaseDocument {
   lines: WmsPurchaseLine[]
 }
 
-export interface WmsPurchaseListRow {
+export interface WmsPurchaseListRow extends WmsDocumentClassification {
   documentId: string
   tenantId: string
   organizationId: string

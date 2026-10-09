@@ -54,3 +54,18 @@ test('辅助数量按物料单位换算关系计算', () => {
   assert.equal(contractAuxiliaryQuantity(25, 'box', material), 2.5)
   assert.equal(contractAuxiliaryQuantity(25, 'missing', material), undefined)
 })
+
+test('空数量不产生合同金额或辅助数量', () => {
+  assert.deepEqual(calculateContractLine(line({ quantity: null })), {
+    discount: 0,
+    amount: 0,
+    tax: 0,
+    total: 0
+  })
+  assert.equal(
+    contractAuxiliaryQuantity(null, 'box', {
+      unitConversions: [{ sourceUnitId: 'box', sourceFactor: 1, baseFactor: 10 }]
+    } as ScmMaterialOption),
+    undefined
+  )
+})

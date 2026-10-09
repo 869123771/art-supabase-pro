@@ -372,9 +372,8 @@
 
   const shouldUseScrollbar = computed(() => {
     return Boolean(
-      isFullscreen.value ||
-      (options.value.useScrollbar !== false &&
-        (normalizedContentHeight.value || normalizedContentMaxHeight.value))
+      options.value.useScrollbar !== false &&
+      (isFullscreen.value || normalizedContentHeight.value || normalizedContentMaxHeight.value)
     )
   })
 
@@ -610,6 +609,7 @@
   }
 
   :global(.art-dialog.is-fullscreen .art-dialog__viewport),
+  :global(.art-dialog.is-fullscreen .art-dialog__viewport > .art-dialog__content),
   :global(.art-dialog.is-fullscreen .art-dialog__scrollbar) {
     height: 100%;
     min-height: 0;

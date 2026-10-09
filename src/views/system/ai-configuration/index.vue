@@ -55,7 +55,8 @@
 </template>
 
 <script setup lang="tsx">
-  import dayjs from 'dayjs'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
+
   import { ElMessage, ElTag } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
@@ -73,6 +74,12 @@
     type AiFeatureConfigSearchParams
   } from '@/api/ai-configuration'
   import AiFeatureConfigDialog from './modules/ai-feature-config-dialog.vue'
+
+  const formatTableDateTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm:ss',
+    emptyText: '--',
+    invalidText: '--'
+  })
 
   defineOptions({ name: 'AiConfiguration' })
 
@@ -297,9 +304,7 @@
         prop: 'updateTime',
         label: '最近更新',
         width: 170,
-        formatter: (row: AiFeatureConfig) => (
-          <span>{dayjs(row.updateTime).format('YYYY-MM-DD HH:mm:ss')}</span>
-        )
+        formatter: (row: AiFeatureConfig) => <span>{formatTableDateTime(row.updateTime)}</span>
       },
       {
         prop: 'operation',

@@ -19,7 +19,14 @@ const importAction: ArtTableQueryHeaderAction = {
   importColumns: [{ key: 'name', title: '名称', required: true }],
   importApi: async (rows) => {
     document.body.dataset.receivedRows = String(rows.length)
-    await new Promise((resolve) => window.setTimeout(resolve, 300))
+    document.body.dataset.receivedRecords = JSON.stringify(rows)
+    if (mode === 'reject') {
+      await new Promise<void>((resolve) => {
+        document.addEventListener('release-import', () => resolve(), { once: true })
+      })
+    } else {
+      await new Promise((resolve) => window.setTimeout(resolve, 300))
+    }
     if (mode === 'reject') throw new Error('请先在顶部选择导入目标租户')
     if (mode === 'reported') {
       const { responseHandle } = useSupabase()
@@ -37,6 +44,14 @@ const importAction: ArtTableQueryHeaderAction = {
     document.body.dataset.importStatus = 'parse-error'
     ElMessage.error('导入文件解析失败')
   }
+}
+
+document.body.dataset.receivedRows = '0'
+if (mode === 'records' || mode === 'records-invalid') {
+  importAction.importRecordTransformer = (rows) => rows.map((row) => ({ ...row, remark: 'mapped' }))
+} else if (mode === 'raw') {
+  importAction.importTransformer = (rows) =>
+    rows.map((row) => ({ name: row['名称'], remark: 'raw' }))
 }
 
 const app = createApp({

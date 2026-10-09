@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(120_000)
 
-test('BOM 连续编辑不同租户保留父项和工艺路线', async ({ page }) => {
+test('BOM 连续编辑不同租户保留父项和工艺路线', async ({ page }, info) => {
   const seen: string[] = []
   await page.route('**/rest/v1/**', (route) => {
     const url = new URL(route.request().url())
@@ -57,6 +57,10 @@ test('BOM 连续编辑不同租户保留父项和工艺路线', async ({ page })
     'eq.11111111-1111-4111-8111-111111111111',
     'eq.22222222-2222-4222-8222-222222222222'
   ])
+  await page.screenshot({
+    path: info.outputPath('bom-route-selection.png'),
+    animations: 'disabled'
+  })
 })
 
 test('BOM 引用选项失败重试后保留填写', async ({ page }) => {
@@ -74,7 +78,7 @@ test('BOM 引用选项失败重试后保留填写', async ({ page }) => {
     })
   })
   await page.goto('/tests/e2e/fixtures/bom-process-retry.html')
-  await page.getByRole('button', { name: '打开 BOM' }).click()
+  await page.getByRole('button', { name: '打开 BOM', exact: true }).click()
   await expect(page.getByText('BOM 选项加载失败', { exact: true })).toBeVisible()
   await page
     .getByRole('textbox', { name: '版本', exact: true })
@@ -116,7 +120,7 @@ for (const leave of [false, true]) {
         })
     })
     await page.goto('/tests/e2e/fixtures/bom-process-retry.html')
-    await page.getByRole('button', { name: '打开 BOM' }).click()
+    await page.getByRole('button', { name: '打开 BOM', exact: true }).click()
     await page
       .getByRole('textbox', { name: '版本', exact: true })
       .fill('V-SAVE', { timeout: 10_000 })
@@ -169,13 +173,13 @@ test('BOM 关闭重开后旧工序失败不覆盖当前数据', async ({ page })
     } else await route.fulfill({ json: [] })
   })
   await page.goto('/tests/e2e/fixtures/bom-process-retry.html')
-  await page.getByRole('button', { name: '打开 BOM' }).click()
+  await page.getByRole('button', { name: '打开 BOM', exact: true }).click()
   await expect.poll(() => stepRequests).toBe(1)
   await page
     .getByRole('button', { name: 'Close this dialog', exact: true })
     .click({ timeout: 10_000 })
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: '打开 BOM' }).click()
+  await page.getByRole('button', { name: '打开 BOM', exact: true }).click()
   await expect.poll(() => stepRequests).toBe(2)
   await expect(page.getByRole('textbox', { name: '版本', exact: true })).toHaveValue('V1')
   releaseOld()
@@ -229,7 +233,7 @@ test('BOM 工序失败原地重试并保留填写', async ({ page }, testInfo) =
     return route.fulfill({ json: [] })
   })
   await page.goto('/tests/e2e/fixtures/bom-process-retry.html')
-  await page.getByRole('button', { name: '打开 BOM' }).click()
+  await page.getByRole('button', { name: '打开 BOM', exact: true }).click()
   await expect(page.getByText('工艺数据加载失败', { exact: true })).toBeVisible()
   await expect(page.getByText('该父项物料尚未维护可用工艺路线')).toHaveCount(0)
   await expect(page.getByRole('textbox', { name: 'BOM 编码', exact: true })).toHaveValue('BOM-TEST')

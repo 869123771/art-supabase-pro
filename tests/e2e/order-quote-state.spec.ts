@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(90_000)
-test('关闭重开报价后旧读取不能覆盖当前备注', async ({ page }) => {
+test('关闭重开报价后旧读取不能覆盖当前备注', async ({ page }, info) => {
   let reads = 0
   let releaseRead: (() => void) | undefined
   const held = new Promise<void>((resolve) => {
@@ -15,6 +15,7 @@ test('关闭重开报价后旧读取不能覆盖当前备注', async ({ page }) 
       json: {
         order: { id: 'quote-order', order_no: 'ORDER-TEST' },
         quote: {
+          transport_fee: 1234.5,
           remark: index === 1 ? '旧读取备注' : '当前读取备注',
           supplementary_items: [],
           attachment_urls: []
@@ -38,6 +39,11 @@ test('关闭重开报价后旧读取不能覆盖当前备注', async ({ page }) 
   await (await oldResponse).finished()
   await expect(remark).toHaveValue('当前读取备注')
   await expect(dialog.getByRole('button', { name: '保存报价', exact: true })).toBeEnabled()
+  await expect(dialog.getByText('¥1,234.50', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true
+  )
+  await page.screenshot({ path: info.outputPath('quote-money.png'), animations: 'disabled' })
 })
 
 test('报价保存失败只提示一次，重试请求冻结原内容', async ({ page }) => {

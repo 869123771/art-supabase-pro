@@ -17,7 +17,7 @@
           <button
             v-if="clearable && displayRows.length && !disabled"
             type="button"
-            class="art-data-select__single-clear"
+            class="art-data-select__clear size-6 shrink-0"
             aria-label="清空"
             @click.stop="clear"
           >
@@ -34,10 +34,11 @@
       <ElInputTag
         v-else
         :model-value="multipleDisplayLabels"
+        :aria-label="placeholder"
         :max="displayRows.length"
         :placeholder="placeholder"
         :disabled="disabled"
-        :clearable="clearable"
+        :clearable="false"
         collapse-tags
         collapse-tags-tooltip
         :max-collapse-tags="maxTagCount"
@@ -47,10 +48,18 @@
         @keydown.enter.prevent="open"
         @keydown.space.prevent="open"
         @remove-tag="handleRemoveDisplayTag"
-        @clear="clear"
       >
         <template #suffix>
-          <ElIcon class="art-data-select__multiple-arrow">
+          <button
+            v-if="clearable && displayRows.length && !disabled"
+            type="button"
+            class="art-data-select__clear size-6 shrink-0"
+            aria-label="清空"
+            @click.stop="clear"
+          >
+            <ElIcon><CircleClose /></ElIcon>
+          </button>
+          <ElIcon v-else class="art-data-select__multiple-arrow">
             <ArrowDown />
           </ElIcon>
         </template>
@@ -90,6 +99,7 @@
               <small>{{ navigationRows.length }} 项</small>
             </div>
             <ElInput
+              v-if="navigationRows.length"
               v-model="navigationKeyword"
               clearable
               :placeholder="navigation.searchPlaceholder || '搜索分类'"
@@ -156,6 +166,7 @@
           </aside>
 
           <section
+            ref="mainPanelRef"
             class="art-data-select-dialog__main"
             :class="{
               'has-error': loadError,
@@ -301,10 +312,10 @@
                     </ElTag>
                     <template v-else>
                       <component
-                        v-if="isComponentValue(column.formatter?.(row))"
-                        :is="column.formatter?.(row)"
+                        v-if="isComponentValue(getColumnValue(column, row))"
+                        :is="getColumnValue(column, row)"
                       />
-                      <span v-else>{{ column.formatter?.(row) }}</span>
+                      <span v-else>{{ getColumnValue(column, row) }}</span>
                     </template>
                   </template>
                 </ElTableColumn>
@@ -379,12 +390,19 @@
             </div>
 
             <div v-if="mode === 'table' && showPagination" class="art-data-select-dialog__pager">
-              <span>{{ loadError ? '数量暂不可用' : `共 ${total} 条` }}</span>
+              <span>{{
+                loadError
+                  ? '数量暂不可用'
+                  : mainPanelWidth < 440
+                    ? `共 ${total} 条 · 第 ${page} 页`
+                    : `共 ${total} 条`
+              }}</span>
               <ElPagination
                 v-model:current-page="page"
                 v-model:page-size="innerPageSize"
                 background
-                layout="prev, pager, next, sizes"
+                :size="mainPanelWidth < 640 ? 'small' : 'default'"
+                :layout="mainPanelWidth < 440 ? 'prev, next, sizes' : 'prev, pager, next, sizes'"
                 :pager-count="5"
                 :page-sizes="pageSizes"
                 :total="total"
@@ -445,11 +463,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends object = DataSelectRecord">
   import { dataSelectDefaults } from './defaults'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+  import { useElementSize } from '@vueuse/core'
   import { get, uniqBy } from 'lodash-es'
   import type { Component } from 'vue'
   import type { ElTree } from 'element-plus'
@@ -476,7 +495,7 @@
 
   defineOptions({ name: 'ArtDataSelect' })
 
-  const props = withDefaults(defineProps<ArtDataSelectProps>(), {
+  const props = withDefaults(defineProps<ArtDataSelectProps<T>>(), {
     ...dataSelectDefaults,
     mode: 'table',
     multiple: false,
@@ -484,9 +503,11 @@
     showSelectedPanel: undefined
   })
 
-  const emit = defineEmits<ArtDataSelectEmits>()
+  const emit = defineEmits<ArtDataSelectEmits<T>>()
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
 
+  const mainPanelRef = ref<HTMLElement>()
+  const { width: mainPanelWidth } = useElementSize(mainPanelRef)
   const tableRef = ref<ArtTableExpose>()
   const treeRef = ref<InstanceType<typeof ElTree>>()
   const navigationTreeRef = ref<InstanceType<typeof ElTree>>()
@@ -571,7 +592,7 @@
     disabled: (data: DataSelectRecord) => isRowDisabled(data)
   }))
 
-  const normalizedColumns = computed<DataSelectColumn[]>(() => {
+  const normalizedColumns = computed<DataSelectColumn<T>[]>(() => {
     const columns = props.columns.length
       ? props.columns
       : [
@@ -588,34 +609,46 @@
     return typeof value === 'object' || typeof value === 'function'
   }
 
-  const getColumnValue = (column: DataSelectColumn, row: DataSelectRecord) => {
-    return column.formatter?.(row) ?? get(row, column.prop) ?? ''
+  const getColumnValue = (column: DataSelectColumn<T>, row: DataSelectRecord) => {
+    const source = getSourceRow(row)
+    return (source && column.formatter?.(source)) ?? get(row, column.prop) ?? ''
   }
 
-  const getColumnTagType = (column: DataSelectColumn, row: DataSelectRecord) => {
-    return typeof column.tagType === 'function' ? column.tagType(row) : column.tagType
+  const getColumnTagType = (column: DataSelectColumn<T>, row: DataSelectRecord) => {
+    const source = getSourceRow(row)
+    return typeof column.tagType === 'function' ? source && column.tagType(source) : column.tagType
   }
 
-  const getDictColumnValue = (column: DataSelectColumn, row: DataSelectRecord) => {
-    if (column.dict?.value) return column.dict.value(row)
+  const getDictColumnValue = (column: DataSelectColumn<T>, row: DataSelectRecord) => {
+    const source = getSourceRow(row)
+    if (source && column.dict?.value) return column.dict.value(source)
     return get(row, column.prop) as string | number | null | undefined
   }
 
   const getRowKey = (row: DataSelectRecord): DataSelectKey => {
-    if (typeof props.rowKey === 'function') return props.rowKey(row)
+    if (typeof props.rowKey === 'function') {
+      const source = getSourceRow(row)
+      return source ? props.rowKey(source) : (get(row, 'id') as DataSelectKey)
+    }
     return get(row, props.rowKey) as DataSelectKey
   }
 
   const getTableRowKey = (row: DataSelectRecord): string => String(getRowKey(row))
 
   const getRowLabel = (row: DataSelectRecord): string => {
-    if (typeof props.labelKey === 'function') return props.labelKey(row)
+    if (typeof props.labelKey === 'function') {
+      const source = getSourceRow(row)
+      return source ? props.labelKey(source) : String(getRowKey(row))
+    }
     return String(get(row, props.labelKey) ?? '')
   }
 
   const getRowDescription = (row: DataSelectRecord): string => {
     if (!props.descriptionKey) return ''
-    if (typeof props.descriptionKey === 'function') return props.descriptionKey(row)
+    if (typeof props.descriptionKey === 'function') {
+      const source = getSourceRow(row)
+      return source ? props.descriptionKey(source) : ''
+    }
     return String(get(row, props.descriptionKey) ?? '')
   }
 
@@ -647,7 +680,10 @@
   }
 
   const isRowDisabled = (row: DataSelectRecord): boolean => {
-    if (typeof props.disabledKey === 'function') return props.disabledKey(row)
+    if (typeof props.disabledKey === 'function') {
+      const source = getSourceRow(row)
+      return !source || props.disabledKey(source)
+    }
     if (!props.disabledKey) return false
     return !!get(row, props.disabledKey)
   }
@@ -688,14 +724,22 @@
     return keys.map((key) => rowMap.get(key) ?? createFallbackRow(key))
   }
 
+  const fallbackRowMarker = Symbol('unresolved-data-select-row')
+
+  // Element Plus exposes dynamic rows, but real rows originate from typed data/apiFn.
+  // This adapter excludes display placeholders before any business callback or event.
+  const getSourceRow = (row: DataSelectRecord): T | undefined =>
+    Reflect.get(row, fallbackRowMarker) === true ? undefined : (row as T)
+
   const createFallbackRow = (key: DataSelectKey): DataSelectRecord => {
     if (typeof props.rowKey === 'string' && typeof props.labelKey === 'string') {
       return {
+        [fallbackRowMarker]: true,
         [props.rowKey]: key,
         [props.labelKey]: String(key)
       }
     }
-    return { id: key, label: String(key) }
+    return { [fallbackRowMarker]: true, id: key, label: String(key) }
   }
 
   const normalizeTreeRows = (rows: DataSelectRecord[]): DataSelectRecord[] =>
@@ -865,14 +909,13 @@
     isOpen.value = true
     draftRows.value = props.resetDraftOnOpen ? [] : confirmedRows.value.map((row) => ({ ...row }))
     emit('open')
+    const dialogWidth =
+      props.dialogWidth ?? (props.navigation && shouldShowSelectedPanel.value ? 1440 : 'xl')
     const usesSizePreset =
-      typeof props.dialogWidth === 'string' &&
-      dialogSizePresets.includes(props.dialogWidth as ArtDialogSize)
+      typeof dialogWidth === 'string' && dialogSizePresets.includes(dialogWidth as ArtDialogSize)
     await dialogRef.value?.handleOpen(undefined, {
       title: props.title,
-      ...(usesSizePreset
-        ? { size: props.dialogWidth as ArtDialogSize }
-        : { width: props.dialogWidth }),
+      ...(usesSizePreset ? { size: dialogWidth as ArtDialogSize } : { width: dialogWidth }),
       fullscreen: props.fullscreen,
       showFooter: true,
       confirmDisabled: true,
@@ -922,10 +965,14 @@
     confirmedRows.value = uniqueRows(rows)
     const nextValue = getModelValueFromRows(confirmedRows.value)
     emit('update:modelValue', nextValue)
-    emit('update:selectedData', confirmedRows.value)
-    emit('change', nextValue, confirmedRows.value)
+    const selectedRows = confirmedRows.value.flatMap((row) => {
+      const source = getSourceRow(row)
+      return source ? [source] : []
+    })
+    emit('update:selectedData', selectedRows)
+    emit('change', nextValue, selectedRows)
     if (eventName === 'confirm') {
-      emit('confirm', nextValue, confirmedRows.value)
+      emit('confirm', nextValue, selectedRows)
     }
   }
 
@@ -1083,7 +1130,7 @@
     }
   }
 
-  .art-data-select__single-clear {
+  .art-data-select__clear {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1166,7 +1213,7 @@
 
   .art-data-select-dialog__navigation {
     display: flex;
-    flex: 0 0 240px;
+    flex: 0 0 clamp(180px, 15vw, 240px);
     flex-direction: column;
     min-width: 0;
     min-height: 0;
@@ -1489,18 +1536,23 @@
   .art-data-select-dialog__pager {
     display: flex;
     flex: none;
-    flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
     align-items: center;
     justify-content: space-between;
     min-height: 62px;
-    padding: 10px 24px;
+    padding: 10px 12px;
     color: var(--el-text-color-secondary);
     background: var(--art-gray-100);
     border-top: 1px solid var(--el-border-color-lighter);
 
+    > span {
+      flex: none;
+      white-space: nowrap;
+    }
+
     :deep(.el-pagination) {
-      flex-wrap: wrap;
+      flex: none;
+      flex-wrap: nowrap;
       gap: 8px;
       justify-content: flex-end;
       max-width: 100%;
@@ -1512,7 +1564,7 @@
     display: flex;
     flex: none;
     flex-direction: column;
-    width: 300px;
+    width: clamp(220px, 18vw, 300px);
     min-height: 0;
     overflow: hidden;
     background: color-mix(in srgb, var(--art-gray-100) 68%, var(--default-box-color));
@@ -1614,7 +1666,7 @@
     }
   }
 
-  @media (width <= 768px) {
+  @media (width <= 960px) {
     .art-data-select-dialog__search {
       &.has-filter {
         grid-template-columns: 1fr;
@@ -1662,6 +1714,12 @@
       padding: 8px 12px;
     }
 
+    .art-data-select-dialog__navigation-scrollbar {
+      :deep(.art-empty-state__visual) {
+        display: none;
+      }
+    }
+
     .art-data-select-dialog__selected {
       flex: 0 0 30%;
       width: auto;
@@ -1683,6 +1741,12 @@
     .art-data-select-dialog__pager {
       gap: 8px;
       padding: 8px 12px;
+    }
+  }
+
+  @media (width <= 480px) {
+    .art-data-select-dialog__pager {
+      flex-wrap: wrap;
     }
   }
 </style>

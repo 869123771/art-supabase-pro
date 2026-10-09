@@ -583,6 +583,11 @@
       rows: Array<Record<string, unknown>>,
       ctx: ArtTableQueryHeaderActionContext
     ) => Array<TableQueryRecord> | Promise<Array<TableQueryRecord>>
+    /** 在 importColumns 映射完成后转换业务记录；与原始行 importTransformer 二选一。 */
+    importRecordTransformer?: (
+      rows: Array<TableQueryRecord>,
+      ctx: ArtTableQueryHeaderActionContext
+    ) => Array<TableQueryRecord> | Promise<Array<TableQueryRecord>>
     importApi?: (
       rows: Array<TableQueryRecord>,
       ctx: ArtTableQueryHeaderActionContext
@@ -1360,7 +1365,13 @@
     ctx: ArtTableQueryHeaderActionContext
   ): Promise<Array<TableQueryRecord>> => {
     if (action.importTransformer) return await action.importTransformer(rows, ctx)
-    return mapExcelRowsToRecords(rows, resolveExcelColumns(action.importColumns, ctx))
+    const records = mapExcelRowsToRecords(rows, resolveExcelColumns(action.importColumns, ctx))
+    if (action.importRecordTransformer && records.length !== rows.length) {
+      throw new Error(`导入文件有 ${rows.length - records.length} 行缺少必填字段，请补全后重新导入`)
+    }
+    return action.importRecordTransformer
+      ? await action.importRecordTransformer(records, ctx)
+      : records
   }
 
   const handleHeaderActionImportSuccess = async (
@@ -1375,7 +1386,10 @@
     try {
       emit('header-action-click', action, ctx)
       const rows =
-        action.importApi || action.importTransformer || action.importColumns
+        action.importApi ||
+        action.importTransformer ||
+        action.importRecordTransformer ||
+        action.importColumns
           ? await resolveImportRows(action, data, ctx)
           : data
 

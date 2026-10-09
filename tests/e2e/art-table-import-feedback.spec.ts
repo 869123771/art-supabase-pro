@@ -24,6 +24,7 @@ test('导入提交失败有准确提示、恢复按钮状态且没有未捕获�
   })
   await expect(page.locator('body')).toHaveAttribute('data-received-rows', '1')
   await expect(button).toBeDisabled()
+  await page.evaluate(() => document.dispatchEvent(new Event('release-import')))
   await expect(page.getByText('请先在顶部选择导入目标租户')).toBeVisible()
   await expect(button).toBeEnabled()
   await page.screenshot({

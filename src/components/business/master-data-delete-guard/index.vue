@@ -14,8 +14,11 @@
       <div class="master-delete-guard__lead">
         <div>
           <p>
-            {{ resourceTitle }}仍被以下业务资料引用。<template v-if="safeRecordCount"
-              >可勾选安全项直接清理，业务历史请进入对应页面处理。</template
+            {{ resourceTitle }}仍被以下业务资料引用。<template v-if="safeRecordCount">{{
+              cleanupAll
+                ? '可一键清理安全项，业务历史请进入对应页面处理。'
+                : '可勾选安全项直接清理，业务历史请进入对应页面处理。'
+            }}</template
             ><template v-else>请核对关联记录，并到对应业务页面处理后再删除。</template>
           </p>
           <span v-if="currentOptions?.resourceType"
@@ -39,7 +42,7 @@
             </div>
             <div class="master-delete-guard__group-header-actions">
               <ElCheckbox
-                v-if="getGroupSafeRecords(group).length"
+                v-if="!cleanupAll && getGroupSafeRecords(group).length"
                 :model-value="isGroupFullySelected(group)"
                 :indeterminate="isGroupPartiallySelected(group)"
                 @change="
@@ -62,7 +65,7 @@
               class="master-delete-guard__record"
             >
               <ElCheckbox
-                v-if="record.cleanupAllowed"
+                v-if="!cleanupAll && record.cleanupAllowed"
                 :model-value="selectedRecordIds.includes(record.recordId)"
                 :aria-label="`选择清理 ${record.recordNo}`"
                 @change="
@@ -96,7 +99,13 @@
                   effect="light"
                   size="small"
                 >
-                  {{ record.cleanupAllowed ? '可选择清理' : '需保留/处理' }}
+                  {{
+                    record.cleanupAllowed
+                      ? cleanupAll
+                        ? '可一键清理'
+                        : '可选择清理'
+                      : '需保留/处理'
+                  }}
                 </ElTag>
                 <ElButton
                   v-if="
@@ -134,11 +143,14 @@
     <template #footer="{ api }">
       <div class="master-delete-guard__footer">
         <span v-if="safeRecordCount">
-          已选择 {{ selectedRecordIds.length }} / {{ safeRecordCount }} 个安全项
+          <template v-if="cleanupAll">可清理 {{ safeRecordCount }} 个安全项</template
+          ><template v-else
+            >已选择 {{ selectedRecordIds.length }} / {{ safeRecordCount }} 个安全项</template
+          >
         </span>
         <span v-else-if="inspectionError">校验失败时不会删除业务记录</span>
         <span v-else>当前关联均属于需保留或先处理的业务记录</span>
-        <div class="master-delete-guard__footer-actions">
+        <div class="master-delete-guard__footer-actions flex-wrap [&>.el-button]:ml-0!">
           <ElButton @click="api.handleClose()">关闭</ElButton>
           <ElButton
             type="primary"
@@ -153,12 +165,10 @@
             type="danger"
             plain
             :loading="cleanupLoading"
-            :disabled="!selectedRecordIds.length"
+            :disabled="!cleanupActionCount || checking || Boolean(inspectionError)"
             @click="handleCleanup"
           >
-            {{ currentOptions?.cleanup?.actionLabel ?? '清理选中项' }}（{{
-              selectedRecordIds.length
-            }}）
+            {{ currentOptions?.cleanup?.actionLabel ?? '清理选中项' }}（{{ cleanupActionCount }}）
           </ElButton>
         </div>
       </div>
@@ -168,6 +178,7 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+  import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
   import { groupBy, uniq } from 'lodash-es'
   import { Loading } from '@element-plus/icons-vue'
   import { ElMessage, type MessageHandler, type CheckboxValueType } from 'element-plus'
@@ -201,7 +212,9 @@
       record: MasterDataDeleteDependencyDetail
     ) => Record<string, string> | null | Promise<Record<string, string> | null>
     routePath?: string
-    routeQuery?: Record<string, string>
+    routeQuery?:
+      | Record<string, string>
+      | ((record: MasterDataDeleteDependencyDetail) => Record<string, string>)
     routeNames?: string[]
     canNavigate?: () => boolean
     resolveRouteName?: (record: MasterDataDeleteDependencyDetail) => Promise<string | null>
@@ -217,6 +230,8 @@
   }
 
   interface CustomDependencyCleanup {
+    selectionMode?: 'all'
+    count?: (records: MasterDataDeleteDependencyDetail[]) => number
     actionLabel: string
     confirmMessage: (count: number) => string
     run: (records: MasterDataDeleteDependencyDetail[]) => Promise<number>
@@ -506,8 +521,21 @@
     }
     return `选中的 ${options.resources.length} 个${options.resourceLabel}`
   })
+  const cleanupAll = computed(() => currentOptions.value?.cleanup?.selectionMode === 'all')
+  const safeRecords = computed(() =>
+    dependencies.value.filter((item) => item.cleanupAllowed && canCleanup.value)
+  )
   const safeRecordCount = computed(
-    () => dependencies.value.filter((item) => item.cleanupAllowed && canCleanup.value).length
+    () => currentOptions.value?.cleanup?.count?.(safeRecords.value) ?? safeRecords.value.length
+  )
+  const cleanupRecords = computed(() =>
+    cleanupAll.value
+      ? safeRecords.value
+      : safeRecords.value.filter((item) => selectedRecordIds.value.includes(item.recordId))
+  )
+  const cleanupActionCount = computed(
+    () =>
+      currentOptions.value?.cleanup?.count?.(cleanupRecords.value) ?? cleanupRecords.value.length
   )
   const dependencyGroups = computed<DependencyGroup[]>(() => {
     const groups = groupBy(dependencies.value, (item) => item.dependencyCode)
@@ -536,12 +564,7 @@
       if (resource) parts.unshift(`引用：${resource.label}`)
     }
     if (record.recordAmount !== null && record.recordAmount !== undefined) {
-      parts.push(
-        `¥${Number(record.recordAmount).toLocaleString('zh-CN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}`
-      )
+      parts.push(formatSensitiveNumberWithAffix(record.recordAmount, { prefix: '¥' }))
     }
     return parts.filter(Boolean).join(' · ') || '待处理'
   }
@@ -661,13 +684,20 @@
 
   const handleCleanup = async (): Promise<void> => {
     const options = currentOptions.value
-    const selected = dependencies.value.filter(
-      (item) => item.cleanupAllowed && selectedRecordIds.value.includes(item.recordId)
+    const selected = cleanupRecords.value
+    if (
+      !options ||
+      !canCleanup.value ||
+      !selected.length ||
+      !cleanupActionCount.value ||
+      checking.value ||
+      inspectionError.value ||
+      cleanupLoading.value
     )
-    if (!options || !canCleanup.value || !selected.length || cleanupLoading.value) return
+      return
     try {
       await confirmAction(
-        options.cleanup?.confirmMessage(selected.length) ??
+        options.cleanup?.confirmMessage(cleanupActionCount.value) ??
           `将永久清理选中的 ${selected.length} 项配置或终态记录。运单、合同和财务历史不会被删除，是否继续？`,
         '清理关联项确认',
         {
@@ -777,7 +807,14 @@
           return
         }
         await dialogRef.value?.handleClose(true)
-        await router.push({ name, params, query: { ...query, ...meta.routeQuery } })
+        await router.push({
+          name,
+          params,
+          query: {
+            ...query,
+            ...(typeof meta.routeQuery === 'function' ? meta.routeQuery(record) : meta.routeQuery)
+          }
+        })
       } catch (error) {
         ElMessage.error(getFriendlySupabaseErrorMessage(error, '关联记录定位失败，请重试'))
       } finally {

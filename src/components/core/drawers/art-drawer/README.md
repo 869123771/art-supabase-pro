@@ -1,5 +1,7 @@
 # ArtDrawer
 
+Read exposed boolean state with `unref(drawerRef.value?.visible)`; template component instances automatically unwrap refs. The shared [exposed-state contract](../../dialogs/art-dialog/README.md#reading-exposed-state) applies to drawers and dialogs.
+
 ## Content Loading
 
 `loading` covers the drawer's visible content viewport, centers the loading state there, and disables the default footer buttons. It is independent from the confirm button's `confirmLoading`.

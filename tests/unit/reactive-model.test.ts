@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { computed, reactive } from 'vue'
-import { replaceReactiveModel } from '../../src/utils/form/model'
+import { replaceReactiveModel, serializeOrderedEditorRows } from '../../src/utils/form/model'
+
+test('删除和重排行后重新编号，保留业务标识和有效空值，不污染编辑状态', () => {
+  const remainingRows = [
+    { localKey: 'ui-b', id: 'saved-b', sort: 9, value: 0, enabled: false, detail: null },
+    { localKey: 'ui-a', id: undefined, sort: 3, value: 2, enabled: true, detail: '' }
+  ]
+  const before = structuredClone(remainingRows)
+  const payload = serializeOrderedEditorRows(remainingRows)
+  assert.deepEqual(payload, [
+    { id: 'saved-b', sort: 0, value: 0, enabled: false, detail: null },
+    { id: undefined, sort: 1, value: 2, enabled: true, detail: '' }
+  ])
+  assert.deepEqual(remainingRows, before)
+  assert.deepEqual(serializeOrderedEditorRows([]), [])
+})
 
 test('重置查询清除后加入的条件并保留依赖模型的计算状态', () => {
   const query = reactive<{ keyword?: string; status?: string; tenantId?: string }>({

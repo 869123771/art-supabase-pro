@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
-import { parse as parseSfc } from '@vue/compiler-sfc'
+import { parse as parseSfc, type SFCDescriptor } from '@vue/compiler-sfc'
 
 interface HelperOccurrence {
   body: string
@@ -22,13 +22,20 @@ const helperName =
 const supportedExtensions = new Set(['.ts', '.tsx', '.vue'])
 const utilityFileName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.(?:test|spec|d))?\.tsx?$/
 const canonicalDeclarations = new Map<string, string>([
+  ['formatDurationMs', 'src/utils/ui/format.ts'],
+  ['formatNumberValue', 'src/utils/ui/format.ts'],
+  ['formatCurrencyValue', 'src/utils/ui/format.ts'],
+  ['formatCurrencyCodeValue', 'src/utils/ui/format.ts'],
   ['buildSupabaseRpcRange', 'src/utils/supabase/pagination.ts'],
   ['toDateStartTimestamp', 'src/utils/time/date-boundary.ts'],
   ['toDateEndTimestamp', 'src/utils/time/date-boundary.ts'],
   ['normalizeNonNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableText', 'src/utils/form/normalize.ts'],
   ['normalizeNullableNumber', 'src/utils/form/normalize.ts'],
+  ['normalizeImportedEnabled', 'src/utils/form/normalize.ts'],
+  ['requireUniqueImportReference', 'src/utils/business/import-reference.ts'],
   ['normalizeStringList', 'src/utils/form/normalize.ts'],
+  ['normalizeSingleStringKey', 'src/utils/form/normalize.ts'],
   ['toDictionaryOption', 'src/utils/form/option.ts'],
   ['toNameCodeOption', 'src/utils/form/option.ts'],
   ['formatTenantLabel', 'src/utils/tenant-display.ts'],
@@ -36,6 +43,7 @@ const canonicalDeclarations = new Map<string, string>([
   ['formatSensitiveCurrencyValue', 'src/utils/ui/format.ts'],
   ['formatSensitiveCountValue', 'src/utils/ui/format.ts'],
   ['parseReadableSensitiveNumber', 'src/utils/field-permission.ts'],
+  ['isReadableFieldAccess', 'src/utils/field-permission.ts'],
   ['formatDateTimeValue', 'src/utils/ui/format.ts'],
   ['formatPercentValue', 'src/utils/ui/format.ts'],
   ['createDateTimeFormatter', 'src/utils/ui/format.ts'],
@@ -75,6 +83,58 @@ function relativeFile(file: string): string {
   return path.relative(projectRoot, file).replaceAll('\\', '/')
 }
 
+function isTransparentMainComponentWrapper(descriptor: SFCDescriptor, file: string): boolean {
+  if (descriptor.script?.content.trim() || descriptor.styles.some((block) => block.content.trim()))
+    return false
+  const template = descriptor.template?.content.replace(/<!--[\s\S]*?-->/g, '').trim() ?? ''
+  const match = /^<([A-Z]\w*)>\s*<slot\s*\/>\s*<\/\1>$/.exec(template)
+  if (!match || !descriptor.scriptSetup) return false
+  const script = ts.createSourceFile(
+    file,
+    descriptor.scriptSetup.content,
+    ts.ScriptTarget.Latest,
+    true
+  )
+  let importsCanonicalComponent = false
+  for (const statement of script.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      if (
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text.startsWith('@/components/')
+      ) {
+        const clause = statement.importClause
+        const bindings = clause?.namedBindings
+        importsCanonicalComponent ||=
+          clause?.name?.text === match[1] ||
+          Boolean(
+            bindings &&
+            ts.isNamedImports(bindings) &&
+            bindings.elements.some((item) => item.name.text === match[1])
+          )
+      }
+      continue
+    }
+    if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression))
+      return false
+    const call = statement.expression
+    if (call.expression.getText(script) !== 'defineOptions' || call.arguments.length !== 1)
+      return false
+    const options = call.arguments[0]
+    if (
+      !ts.isObjectLiteralExpression(options) ||
+      options.properties.some(
+        (property) =>
+          !ts.isPropertyAssignment(property) ||
+          !ts.isIdentifier(property.name) ||
+          property.name.text !== 'name' ||
+          !ts.isStringLiteral(property.initializer)
+      )
+    )
+      return false
+  }
+  return importsCanonicalComponent
+}
+
 function ownerOf(file: string): string {
   const segments = relativeFile(file).split('/')
   return segments[0] === 'modules' ? segments[1] : 'root'
@@ -88,6 +148,70 @@ function normalizeBody(body: ts.Node, source: ts.SourceFile): string {
     .replace(/\s+/g, '')
 }
 
+function isCopiedCurrencyFormatter(body: ts.Node): boolean {
+  const owner = body.parent
+  if (
+    !ts.isFunctionDeclaration(owner) &&
+    !ts.isFunctionExpression(owner) &&
+    !ts.isArrowFunction(owner)
+  ) {
+    return false
+  }
+  const parameter = owner.parameters[0]?.name
+  if (!parameter || !ts.isIdentifier(parameter)) return false
+  while (ts.isParenthesizedExpression(body)) body = body.expression
+  const isValue = (node: ts.Node): boolean => ts.isIdentifier(node) && node.text === parameter.text
+  const isCurrencyCall = (node: ts.Node): boolean =>
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    ['formatCurrencyValue', 'formatSensitiveCurrencyValue'].includes(node.expression.text) &&
+    Boolean(node.arguments[0] && isValue(node.arguments[0]))
+  const emptyChecks = (node: ts.Node): string[] => {
+    if (!ts.isBinaryExpression(node)) return []
+    if (node.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+      const left = emptyChecks(node.left)
+      const right = emptyChecks(node.right)
+      return left.length && right.length ? [...left, ...right] : []
+    }
+    if (node.operatorToken.kind !== ts.SyntaxKind.EqualsEqualsEqualsToken || !isValue(node.left)) {
+      return []
+    }
+    if (node.right.kind === ts.SyntaxKind.NullKeyword) return ['null']
+    if (ts.isIdentifier(node.right) && node.right.text === 'undefined') return ['undefined']
+    if (ts.isStringLiteral(node.right) && node.right.text === '') return ['blank']
+    return []
+  }
+  const isUnavailable = (node: ts.Node): boolean => ts.isStringLiteral(node) && node.text === '--'
+  if (ts.isConditionalExpression(body)) {
+    return (
+      emptyChecks(body.condition).join() === 'undefined' &&
+      isUnavailable(body.whenTrue) &&
+      isCurrencyCall(body.whenFalse)
+    )
+  }
+  if (!ts.isBlock(body)) return isCurrencyCall(body)
+  const statements = body.statements
+  const last = statements.at(-1)
+  if (
+    !last ||
+    !ts.isReturnStatement(last) ||
+    !last.expression ||
+    !isCurrencyCall(last.expression)
+  ) {
+    return false
+  }
+  if (statements.length === 1) return true
+  const guard = statements[0]
+  return (
+    statements.length === 2 &&
+    ts.isIfStatement(guard) &&
+    !guard.elseStatement &&
+    emptyChecks(guard.expression).sort().join() === 'blank,null,undefined' &&
+    ts.isReturnStatement(guard.thenStatement) &&
+    Boolean(guard.thenStatement.expression && isUnavailable(guard.thenStatement.expression))
+  )
+}
+
 function collectScriptHelpers(
   content: string,
   file: string,
@@ -97,7 +221,117 @@ function collectScriptHelpers(
   const relative = relativeFile(file)
   const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 
-  const inspectDictionaryMapping = (node: ts.Node): void => {
+  const inspectSharedTransforms = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'find' &&
+      /\bgetDictMap\b/.test(node.expression.expression.getText(source))
+    ) {
+      const predicate = node.arguments[0]
+      if (
+        predicate &&
+        ts.isArrowFunction(predicate) &&
+        predicate.parameters.length === 1 &&
+        ts.isIdentifier(predicate.parameters[0].name) &&
+        ts.isBinaryExpression(predicate.body) &&
+        predicate.body.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+      ) {
+        const value = `${predicate.parameters[0].name.text}.value`
+        const sides = [predicate.body.left, predicate.body.right].map((side) =>
+          normalizeBody(side, source)
+        )
+        if (sides.some((side) => side === value || side === `String(${value})`)) {
+          findings.push({
+            file: relative,
+            rule: 'repeated-dictionary-value-lookup',
+            detail:
+              '按值查找字典项或标签请复用用户 Store 的 getDictItemByValue / getDictLabelByValue。'
+          })
+        }
+      }
+    }
+    if (
+      ts.isConditionalExpression(node) &&
+      ts.isIdentifier(node.condition) &&
+      ts.isStringLiteral(node.whenFalse) &&
+      ts.isCallExpression(node.whenTrue) &&
+      ts.isPropertyAccessExpression(node.whenTrue.expression) &&
+      node.whenTrue.expression.name.text === 'format' &&
+      ts.isCallExpression(node.whenTrue.expression.expression) &&
+      ts.isIdentifier(node.whenTrue.expression.expression.expression) &&
+      node.whenTrue.expression.expression.expression.text === 'dayjs' &&
+      node.whenTrue.expression.expression.arguments.length === 1 &&
+      node.whenTrue.expression.expression.arguments[0].getText(source) === node.condition.text
+    ) {
+      findings.push({
+        file: relative,
+        rule: 'copied-date-formatter',
+        detail: '日期显示请配置主仓 createDateTimeFormatter，统一空值、异常日期和显示精度。'
+      })
+    }
+    if (relative !== 'src/utils/field-permission.ts') {
+      const copiedArrayCheck =
+        ts.isCallExpression(node) &&
+        node.arguments.length === 1 &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === 'includes' &&
+        ts.isArrayLiteralExpression(node.expression.expression) &&
+        node.expression.expression.elements.length === 2 &&
+        node.expression.expression.elements.every(
+          (item) => ts.isStringLiteral(item) && (item.text === 'read' || item.text === 'edit')
+        ) &&
+        new Set(node.expression.expression.elements.map((item) => item.getText(source))).size === 2
+      const copiedLevelCheck =
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.BarBarToken &&
+        ts.isBinaryExpression(node.left) &&
+        ts.isBinaryExpression(node.right) &&
+        node.left.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken &&
+        node.right.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken &&
+        ts.isStringLiteral(node.left.right) &&
+        ts.isStringLiteral(node.right.right) &&
+        ((node.left.right.text === 'read' && node.right.right.text === 'edit') ||
+          (node.left.right.text === 'edit' && node.right.right.text === 'read')) &&
+        normalizeBody(node.left.left, source) === normalizeBody(node.right.left, source)
+      if (copiedArrayCheck || copiedLevelCheck) {
+        findings.push({
+          file: relative,
+          rule: 'repeated-field-readability-check',
+          detail: '读取原始字段数据的权限判断请复用主仓 isReadableFieldAccess，脱敏可见不代表可读。'
+        })
+      }
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'format' &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      const dateCall = node.expression.expression
+      if (
+        ts.isCallExpression(dateCall) &&
+        ts.isIdentifier(dateCall.expression) &&
+        dateCall.expression.text === 'dayjs' &&
+        dateCall.arguments.length === 1 &&
+        ts.isPropertyAccessExpression(dateCall.arguments[0])
+      ) {
+        let parent: ts.Node | undefined = node.parent
+        while (parent && !ts.isSourceFile(parent)) {
+          if (ts.isPropertyAssignment(parent) && parent.name.getText(source) === 'formatter') {
+            findings.push({
+              file: relative,
+              rule: 'raw-table-date-formatting',
+              detail:
+                '表格日期展示必须复用 createDateTimeFormatter，统一处理缺失日期，避免显示当前时间。'
+            })
+            break
+          }
+          parent = parent.parent
+        }
+      }
+    }
     if (
       ts.isArrowFunction(node) &&
       node.parameters.length === 1 &&
@@ -159,9 +393,9 @@ function collectScriptHelpers(
         }
       }
     }
-    ts.forEachChild(node, inspectDictionaryMapping)
+    ts.forEachChild(node, inspectSharedTransforms)
   }
-  inspectDictionaryMapping(source)
+  inspectSharedTransforms(source)
 
   if (relative.includes('/api/') && !/\.(?:test|spec)\./.test(relative)) {
     const inspectApiPolicy = (node: ts.Node): void => {
@@ -221,6 +455,13 @@ function collectScriptHelpers(
   }
 
   const add = (name: string, body: ts.Node): void => {
+    if (relative !== 'src/utils/ui/format.ts' && isCopiedCurrencyFormatter(body)) {
+      findings.push({
+        file: relative,
+        rule: 'copied-currency-formatter',
+        detail: `${name} 重复包装主仓金额格式化；直接使用 formatCurrencyValue 或 formatSensitiveCurrencyValue，并显式传入币种。`
+      })
+    }
     const canonicalFile = canonicalDeclarations.get(name)
     if (canonicalFile === relative) foundCanonicalDeclarations.add(name)
     if (canonicalFile && canonicalFile !== relative) {
@@ -315,6 +556,13 @@ for (const file of files) {
 
   if (file.endsWith('.vue')) {
     const { descriptor } = parseSfc(content, { filename: file })
+    if (isTransparentMainComponentWrapper(descriptor, file)) {
+      findings.push({
+        file: relative,
+        rule: 'transparent-main-component-wrapper',
+        detail: '组件只转发主仓公共组件的默认插槽，请直接复用公共组件并删除空壳包装。'
+      })
+    }
     for (const block of [descriptor.script, descriptor.scriptSetup]) {
       if (block) collectScriptHelpers(block.content, file, helpers, findings)
     }
@@ -340,11 +588,14 @@ for (const helper of helpers) {
 }
 
 for (const group of duplicateGroups.values()) {
-  if (new Set(group.map((item) => item.owner)).size < 2) continue
+  if (new Set(group.map((item) => item.file)).size < 2) continue
+  const crossRepository = new Set(group.map((item) => item.owner)).size > 1
   findings.push({
     file: group[0].file,
-    rule: 'cross-repository-helper-duplication',
-    detail: `${group[0].name} 在 ${group.map((item) => item.file).join('、')} 重复实现；请上收主仓共享模块后迁移全部调用。`
+    rule: crossRepository
+      ? 'cross-repository-helper-duplication'
+      : 'within-repository-helper-duplication',
+    detail: `${group[0].name} 在 ${group.map((item) => item.file).join('、')} 重复实现；请迁移至${crossRepository ? '主仓' : '所属领域'}共享模块并迁移全部调用。`
   })
 }
 

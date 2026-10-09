@@ -8,6 +8,8 @@ import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
 const pages = {
+  benefits: () =>
+    import('../../../modules/art-supabase-hr/src/views/operations/benefits/index.vue'),
   organization: () =>
     import('../../../modules/art-supabase-hr/src/views/personnel/organization-design/index.vue'),
   policy: () =>

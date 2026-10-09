@@ -151,7 +151,6 @@
 
       &__aside {
         grid-column: 1 / -1;
-        justify-content: flex-start;
       }
     }
   }

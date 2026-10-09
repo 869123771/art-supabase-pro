@@ -141,7 +141,11 @@ for (const serialManaged of [false, true]) {
               quantity: 10,
               created_at: '2026-10-01T01:02:03Z',
               serial_ids: serialManaged ? ['return-sn-1', 'return-sn-2', 'returned-sn'] : [],
-              returns: serialManaged ? [{ quantity: 1, serial_ids: ['returned-sn'] }] : [],
+              outbound_display_quantity: serialManaged ? null : 12345.678901,
+              displayUnit: { unit_code: 'm2', unit_name: '平方米' },
+              returns: serialManaged
+                ? [{ quantity: 1, serial_ids: ['returned-sn'] }]
+                : [{ quantity: 2, serial_ids: [], return_display_quantity: 2469.13578 }],
               shippingNotice: { document_no: 'SHIP-RETURN-001', project_id: null },
               batch: {
                 batch_no: 'RETURN-BATCH-001',
@@ -219,6 +223,14 @@ for (const serialManaged of [false, true]) {
         .getByText('SHIP-RETURN-001 · 测试退货板材 · RETURN-BATCH-001', { exact: true })
         .click()
       await picker.getByRole('button', { name: '确定', exact: true }).click()
+      const review = page.locator('.art-section-card').filter({
+        has: page.getByText('退货核对', { exact: true })
+      })
+      if (!serialManaged) {
+        await expect(review.getByText('9,876.543121 平方米', { exact: true })).toBeVisible()
+        await expect(review.getByText('1,234.56789 平方米', { exact: true })).toBeVisible()
+        await review.screenshot({ path: testInfo.outputPath('return-quantity-review.png') })
+      }
       await page.getByRole('combobox', { name: /退货入库仓库/ }).click()
       let binFailed = true
       await page.route('**/rest/v1/mdm_warehouse_bin?*', (route) =>
@@ -269,7 +281,10 @@ for (const serialManaged of [false, true]) {
       await expect(page.getByText('请填写退货单号', { exact: true })).toBeVisible()
       expect(payloads).toHaveLength(0)
       await reference.fill('RETURN-001')
-      if (!serialManaged) await page.getByRole('spinbutton', { name: /本次退货数量/ }).fill('2')
+      if (!serialManaged) {
+        await page.getByRole('spinbutton', { name: /本次退货数量/ }).fill('2')
+        await expect(review.getByText('2,469.13578 平方米', { exact: true })).toBeVisible()
+      }
       await reference.click()
       await page.getByRole('button', { name: '确认退货入库', exact: true }).click()
       await expect(page.getByText('测试退货入库失败', { exact: false }).first()).toBeVisible()

@@ -1,6 +1,7 @@
 import { buildSupabaseRpcRange } from '@/utils/supabase'
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { useSupabase } from '@/hooks'
+import type { RunQueryOptions } from '@/hooks/core/useSupabase'
 
 /** 跨应用可依赖的员工只读数据契约。 */
 export interface EmployeeIntegrationItem {
@@ -97,7 +98,8 @@ export function createEmployeeReferenceSelector(
  * 将来 HR 独立成服务时，只需替换本适配器。
  */
 export async function fetchEmployeeSelectorList(
-  params: EmployeeSelectorContractParams = {}
+  params: EmployeeSelectorContractParams = {},
+  options: Pick<RunQueryOptions, 'showErrorMessage'> = {}
 ): Promise<EmployeeSelectorContractResult> {
   const { tenantId, keyword, from = 0, to = 9 } = params
   const range = buildSupabaseRpcRange(from, to)
@@ -108,7 +110,7 @@ export async function fetchEmployeeSelectorList(
         p_tenant_id: tenantId || null,
         p_keyword: normalizeNullableText(keyword)
       }),
-    { showErrorMessage: true }
+    { showErrorMessage: options.showErrorMessage ?? true }
   )
 
   return {

@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./plan-workspace-CiGcFfX_.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`preventive`}))}});export{i as default};

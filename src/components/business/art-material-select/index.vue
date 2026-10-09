@@ -1,6 +1,7 @@
 <template>
-  <component
-    :is="selectorComponent"
+  <ArtDataSelect
+    mode="table"
+    :multiple="multiple"
     :model-value="multiple ? modelValues : modelValue"
     :selected-data="selectedData"
     :api-fn="apiFn"
@@ -33,55 +34,29 @@
     <template v-if="$slots.trigger" #trigger="slotProps">
       <slot name="trigger" v-bind="slotProps" />
     </template>
-  </component>
+  </ArtDataSelect>
 </template>
 
-<script setup lang="ts">
-  import type { Component } from 'vue'
-  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
-  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+<script setup lang="ts" generic="T extends MaterialSelectRecord = MaterialSelectRecord">
+  import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
   import type {
     ArtDataSelectProps,
     DataSelectApiFn,
     DataSelectColumn,
-    DataSelectKey,
-    DataSelectRecord
+    DataSelectKey
   } from '@/components/core/forms/art-data-select/types'
-  import { normalizeStringList } from '@/utils/form/normalize'
+  import { normalizeSingleStringKey, normalizeStringList } from '@/utils/form/normalize'
   import { buildMaterialCategoryNavigation } from '@/utils/business/material-category'
+  import type { MaterialSelectCategory, MaterialSelectRecord } from './types'
 
   defineOptions({ name: 'ArtMaterialSelect' })
-
-  export interface MaterialSelectCategory {
-    id: string
-    parentId?: string | null
-    categoryCode: string
-    categoryName: string
-  }
-
-  export interface MaterialSelectRecord {
-    id: string
-    materialCode?: string | null
-    materialName?: string | null
-    description?: string | null
-    specificationModel?: string | null
-    drawingNo?: string | null
-    materialComposition?: string | null
-    brand?: string | null
-    materialType?: string | null
-    inboundWarehouseId?: string | null
-    materialSource?: string | null
-    specialPurchaseType?: string | null
-    category?: { categoryName?: string | null } | null
-    materialTypeRef?: { typeName?: string | null } | null
-  }
 
   interface Props {
     modelValue?: string
     multiple?: boolean
     modelValues?: string[]
-    selectedData?: MaterialSelectRecord[]
-    apiFn: DataSelectApiFn
+    selectedData?: T[]
+    apiFn: DataSelectApiFn<T>
     categories?: MaterialSelectCategory[]
     title?: string
     subtitle?: string
@@ -90,11 +65,11 @@
     searchPlaceholder?: string
     emptyText?: string
     emptyDescription?: string
-    disabledKey?: string | ((row: DataSelectRecord) => boolean)
+    disabledKey?: string | ((row: T) => boolean)
     disabled?: boolean
     clearable?: boolean
     showSelectedPanel?: boolean
-    labelKey?: string | ((row: DataSelectRecord) => string)
+    labelKey?: string | ((row: T) => string)
     resetDraftOnOpen?: boolean
   }
 
@@ -120,25 +95,17 @@
   const emit = defineEmits<{
     'update:modelValue': [value: string | undefined]
     'update:modelValues': [value: string[]]
-    'update:selectedData': [rows: MaterialSelectRecord[]]
-    change: [value: string | string[] | undefined, rows: MaterialSelectRecord[]]
-    confirm: [value: string | string[] | undefined, rows: MaterialSelectRecord[]]
+    'update:selectedData': [rows: T[]]
+    change: [value: string | string[] | undefined, rows: T[]]
+    confirm: [value: string | string[] | undefined, rows: T[]]
     clear: []
   }>()
 
-  const selectorComponent = computed<Component>(() =>
-    props.multiple ? ArtTableMultipleSelect : ArtTableSingleSelect
-  )
+  const getMaterialLabel = (row: T): string => row.materialName || '未命名物料'
 
-  const getMaterial = (row: DataSelectRecord): MaterialSelectRecord => row as MaterialSelectRecord
+  const getMaterialDescription = (row: T): string => row.materialCode || '未维护编码'
 
-  const getMaterialLabel = (row: DataSelectRecord): string =>
-    getMaterial(row).materialName || '未命名物料'
-
-  const getMaterialDescription = (row: DataSelectRecord): string =>
-    getMaterial(row).materialCode || '未维护编码'
-
-  const columns: DataSelectColumn[] = [
+  const columns: DataSelectColumn<T>[] = [
     { prop: 'materialCode', label: '物料编码', minWidth: 150 },
     { prop: 'materialName', label: '物料名称', minWidth: 180 },
     { prop: 'description', label: '物料描述', minWidth: 220 },
@@ -151,9 +118,8 @@
       prop: 'materialTypeRef.typeName',
       label: '物料类型',
       minWidth: 120,
-      formatter: (row) => {
-        const material = getMaterial(row)
-        return material.materialTypeRef?.typeName || material.materialType || '—'
+      formatter: (row: MaterialSelectRecord) => {
+        return row.materialTypeRef?.typeName || row.materialType || '—'
       }
     },
     {
@@ -172,35 +138,21 @@
 
   const navigation = computed(() => buildMaterialCategoryNavigation(props.categories))
 
-  const normalizeValue = (
-    value: DataSelectKey | DataSelectKey[] | undefined
-  ): string | undefined => {
-    const selectedValue = Array.isArray(value) ? value[0] : value
-    return selectedValue == null ? undefined : String(selectedValue)
-  }
-
   const updateValue = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
     if (props.multiple) emit('update:modelValues', normalizeStringList(value))
-    else emit('update:modelValue', normalizeValue(value))
+    else emit('update:modelValue', normalizeSingleStringKey(value))
   }
-
-  const normalizeRows = (rows: DataSelectRecord[]): MaterialSelectRecord[] => rows.map(getMaterial)
 
   const normalizedEventValue = (
     value: DataSelectKey | DataSelectKey[] | undefined
   ): string | string[] | undefined =>
-    props.multiple ? normalizeStringList(value) : normalizeValue(value)
+    props.multiple ? normalizeStringList(value) : normalizeSingleStringKey(value)
 
-  const handleSelectedDataChange = (rows: DataSelectRecord[]): void =>
-    emit('update:selectedData', normalizeRows(rows))
+  const handleSelectedDataChange = (rows: T[]): void => emit('update:selectedData', rows)
 
-  const handleChange = (
-    value: DataSelectKey | DataSelectKey[] | undefined,
-    rows: DataSelectRecord[]
-  ): void => emit('change', normalizedEventValue(value), normalizeRows(rows))
+  const handleChange = (value: DataSelectKey | DataSelectKey[] | undefined, rows: T[]): void =>
+    emit('change', normalizedEventValue(value), rows)
 
-  const handleConfirm = (
-    value: DataSelectKey | DataSelectKey[] | undefined,
-    rows: DataSelectRecord[]
-  ): void => emit('confirm', normalizedEventValue(value), normalizeRows(rows))
+  const handleConfirm = (value: DataSelectKey | DataSelectKey[] | undefined, rows: T[]): void =>
+    emit('confirm', normalizedEventValue(value), rows)
 </script>

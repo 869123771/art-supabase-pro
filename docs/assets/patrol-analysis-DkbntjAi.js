@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./analysis-workspace-KbFsJDu1.js";var i=t({name:`PmisPatrolAnalysis`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`}))}});export{i as default};

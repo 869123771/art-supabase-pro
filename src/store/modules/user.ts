@@ -47,6 +47,7 @@ import { fetchCurrentUserInfo, logout } from '@/api/auth'
 import { groupBy } from 'lodash-es'
 import { hasPlatformSuperAccess } from '@/utils/platform-super-access'
 import { isDictionaryCacheFresh } from './dictionary-cache-policy'
+import { toDictionaryOption } from '@/utils/form/option'
 /**
  * 用户状态管理
  * 管理用户登录状态、个人信息、语言设置、搜索历史、锁屏状态等
@@ -231,14 +232,32 @@ export const useUserStore = defineStore(
       localStorage.removeItem(StorageConfig.LAST_USER_ID_KEY)
     }
 
-    const getDictLabelByValue = (dictCode: keyof DictMap | string, value?: string) => {
-      return getDictItemByValue(dictCode, value)?.label ?? ''
+    /** Missing labels use the caller's fallback; configured empty labels stay empty. */
+    const getDictLabelByValue = (
+      dictCode: keyof DictMap | string,
+      value?: string | number | null,
+      fallback = ''
+    ): string => {
+      return getDictItemByValue(dictCode, value ?? undefined)?.label ?? fallback
     }
 
-    const getDictItemByValue = (dictCode: keyof DictMap | string, value?: string | number) => {
+    const getDictItemByValue = (
+      dictCode: keyof DictMap | string,
+      value?: string | number | null
+    ) => {
       if (value === undefined || value === null || value === '') return undefined
 
       return dictMap.value[dictCode]?.find((item) => String(item.value) === String(value))
+    }
+
+    /** Option labels use the dictionary name when the configured label is empty. */
+    const getDictDisplayLabelByValue = (
+      dictCode: keyof DictMap | string,
+      value?: string | number | null,
+      fallback = value === undefined || value === null ? '' : String(value)
+    ): string => {
+      const item = getDictItemByValue(dictCode, value)
+      return item ? toDictionaryOption(item).label || fallback : fallback
     }
 
     const getDictTagTypeByValue = (
@@ -394,6 +413,7 @@ export const useUserStore = defineStore(
       getSettingState,
       getWorktabState,
       getDictLabelByValue,
+      getDictDisplayLabelByValue,
       getDictItemByValue,
       getDictTagTypeByValue,
       clearDictionaryCache,

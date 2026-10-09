@@ -739,7 +739,6 @@
           useSlot: true,
           useHeaderSlot: true,
           sortable: false
-          // visible: false, // 隐藏列
         },
         {
           prop: 'userGender',

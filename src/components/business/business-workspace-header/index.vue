@@ -469,7 +469,6 @@
 
       &__actions {
         flex: 1 1 100%;
-        justify-content: flex-start;
         width: 100%;
         max-width: 100%;
       }
@@ -494,12 +493,11 @@
       &__aside {
         flex-direction: column;
         align-items: flex-start;
-        width: calc(100% - 66px);
-        margin-left: 66px;
+        width: 100%;
+        margin-left: 0;
       }
 
-      &__tags,
-      &__actions {
+      &__tags {
         justify-content: flex-start;
       }
 
@@ -548,9 +546,9 @@
         }
 
         .business-workspace-header__aside {
-          width: calc(100% - 54px);
+          width: 100%;
           max-width: none;
-          margin-left: 54px;
+          margin-left: 0;
         }
 
         .business-workspace-header__metric {

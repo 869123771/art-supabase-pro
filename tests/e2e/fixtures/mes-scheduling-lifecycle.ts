@@ -7,6 +7,7 @@ import { store } from '@/store'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
 import SchedulingPage from '../../../modules/art-supabase-mes/src/views/production-plan/scheduling/index.vue'
+import GanttPage from '@mes/views/production-plan/gantt-scheduling/index.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -65,7 +66,9 @@ const app = createApp(
           h('button', { onClick: () => (visible.value = false) }, '离开排程页面'),
           h('output', { 'data-testid': 'subscriptions' }, JSON.stringify(subscriptions)),
           h('output', { 'data-testid': 'removals' }, JSON.stringify(removals)),
-          visible.value ? h(SchedulingPage) : null
+          visible.value
+            ? h(new URLSearchParams(location.search).has('gantt') ? GanttPage : SchedulingPage)
+            : null
         ])
     }
   })

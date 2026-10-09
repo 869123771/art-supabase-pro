@@ -1,5 +1,5 @@
 import TreeUtils from '@/utils/tree'
-import type { MaterialSelectCategory } from '@/components/business/art-material-select/index.vue'
+import type { MaterialSelectCategory } from '@/components/business/art-material-select/types'
 import type { DataSelectNavigation } from '@/components/core/forms/art-data-select/types'
 
 const categoryTree = new TreeUtils({ parentKey: 'parentId', deepClone: false })

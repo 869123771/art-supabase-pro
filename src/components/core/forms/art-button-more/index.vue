@@ -1,7 +1,7 @@
 <!-- 更多按钮 -->
 <template>
   <div class="art-button-more">
-    <ElDropdown v-if="hasAnyAuthItem" :trigger="trigger">
+    <ElDropdown v-if="hasAnyAuthItem" :trigger="resolvedTrigger">
       <slot name="trigger">
         <ArtIconButton icon="ri:more-2-fill" label="更多操作" class="art-button-more__trigger" />
       </slot>
@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
   import { useRoute } from 'vue-router'
+  import { useMediaQuery } from '@vueuse/core'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
@@ -66,11 +67,13 @@
     list: ButtonMoreItem[] | (() => ButtonMoreItem[])
     /** 整体权限控制 */
     auth?: string
-    /** 展开方式，默认沿用现有悬停行为 */
+    /** 展开方式；默认在触屏点击，在支持悬停的设备悬停 */
     trigger?: 'hover' | 'click'
   }
 
-  const props = withDefaults(defineProps<Props>(), { trigger: 'hover' })
+  const props = defineProps<Props>()
+  const prefersTouch = useMediaQuery('(hover: none), (pointer: coarse)')
+  const resolvedTrigger = computed(() => props.trigger ?? (prefersTouch.value ? 'click' : 'hover'))
 
   const dropdownList = computed(() =>
     typeof props.list === 'function' ? props?.list() : props.list

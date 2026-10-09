@@ -61,7 +61,7 @@
           <div class="ai-model-selector__option-side" @mousedown.stop.prevent @click.stop>
             <div v-if="getBenchmark(item.id)" class="ai-model-selector__option-latency is-success">
               <span>首包延迟</span>
-              <strong>{{ formatDuration(getBenchmark(item.id)?.firstResponseMs) }}</strong>
+              <strong>{{ formatDurationMs(getBenchmark(item.id)?.firstResponseMs) }}</strong>
             </div>
             <div
               v-else-if="getBenchmarkError(item.id)"
@@ -151,15 +151,15 @@
       <div v-if="selectedBenchmark" class="ai-model-selector__metrics">
         <article>
           <span>连接耗时</span>
-          <strong>{{ formatDuration(selectedBenchmark.connectionMs) }}</strong>
+          <strong>{{ formatDurationMs(selectedBenchmark.connectionMs) }}</strong>
         </article>
         <article>
           <span>首包延迟</span>
-          <strong>{{ formatDuration(selectedBenchmark.firstResponseMs) }}</strong>
+          <strong>{{ formatDurationMs(selectedBenchmark.firstResponseMs) }}</strong>
         </article>
         <article>
           <span>总耗时</span>
-          <strong>{{ formatDuration(selectedBenchmark.totalMs) }}</strong>
+          <strong>{{ formatDurationMs(selectedBenchmark.totalMs) }}</strong>
         </article>
         <article>
           <span>响应模式</span>
@@ -189,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatDurationMs } from '@/utils/ui/format'
   import type { TagProps } from 'element-plus'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -276,11 +277,6 @@
   function getOwnerLabel(model: AiProviderModel): string {
     const labelOwner = model.label.split('·')[1]?.trim()
     return labelOwner || model.ownedBy?.trim() || model.id.split('/')[0] || '远端服务'
-  }
-
-  function formatDuration(value?: number | null): string {
-    if (value == null || !Number.isFinite(value)) return '--'
-    return value < 1000 ? `${Math.round(value)} ms` : `${(value / 1000).toFixed(2)} s`
   }
 
   function getProfileLabel(profile: AiProviderModel['performanceProfile']): string {

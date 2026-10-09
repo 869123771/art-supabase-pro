@@ -320,7 +320,7 @@ export async function saveWmsPurchaseDocument(payload: WmsPurchasePayload): Prom
 
 export async function changeWmsPurchaseStatus(
   id: string,
-  action: 'submit' | 'approve' | 'delete'
+  action: 'submit' | 'approve' | 'withdraw' | 'delete'
 ): Promise<void> {
   await responseHandle(
     () =>
@@ -331,7 +331,13 @@ export async function changeWmsPurchaseStatus(
     {
       ...writeOptions,
       message:
-        action === 'submit' ? '单据已提交' : action === 'approve' ? '单据已审核' : '单据已删除'
+        action === 'withdraw'
+          ? '单据已撤回，可继续修改'
+          : action === 'submit'
+            ? '单据已提交'
+            : action === 'approve'
+              ? '单据已审核'
+              : '单据已删除'
     }
   )
 }

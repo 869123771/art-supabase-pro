@@ -1,6 +1,6 @@
 import { useSupabase } from '@/hooks'
 import { fetchAllRangePages } from '@/utils/supabase/pagination'
-import type { MaterialSelectCategory } from '@/components/business/art-material-select/index.vue'
+import type { MaterialSelectCategory } from '@/components/business/art-material-select/types'
 
 const { supabase, responseHandle } = useSupabase()
 

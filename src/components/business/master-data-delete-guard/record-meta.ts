@@ -129,6 +129,7 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   scm_receipt_target_document: { label: '供应链收货单据' },
   scm_order_target_document: { label: '供应链订单' },
   scm_purchase_document: { label: '供应链采购单据' },
+  scm_sales_document: { label: '供应链销售单据' },
   mdm_document_type: { label: '单据类型', routeName: 'MdmDocumentType' },
   mdm_business_type: { label: '业务类型', routeName: 'MdmBusinessType' },
   mdm_bom: { label: 'BOM', routeName: 'MdmBomMaintenance' },
