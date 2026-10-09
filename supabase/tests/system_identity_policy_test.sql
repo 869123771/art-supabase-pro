@@ -30,27 +30,27 @@ begin
 
   v_blocked := false;
   begin update public.sys_user set system_protected=false where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected identity must be immutable';
   v_blocked := false;
   begin update public.sys_user set deleted_at=now() where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected identity must reject soft deletion';
   v_blocked := false;
   begin update public.sys_user set auth_user_id=gen_random_uuid() where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected auth identity must be immutable';
   v_blocked := false;
   begin update public.sys_user set status='2' where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected identity must reject disable';
   v_blocked := false;
   begin update public.sys_user set user_roles='{}' where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected identity must retain super role';
   v_blocked := false;
   begin delete from public.sys_user where id=v_super.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'protected identity must reject deletion';
 
   perform set_config('request.jwt.claims',jsonb_build_object('sub',v_ordinary.auth_user_id,'role','authenticated')::text,true);
@@ -62,12 +62,12 @@ begin
   assert not app_private.is_platform_super(), 'forged header must not grant capability';
   v_blocked := false;
   begin update public.sys_user set system_protected=true where id=v_ordinary.id;
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'ordinary identity must not become protected';
 
   v_blocked := false;
   begin update public.sys_param set enabled=true where param_key='audit.logs.retention_days';
-  exception when others then v_blocked := true; end;
+  exception when insufficient_privilege or raise_exception then v_blocked := true; end;
   assert v_blocked, 'unimplemented policy must not pretend to be enabled';
   assert not exists(select 1 from public.sys_param where param_key like 'audit.%' and enabled);
   assert public.get_login_default_language() in ('zh','en'), 'default language must be usable before login';

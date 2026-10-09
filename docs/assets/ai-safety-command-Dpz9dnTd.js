@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./domain-command-screen-C09mHeAR.js";var i=t({name:`AiSafetyCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`ai-safety`}))}});export{i as default};

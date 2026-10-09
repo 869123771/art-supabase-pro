@@ -7,9 +7,20 @@ async function openProbe(page: Page): Promise<void> {
   // Authentication data and business writes never leave the isolated page.
   await page.route('**/rest/v1/sys_param?*', (route) => route.fulfill({ json: [] }))
   await page.route('**/rest/v1/sys_user?*', (route) =>
-    route.fulfill({ json: { id: 'probe-user', user_email: 'probe@example.invalid', status: '1' } })
+    route.fulfill({
+      json: {
+        id: 'probe-user',
+        user_email: 'probe@example.invalid',
+        status: '1',
+        user_roles: ['CUSTOM_ROLE_CODE'],
+        system_protected: false
+      }
+    })
   )
   await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
+  await page.route('**/rest/v1/rpc/current_user_role_names', (route) =>
+    route.fulfill({ json: ['数据库测试角色'] })
+  )
   await page.route('**/auth/v1/user', (route) =>
     route.fulfill({ json: { id: 'probe-auth-user', aud: 'authenticated', role: 'authenticated' } })
   )
@@ -140,7 +151,11 @@ test('permission service failure is not cached as a successful user profile and 
       try {
         await store.fetchUserInfo()
         const response = await fetchCurrentUserInfo()
-        return { status: 'ready', platformSuper: response.data?.platformSuper }
+        return {
+          status: 'ready',
+          platformSuper: response.data?.platformSuper,
+          roleNames: response.data?.roleNames
+        }
       } catch (error) {
         return {
           status: 'failed',
@@ -164,5 +179,17 @@ test('permission service failure is not cached as a successful user profile and 
     message: '账号权限校验未返回有效结果，请重试'
   })
   permissionMode = 'ordinary'
-  expect(await runProfile()).toEqual({ status: 'ready', platformSuper: false })
+  expect(await runProfile()).toEqual({
+    status: 'ready',
+    platformSuper: false,
+    roleNames: ['数据库测试角色']
+  })
+  await page.route('**/rest/v1/rpc/current_user_role_names', (route) =>
+    route.fulfill({ status: 503, json: { code: 'PGRST503', message: 'unavailable' } })
+  )
+  expect(await runProfile()).toEqual({
+    status: 'ready',
+    platformSuper: false,
+    roleNames: ['CUSTOM_ROLE_CODE']
+  })
 })

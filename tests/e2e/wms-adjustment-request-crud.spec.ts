@@ -42,7 +42,7 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         target_warehouse_id: 'warehouse-target',
         source_organization_id: 'org-test',
         target_organization_id: 'org-target',
-        stock_type: 'normal',
+        stock_type: kind === 'transfer' && line === 2 ? 'legacy' : 'normal',
         stock_status: 'available',
         owner_type: kind === 'transfer' ? 'self' : line === 1 ? 'supplier' : 'customer',
         owner_id: kind === 'transfer' ? null : line === 1 ? 'supplier-test' : 'customer-test',
@@ -73,6 +73,30 @@ for (const kind of ['gain', 'loss', 'transfer']) {
                 : []
       })
     })
+    if (kind === 'transfer') {
+      await page.route('**/rest/v1/sys_dictionary?*', (route) =>
+        route.fulfill({
+          json: [
+            {
+              code: 'wmsCountStockType',
+              name: '正常库存',
+              label: '',
+              value: 'normal',
+              status: '1'
+            },
+            {
+              code: 'wmsCountStockType',
+              name: '历史库存',
+              label: '',
+              value: 'legacy',
+              status: '0'
+            },
+            { code: 'wmsStockStatus', name: '可用', label: '', value: 'available', status: '1' },
+            { code: 'wmsStockStatus', name: '历史状态', label: '', value: 'legacy', status: '0' }
+          ]
+        })
+      )
+    }
     await page.goto(`/tests/e2e/fixtures/wms-operation-retry.html?adjustmentKind=${kind}`)
     const family = kind === 'transfer' ? '调拨申请' : '盘点调整'
     {
@@ -140,6 +164,25 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         )
       }
       if (mode !== 'view') {
+        if (kind === 'transfer' && mode === 'edit') {
+          const headers = await drawer.locator('.el-table__header th').allTextContents()
+          const row = drawer.locator('.el-table__body tr').first()
+          for (const [label, option] of [
+            ['库存类型', '正常库存'],
+            ['库存状态', '可用']
+          ]) {
+            const cell = row.locator('td').nth(headers.findIndex((text) => text.trim() === label))
+            await cell.scrollIntoViewIfNeeded()
+            await cell.locator('.el-select').click()
+            await expect(page.getByRole('option', { name: option, exact: true })).toBeVisible()
+            await expect(page.getByRole('option')).toHaveCount(1)
+            await page.screenshot({
+              path: testInfo.outputPath(`transfer-${label}-options.png`),
+              animations: 'disabled'
+            })
+            await page.getByRole('option', { name: option, exact: true }).click()
+          }
+        }
         {
           const dates = await drawer.locator('.art-form .el-date-editor').evaluateAll((elements) =>
             elements.map((element) => ({
@@ -165,6 +208,8 @@ for (const kind of ['gain', 'loss', 'transfer']) {
           drawer.getByRole('button', { name: /保存(?:副本)?|确定/, exact: true })
         ).toBeEnabled()
       } else {
+        if (kind === 'transfer')
+          await expect(drawer.getByText('历史库存', { exact: true })).toBeVisible()
         await expect(
           drawer.getByRole('button', { name: /保存(?:副本)?|确定/, exact: true })
         ).toHaveCount(0)

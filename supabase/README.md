@@ -22,7 +22,9 @@ the fallback when the parameter is disabled or unavailable.
 The three `audit.*` parameters have no execution entry point. They are disabled, their original values
 are retained, and both the editor and database reject enabling them until a consumer is implemented.
 No audit history is deleted and no account lockout policy is introduced. Login no longer embeds a
-default account or password; browser-managed saved credentials remain supported.
+default account or password; browser-managed saved credentials remain supported. Generated temporary
+passwords use cryptographic randomness and at least 16 characters while respecting the configured
+minimum length and complexity policy.
 
 `supabase/tests/system_identity_policy_test.sql` provides rollback-only checks for platform-all,
 platform-selected, ordinary-own, forged tenant headers, immutable protection and Auth binding,

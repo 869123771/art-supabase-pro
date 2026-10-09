@@ -1,1 +1,0 @@
-import{c as e}from"./file-DbUGd75D.js";var t={onClick:e,disabled:e=>!e.url,title:e=>`预览${e.name?.trim()||`附件`}`};export{t};

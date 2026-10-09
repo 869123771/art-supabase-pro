@@ -555,6 +555,14 @@ if (new URLSearchParams(location.search).get('importPermission') === 'allow') {
 }
 useTenantScopeStore(store).selectedTenantId = 'tenant-test'
 useUserStore(store).setDictMap({
+  wmsCountStockType: [
+    { name: '正常库存', code: 'wmsCountStockType', label: '', value: 'normal', status: '1' },
+    { name: '历史库存', code: 'wmsCountStockType', label: '', value: 'legacy', status: '0' }
+  ],
+  wmsStockStatus: [
+    { name: '可用', code: 'wmsStockStatus', label: '', value: 'available', status: '1' },
+    { name: '历史状态', code: 'wmsStockStatus', label: '', value: 'legacy', status: '0' }
+  ],
   wmsInitialStockType: [
     { name: '库存类型', code: 'wmsInitialStockType', label: '普通', value: 'normal', status: '1' }
   ],

@@ -8,6 +8,32 @@ const positionId = '88888888-8888-4888-8888-888888888888'
 const employeeId = '99999999-9999-4999-8999-999999999999'
 const requisitionId = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'
 
+test('岗位状态筛选复用公共字典并排除停用项', async ({ page }, info) => {
+  test.setTimeout(240_000)
+  await setupPositionPage(page, 0)
+  await page.route('**/rest/v1/sys_dictionary?*', (route) =>
+    route.fulfill({
+      json: [
+        { code: 'commonBoolean', value: 'true', label: '是', status: '1' },
+        { code: 'commonBoolean', value: 'false', label: '否', status: '1' },
+        { code: 'commonBoolean', value: 'legacy', label: '历史值', status: '0' }
+      ]
+    })
+  )
+  await page.reload()
+  const status = page.locator('.art-search-bar .el-select').first()
+  await status.click()
+  await expect(page.getByRole('option', { name: '启用', exact: true })).toBeVisible()
+  await expect(page.getByRole('option', { name: '停用', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('option')).toHaveCount(2)
+  await page.screenshot({ path: info.outputPath('position-status-options.png') })
+  await page.getByRole('option', { name: '启用', exact: true }).click()
+  await expect(status).toContainText('启用')
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+  ).toBeLessThanOrEqual(1)
+})
+
 async function setupPositionPage(page: Page, employeeCount: number, employeeStatus = 'active') {
   await prepareIsolatedSession(page)
   await page.route('**/rest/v1/sys_dictionary?*', (route) =>

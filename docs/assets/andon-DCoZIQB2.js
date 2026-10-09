@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./execution-event-workspace-sSP7w255.js";var i=t({name:`MesAndon`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`andon`}))}});export{i as default};
