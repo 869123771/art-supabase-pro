@@ -26,6 +26,12 @@ default account or password; browser-managed saved credentials remain supported.
 passwords use cryptographic randomness and at least 16 characters while respecting the configured
 minimum length and complexity policy.
 
+Field-permission writes record the authenticated operator instead of a preset personal email.
+Permission-catalog seeds and tenant-root creation use `system` as their unattended fallback;
+the existing audit triggers still record an authenticated operator when one is present. Existing
+audit history is retained. All 40 affected function definitions and ACLs were backed up in
+`.artifacts/identity-hardcoding-backup/audit-actors-before.json` before the rollback checks and update.
+
 `supabase/tests/system_identity_policy_test.sql` provides rollback-only checks for platform-all,
 platform-selected, ordinary-own, forged tenant headers, immutable protection and Auth binding,
 role retention, disable/delete guards, real role names, language access and unsupported parameters.

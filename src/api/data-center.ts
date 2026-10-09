@@ -307,6 +307,26 @@ export async function fetchDictionaryListByTypeCode(
   )
 }
 
+/** 仅用于既有值展示；停用项不得合并进业务下拉选项。 */
+export async function fetchDictionaryDisplayItem(
+  dictCode: string,
+  value: string
+): Promise<QueryResult<Api.DataCenter.DictListItem[]>> {
+  return responseHandle<Api.DataCenter.DictListItem[]>(
+    () =>
+      supabase
+        .from('sys_dictionary')
+        .select(
+          'id,type_id,code,label,value,status,sort,color,tag_type,remark,parent_id,cascade_parent_id,dict_type_table:sys_dict_type!inner(code,name)'
+        )
+        .eq('dict_type_table.code', dictCode)
+        .eq('value', value)
+        .order('id', { ascending: true })
+        .limit(1),
+    {}
+  )
+}
+
 // 删除字典项
 export async function deleteDict(params: Api.DataCenter.DictListItem) {
   const { id } = params

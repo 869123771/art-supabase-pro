@@ -9,6 +9,7 @@ for (const kind of ['gain', 'loss', 'transfer']) {
       `测试物料 ${line} · 用于检查明细列宽与复制` +
       (kind === 'transfer' ? ' · 长物料描述及规格说明'.repeat(12) : '')
     let writes = 0
+    let historicalRequests = 0
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.route('**/rest/v1/**', async (route) => {
@@ -74,8 +75,10 @@ for (const kind of ['gain', 'loss', 'transfer']) {
       })
     })
     if (kind === 'transfer') {
-      await page.route('**/rest/v1/sys_dictionary?*', (route) =>
-        route.fulfill({
+      await page.route('**/rest/v1/sys_dictionary?*', (route) => {
+        const params = new URL(route.request().url()).searchParams
+        if (params.get('value') === 'eq.legacy') historicalRequests += 1
+        return route.fulfill({
           json: [
             {
               code: 'wmsCountStockType',
@@ -102,11 +105,17 @@ for (const kind of ['gain', 'loss', 'transfer']) {
               status: '0'
             }
           ].filter((item) => {
-            const code = new URL(route.request().url()).searchParams.get('dict_type_table.code')
-            return !code || code === `eq.${item.code}`
+            const code = params.get('dict_type_table.code')
+            const value = params.get('value')
+            const status = params.get('status')
+            return (
+              (!code || code === `eq.${item.code}`) &&
+              (!value || value === `eq.${item.value}`) &&
+              (!status || status === `eq.${item.status}`)
+            )
           })
         })
-      )
+      })
     }
     await page.goto(`/tests/e2e/fixtures/wms-operation-retry.html?adjustmentKind=${kind}`)
     const family = kind === 'transfer' ? '调拨申请' : '盘点调整'
@@ -289,6 +298,17 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         .click()
     }
     expect(writes).toBe(0)
+    if (kind === 'transfer') {
+      expect(historicalRequests).toBe(1)
+      await page.getByRole('button', { name: '测试清空字典缓存', exact: true }).click()
+      await page.getByRole('button', { name: '测试调拨申请 edit', exact: true }).click()
+      const refreshed = page.locator('.el-drawer:visible')
+      await expect(refreshed.locator('.el-select').filter({ hasText: '历史库存' })).toHaveCount(1)
+      expect(historicalRequests).toBe(2)
+      await refreshed
+        .getByRole('button', { name: /关闭此对话框|Close this dialog/, exact: true })
+        .click()
+    }
     expect(errors).toEqual([])
   })
 }

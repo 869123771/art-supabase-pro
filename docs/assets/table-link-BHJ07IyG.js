@@ -1,0 +1,1 @@
+import{c as e}from"./file-yck9XNJT.js";var t={onClick:e,disabled:e=>!e.url,title:e=>`预览${e.name?.trim()||`附件`}`};export{t};

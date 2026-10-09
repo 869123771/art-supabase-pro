@@ -80,6 +80,8 @@ export const useUserStore = defineStore(
     let dictCacheVersion = 0
     const dictCodeFetchedAt = new Map<string, number>()
     const dictCodeRequests = new Map<string, Promise<void>>()
+    const displayDictItems = ref<Record<string, Api.DataCenter.DictListItem | null>>({})
+    const displayDictRequests = new Map<string, Promise<void>>()
 
     const clearDictionaryCache = (): void => {
       dictCacheVersion += 1
@@ -88,6 +90,8 @@ export const useUserStore = defineStore(
       dictListRequest = null
       dictCodeFetchedAt.clear()
       dictCodeRequests.clear()
+      displayDictItems.value = {}
+      displayDictRequests.clear()
     }
     // 计算属性：获取用户信息
     const getUserInfo = computed<Partial<Api.Auth.UserInfo>>(() => info.value)
@@ -248,6 +252,42 @@ export const useUserStore = defineStore(
       if (value === undefined || value === null || value === '') return undefined
 
       return dictMap.value[dictCode]?.find((item) => String(item.value) === String(value))
+    }
+
+    const getDictDisplayItemByValue = (code: string, value?: string | number | null) => {
+      if (value == null || value === '') return undefined
+      return (
+        getDictItemByValue(code, value) ??
+        displayDictItems.value[JSON.stringify([code, String(value)])] ??
+        undefined
+      )
+    }
+
+    const ensureDictDisplayItemLoaded = async (
+      code: string,
+      value?: string | number | null
+    ): Promise<void> => {
+      if (!code || value == null || value === '') return
+      await ensureDictLoaded(code)
+      if (getDictItemByValue(code, value)) return
+      const key = JSON.stringify([code, String(value)])
+      if (Object.hasOwn(displayDictItems.value, key)) return
+      const active = displayDictRequests.get(key)
+      if (active) return active
+      const version = dictCacheVersion
+      const request = (async () => {
+        const { fetchDictionaryDisplayItem } = await import('@/api/data-center')
+        const { data, error } = await fetchDictionaryDisplayItem(code, String(value))
+        if (error) throw error
+        if (version !== dictCacheVersion) return
+        displayDictItems.value[key] = data?.[0] ?? null
+      })()
+      displayDictRequests.set(key, request)
+      try {
+        await request
+      } finally {
+        if (displayDictRequests.get(key) === request) displayDictRequests.delete(key)
+      }
     }
 
     /** Option labels use the dictionary name when the configured label is empty. */
@@ -415,6 +455,8 @@ export const useUserStore = defineStore(
       getDictLabelByValue,
       getDictDisplayLabelByValue,
       getDictItemByValue,
+      getDictDisplayItemByValue,
+      ensureDictDisplayItemLoaded,
       getDictTagTypeByValue,
       clearDictionaryCache,
       getDictTagByValue,

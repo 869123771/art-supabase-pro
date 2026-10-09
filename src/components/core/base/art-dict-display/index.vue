@@ -50,11 +50,11 @@
 
   const userStore = useUserStore()
   watch(
-    () => props.dictCode,
-    (dictCode) => {
-      if (dictCode)
+    () => [props.dictCode, props.value, props.item] as const,
+    ([dictCode, value, item]) => {
+      if (dictCode && !item)
         void userStore
-          .ensureDictLoaded(dictCode)
+          .ensureDictDisplayItemLoaded(dictCode, value)
           .catch((error: unknown) =>
             notifyFriendlyError(error, '字典资料加载失败，请刷新页面后重试')
           )
@@ -63,7 +63,7 @@
   )
 
   const dictItem = computed<Api.DataCenter.DictListItem | undefined>(
-    () => props.item ?? userStore.getDictItemByValue(props.dictCode, props.value ?? undefined)
+    () => props.item ?? userStore.getDictDisplayItemByValue(props.dictCode, props.value)
   )
   const label = computed(() => {
     if (dictItem.value) {

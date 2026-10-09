@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./production-material-workspace-C1c7zStL.js";var i=t({name:`WmsFinishedReturn`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`finished_return`}))}});export{i as default};

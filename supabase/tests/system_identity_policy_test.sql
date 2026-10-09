@@ -75,3 +75,25 @@ begin
   assert has_function_privilege('anon','public.get_login_default_language()','execute');
 end $$;
 rollback;
+
+-- Audit metadata must use the actual operator, with no personal-email defaults.
+begin;
+do $test$
+declare
+ v_super public.sys_user%rowtype;
+ v_resource uuid;
+ v_key text;
+begin
+ select * into strict v_super from public.sys_user where system_protected;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',v_super.auth_user_id,'email',v_super.user_email,'role','authenticated')::text,true);
+ perform set_config('request.headers','{}',true);
+ perform app_private.seed_field_permission_catalog(v_super.tenant_id);
+ assert exists(select 1 from public.sys_permission_resource where tenant_id=v_super.tenant_id and resource_key='vms.supplier' and update_by=v_super.user_email),'seed audit identity';
+ select r.id,f.field_key into strict v_resource,v_key
+ from public.sys_permission_resource r join public.sys_permission_field f on f.resource_id=r.id
+ where r.tenant_id=v_super.tenant_id and r.enabled and f.enabled and f.sensitive limit 1;
+ perform public.set_field_permissions((select resource_key from public.sys_permission_resource where id=v_resource),'user',v_super.id,jsonb_build_object(v_key,'read'));
+ assert exists(select 1 from public.sys_user_field_permission where user_id=v_super.id and resource_id=v_resource and create_by=v_super.user_email and update_by=v_super.user_email),'actual operator audit identity';
+ assert not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' and pg_get_functiondef(p.oid) like '%624944977@qq.com%'),'personal audit email remains';
+end $test$;
+rollback;
