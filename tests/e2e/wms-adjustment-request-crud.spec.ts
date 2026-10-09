@@ -92,8 +92,19 @@ for (const kind of ['gain', 'loss', 'transfer']) {
               status: '0'
             },
             { code: 'wmsStockStatus', name: '可用', label: '', value: 'available', status: '1' },
-            { code: 'wmsStockStatus', name: '历史状态', label: '', value: 'legacy', status: '0' }
-          ]
+            { code: 'wmsStockStatus', name: '历史状态', label: '', value: 'legacy', status: '0' },
+            { code: 'mdmBusinessOwnerType', name: '自有', label: '', value: 'self', status: '1' },
+            {
+              code: 'mdmBusinessOwnerType',
+              name: '历史货主',
+              label: '',
+              value: 'legacy',
+              status: '0'
+            }
+          ].filter((item) => {
+            const code = new URL(route.request().url()).searchParams.get('dict_type_table.code')
+            return !code || code === `eq.${item.code}`
+          })
         })
       )
     }
@@ -164,10 +175,18 @@ for (const kind of ['gain', 'loss', 'transfer']) {
         )
       }
       if (mode !== 'view') {
+        if (kind === 'transfer') {
+          const historical = drawer.locator('.el-select').filter({ hasText: '历史库存' })
+          await expect(historical).toHaveCount(1)
+          await historical.scrollIntoViewIfNeeded()
+          await expect(historical).toBeInViewport()
+          await page.screenshot({ path: testInfo.outputPath(`transfer-${mode}-historical-label.png`), animations: 'disabled' })
+        }
         if (kind === 'transfer' && mode === 'edit') {
           const headers = await drawer.locator('.el-table__header th').allTextContents()
           const row = drawer.locator('.el-table__body tr').first()
           for (const [label, option] of [
+            ['货主类型', '自有'],
             ['库存类型', '正常库存'],
             ['库存状态', '可用']
           ]) {

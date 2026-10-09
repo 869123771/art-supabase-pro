@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./execution-analytics-PobuekW0.js";var i=t({name:`MesMachineAchievement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`machine`}))}});export{i as default};

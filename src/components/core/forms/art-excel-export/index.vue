@@ -158,65 +158,69 @@
     }))
 
   /** 处理导出 */
-  const handleExport = useThrottleFn(async () => {
-    if (isExporting.value) return
+  const handleExport = useThrottleFn(
+    async () => {
+      if (isExporting.value) return
 
-    isExporting.value = true
+      isExporting.value = true
 
-    try {
-      // 验证数据
-      validateData(props.data)
+      try {
+        // 验证数据
+        validateData(props.data)
 
-      // 触发导出前事件
-      emit('before-export', props.data)
+        // 触发导出前事件
+        emit('before-export', props.data)
 
-      // 执行导出
-      await exportExcel({
-        data: props.data,
-        columns: buildColumns(props.data),
-        filename: props.filename,
-        sheetName: props.sheetName,
-        autoIndex: props.autoIndex,
-        indexColumnTitle: props.indexColumnTitle,
-        maxRows: props.maxRows,
-        filenameSuffix: 'datetime',
-        workbookProperties: props.workbookOptions,
-        onProgress: (progress) => emit('export-progress', progress)
-      })
-
-      // 触发成功事件
-      emit('export-success', props.filename, props.data.length)
-
-      // 显示成功消息
-      if (props.showSuccessMessage) {
-        ElMessage.success({
-          message: `成功导出 ${props.data.length} 条数据`,
-          duration: 3000
+        // 执行导出
+        await exportExcel({
+          data: props.data,
+          columns: buildColumns(props.data),
+          filename: props.filename,
+          sheetName: props.sheetName,
+          autoIndex: props.autoIndex,
+          indexColumnTitle: props.indexColumnTitle,
+          maxRows: props.maxRows,
+          filenameSuffix: 'datetime',
+          workbookProperties: props.workbookOptions,
+          onProgress: (progress) => emit('export-progress', progress)
         })
-      }
-    } catch (error) {
-      const exportError =
-        error instanceof ExportError
-          ? error
-          : new ExportError('导出失败，请检查数据后重试', 'EXPORT_FAILED', error)
 
-      // 触发错误事件
-      emit('export-error', exportError)
+        // 触发成功事件
+        emit('export-success', props.filename, props.data.length)
 
-      // 显示错误消息
-      if (props.showErrorMessage) {
-        const message = {
-          message: exportError.message,
-          duration: 5000
+        // 显示成功消息
+        if (props.showSuccessMessage) {
+          ElMessage.success({
+            message: `成功导出 ${props.data.length} 条数据`,
+            duration: 3000
+          })
         }
-        if (exportError.code === 'NO_DATA') ElMessage.warning(message)
-        else ElMessage.error(message)
+      } catch (error) {
+        const exportError =
+          error instanceof ExportError
+            ? error
+            : new ExportError('导出失败，请检查数据后重试', 'EXPORT_FAILED', error)
+
+        // 触发错误事件
+        emit('export-error', exportError)
+
+        // 显示错误消息
+        if (props.showErrorMessage) {
+          const message = {
+            message: exportError.message,
+            duration: 5000
+          }
+          if (exportError.code === 'NO_DATA') ElMessage.warning(message)
+          else ElMessage.error(message)
+        }
+      } finally {
+        isExporting.value = false
+        emit('export-progress', 0)
       }
-    } finally {
-      isExporting.value = false
-      emit('export-progress', 0)
-    }
-  }, 1000, false)
+    },
+    1000,
+    false
+  )
 
   // 暴露方法供父组件调用
   defineExpose({

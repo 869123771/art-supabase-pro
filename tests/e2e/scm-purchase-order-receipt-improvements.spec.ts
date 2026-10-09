@@ -115,7 +115,7 @@ test('采购订单逐行批量操作、收料带入和参选布局', async ({ pa
       }
     })
   })
-  let failCheck = false
+  const failCheck = false
   const operations: Array<{
     p_action: string
     p_selections: Array<{ document_id: string; line_ids: string[] }>
