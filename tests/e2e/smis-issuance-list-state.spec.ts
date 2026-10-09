@@ -78,7 +78,12 @@ for (const scenario of scenarios) {
     await mockApplicationMenus(page, {
       smis: [
         menu,
-        ...['View', 'Export', 'Add'].map((permission) => ({
+        ...[
+          'View',
+          'Export',
+          'Add',
+          ...(scenario.name.endsWith('IssuanceStandard') ? ['Edit', 'Delete'] : [])
+        ].map((permission) => ({
           ...menu,
           id: `${menu.id}-${permission}`,
           parentId: menu.id,
@@ -171,6 +176,30 @@ for (const scenario of scenarios) {
     const table = page.locator('.art-table-query')
     const row = table.getByText('RECORD-TEST', { exact: true }).first()
     await expect(row).toBeVisible()
+    if (scenario.name.endsWith('IssuanceStandard')) {
+      const actions = table
+        .locator('tbody tr')
+        .filter({ hasText: 'RECORD-TEST' })
+        .first()
+        .locator('.business-table-row-actions')
+      await expect(actions).toHaveCount(1)
+      await expect(actions.locator('.art-button-table')).toHaveCount(2)
+      await expect(actions.locator('.business-table-row-actions')).toHaveCount(0)
+      expect(await actions.evaluate((element) => getComputedStyle(element).gap)).toBe('8px')
+      await actions.scrollIntoViewIfNeeded()
+      expect(
+        await actions.evaluate((element) => {
+          const cell = element.closest('td')
+          if (!cell) throw new Error('行操作缺少所属单元格')
+          const boundary = cell.getBoundingClientRect()
+          return [...element.querySelectorAll('.art-button-table')].every((button) => {
+            const rect = button.getBoundingClientRect()
+            return rect.left >= boundary.left && rect.right <= boundary.right
+          })
+        })
+      ).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath('row-actions.png') })
+    }
     const metric = page.locator('.business-workspace-header__metric').first().locator('strong')
     await expect(metric).toHaveText('1')
     const keyword = page.getByPlaceholder(scenario.placeholder, { exact: true })

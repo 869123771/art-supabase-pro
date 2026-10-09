@@ -161,6 +161,8 @@ useMenuStore(store).setButtonList(
   [
     'MdmProductionEquipment:View',
     'MdmEsop:View',
+    'MdmEsop:Edit',
+    'MdmEsop:Copy',
     'MdmActivityFormula:ManageParameter',
     'MdmBomMaintenance:View'
   ].map((name) => ({

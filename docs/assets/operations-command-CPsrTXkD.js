@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./enterprise-big-screen-neTq9--w.js";var i=t({name:`OperationsCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`operations`}))}});export{i as default};

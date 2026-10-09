@@ -4,6 +4,38 @@ import { prepareIsolatedSession } from './support/isolated-session'
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 30_000 })
 test.setTimeout(180_000)
 
+test('ESOP 行操作复用公共容器', async ({ page }, info) => {
+  await prepareIsolatedSession(page)
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.route('**/rest/v1/**', route => route.fulfill({
+    json: new URL(route.request().url()).pathname.endsWith('/mdm_esop_document')
+      ? [{ id: 'test-esop', tenant_id: 'test-tenant', category_id: 'test-category', document_code: 'ESOP-TEST', document_name: '测试作业文件', version_no: 'V1', attachment_url: '', attachment_name: '测试文件.pdf', status: 'enabled', upload_time: '2026-10-09T00:00:00Z', create_time: '2026-10-09T00:00:00Z', update_time: '2026-10-09T00:00:00Z', bindings: [] }]
+      : [],
+    headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+  }))
+  await page.goto('/tests/e2e/fixtures/engineering-dictionary-options.html?mode=esop-list')
+  const row = page.locator('tbody tr').filter({ hasText: 'ESOP-TEST' }).first()
+  const actions = row.locator('.business-table-row-actions')
+  await expect(actions).toHaveCount(1)
+  await expect(actions.locator('.business-table-row-actions')).toHaveCount(0)
+  await expect(actions.locator('.art-button-table')).toHaveCount(2)
+  expect(await actions.evaluate(element => getComputedStyle(element).gap)).toBe('8px')
+  await actions.scrollIntoViewIfNeeded()
+  expect(await actions.evaluate(element => {
+    const cell = element.closest('td')
+    if (!cell) throw new Error('行操作缺少所属单元格')
+    const boundary = cell.getBoundingClientRect()
+    return [...element.querySelectorAll('.art-button-table, .el-dropdown')].every(button => {
+      const rect = button.getBoundingClientRect()
+      return rect.left >= boundary.left && rect.right <= boundary.right
+    })
+  })).toBe(true)
+  await page.screenshot({ path: info.outputPath('esop-row-actions.png') })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+  expect(errors).toEqual([])
+})
+
 for (const mode of ['equipment-list', 'esop-list', 'equipment', 'document', 'category']) {
   test(`工程主数据公共字典选项 ${mode}`, async ({ page }, info) => {
     await prepareIsolatedSession(page)

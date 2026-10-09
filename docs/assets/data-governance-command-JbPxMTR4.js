@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./domain-command-screen-Dmot1B8u.js";var i=t({name:`DataGovernanceCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`data-governance`}))}});export{i as default};

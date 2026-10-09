@@ -75,6 +75,21 @@ test('物料编码规则复用公共字典选项', async ({ page }, info) => {
   await choose(
     dialog.locator('.material-reference-dialog__builder-row').first().locator('.el-select').nth(1)
   )
+  const actions = dialog
+    .locator('.material-reference-dialog__builder-row')
+    .first()
+    .locator('.business-table-row-actions')
+  await expect(actions).toHaveCount(1)
+  await expect(actions.getByRole('button')).toHaveCount(3)
+  expect(await actions.evaluate((element) => getComputedStyle(element).gap)).toBe('8px')
+  expect(
+    await actions.evaluate((element) => {
+      const parent = element.closest('.el-dialog')
+      if (!parent) throw new Error('号段操作缺少所属弹窗')
+      return element.getBoundingClientRect().right <= parent.getBoundingClientRect().right
+    })
+  ).toBe(true)
+  await expect(actions.getByRole('button', { name: '上移号段', exact: true })).toBeDisabled()
   await page.screenshot({ path: info.outputPath('code-rule-dictionaries.png') })
   await choose(
     dialog

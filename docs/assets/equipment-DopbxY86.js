@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./execution-event-workspace-BUIttE4e.js";var i=t({name:`MesEquipment`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`equipment`}))}});export{i as default};

@@ -1,1 +1,0 @@
-import{l as e}from"./file-DK4x0Xa1.js";var t={onClick:e,disabled:e=>!e.url,title:e=>`预览${e.name?.trim()||`附件`}`};export{t};

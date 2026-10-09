@@ -1,1 +1,0 @@
-import{Bn as e}from"./framework-DZqGOvEn.js";import{t}from"./unit-of-measure-BGhaYvsS.js";import{r as n,t as r}from"./unit-display-DQTVFhOg.js";function i(){let i=e(r([])),a=0;async function o(e){let n=++a,o=await t(e);n===a&&(i.value=r(o))}function s(e,t){return n(i.value,e,t)}return{loadUnitDisplayNames:o,unitDisplayName:s}}export{i as t};
