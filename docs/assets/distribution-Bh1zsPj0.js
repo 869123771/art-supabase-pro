@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./governance-center-Q9CytU7n.js";var i=t({name:`MdmDataDistribution`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"initial-view":`outbox`}))}});export{i as default};

@@ -1,5 +1,5 @@
 import { AppRouteRecord } from '@/types/router'
-import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
+import { BUILTIN_ROLE_CODES } from '@/config/builtin-roles'
 
 export const examplesRoutes: AppRouteRecord = {
   path: '/examples',
@@ -67,7 +67,7 @@ export const examplesRoutes: AppRouteRecord = {
             title: '页面可见性',
             icon: 'ri:user-3-line',
             keepAlive: true,
-            roles: [SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE]
+            roles: [BUILTIN_ROLE_CODES.PLATFORM_SUPER]
           }
         }
       ]

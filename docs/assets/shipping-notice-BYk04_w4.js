@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./scm-document-workspace-BGY2TcZE.js";var i=t({name:`ScmShippingNotice`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`shipping_notice`}))}});export{i as default};

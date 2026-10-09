@@ -159,10 +159,7 @@
     () => isEdit.value && getUserInfo.value.email === formData.value.userEmail
   )
   const isProtectedSuperUser = computed(
-    () =>
-      isEdit.value &&
-      (String(formData.value.userEmail ?? '').toLowerCase() === '869123771@qq.com' ||
-        Boolean(formData.value.userRoles?.includes('R_SUPER')))
+    () => isEdit.value && formData.value.systemProtected === true
   )
   const canSelectTenant = computed(() => isPlatformSuper.value)
   const currentTenantId = computed(() => getUserInfo.value.tenantId)
@@ -583,6 +580,8 @@
         'tenant',
         'organization',
         'hrEmployee',
+        'systemProtected',
+        'roleNames',
         'createBy',
         'createTime',
         'updateBy',

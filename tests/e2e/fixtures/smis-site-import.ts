@@ -18,6 +18,8 @@ const scope = new URLSearchParams(window.location.search).get('scope') ?? 'all'
 const isPlatformSuper = scope === 'all' || scope === 'selected'
 const selectedTenantId = scope === 'selected' ? businessTenantId : null
 
+const layout = new URLSearchParams(window.location.search).has('layout')
+const buttons = layout ? ['SmisSite:Import', 'SmisSite:Edit', 'SmisSite:Add'] : ['SmisSite:Import']
 const app = createApp(SitePage)
 app.use(store)
 app.use(
@@ -39,9 +41,11 @@ userStore.setUserInfo({
     builtinType: isPlatformSuper ? 'platform' : 'business'
   },
   platformSuper: isPlatformSuper,
-  buttons: ['SmisSite:Import']
+  buttons
 } as Api.Auth.UserInfo)
-useMenuStore(store).setButtonList([{ name: 'SmisSite:Import', type: 'button' } as AppRouteRecord])
+useMenuStore(store).setButtonList(
+  buttons.map((name) => ({ name, type: 'button' }) as AppRouteRecord)
+)
 
 const tenantScopeStore = useTenantScopeStore(store)
 tenantScopeStore.selectedTenantId = selectedTenantId

@@ -160,6 +160,8 @@ declare namespace Api {
         OrganizationListItem,
         'id' | 'organizationCode' | 'organizationName'
       > | null
+      systemProtected?: boolean
+      roleNames?: string[]
       accountIdentityType?: UserAccountIdentityType
       hrEmployeeId?: string | null
       hrEmployee?: {

@@ -159,13 +159,8 @@
   })
   const userContext = computed(() => {
     const organization = info.value?.organization?.organizationName
-    const role = info.value?.userRoles?.[0]
-    const roleLabels: Record<string, string> = {
-      R_SUPER: '平台管理员',
-      R_ADMIN: '管理员',
-      R_REGISTER: '注册用户'
-    }
-    return [organization, role ? roleLabels[role] : ''].filter(Boolean).join(' · ')
+    const role = info.value?.roleNames?.[0] ?? info.value?.userRoles?.[0]
+    return [organization, role].filter(Boolean).join(' · ')
   })
   const dateText = computed(() =>
     new Intl.DateTimeFormat(locale.value, {

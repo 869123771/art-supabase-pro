@@ -419,7 +419,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { useAppMode } from '@/hooks/core/useAppMode'
   import { useRoute } from 'vue-router'
-  import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
+  import { BUILTIN_ROLE_CODES } from '@/config/builtin-roles'
 
   defineOptions({ name: 'PermissionButtonAuth' })
 
@@ -427,7 +427,7 @@
   const { isFrontendMode } = useAppMode()
   const userStore = useUserStore()
   const route = useRoute()
-  const superRoleCode = SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE
+  const superRoleCode = BUILTIN_ROLE_CODES.PLATFORM_SUPER
   const adminRoleCode = 'R_ADMIN'
   const userRoleCode = 'R_USER'
 

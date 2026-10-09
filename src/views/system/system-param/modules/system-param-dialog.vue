@@ -226,6 +226,13 @@
   const isRegistrationRoleParam = computed(
     () => formModel.paramKey === 'registration.default_role_id'
   )
+  const isUnsupportedRuntimeParam = computed(() =>
+    [
+      'audit.logs.retention_days',
+      'audit.security.login_fail_threshold',
+      'audit.security.login_fail_window_minutes'
+    ].includes(formModel.paramKey)
+  )
 
   const formState: SystemParamFormState = {
     model: formModel,
@@ -301,7 +308,10 @@
         key: 'enabled',
         type: 'switch',
         span: 6,
-        description: '停用后不再参与有效参数读取。'
+        props: { disabled: isUnsupportedRuntimeParam.value },
+        description: isUnsupportedRuntimeParam.value
+          ? '尚未接入执行入口，当前不可启用；原值保留供后续接入。'
+          : '停用后不再参与有效参数读取。'
       },
       {
         label: '内置参数',

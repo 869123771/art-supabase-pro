@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ROLE_BUILTIN_TYPES } from '@/config/builtin-roles'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -93,15 +94,15 @@
     )
   )
 
-  const isDefaultRegisterRole = computed(
-    () => dialogType.value === 'edit' && form.builtinType === 'default_register'
+  const isBuiltinRegisterRole = computed(
+    () => dialogType.value === 'edit' && form.builtinType === ROLE_BUILTIN_TYPES.DEFAULT_REGISTER
   )
 
   const isSuperRole = computed(
-    () => dialogType.value === 'edit' && form.builtinType === 'platform_super'
+    () => dialogType.value === 'edit' && form.builtinType === ROLE_BUILTIN_TYPES.PLATFORM_SUPER
   )
 
-  const isSystemBuiltinRole = computed(() => isDefaultRegisterRole.value || isSuperRole.value)
+  const isSystemBuiltinRole = computed(() => isBuiltinRegisterRole.value || isSuperRole.value)
   const contextTitle = computed(() =>
     dialogType.value === 'add' ? '创建新的职责角色' : '调整角色定义与可用状态'
   )

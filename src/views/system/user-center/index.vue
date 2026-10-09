@@ -277,18 +277,9 @@
   const accountName = computed(() => userInfo.value.userName || 'account')
   const avatarFallback = computed(() => displayName.value.slice(0, 1).toUpperCase() || 'U')
   const tenantName = computed(() => userInfo.value.tenant?.tenantName || '当前组织')
-  const builtInRoleLabels: Record<string, string> = {
-    R_SUPER: '超级管理员',
-    R_ADMIN: '管理员',
-    R_REGISTER: '注册用户',
-    R_USER: '普通用户'
-  }
-  const formatRoleName = (role: string): string =>
-    builtInRoleLabels[role.toUpperCase()] || role.replace(/^R_/, '').replaceAll('_', ' ')
-  const roleSummary = computed(() => {
-    const roles = userInfo.value.userRoles?.filter(Boolean) ?? []
-    return roles.length ? roles.map(formatRoleName).join('、') : '普通用户'
-  })
+  const roleSummary = computed(
+    () => (userInfo.value.roleNames ?? userInfo.value.userRoles ?? []).join('、') || '未分配角色'
+  )
 
   const profileCompletion = computed(() => {
     const fields = [

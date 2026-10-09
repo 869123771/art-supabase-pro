@@ -21,7 +21,7 @@
         <div class="website-config-page__header-meta">
           <span>最近更新：{{ lastUpdateText }}</span>
           <span>更新人：{{ form.updateBy || form.createBy || 'admin' }}</span>
-          <span>默认语言：{{ defaultLanguageLabel }}</span>
+          <span>备用语言：{{ defaultLanguageLabel }}</span>
         </div>
       </template>
     </ArtPageHeader>
@@ -158,7 +158,7 @@
                 <ElFormItem label="登录欢迎标题" prop="loginTitle">
                   <ElInput v-model.trim="form.loginTitle" maxlength="80" />
                 </ElFormItem>
-                <ElFormItem label="默认语言" prop="defaultLanguage">
+                <ElFormItem label="备用默认语言" prop="defaultLanguage">
                   <ElSelect v-model="form.defaultLanguage">
                     <ElOption
                       v-for="option in languageOptions"
@@ -167,6 +167,9 @@
                       :value="option.value"
                     />
                   </ElSelect>
+                  <span class="text-xs text-(--el-text-color-secondary)">
+                    用户语言偏好优先；参数设置中的“登录页默认语言”停用或不可用时使用此值。
+                  </span>
                 </ElFormItem>
                 <ElFormItem label="登录欢迎描述" prop="loginDescription" class="is-wide">
                   <ElInput
@@ -362,7 +365,7 @@
                     <strong>{{ form.siteName || '-' }}</strong>
                   </div>
                   <div>
-                    <span>默认语言</span>
+                    <span>备用语言</span>
                     <strong>{{ defaultLanguageLabel }}</strong>
                   </div>
                   <div>

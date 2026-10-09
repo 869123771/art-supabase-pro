@@ -74,14 +74,36 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth + 1)
 }
 
-test('login keeps its default account and password with the remember option', async ({ page }) => {
+test('login starts without a preset account or password', async ({ page }) => {
   test.setTimeout(90_000)
   await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
-  await expect(page.locator('input[name="username"]')).toHaveValue('624944977@qq.com')
-  await expect(page.locator('input[name="password"]')).toHaveValue('123456')
+  await expect(page.locator('input[name="username"]')).toHaveValue('')
+  await expect(page.locator('input[name="password"]')).toHaveValue('')
   await expect(page.getByRole('checkbox', { name: '记住密码' })).toBeChecked()
   await expect(page.locator('button[type="submit"]')).toContainText('登录')
+})
+
+test('login applies the platform default language before authentication', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.route('**/rest/v1/rpc/get_login_default_language', (route) =>
+    route.fulfill({ json: 'en' })
+  )
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('button[type="submit"]')).toContainText('Login', { timeout: 60_000 })
+  await expect(page.locator('input[name="password"]')).toHaveValue('')
+})
+
+test('saved language preference takes priority over platform defaults', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.addInitScript(() => {
+    localStorage.setItem('sys-v1.0.0-user', JSON.stringify({ language: 'zh', isLogin: false }))
+  })
+  await page.route('**/rest/v1/rpc/get_login_default_language', (route) =>
+    route.fulfill({ json: 'en' })
+  )
+  await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('button[type="submit"]')).toContainText('登录', { timeout: 60_000 })
 })
 
 test('login remains usable when website configuration cannot be loaded', async ({ page }) => {

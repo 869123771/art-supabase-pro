@@ -693,4 +693,11 @@
       margin-top: 10px;
     }
   }
+
+  @media (width <= 640px) {
+    .capability-center__grid,
+    .capability-center__governance-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
 </style>

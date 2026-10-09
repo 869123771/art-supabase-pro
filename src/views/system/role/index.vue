@@ -99,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ROLE_BUILTIN_TYPES } from '@/config/builtin-roles'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useMediaQuery } from '@vueuse/core'
   import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
@@ -288,10 +289,11 @@
 
   const roleEditDialogRef = ref<RoleEditDialogExpose>()
   const rolePermissionDialogRef = ref<RolePermissionDialogExpose>()
-  const isDefaultRegisterRole = (row: RoleListItem): boolean =>
-    row.builtinType === 'default_register'
+  const isBuiltinRegisterRole = (row: RoleListItem): boolean =>
+    row.builtinType === ROLE_BUILTIN_TYPES.DEFAULT_REGISTER
 
-  const isSuperRole = (row: RoleListItem): boolean => row.builtinType === 'platform_super'
+  const isSuperRole = (row: RoleListItem): boolean =>
+    row.builtinType === ROLE_BUILTIN_TYPES.PLATFORM_SUPER
 
   const getRoleMoreActions = (row: RoleListItem): ButtonMoreItem[] => {
     if (isSuperRole(row)) {
@@ -314,7 +316,7 @@
       }
     ]
 
-    return isDefaultRegisterRole(row) ? actions.filter((item) => item.key !== 'delete') : actions
+    return isBuiltinRegisterRole(row) ? actions.filter((item) => item.key !== 'delete') : actions
   }
 
   const showPermissionDialog = (row: RoleListItem) => {
@@ -348,7 +350,7 @@
           minWidth: 230,
           link: {
             permission: 'System:Role:AssignPermission',
-            disabled: (row) => isDefaultRegisterRole(row) && !isPlatformSuper.value,
+            disabled: (row) => isBuiltinRegisterRole(row) && !isPlatformSuper.value,
             onClick: showPermissionDialog
           },
           formatter: (row: RoleListItem) =>
@@ -358,7 +360,7 @@
                 {
                   class: [
                     'role-identity-cell__icon',
-                    { 'is-protected': isSuperRole(row) || isDefaultRegisterRole(row) }
+                    { 'is-protected': isSuperRole(row) || isBuiltinRegisterRole(row) }
                   ],
                   'aria-hidden': 'true'
                 },
@@ -367,7 +369,7 @@
               h('div', { class: 'role-identity-cell__copy' }, [
                 h('div', { class: 'role-identity-cell__heading' }, [
                   h('strong', { title: row.roleName }, row.roleName),
-                  isSuperRole(row) || isDefaultRegisterRole(row)
+                  isSuperRole(row) || isBuiltinRegisterRole(row)
                     ? h('span', { class: 'role-identity-cell__builtin' }, '系统内置')
                     : null
                 ]),
@@ -441,7 +443,7 @@
             }
 
             return h('div', { class: 'role-operation-cell' }, [
-              !isDefaultRegisterRole(row) || isPlatformSuper.value
+              !isBuiltinRegisterRole(row) || isPlatformSuper.value
                 ? h(ArtButtonTable, {
                     type: 'view',
                     icon: 'ri:shield-keyhole-line',
@@ -463,7 +465,7 @@
 
   const enabledRoleCount = computed(() => data.value.filter((row) => row.enabled).length)
   const protectedRoleCount = computed(
-    () => data.value.filter((row) => isSuperRole(row) || isDefaultRegisterRole(row)).length
+    () => data.value.filter((row) => isSuperRole(row) || isBuiltinRegisterRole(row)).length
   )
   const workspaceMetrics = computed<BusinessWorkspaceMetric[]>(() => [
     {

@@ -620,12 +620,8 @@
     return Boolean(getUserInfo.value.email && getUserInfo.value.email === row.userEmail)
   }
 
-  const isProtectedUser = (row: Pick<UserListItem, 'userEmail' | 'userRoles'>): boolean => {
-    return (
-      String(row.userEmail ?? '').toLowerCase() === '869123771@qq.com' ||
-      Boolean(row.userRoles?.includes('R_SUPER'))
-    )
-  }
+  const isProtectedUser = (row: Pick<UserListItem, 'systemProtected'>): boolean =>
+    row.systemProtected === true
 
   const handleSaveSuccess = (type: 'add' | 'edit'): void => {
     void (type === 'add'

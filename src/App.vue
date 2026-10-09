@@ -26,10 +26,13 @@
   import { checkStorageCompatibility } from './utils/storage'
   import { initializeTheme } from './hooks/core/useTheme'
   import { useWebsiteConfig } from './hooks'
-  import i18n from './locales'
+  import i18n, { getPreferredLanguage } from './locales'
+  import { fetchLoginDefaultLanguage } from '@/api/system-manage/system-param'
   import { LanguageEnum } from './enums/app-enum'
 
   const userStore = useUserStore()
+  const preferredLanguage = getPreferredLanguage()
+  const initialLanguage = userStore.language
   const GlobalReferenceFeedback = defineAsyncComponent(
     () => import('@/components/business/master-data-delete-guard/global-reference-feedback.vue')
   )
@@ -76,18 +79,24 @@
   })
 
   onMounted(() => {
-    void loadWebsiteConfig().then((config) => {
-      if (!userStore.isLogin) {
-        const appLanguage = resolveAppLanguage(config.defaultLanguage)
-        language.value = appLanguage
-        const globalLocale = i18n.global.locale
-        if (typeof globalLocale === 'string') {
-          i18n.global.locale = appLanguage
-        } else {
-          globalLocale.value = appLanguage
+    void Promise.all([loadWebsiteConfig(), fetchLoginDefaultLanguage()]).then(
+      ([config, policy]) => {
+        if (!userStore.isLogin && !preferredLanguage && language.value === initialLanguage) {
+          const appLanguage = resolveAppLanguage(
+            policy.data === LanguageEnum.EN || policy.data === LanguageEnum.ZH
+              ? policy.data
+              : config.defaultLanguage
+          )
+          language.value = appLanguage
+          const globalLocale = i18n.global.locale
+          if (typeof globalLocale === 'string') {
+            i18n.global.locale = appLanguage
+          } else {
+            globalLocale.value = appLanguage
+          }
         }
       }
-    })
+    )
     checkStorageCompatibility()
     toggleTransition(false)
     systemUpgrade()

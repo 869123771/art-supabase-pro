@@ -99,13 +99,13 @@
   import { computed, ref } from 'vue'
   import { useUserStore } from '@/store/modules/user'
   import { useI18n } from 'vue-i18n'
-  import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
+  import { BUILTIN_ROLE_CODES } from '@/config/builtin-roles'
 
   defineOptions({ name: 'PermissionSwitchRole' })
 
   const { t } = useI18n()
   const userStore = useUserStore()
-  const superRoleCode = SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE
+  const superRoleCode = BUILTIN_ROLE_CODES.PLATFORM_SUPER
 
   // 响应式数据
   const switching = ref(false)

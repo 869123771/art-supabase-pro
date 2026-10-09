@@ -1,5 +1,6 @@
 import { readonly, ref } from 'vue'
 import { readSystemParamValue } from './read-system-param'
+import { createSecureTemporaryPassword } from '@/utils/temporary-password'
 
 const PASSWORD_MIN_LENGTH_KEY = 'security.password.min_length'
 const PASSWORD_REQUIRE_COMPLEX_KEY = 'security.password.require_complex'
@@ -73,19 +74,7 @@ export const validatePasswordComplexity = (value: string): boolean => {
 }
 
 export const createTemporaryPassword = (): string => {
-  const prefix = passwordRequireComplex.value ? 'Aa1!' : '123456'
-  const targetLength = Math.max(passwordMinLength.value, prefix.length)
-  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*'
-  const randomValues = new Uint32Array(targetLength - prefix.length)
-
-  globalThis.crypto?.getRandomValues(randomValues)
-
-  const suffix = Array.from(randomValues, (value) => {
-    const randomValue = value || Math.floor(Math.random() * characters.length)
-    return characters[randomValue % characters.length]
-  }).join('')
-
-  return `${prefix}${suffix}`
+  return createSecureTemporaryPassword(passwordMinLength.value, passwordRequireComplex.value)
 }
 
 export const usePasswordMinLengthParam = () => ({

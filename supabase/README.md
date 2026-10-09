@@ -1,5 +1,36 @@
 # Supabase source of truth
 
+## System identity and runtime parameters (2026-10-09)
+
+Platform authorization requires the server-managed `sys_user.system_protected` identity,
+an enabled `platform_super` role in the platform tenant, an active account and no soft deletion.
+The existing platform account was preserved without granting other accounts platform access.
+Business writes cannot change its protection marker, Auth identifier, account identity, tenant,
+email, super role or active state. The protection trigger covers all updates, including soft deletion.
+`sync-user` resolves Auth targets from database rows and rejects protected identity changes before
+calling Auth APIs. Account protection no longer depends on a personal email or a literal role code.
+Static/demo route codes remain constants in `src/config/builtin-roles.ts`; business authorization
+uses server capabilities.
+
+`current_user_role_names()` returns only the authenticated account's real role names in assignment
+order, independently of the header tenant so login bootstrap remains available. Anonymous execution
+is revoked. Unknown role definitions display their actual codes instead of invented names.
+`get_login_default_language()` intentionally allows anonymous reads of only the platform's enabled
+`zh`/`en` login language. Saved user language preferences take priority; the website language is
+the fallback when the parameter is disabled or unavailable.
+
+The three `audit.*` parameters have no execution entry point. They are disabled, their original values
+are retained, and both the editor and database reject enabling them until a consumer is implemented.
+No audit history is deleted and no account lockout policy is introduced. Login no longer embeds a
+default account or password; browser-managed saved credentials remain supported.
+
+`supabase/tests/system_identity_policy_test.sql` provides rollback-only checks for platform-all,
+platform-selected, ordinary-own, forged tenant headers, immutable protection and Auth binding,
+role retention, disable/delete guards, real role names, language access and unsupported parameters.
+Recoverable pre-change function definitions, trigger definition, platform user/parameter rows and
+the deployed Edge Function source are stored locally in the Git-ignored
+`.artifacts/identity-hardcoding-backup` directory. No migration or runbook artifacts were created.
+
 中文的远端备份、只读分发、本地恢复与跨项目恢复操作说明见 [README.zh-CN.md](README.zh-CN.md)。
 
 This is the only Supabase directory for project `ckbftoopuyophiebamwy`. Business subrepositories do not keep separate Supabase assets.

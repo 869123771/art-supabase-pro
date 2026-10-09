@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./inventory-report-workspace-2V724Hny.js";var i=t({name:`WmsMaterialReceiptIssue`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`receipt-issue`}))}});export{i as default};

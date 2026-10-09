@@ -49,6 +49,7 @@ type CallerProfile = {
   user_roles: string[]
   builtin_roles: string[]
   status: string | null
+  system_protected: boolean
 }
 
 function getOriginAllowed(origin: string | null) {
@@ -116,7 +117,7 @@ async function getCallerProfile(callerAuthUserId: string | null): Promise<Caller
   const { data, error } = await supabaseDB
     .from('sys_user')
     .select(
-      'id, auth_user_id, user_email, tenant_id, user_roles, status, sys_tenant:tenant_id(builtin_type)'
+      'id, auth_user_id, user_email, tenant_id, user_roles, status, system_protected, sys_tenant:tenant_id(builtin_type)'
     )
     .eq('auth_user_id', callerAuthUserId)
     .is('deleted_at', null)
@@ -132,6 +133,7 @@ async function getCallerProfile(callerAuthUserId: string | null): Promise<Caller
         .from('sys_role')
         .select('builtin_type')
         .eq('tenant_id', data.tenant_id)
+        .eq('enabled', true)
         .in('role_code', roleCodes)
         .not('builtin_type', 'is', null)
     : { data: [] }
@@ -145,34 +147,22 @@ async function getCallerProfile(callerAuthUserId: string | null): Promise<Caller
     tenant_builtin_type: tenant?.builtin_type ?? null,
     user_roles: roleCodes,
     builtin_roles: (builtinRoleRows || []).map((role) => role.builtin_type).filter(Boolean),
-    status: data.status ?? null
+    status: data.status ?? null,
+    system_protected: data.system_protected === true
   }
 }
 function isPlatformSuper(profile: CallerProfile | null) {
   return Boolean(
     profile &&
-    profile.user_email === '869123771@qq.com' &&
+    profile.system_protected === true &&
     profile.tenant_builtin_type === 'platform' &&
     profile.builtin_roles.includes('platform_super') &&
     profile.status === '1'
   )
 }
 
-async function isProtectedPlatformSuperUser(snapshot: Record<string, unknown>): Promise<boolean> {
-  if (String(snapshot.user_email || '').toLowerCase() === '869123771@qq.com') return true
-  const roleCodes = Array.isArray(snapshot.user_roles)
-    ? snapshot.user_roles.filter((role): role is string => typeof role === 'string')
-    : []
-  const tenantId = typeof snapshot.tenant_id === 'string' ? snapshot.tenant_id : ''
-  if (!roleCodes.length || !tenantId) return false
-  const { data } = await supabaseDB
-    .from('sys_role')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('builtin_type', 'platform_super')
-    .in('role_code', roleCodes)
-    .limit(1)
-  return Boolean(data?.length)
+function isProtectedPlatformSuperUser(snapshot: Record<string, unknown>): boolean {
+  return snapshot.system_protected === true
 }
 async function hasPermission(
   callerSupabase: ReturnType<typeof createClient> | null,
@@ -477,7 +467,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === 'update' || action === 'assign_roles') {
-      const { id, auth_user_id, email, password, app_user_data } = body
+      const { id, email, password, app_user_data } = body
       if (!id)
         return new Response(JSON.stringify({ ok: false, error: 'id required for update' }), {
           status: 400,
@@ -488,6 +478,26 @@ Deno.serve(async (req: Request) => {
           status: 403,
           headers: corsHeaders(origin)
         })
+      const { data: targetUser, error: targetError } = await supabaseDB
+        .from('sys_user')
+        .select('auth_user_id, user_email, tenant_id, status, user_roles, system_protected')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (targetError || !targetUser) {
+        return new Response(JSON.stringify({ ok: false, error: '用户不存在或不可用' }), {
+          status: 404,
+          headers: corsHeaders(origin)
+        })
+      }
+      // Resolve the Auth target from the protected database row, never from request identifiers.
+      const auth_user_id = targetUser.auth_user_id
+      if (body.auth_user_id && body.auth_user_id !== auth_user_id) {
+        return new Response(JSON.stringify({ ok: false, error: '用户身份不匹配，请刷新后重试' }), {
+          status: 403,
+          headers: corsHeaders(origin)
+        })
+      }
       const normalizedAppUserData = cleanAppUserData(app_user_data)
       const cleanedAppUserData: Record<string, unknown> =
         action === 'assign_roles'
@@ -500,6 +510,18 @@ Deno.serve(async (req: Request) => {
           status: 400,
           headers: corsHeaders(origin)
         })
+      }
+      if (targetUser.system_protected) {
+        const changesProtectedIdentity =
+          (email && String(email).toLowerCase() !== String(targetUser.user_email).toLowerCase()) ||
+          (cleanedAppUserData.tenant_id && cleanedAppUserData.tenant_id !== targetUser.tenant_id) ||
+          (cleanedAppUserData.status && cleanedAppUserData.status !== '1')
+        if (changesProtectedIdentity || action === 'assign_roles') {
+          return new Response(
+            JSON.stringify({ ok: false, error: '平台超级管理员身份、角色和启用状态受系统保护' }),
+            { status: 403, headers: corsHeaders(origin) }
+          )
+        }
       }
       if (
         !callerIsSuper &&
@@ -622,7 +644,7 @@ Deno.serve(async (req: Request) => {
           status: 404,
           headers: corsHeaders(origin)
         })
-      const isProtectedSuper = await isProtectedPlatformSuperUser(snapshot)
+      const isProtectedSuper = isProtectedPlatformSuperUser(snapshot)
       if (isProtectedSuper)
         return new Response(
           JSON.stringify({ ok: false, error: '平台超级管理员账号受系统保护，不能注销' }),

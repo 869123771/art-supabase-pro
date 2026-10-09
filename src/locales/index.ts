@@ -58,9 +58,9 @@ export const languageOptions = [
 
 /**
  * 从存储中获取语言设置
- * @returns 语言设置，如果获取失败则返回默认语言
+ * @returns 已保存的用户偏好，未设置或读取失败时返回 undefined
  */
-const getDefaultLanguage = (): LanguageEnum => {
+export const getPreferredLanguage = (): LanguageEnum | undefined => {
   // 尝试从版本化的存储中获取语言设置
   try {
     const storageKey = storageKeyManager.getStorageKey('user')
@@ -90,15 +90,15 @@ const getDefaultLanguage = (): LanguageEnum => {
     console.warn('[i18n] 从系统存储获取语言设置失败:', error)
   }
 
-  // 返回默认语言
-  return LanguageEnum.ZH
+  // 未保存偏好时由平台登录策略决定初始语言。
+  return undefined
 }
 
 /**
  * i18n 配置选项
  */
 const i18nOptions: I18nOptions = {
-  locale: getDefaultLanguage(),
+  locale: getPreferredLanguage() ?? LanguageEnum.ZH,
   legacy: false,
   globalInjection: true,
   fallbackLocale: LanguageEnum.ZH,

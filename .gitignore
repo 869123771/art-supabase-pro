@@ -16,3 +16,6 @@ test-results/
 public/flyfish-viewer-assets.json
 public/vendor/
 public/wasm/
+
+# Local IDE session state changes as the editor observes Git operations.
+/.idea/workspace.xml

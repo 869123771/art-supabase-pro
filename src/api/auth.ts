@@ -421,9 +421,14 @@ export async function fetchCurrentUserInfo(signal?: AbortSignal): Promise<Curren
   ).single()
   const superQuery = supabase.rpc('current_is_super')
 
-  const [profileResult, superResult] = await Promise.all([
+  const roleNamesQuery = supabase.rpc('current_user_role_names')
+  const [profileResult, superResult, roleNamesResult] = await Promise.all([
     responseHandle<Api.SystemManage.UserListItem>(() => profileQuery, {}),
-    responseHandle<boolean>(() => (signal ? superQuery.abortSignal(signal) : superQuery), {})
+    responseHandle<boolean>(() => (signal ? superQuery.abortSignal(signal) : superQuery), {}),
+    responseHandle<unknown>(
+      () => (signal ? roleNamesQuery.abortSignal(signal) : roleNamesQuery),
+      {}
+    )
   ])
 
   signal?.throwIfAborted()
@@ -435,7 +440,16 @@ export async function fetchCurrentUserInfo(signal?: AbortSignal): Promise<Curren
   }
 
   if (profileResult.data) {
-    Object.assign(profileResult.data, { platformSuper: superResult.data })
+    const roleNames =
+      !roleNamesResult.error &&
+      Array.isArray(roleNamesResult.data) &&
+      roleNamesResult.data.every((name): name is string => typeof name === 'string')
+        ? roleNamesResult.data
+        : profileResult.data.userRoles
+    Object.assign(profileResult.data, {
+      platformSuper: superResult.data,
+      roleNames
+    })
   }
 
   return {

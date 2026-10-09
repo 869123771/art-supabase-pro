@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./workspace-BD4NeX1j.js";var i=t({name:`WmsSalesOutbound`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`outbound`}))}});export{i as default};

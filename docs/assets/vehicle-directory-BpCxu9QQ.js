@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./catalog-Dh5wn4zs.js";var i=t({name:`MdmVehicleDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

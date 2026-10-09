@@ -235,12 +235,12 @@
 
   import { Lock, User, Key, View } from '@element-plus/icons-vue'
   import { useUserStore } from '@/store/modules/user'
-  import { SYSTEM_PARAM_DEFAULTS } from '@/config/system-param-defaults'
+  import { BUILTIN_ROLE_CODES } from '@/config/builtin-roles'
 
   defineOptions({ name: 'PermissionPageVisibility' })
 
   const userStore = useUserStore()
-  const superRoleCode = SYSTEM_PARAM_DEFAULTS.SUPER_ROLE_CODE
+  const superRoleCode = BUILTIN_ROLE_CODES.PLATFORM_SUPER
 
   // 当前用户信息
   const currentUser = computed(() => userStore.info)

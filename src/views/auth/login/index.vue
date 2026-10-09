@@ -280,13 +280,10 @@
   const formData = reactive({
     account: '',
     username: '',
-    identifier: rememberedIdentifier || '624944977@qq.com',
-    password: '123456',
+    identifier: rememberedIdentifier || '',
+    password: '',
     rememberPassword: rememberPasswordPreference
   })
-  if (rememberedIdentifier && rememberedIdentifier !== '624944977@qq.com') {
-    formData.password = ''
-  }
 
   const loading = ref(false)
   const oauthLoadingKey = ref('')

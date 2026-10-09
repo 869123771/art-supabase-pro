@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./execution-event-workspace-sSP7w255.js";var i=t({name:`MesMiscReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`misc_report`}))}});export{i as default};

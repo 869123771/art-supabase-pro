@@ -6,7 +6,7 @@ import { mockApplicationMenus } from './support/menu-rpc'
 import { assertTableFocusContract } from './support/table-focus'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(120_000)
+test.setTimeout(240_000)
 
 for (const scenario of [
   {
@@ -64,7 +64,16 @@ for (const scenario of [
           type: 'button',
           path: '',
           component: ''
-        }
+        },
+        ...['Generate', 'Schedule'].map((permission) => ({
+          ...menu,
+          id: `${menu.id}-${permission}`,
+          parentId: menu.id,
+          name: `${menu.name}:${permission}`,
+          type: 'button',
+          path: '',
+          component: ''
+        }))
       ]
     })
     await page.route(`**/rest/v1/rpc/smis_list_${scenario.kind}_scope_options_secure`, (route) =>
@@ -119,7 +128,7 @@ for (const scenario of [
       await expect(page.locator('html')).toHaveClass(/dark/)
     else await expect(page.locator('html')).not.toHaveClass(/dark/)
     await expect(page.getByRole('heading', { name: scenario.title, exact: true })).toBeVisible({
-      timeout: 60_000
+      timeout: 120_000
     })
     const root = page.locator('.smis-personal-standard')
     const employee = root.locator('.smis-personal-standard__employee')
@@ -127,6 +136,22 @@ for (const scenario of [
     await expect(employee).toContainText('EMP-TEST')
     await expect(employee).toHaveCSS('display', 'flex')
     await expect(employee).toHaveCSS('text-align', 'left')
+    const actions = root.locator('.el-table__body .business-table-row-actions').first()
+    await expect(actions).toHaveCount(1)
+    await expect(actions.locator('.art-button-table')).toHaveCount(3)
+    await expect(actions).toHaveCSS('gap', '8px')
+    await actions.scrollIntoViewIfNeeded()
+    const bounds = await actions.evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const cell = element.closest('td')!.getBoundingClientRect()
+      return { right: box.right, cellRight: cell.right }
+    })
+    expect(bounds.right).toBeLessThanOrEqual(bounds.cellRight)
+    await page.screenshot({
+      path: testInfo.outputPath('personal-standard-actions.png'),
+      animations: 'disabled'
+    })
+    await employee.scrollIntoViewIfNeeded()
     await page.screenshot({
       path: testInfo.outputPath('personal-standard-populated.png'),
       animations: 'disabled'

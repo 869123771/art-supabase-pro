@@ -175,6 +175,8 @@ export async function createModuleViteConfig({
       }
     },
     css: {
+      // 与宿主保持一致，避免多个子仓各自占满样式编译线程。
+      preprocessorMaxWorkers: 4,
       preprocessorOptions: {
         scss: {
           additionalData: `

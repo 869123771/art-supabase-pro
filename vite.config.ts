@@ -378,6 +378,8 @@ export default ({ mode }: { mode: string }) => {
       ]
     },
     css: {
+      // 限制 Sass 并发，给页面模块转换和并行子仓构建保留 CPU 与内存。
+      preprocessorMaxWorkers: 4,
       preprocessorOptions: {
         // sass variable and mixin
         scss: {

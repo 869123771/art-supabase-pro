@@ -8,6 +8,13 @@ type SystemParamSearchParams = Api.SystemManage.SystemParamSearchParams
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()
 
+/** Public login policy is resolved from the platform tenant, independent of the header scope. */
+export async function fetchLoginDefaultLanguage() {
+  return await responseHandle<unknown>(() => supabase.rpc('get_login_default_language'), {
+    showErrorMessage: false
+  })
+}
+
 export async function fetchSystemParamList(params: SystemParamSearchParams) {
   const { keyword = '', groupCode, paramType, enabled, builtin, from = 0, to = 9 } = params
   const specs = [
