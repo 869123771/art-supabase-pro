@@ -1,4 +1,5 @@
 import type { ColInfo } from '@/vendor/sheetjs/xlsx.mjs'
+export { formatSize } from './format-size'
 import { createTenantScopeReadGuard } from '../tenant-scope-context'
 import { ElMessage } from 'element-plus'
 import { openFilePreview, type FilePreviewTarget } from '@/hooks/core/useFilePreview'
@@ -279,11 +280,4 @@ export const viewAttachment = (file: FileActionTarget): void => {
 
 export const downloadAttachment = (file: FileActionTarget): void => {
   downloadFile(file.url, file.name || 'attachment')
-}
-
-export function formatSize(size: number) {
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
-  if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024).toFixed(2) + ' MB'
-  return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
 }

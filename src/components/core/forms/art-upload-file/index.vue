@@ -154,6 +154,7 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { downloadAttachment, getFileExtension, viewAttachment } from '@/utils/file'
   import { isAcceptedFileType } from '@/utils/file/accept'
+  import { formatSize } from '@/utils/file/format-size'
   import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
@@ -233,16 +234,12 @@
     resourceMode.value ? '取消勾选后上传本地文件' : '勾选后从资源管理器选择已有文件'
   )
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes >= 1024 * 1024) return `${Number((bytes / 1024 / 1024).toFixed(1))} MB`
-    return `${Math.ceil(bytes / 1024)} KB`
-  }
-
   const resolvedTip = computed(
     () =>
       (missingTenantTarget.value && !props.uploadRequest
         ? '请先在页头选择业务所属租户'
-        : props.tip) || `单个文件不超过 ${formatFileSize(props.fileSize)}`
+        : props.tip) ||
+      `单个文件不超过 ${formatSize(props.fileSize, { precision: 1, trimZeros: true })}`
   )
 
   watch(canPickResource, (allowed) => {
@@ -285,7 +282,9 @@
       return false
     }
     if (file.size <= props.fileSize) return true
-    ElMessage.error(`单个文件不能超过 ${formatFileSize(props.fileSize)}`)
+    ElMessage.error(
+      `单个文件不能超过 ${formatSize(props.fileSize, { precision: 1, trimZeros: true })}`
+    )
     return false
   }
 

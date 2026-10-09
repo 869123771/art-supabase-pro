@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./purchase-workspace-BwU9Hdhr.js";var i=t({name:`ScmPurchaseRequest`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`purchase_request`}))}});export{i as default};

@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatSize } from '@/utils/file/format-size'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage } from 'element-plus'
   import { fetchProjectCatalog } from '@/api/supabase-ai-assistant'
@@ -203,7 +204,7 @@
         tagType: 'success',
         metrics: [
           { label: 'public 表', value: data.database.publicTables },
-          { label: '数据库大小', value: formatBytes(data.database.sizeBytes) },
+          { label: '数据库大小', value: formatSize(data.database.sizeBytes, { precision: 1 }) },
           { label: '缓存命中', value: `${data.database.cacheHitPercent}%` }
         ],
         prompt:
@@ -255,7 +256,7 @@
         metrics: [
           { label: '桶', value: data.storage.buckets },
           { label: '对象', value: data.storage.objects },
-          { label: '容量', value: formatBytes(data.storage.totalBytes) }
+          { label: '容量', value: formatSize(data.storage.totalBytes, { precision: 1 }) }
         ],
         prompt:
           '审计 Supabase Storage 的桶、容量、公开边界和 RLS 策略，给出上传、覆盖、下载与删除权限检查清单。'
@@ -348,13 +349,6 @@
   const enabledDomainCount = computed(
     () => capabilityCards.value.filter((card) => card.enabled).length
   )
-
-  function formatBytes(value: number): string {
-    if (value < 1024) return `${value} B`
-    if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`
-    if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} MB`
-    return `${(value / 1024 ** 3).toFixed(1)} GB`
-  }
 
   function formatCapturedAt(value: string): string {
     return new Intl.DateTimeFormat('zh-CN', {

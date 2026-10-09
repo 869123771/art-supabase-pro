@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./operational-master-QcFsc4Zm.js";var i=t({name:`MdmSalesCustomer`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

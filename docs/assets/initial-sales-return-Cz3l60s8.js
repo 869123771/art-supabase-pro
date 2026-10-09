@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./workspace-BD4NeX1j.js";var i=t({name:`WmsInitialSalesReturn`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`initial_return`}))}});export{i as default};

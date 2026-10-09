@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./report-ledger-Dsx0zHbK.js";var i=t({name:`MesReportApproval`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`approval`}))}});export{i as default};
