@@ -24,7 +24,9 @@
     "scripts/scss-globals.mjs",
     "scripts/scss-globals.d.mts",
     "scripts/build-log-policy.mjs",
-    "scripts/build-log-policy.d.mts"
+    "scripts/build-log-policy.d.mts",
+    "scripts/module-typecheck.mjs",
+    "scripts/module-typecheck.d.mts"
   ],
   "engines": {
     "node": ">=22.13.0",

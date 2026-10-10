@@ -22,6 +22,8 @@ const helperName =
 const supportedExtensions = new Set(['.ts', '.tsx', '.vue'])
 const utilityFileName = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.(?:test|spec|d))?\.tsx?$/
 const canonicalDeclarations = new Map<string, string>([
+  ['formatAvatarInitials', 'src/utils/ui/format.ts'],
+  ['printHtmlDocument', 'src/utils/file/print-document.ts'],
   ['formatDurationMs', 'src/utils/ui/format.ts'],
   ['formatNumberValue', 'src/utils/ui/format.ts'],
   ['formatCurrencyValue', 'src/utils/ui/format.ts'],
@@ -222,6 +224,20 @@ function collectScriptHelpers(
   const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 
   const inspectSharedTransforms = (node: ts.Node): void => {
+    if (
+      /(?:^|\/)src\/(?:views|components)\//.test(relative) &&
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'window' &&
+      node.expression.name.text === 'print'
+    ) {
+      findings.push({
+        file: relative,
+        rule: 'reuse/shared-print-lifecycle',
+        detail: '页面内打印必须复用 usePrintSheet 管理打印状态与清理。'
+      })
+    }
     if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&

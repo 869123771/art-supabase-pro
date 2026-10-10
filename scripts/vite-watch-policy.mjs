@@ -5,6 +5,7 @@ export function createViteWatchPolicy(outDir) {
     followSymlinks: false,
     ignored: [
       '**/node_modules/**',
+      '**/node_modules.*/**',
       '**/.git/**',
       '**/.artifacts/**',
       '**/.codex/**',

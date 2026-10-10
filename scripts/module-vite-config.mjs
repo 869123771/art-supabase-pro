@@ -12,7 +12,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { createViteWatchPolicy } from './vite-watch-policy.mjs'
 import { withSharedScssGlobals } from './scss-globals.mjs'
 import { hostedModuleSharedDependencies } from './hosted-module-dependencies.mjs'
-import { matchElementPlusStyles } from './element-plus-style-chunks.mjs'
+import { getElementPlusStyleDeps, matchElementPlusStyles } from './element-plus-style-chunks.mjs'
 
 function createSourceTransformPattern(...roots) {
   const rootPattern = roots
@@ -191,6 +191,7 @@ export async function createModuleViteConfig({
     },
     optimizeDeps: {
       entries: ['index.html', 'src/views/**/*.vue'],
+      exclude: getElementPlusStyleDeps(applicationRoot),
       include: ['vue', 'vue-router', 'pinia', 'element-plus/es']
     }
   }

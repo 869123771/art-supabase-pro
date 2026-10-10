@@ -69,6 +69,20 @@ test('reuse audit rejects empty component aliases while retaining configured com
     const duplicateRejected = audit()
     assert.equal(duplicateRejected.status, 1, duplicateRejected.stderr)
     assert.match(duplicateRejected.stderr, /canonical-helper-redeclared/)
+    unlinkSync(duplicate)
+    writeFileSync(
+      alias,
+      '<template><button @click="print">打印</button></template><script setup>const print = () => window.print()</script>'
+    )
+    const privatePrint = audit()
+    assert.equal(privatePrint.status, 1, privatePrint.stderr)
+    assert.match(privatePrint.stderr, /reuse\/shared-print-lifecycle/)
+    writeFileSync(
+      alias,
+      '<template><button @click="print">打印</button></template><script setup>import { usePrintSheet } from "@/hooks/core/usePrintSheet"; const { print } = usePrintSheet("is-fixture-printing", () => {}); const example = "window.print()";</script>'
+    )
+    const sharedPrint = audit()
+    assert.equal(sharedPrint.status, 0, sharedPrint.stderr)
   } finally {
     assert.ok(root.startsWith(temporaryRoot + '/') || root.startsWith(temporaryRoot + '\\'))
     rmSync(root, { recursive: true, force: true })

@@ -11,6 +11,7 @@ import {
 import { formatTenantLabel } from '../../src/utils/tenant-display'
 import {
   createDateTimeFormatter,
+  formatAvatarInitials,
   formatArtValue,
   formatCurrencyCodeValue,
   formatNumberValue,
@@ -22,6 +23,18 @@ import {
   formatDateTimeValue,
   formatPercentValue
 } from '../../src/utils/ui/format'
+
+test('avatar initials preserve Unicode names, email prefixes and empty fallbacks', () => {
+  assert.equal(formatAvatarInitials('张三'), '张三')
+  assert.equal(formatAvatarInitials('  john.doe@example.test  '), 'JD')
+  assert.equal(formatAvatarInitials('John Smith'), 'JS')
+  assert.equal(formatAvatarInitials('👩‍🔧 Smith'), '👩‍🔧S')
+  assert.equal(formatAvatarInitials('👩‍🔧赵'), '👩‍🔧赵')
+  assert.equal(formatAvatarInitials('🇨🇳李'), '🇨🇳李')
+  assert.equal(formatAvatarInitials(undefined), '?')
+  assert.equal(formatAvatarInitials('  ', '待'), '待')
+  assert.equal(formatAvatarInitials('@example.test', '待'), '待')
+})
 
 test('currency code amounts preserve protected text and operational currency precision', () => {
   assert.equal(formatCurrencyCodeValue(1234.5678), 'CNY 1,234.568')

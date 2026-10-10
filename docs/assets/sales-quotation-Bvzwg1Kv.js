@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./scm-document-workspace-Cn1PciA_.js";var i=t({name:`ScmSalesQuotation`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`sales_quotation`}))}});export{i as default};

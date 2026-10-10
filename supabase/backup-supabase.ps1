@@ -3,7 +3,8 @@ param(
   [ValidatePattern('^[a-z0-9]{20}$')][string]$ProjectRef = 'ckbftoopuyophiebamwy',
   [securestring]$DbPassword,
   [string]$BackupRoot,
-  [string]$DbUrl
+  [string]$DbUrl,
+  [string]$ResumeBackupPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,7 +29,7 @@ function Invoke-Supabase {
 
 function Get-LinkedDatabaseConnection {
   param(
-    [Parameter(Mandatory = $true)][string]$Password,
+    [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Password,
     [Parameter(Mandatory = $true)][string]$SourceProjectRef,
     [string]$DatabaseUrl
   )
@@ -304,7 +305,7 @@ function Save-StorageBucket {
 
   Push-Location $Destination
   try {
-    $cliResult = Invoke-SupabaseQuiet @('storage', 'cp', "ss:///$BucketId", '.', '--recursive', '--experimental', '--jobs', '4')
+    $cliResult = Invoke-SupabaseQuiet @('storage', 'cp', "ss:///$BucketId", '.', '--recursive', '--experimental', '--jobs', '4', '--workdir', (Split-Path -Parent $PSScriptRoot))
   }
   finally {
     Pop-Location
@@ -347,27 +348,44 @@ function Save-StorageBucket {
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
   throw 'Supabase CLI is required. Install it first: https://supabase.com/docs/guides/local-development/cli/getting-started'
 }
-if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+if (-not $ResumeBackupPath -and -not (Get-Command docker -ErrorAction SilentlyContinue)) {
   $dockerBin = 'C:\Program Files\Docker\Docker\resources\bin'
   if (Test-Path (Join-Path $dockerBin 'docker.exe')) { $env:Path = "$dockerBin;$env:Path" }
 }
-if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+if (-not $ResumeBackupPath -and -not (Get-Command docker -ErrorAction SilentlyContinue)) {
   throw 'Docker Desktop is required for supabase db dump. Install and start Docker Desktop, then rerun this script.'
 }
-if (-not (Test-DockerReady)) { throw 'Docker Desktop is installed but not running.' }
+if (-not $ResumeBackupPath -and -not (Test-DockerReady)) { throw 'Docker Desktop is installed but not running.' }
 Enable-SystemProxyForSupabaseCli
 Assert-SupabaseCliProjectAccess -ProjectRef $ProjectRef
-if (-not $DbPassword) { $DbPassword = Read-Host 'Supabase database password' -AsSecureString }
+if (-not $ResumeBackupPath -and -not $DbPassword) { $DbPassword = Read-Host 'Supabase database password' -AsSecureString }
 
 $supabaseRoot = $PSScriptRoot
 if (-not $BackupRoot) { $BackupRoot = Join-Path $supabaseRoot 'backups' }
 $BackupRoot = [IO.Path]::GetFullPath($BackupRoot)
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$backupPath = Join-Path $BackupRoot $timestamp
-if (Test-Path -LiteralPath $backupPath) {
+$backupPath = if ($ResumeBackupPath) { [IO.Path]::GetFullPath($ResumeBackupPath) } else { Join-Path $BackupRoot $timestamp }
+if ($ResumeBackupPath) {
+  if (Test-Path -LiteralPath (Join-Path $backupPath 'manifest.json')) { throw 'This backup already has a completion manifest; refusing to overwrite it.' }
+  foreach ($name in @('roles.sql', 'schema.sql', 'data.sql', 'migration-history-schema.sql', 'migration-history-data.sql', 'managed-schema-snapshot.sql')) {
+    $dump = Join-Path $backupPath "database/$name"
+    if (-not (Test-Path -LiteralPath $dump -PathType Leaf) -or (Get-Item -LiteralPath $dump).Length -eq 0) {
+      throw "Cannot resume: missing or incomplete database dump $name."
+    }
+    $endPattern = switch ($name) {
+      'roles.sql' { '^RESET ALL;$' }
+      'migration-history-schema.sql' { 'ADD CONSTRAINT .* PRIMARY KEY' }
+      default { '^-- PostgreSQL database dump complete' }
+    }
+    if (-not ((Get-Content -LiteralPath $dump -Tail 12) -match $endPattern)) { throw "Cannot resume: incomplete database dump $name." }
+  }
+  if (-not (Test-Path -LiteralPath (Join-Path $backupPath 'metadata/functions.json') -PathType Leaf)) { throw 'Cannot resume without saved Edge Function metadata.' }
+  $timestamp = Split-Path -Leaf $backupPath
+}
+elseif (Test-Path -LiteralPath $backupPath) {
   throw "Backup directory already exists: $backupPath. Wait one second and retry; existing backup files will not be overwritten."
 }
-$plainPassword = Get-PlainText $DbPassword
+$plainPassword = if ($DbPassword) { Get-PlainText $DbPassword } else { $null }
 
 Push-Location (Split-Path -Parent $supabaseRoot)
 try {
@@ -378,45 +396,56 @@ try {
   $metadataPath = Join-Path $backupPath 'metadata'
   New-Item -ItemType Directory -Force -Path $databasePath, $storagePath, $metadataPath | Out-Null
 
-  # Reuse an existing matching link. Calling `supabase link` on every backup is
-  # unnecessary and requires the Management API to be reachable.
-  $linkedProjectFile = Join-Path $supabaseRoot '.temp\linked-project.json'
-  $linkedProjectRef = $null
-  if (Test-Path $linkedProjectFile) {
-    try { $linkedProjectRef = (Get-Content -Raw $linkedProjectFile | ConvertFrom-Json).ref } catch {}
-  }
-  if ($linkedProjectRef -eq $ProjectRef) {
-    Write-Host 'Reusing the existing source-project link...'
+  if (-not $ResumeBackupPath) {
+    # Reuse an existing matching link. Calling `supabase link` on every backup is
+    # unnecessary and requires the Management API to be reachable.
+    $linkedProjectFile = Join-Path $supabaseRoot '.temp\linked-project.json'
+    $linkedProjectRef = $null
+    if (Test-Path $linkedProjectFile) {
+      try { $linkedProjectRef = (Get-Content -Raw $linkedProjectFile | ConvertFrom-Json).ref } catch {}
+    }
+    if ($linkedProjectRef -eq $ProjectRef) {
+      Write-Host 'Reusing the existing source-project link...'
+    }
+    else {
+      Write-Host 'Linking the source project...'
+      Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
+    }
+    $dbTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked', '--password', $plainPassword) }
+    # `db query --linked` uses the Management API and does not accept --password,
+    # while dump commands do. Keep command-specific targets separate.
+    $queryTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked') }
+    $connection = Get-LinkedDatabaseConnection -Password $plainPassword -SourceProjectRef $ProjectRef -DatabaseUrl $DbUrl
+
+    Write-Host 'Exporting database roles, schema, and data...'
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--role-only', '--file', (Join-Path $databasePath 'roles.sql')))
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--keep-comments', '--file', (Join-Path $databasePath 'schema.sql')))
+    # Match Supabase's logical restore guide: vector Storage tables may not exist
+    # on a newly created target project.
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '-x', 'storage.buckets_vectors', '-x', 'storage.vector_indexes', '--file', (Join-Path $databasePath 'data.sql')))
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql')))
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql')))
+    # Standard schema dumps omit managed auth/storage schemas. Capture their complete
+    # definitions as a recovery reference without requiring a shadow database. The
+    # managed schemas are platform-owned and must not be replayed wholesale; restore
+    # only reviewed project-specific policies/triggers from this snapshot.
+    Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'auth,storage', '--keep-comments', '--file', (Join-Path $databasePath 'managed-schema-snapshot.sql')))
+
+    Write-Host 'Capturing deployed Edge Function source and metadata...'
+    $functionMetadataPath = Join-Path $metadataPath 'functions.json'
+    Invoke-SupabaseJsonWithRetry `
+      -Arguments @('functions', 'list', '--project-ref', $ProjectRef, '--output', 'json') `
+      -OutputPath $functionMetadataPath | Out-Null
   }
   else {
-    Write-Host 'Linking the source project...'
-    Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
+    Write-Host "Resuming existing backup: $backupPath (database exports and function downloads are preserved)"
+    $linkedRef = (Get-Content -LiteralPath (Join-Path $supabaseRoot '.temp/project-ref') -Raw).Trim()
+    if ($linkedRef -ne $ProjectRef) { throw 'The linked CLI project does not match the source project.' }
+    $poolerUrl = (Get-Content -LiteralPath (Join-Path $supabaseRoot '.temp/pooler-url') -Raw).Trim()
+    $connection = Get-LinkedDatabaseConnection -Password '' -SourceProjectRef $ProjectRef -DatabaseUrl $poolerUrl
+    $queryTarget = @('--linked')
+    $functionMetadataPath = Join-Path $metadataPath 'functions.json'
   }
-  $dbTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked', '--password', $plainPassword) }
-  # `db query --linked` uses the Management API and does not accept --password,
-  # while dump commands do. Keep command-specific targets separate.
-  $queryTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked') }
-  $connection = Get-LinkedDatabaseConnection -Password $plainPassword -SourceProjectRef $ProjectRef -DatabaseUrl $DbUrl
-
-  Write-Host 'Exporting database roles, schema, and data...'
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--role-only', '--file', (Join-Path $databasePath 'roles.sql')))
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--keep-comments', '--file', (Join-Path $databasePath 'schema.sql')))
-  # Match Supabase's logical restore guide: vector Storage tables may not exist
-  # on a newly created target project.
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--data-only', '--use-copy', '-x', 'storage.buckets_vectors', '-x', 'storage.vector_indexes', '--file', (Join-Path $databasePath 'data.sql')))
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--file', (Join-Path $databasePath 'migration-history-schema.sql')))
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'supabase_migrations', '--data-only', '--use-copy', '--file', (Join-Path $databasePath 'migration-history-data.sql')))
-  # Standard schema dumps omit managed auth/storage schemas. Capture their complete
-  # definitions as a recovery reference without requiring a shadow database. The
-  # managed schemas are platform-owned and must not be replayed wholesale; restore
-  # only reviewed project-specific policies/triggers from this snapshot.
-  Invoke-Supabase (@('db', 'dump') + $dbTarget + @('--schema', 'auth,storage', '--keep-comments', '--file', (Join-Path $databasePath 'managed-schema-snapshot.sql')))
-
-  Write-Host 'Capturing deployed Edge Function source and metadata...'
-  $functionMetadataPath = Join-Path $metadataPath 'functions.json'
-  Invoke-SupabaseJsonWithRetry `
-    -Arguments @('functions', 'list', '--project-ref', $ProjectRef, '--output', 'json') `
-    -OutputPath $functionMetadataPath | Out-Null
   $deployedFunctions = @(ConvertFrom-SupabaseJsonArray `
     -Text (Get-Content -LiteralPath $functionMetadataPath -Raw) `
     -Description 'the deployed Edge Function list')
@@ -425,14 +454,16 @@ try {
   # overwrites reviewed or uncommitted files in the main repository.
   if ($deployedFunctions.Count -gt 0) {
     $downloadProjectRoot = Join-Path $backupPath 'supabase'
-    New-Item -ItemType Directory -Path $downloadProjectRoot -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $supabaseRoot 'config.toml') -Destination (Join-Path $downloadProjectRoot 'config.toml') -Force
-    Push-Location $backupPath
-    try {
-      Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
-    }
-    finally {
-      Pop-Location
+    if (-not $ResumeBackupPath) {
+      New-Item -ItemType Directory -Path $downloadProjectRoot -Force | Out-Null
+      Copy-Item -LiteralPath (Join-Path $supabaseRoot 'config.toml') -Destination (Join-Path $downloadProjectRoot 'config.toml') -Force
+      Push-Location $backupPath
+      try {
+        Invoke-Supabase @('functions', 'download', '--project-ref', $ProjectRef, '--use-api')
+      }
+      finally {
+        Pop-Location
+      }
     }
     $downloadedFunctions = Join-Path $downloadProjectRoot 'functions'
     if (-not (Test-Path -LiteralPath $downloadedFunctions -PathType Container)) {
@@ -448,8 +479,18 @@ try {
         throw "Missing or invalid downloaded Edge Function: $($function.slug)"
       }
     }
-    Move-Item -LiteralPath $downloadedFunctions -Destination $functionsPath
-    Remove-Item -LiteralPath $downloadProjectRoot -Recurse -Force
+    New-Item -ItemType Directory -Path $functionsPath -Force | Out-Null
+    foreach ($sourceFile in (Get-ChildItem -LiteralPath $downloadedFunctions -File -Recurse)) {
+      $relativePath = $sourceFile.FullName.Substring($downloadedFunctions.Length + 1)
+      $targetFile = Join-Path $functionsPath $relativePath
+      New-Item -ItemType Directory -Path (Split-Path -Parent $targetFile) -Force | Out-Null
+      Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetFile -Force
+      if ((Get-FileHash -LiteralPath $sourceFile.FullName).Hash -ne (Get-FileHash -LiteralPath $targetFile).Hash) {
+        throw "Edge Function copy verification failed: $relativePath"
+      }
+    }
+    # Keep the downloaded staging directory: Windows can lock it while CLI child
+    # processes exit. It also preserves the original source if continuation fails.
   }
   Invoke-SupabaseJsonWithRetry `
     -Arguments @('secrets', 'list', '--project-ref', $ProjectRef, '--output', 'json') `

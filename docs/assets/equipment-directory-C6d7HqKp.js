@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./catalog-q8tSrbd0.js";var i=t({name:`MdmEquipmentDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

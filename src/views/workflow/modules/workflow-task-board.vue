@@ -59,7 +59,7 @@
         <article v-for="task in visibleTasks(group)" :key="task.id" :class="`is-${task.status}`">
           <div class="workflow-task-board__member-heading">
             <span class="workflow-task-board__avatar">
-              {{ getInitials(task.assigneeNameSnapshot) }}
+              {{ formatAvatarInitials(task.assigneeNameSnapshot, '待') }}
             </span>
             <div>
               <strong :title="task.assigneeNameSnapshot">{{ task.assigneeNameSnapshot }}</strong>
@@ -107,7 +107,7 @@
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { formatDateTimeValue as formatDate } from '@/utils/ui/format'
+  import { formatDateTimeValue as formatDate, formatAvatarInitials } from '@/utils/ui/format'
 
   defineOptions({ name: 'WorkflowTaskBoard' })
 
@@ -229,15 +229,6 @@
   function toggleGroup(nodeKey: string): void {
     if (expandedNodeKeys.has(nodeKey)) expandedNodeKeys.delete(nodeKey)
     else expandedNodeKeys.add(nodeKey)
-  }
-
-  function getInitials(name: string): string {
-    const normalized = name.trim()
-    if (!normalized) return '待'
-    const displaySource = normalized.includes('@') ? normalized.split('@')[0] : normalized
-    const parts = displaySource.split(/[\s._-]+/).filter(Boolean)
-    if (parts.length > 1) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-    return displaySource.slice(0, 2).toUpperCase()
   }
 
   function getTaskTimeLabel(task: Api.Workflow.WorkflowTaskRecord): string {

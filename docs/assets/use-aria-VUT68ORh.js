@@ -1,0 +1,1 @@
+import{Kt as e}from"./icon-CplFS_U0.js";import{P as t}from"./common-utils-CsmQQMly.js";var n=e({ariaLabel:String,ariaOrientation:{type:String,values:[`horizontal`,`vertical`,`undefined`]},ariaControls:String}),r=e=>t(n,e);export{r as t};

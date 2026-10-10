@@ -1,3 +1,20 @@
+import { existsSync, readdirSync } from 'node:fs'
+import path from 'node:path'
+
+/** Keep source Sass style entries out of JavaScript dependency optimization. */
+export function getElementPlusStyleDeps(root) {
+  const componentsDir = path.resolve(root, 'node_modules/element-plus/es/components')
+  if (!existsSync(componentsDir)) return []
+
+  return readdirSync(componentsDir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() && existsSync(path.join(componentsDir, entry.name, 'style/index.mjs'))
+    )
+    .map((entry) => `element-plus/es/components/${entry.name}/style/index`)
+    .sort()
+}
+
 // Common controls share one initial stylesheet; less-used controls keep their route CSS.
 const sharedElementPlusStyleComponents = new Set([
   'alert',

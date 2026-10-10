@@ -385,6 +385,10 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
 
   const rules = [
     {
+      name: 'styles/no-unconditional-body-print-hiding',
+      pattern: /:global\(\s*body\s+\*\s*\)\s*\{[^}]*\bvisibility\s*:\s*hidden\b/gs
+    },
+    {
       name: 'styles/no-parent-suffix-in-deep',
       pattern: /:deep\(\s*&[\w-]+/g
     },

@@ -1,4 +1,19 @@
 import { formatWithDayjs, isValidDateTimeValue } from '@/utils/time'
+import { toArray } from 'lodash-es'
+
+/** Use one Unicode-safe avatar convention across operational surfaces. */
+export function formatAvatarInitials(name?: string | null, emptyText = '?'): string {
+  const source = name?.trim().split('@')[0] ?? ''
+  const parts = source.split(/[\s._-]+/).filter(Boolean)
+  const initials =
+    parts.length > 1
+      ? parts
+          .slice(0, 2)
+          .map((part) => toArray(part)[0])
+          .join('')
+      : toArray(source).slice(0, 2).join('')
+  return initials.toUpperCase() || emptyText
+}
 
 export type ArtValueFormat = 'text' | 'number' | 'money' | 'date' | 'datetime' | 'boolean'
 

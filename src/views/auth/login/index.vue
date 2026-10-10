@@ -198,6 +198,7 @@
 </template>
 
 <script setup lang="ts">
+  import { useEventListener } from '@vueuse/core'
   import { replaceReactiveModel } from '@/utils/form/model'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useUserStore } from '@/store/modules/user'
@@ -356,10 +357,7 @@
     void initializeLoginPage()
     if (rememberedIdentifier && !finishingOAuth.value) void restoreBrowserPassword()
     void nextTick(syncBrowserAutofill)
-    window.addEventListener('pageshow', syncBrowserAutofill)
   })
-
-  onUnmounted(() => window.removeEventListener('pageshow', syncBrowserAutofill))
 
   watch(
     () => formData.rememberPassword,
@@ -386,6 +384,8 @@
     if (identifier && identifier !== formData.identifier) formData.identifier = identifier
     if (password && password !== formData.password) formData.password = password
   }
+
+  useEventListener(window, 'pageshow', syncBrowserAutofill)
 
   const initializeLoginPage = async (): Promise<void> => {
     if (finishingOAuth.value) {

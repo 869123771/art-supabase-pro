@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./scm-receipt-target-workspace-CqECNNYz.js";var i=t({name:`FinanceAssetPayable`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`asset_payable`,"view-permission":`FinanceAssetPayable:View`,"action-permission":`FinanceAssetPayable:Approve`}))}});export{i as default};

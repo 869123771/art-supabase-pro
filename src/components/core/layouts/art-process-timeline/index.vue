@@ -21,7 +21,7 @@
               :class="['art-process-timeline__avatar', `is-${item.tone || 'primary'}`]"
             >
               <ArtSvgIcon v-if="item.system" icon="ri:robot-2-line" />
-              <span v-else>{{ getAvatarText(item.actorName) }}</span>
+              <span v-else>{{ formatAvatarInitials(item.actorName) }}</span>
             </ElAvatar>
           </template>
 
@@ -67,7 +67,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import { formatWithDayjs } from '@/utils/time'
+  import { createDateTimeFormatter, formatAvatarInitials } from '@/utils/ui/format'
   import type { ArtProcessTimelineItem } from './types'
 
   defineOptions({ name: 'ArtProcessTimeline' })
@@ -98,15 +98,7 @@
     return item.actorName?.trim() || (item.system ? '系统' : '未知处理人')
   }
 
-  function getAvatarText(name?: string | null): string {
-    const value = name?.trim() || '?'
-    const emailPrefix = value.includes('@') ? value.split('@')[0] : value
-    return Array.from(emailPrefix).slice(0, 2).join('').toUpperCase()
-  }
-
-  function formatTime(value: string): string {
-    return String(formatWithDayjs(value, 'YYYY-MM-DD HH:mm:ss') ?? '--')
-  }
+  const formatTime = createDateTimeFormatter()
 </script>
 
 <style scoped lang="scss">

@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./workspace-BAp0RFPt.js";var i=t({name:`WmsInitialSalesOutbound`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`initial_outbound`}))}});export{i as default};

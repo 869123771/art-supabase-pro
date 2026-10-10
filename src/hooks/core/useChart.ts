@@ -734,6 +734,8 @@ export function useChartComponent<T extends BaseChartProps>(options: UseChartCom
     }
   }
 
+  useEventListener(chartRef, 'chartVisible', handleChartVisible)
+
   // 存储监听器停止函数
   const stopHandles: (() => void)[] = []
 
@@ -762,18 +764,9 @@ export function useChartComponent<T extends BaseChartProps>(options: UseChartCom
   const setupLifecycle = () => {
     onMounted(() => {
       updateChart()
-
-      // 监听图表可见事件
-      if (chartRef.value) {
-        chartRef.value.addEventListener('chartVisible', handleChartVisible)
-      }
     })
 
     onBeforeUnmount(() => {
-      // 清理事件监听器
-      if (chartRef.value) {
-        chartRef.value.removeEventListener('chartVisible', handleChartVisible)
-      }
       // 清理所有监听器
       cleanupWatchers()
       // 清理空状态div

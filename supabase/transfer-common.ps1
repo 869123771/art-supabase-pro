@@ -47,7 +47,7 @@ function Invoke-SupabaseQuietWithRetry {
 function Test-SupabaseCliProjectVisible {
   param([Parameter(Mandatory = $true)][string]$ProjectRef)
 
-  $result = Invoke-SupabaseQuiet @('projects', 'list', '--agent=no', '--output-format', 'json')
+  $result = Invoke-SupabaseQuiet @('projects', 'list', '--agent=no', '--output', 'json')
   $script:SupabaseProjectAccessState = 'request-failed'
   if (-not $result.Succeeded) {
     # Inspect captured output only; never print tokens or raw CLI payloads.
@@ -61,6 +61,7 @@ function Test-SupabaseCliProjectVisible {
     $parsed = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop
     if ($parsed -is [System.Array]) { $projects = @($parsed) }
     elseif ($parsed.PSObject.Properties['projects']) { $projects = @($parsed.projects) }
+    elseif ($parsed.PSObject.Properties['ref']) { $projects = @($parsed) }
     else { throw 'Unexpected project-list response.' }
     $script:SupabaseProjectAccessState = 'project-missing'
     return @($projects | Where-Object { $_.ref -eq $ProjectRef }).Count -gt 0
@@ -98,7 +99,7 @@ function Assert-SupabaseCliProjectAccess {
     throw 'Supabase project lookup failed. Check your network and HTTP proxy, then run the script again.'
   }
   if ($NonInteractive -or $env:CI) {
-    throw "Supabase login or project access is required for $ProjectRef. Run 'supabase login --agent=no --output-format text' in an interactive terminal, then retry."
+    throw "Supabase login or project access is required for $ProjectRef. Run 'supabase login --agent=no' in an interactive terminal, then retry."
   }
 
   Write-Host "Supabase login needs attention. Complete the browser login using an account with access to project $ProjectRef; the script will then continue."
@@ -108,7 +109,7 @@ function Assert-SupabaseCliProjectAccess {
   $previousPreference = $ErrorActionPreference
   try {
     $ErrorActionPreference = 'Continue'
-    & supabase login --agent=no --output-format text
+    & supabase login --agent=no
     $loginExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousPreference
     if ($loginExitCode -eq 0) {
@@ -231,7 +232,7 @@ function Get-SupabaseServiceRoleKey {
   param([Parameter(Mandatory = $true)][string]$ProjectRef)
 
   $result = Invoke-SupabaseQuietWithRetry `
-    -Arguments @('projects', 'api-keys', '--project-ref', $ProjectRef, '--reveal', '--output', 'json') `
+    -Arguments @('projects', 'api-keys', '--project-ref', $ProjectRef, '--output', 'json') `
     -Attempts 3
   if (-not $result.Succeeded) {
     throw "Unable to read Supabase API keys for Storage transfer. $($result.Error)"

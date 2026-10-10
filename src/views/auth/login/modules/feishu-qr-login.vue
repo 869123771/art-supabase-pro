@@ -8,14 +8,16 @@
         :class="{ 'is-hidden': status !== 'ready' && status !== 'confirming' }"
         aria-label="飞书登录二维码"
       ></div>
-      <div v-if="status === 'loading'" class="feishu-qr__state" role="status">
-        <ArtSvgIcon icon="ri:loader-4-line" class="feishu-qr__spinner" />
-        <span>正在生成二维码…</span>
-      </div>
-      <div v-else-if="status === 'error'" class="feishu-qr__state" role="alert">
-        <ArtSvgIcon icon="ri:error-warning-line" />
-        <span>{{ errorMessage }}</span>
-      </div>
+      <ArtAsyncState
+        v-if="status === 'loading' || status === 'error'"
+        class="w-full"
+        size="compact"
+        :min-height="310"
+        :loading="status === 'loading'"
+        :error="status === 'error' ? errorMessage : null"
+        error-title="飞书二维码加载失败"
+        :retryable="false"
+      />
     </div>
 
     <p class="feishu-qr__instruction">
@@ -53,6 +55,8 @@
 </template>
 
 <script setup lang="ts">
+  import { useEventListener, useScriptTag } from '@vueuse/core'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import { prepareFeishuQrLogin } from '@/api/auth'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 
@@ -83,6 +87,10 @@
   const SDK_URL =
     'https://lf-package-cn.feishucdn.com/obj/feishu-static/lark/passport/qrcode/LarkSSOSDKWebQRCode-1.0.3.js'
   const SDK_ID = 'feishu-qr-login-sdk'
+  const { load: loadScript, unload: unloadScript } = useScriptTag(SDK_URL, undefined, {
+    attrs: { id: SDK_ID },
+    manual: true
+  })
   const containerId = `feishu-login-${crypto.randomUUID()}`
   const containerRef = ref<HTMLElement>()
   const status = ref<'loading' | 'ready' | 'confirming' | 'error'>('loading')
@@ -92,28 +100,15 @@
   let goto = ''
   let qrInstance: FeishuQrInstance | undefined
 
-  const loadSdk = (): Promise<void> => {
-    if (window.QRLogin) return Promise.resolve()
-    return new Promise((resolve, reject) => {
-      const existing = document.getElementById(SDK_ID) as HTMLScriptElement | null
-      const script = existing ?? document.createElement('script')
-      const finish = (): void => {
-        if (window.QRLogin) resolve()
-        else reject(new Error('飞书扫码组件不可用'))
-      }
-      const fail = (): void => {
-        script.remove()
-        reject(new Error('飞书扫码组件加载失败'))
-      }
-      script.addEventListener('load', finish, { once: true })
-      script.addEventListener('error', fail, { once: true })
-      if (!existing) {
-        script.id = SDK_ID
-        script.src = SDK_URL
-        script.async = true
-        document.head.appendChild(script)
-      }
-    })
+  const loadSdk = async (): Promise<void> => {
+    if (window.QRLogin) return
+    try {
+      await loadScript()
+      if (!window.QRLogin) throw new Error('飞书扫码组件不可用')
+    } catch (error) {
+      unloadScript()
+      throw new Error('飞书扫码组件加载失败，请重试', { cause: error })
+    }
   }
 
   const handleMessage = (event: MessageEvent<unknown>): void => {
@@ -168,14 +163,14 @@
     }
   }
 
+  useEventListener(window, 'message', handleMessage)
+
   onMounted(() => {
-    window.addEventListener('message', handleMessage)
     void refreshQr()
   })
   onBeforeUnmount(() => {
     disposed = true
     generation += 1
-    window.removeEventListener('message', handleMessage)
     containerRef.value?.replaceChildren()
   })
 </script>
@@ -206,27 +201,6 @@
 
   .feishu-qr__code.is-hidden {
     display: none;
-  }
-
-  .feishu-qr__state {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: center;
-    max-width: 260px;
-    padding: 20px;
-    font-size: 13px;
-    line-height: 20px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .feishu-qr__state .art-svg-icon {
-    flex: 0 0 auto;
-    font-size: 20px;
-  }
-
-  .feishu-qr__spinner {
-    animation: feishu-qr-spin 1s linear infinite;
   }
 
   .feishu-qr__instruction {
@@ -298,15 +272,9 @@
     cursor: not-allowed;
   }
 
-  @keyframes feishu-qr-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .feishu-qr__spinner {
-      animation: none;
+  @media (pointer: coarse) {
+    .feishu-qr__action {
+      min-height: 44px;
     }
   }
 </style>

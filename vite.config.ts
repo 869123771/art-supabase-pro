@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import templateCompilerOptions from '@tresjs/core/template-compiler-options'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Components from 'unplugin-vue-components/vite'
@@ -13,7 +13,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
 import { createViteWatchPolicy } from './scripts/vite-watch-policy.mjs'
 import { withSharedScssGlobals } from './scripts/scss-globals.mjs'
-import { matchElementPlusStyles } from './scripts/element-plus-style-chunks.mjs'
+import {
+  getElementPlusStyleDeps,
+  matchElementPlusStyles
+} from './scripts/element-plus-style-chunks.mjs'
 import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries.ts'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync.ts'
 import {
@@ -62,19 +65,6 @@ const matchBuildRuntime = (id: string) => {
     normalizedId.includes('vite/preload-helper') ||
     normalizedId.includes('vite/modulepreload-polyfill')
   )
-}
-
-const getElementPlusStyleDeps = (root: string): string[] => {
-  const componentsDir = path.resolve(root, 'node_modules/element-plus/es/components')
-  if (!existsSync(componentsDir)) return []
-
-  return readdirSync(componentsDir, { withFileTypes: true })
-    .filter(
-      (entry) =>
-        entry.isDirectory() && existsSync(path.join(componentsDir, entry.name, 'style/index.mjs'))
-    )
-    .map((entry) => `element-plus/es/components/${entry.name}/style/index`)
-    .sort()
 }
 
 export default async ({ mode }: { mode: string }) => {

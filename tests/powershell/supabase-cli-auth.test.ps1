@@ -9,6 +9,7 @@ $script:loggedIn = $false
 $script:loginCalls = 0
 
 function supabase {
+  if (($args -join ' ') -ne 'login --agent=no') { throw 'Unexpected login CLI arguments.' }
   $script:loginCalls++
   if ($script:scenario -eq 'interactive-login') {
     if ($env:SUPABASE_ACCESS_TOKEN) { throw 'Inherited token overrides browser login.' }
@@ -20,6 +21,10 @@ function supabase {
 
 function Invoke-SupabaseQuiet {
   param([string[]]$Arguments)
+
+  if (($Arguments -join ' ') -ne 'projects list --agent=no --output json') {
+    throw 'Project lookup must use supported CLI arguments.'
+  }
 
   $script:calls++
   if (($script:scenario -eq 'saved-login' -and -not $env:SUPABASE_ACCESS_TOKEN) -or

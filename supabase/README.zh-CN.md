@@ -43,7 +43,15 @@ Set-Location 'D:\spa\art-supabase-pro'
 | `metadata/` | bucket、Realtime、函数和 Secret 名称等元数据 |
 | `config.toml` | 本仓库的 Supabase CLI 配置副本 |
 
-`supabase/backups/` 已被 Git 忽略。备份包含用户和业务数据，应放在受控、加密的存储中，不要提交或公开。若导出中途报错，**不要使用**那个没有完整 `manifest.json` 的目录；修正错误后重新备份。
+`supabase/backups/` 已被 Git 忽略。备份包含用户和业务数据，应放在受控、加密的存储中，不要提交或公开。若导出中途报错，**不要使用**那个没有完整 `manifest.json` 的目录。
+
+如果数据库导出和函数下载已经完成，错误发生在函数目录整理或后续 Storage 阶段，可以从原目录继续：
+
+```powershell
+.\supabase\backup-supabase.ps1 -ResumeBackupPath 'D:\spa\art-supabase-pro\supabase\backups\YYYYMMDD-HHMMSS'
+```
+
+续跑会检查已有数据库文件，保留原导出和下载的函数，逐文件复制并校验函数源码，然后重新获取后续元数据、下载 Storage 并生成清单；Storage 阶段仍会重新下载各桶。它使用当前 CLI 的原项目关联，不需要重新输入数据库密码或启动 Docker。原始函数下载目录会保留在备份的 `supabase/functions/` 下。缺少数据库导出、函数下载或项目关联时应先处理错误；数据库阶段未完成的备份不支持此续跑入口。续跑不会重新生成数据库快照，因此应避免在续跑期间修改来源数据和 Storage。
 
 ## 在自己电脑先试：ZIP → 本地 Supabase
 

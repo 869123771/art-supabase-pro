@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./execution-event-workspace-BUpzgT0j.js";var i=t({name:`MesEquipment`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`equipment`}))}});export{i as default};

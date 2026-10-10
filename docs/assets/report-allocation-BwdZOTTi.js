@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./report-ledger-d3gWrjCp.js";var i=t({name:`MesReportAllocation`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`allocation`}))}});export{i as default};

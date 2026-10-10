@@ -3,11 +3,26 @@
     class="art-turnstile-captcha"
     :class="{ 'is-interaction-only': props.appearance === 'interaction-only' }"
   >
-    <div ref="containerRef" class="art-turnstile-captcha__widget"></div>
+    <ArtAsyncState
+      v-if="loadError || (loading && props.appearance !== 'interaction-only')"
+      class="w-full"
+      size="compact"
+      loading-mode="skeleton"
+      :skeleton-rows="1"
+      :min-height="65"
+      :loading="loading"
+      :error="loadError"
+      error-title="验证码加载失败"
+      @retry="renderSafely"
+    />
+    <div v-show="!loadError" ref="containerRef" class="art-turnstile-captcha__widget"></div>
   </div>
 </template>
 
 <script setup lang="ts">
+  import { useScriptTag } from '@vueuse/core'
+  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
+
   defineOptions({ name: 'ArtTurnstileCaptcha' })
 
   type TurnstileTheme = 'light' | 'dark' | 'auto'
@@ -67,7 +82,15 @@
 
   const containerRef = ref<HTMLElement>()
   const widgetId = ref<string>()
-  let scriptPromise: Promise<void> | null = null
+  const loading = ref(false)
+  const loadError = ref<string | null>(null)
+  const { load: loadScript, unload: unloadScript } = useScriptTag(SCRIPT_SRC, undefined, {
+    attrs: { id: SCRIPT_ID },
+    defer: true,
+    manual: true
+  })
+  let disposed = false
+  let renderGeneration = 0
   let executeResolver: ((token: string) => void) | undefined
   let executeRejecter: ((error: Error) => void) | undefined
 
@@ -84,9 +107,7 @@
 
   const handleExecutionError = (type: 'error' | 'timeout'): void => {
     executeRejecter?.(
-      new Error(
-        type === 'timeout' ? 'Turnstile verification timed out' : 'Turnstile verification failed'
-      )
+      new Error(type === 'timeout' ? '验证码校验超时，请重试' : '验证码校验失败，请重试')
     )
     clearExecutePromise()
     if (type === 'timeout') {
@@ -96,63 +117,86 @@
     emit('error')
   }
 
-  const loadTurnstileScript = (): Promise<void> => {
-    if (typeof window === 'undefined') return Promise.resolve()
-    if (window.turnstile) return Promise.resolve()
-    if (scriptPromise) return scriptPromise
-
-    scriptPromise = new Promise((resolve, reject) => {
-      const existingScript = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve(), { once: true })
-        existingScript.addEventListener('error', () => reject(new Error('Turnstile load failed')), {
-          once: true
-        })
-        return
-      }
-
-      const script = document.createElement('script')
-      script.id = SCRIPT_ID
-      script.src = SCRIPT_SRC
-      script.async = true
-      script.defer = true
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error('Turnstile load failed'))
-      document.head.appendChild(script)
-    })
-
-    return scriptPromise
+  const loadTurnstileScript = async (): Promise<void> => {
+    if (window.turnstile) return
+    try {
+      await loadScript()
+      if (!window.turnstile) throw new Error('验证码组件不可用')
+    } catch (error) {
+      unloadScript()
+      throw new Error('验证码组件加载失败，请重试', { cause: error })
+    }
   }
 
-  const remove = (): void => {
+  const cancelExecution = (): void => {
+    executeRejecter?.(new Error('验证码校验已取消，请重试'))
+    clearExecutePromise()
+  }
+
+  const removeWidget = (): void => {
+    cancelExecution()
     if (widgetId.value && window.turnstile) {
       window.turnstile.remove(widgetId.value)
     }
     widgetId.value = undefined
   }
 
+  const remove = (): void => {
+    renderGeneration += 1
+    loading.value = false
+    loadError.value = null
+    removeWidget()
+  }
+
   const render = async (): Promise<void> => {
-    if (!props.sitekey || !containerRef.value) return
+    const generation = ++renderGeneration
+    if (disposed || !props.sitekey || !containerRef.value) {
+      remove()
+      return
+    }
 
-    await loadTurnstileScript()
-    if (!window.turnstile || !containerRef.value) return
+    loading.value = !window.turnstile
+    loadError.value = null
+    try {
+      await loadTurnstileScript()
+      if (disposed || generation !== renderGeneration || !window.turnstile || !containerRef.value)
+        return
 
-    remove()
-    widgetId.value = window.turnstile.render(containerRef.value, {
-      sitekey: props.sitekey,
-      theme: props.theme,
-      size: props.size,
-      appearance: props.appearance,
-      execution: props.execution,
-      callback: handleVerify,
-      'expired-callback': () => emit('expired'),
-      'error-callback': () => handleExecutionError('error'),
-      'timeout-callback': () => handleExecutionError('timeout')
-    })
+      removeWidget()
+      widgetId.value = window.turnstile.render(containerRef.value, {
+        sitekey: props.sitekey,
+        theme: props.theme,
+        size: props.size,
+        appearance: props.appearance,
+        execution: props.execution,
+        callback: (token) => {
+          if (!disposed && generation === renderGeneration) handleVerify(token)
+        },
+        'expired-callback': () => {
+          if (!disposed && generation === renderGeneration) emit('expired')
+        },
+        'error-callback': () => {
+          if (!disposed && generation === renderGeneration) handleExecutionError('error')
+        },
+        'timeout-callback': () => {
+          if (!disposed && generation === renderGeneration) handleExecutionError('timeout')
+        }
+      })
+    } catch (error) {
+      if (disposed || generation !== renderGeneration) return
+      loadError.value = '验证码组件暂时不可用，请重新加载后重试'
+      throw error
+    } finally {
+      if (!disposed && generation === renderGeneration) loading.value = false
+    }
+  }
+
+  const renderSafely = (): void => {
+    void render().catch(() => emit('error'))
   }
 
   const reset = (): void => {
-    clearExecutePromise()
+    cancelExecution()
     if (widgetId.value && window.turnstile) {
       window.turnstile.reset(widgetId.value)
     }
@@ -162,7 +206,7 @@
     await render()
 
     if (!widgetId.value || !window.turnstile) {
-      throw new Error('Turnstile is not ready')
+      throw new Error('验证码尚未就绪，请重试')
     }
 
     return await new Promise<string>((resolve, reject) => {
@@ -174,16 +218,14 @@
 
   watch(
     () => [props.sitekey, props.theme, props.size, props.appearance, props.execution],
-    () => {
-      void render()
-    }
+    renderSafely
   )
 
-  onMounted(() => {
-    void render()
-  })
+  onMounted(renderSafely)
 
   onBeforeUnmount(() => {
+    disposed = true
+    renderGeneration += 1
     remove()
   })
 
