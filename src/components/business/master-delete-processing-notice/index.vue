@@ -7,7 +7,7 @@
           >正在处理“{{ resourceName }}”的删除前置资料</strong
         >
         <ElTag type="warning" effect="light" size="small">
-          {{ props.locationReady ? '已找到关联记录' : '定位待完成' }}
+          {{ locationReady ? '已找到关联记录' : '定位待完成' }}
         </ElTag>
       </div>
       <p>{{ actionHint }}</p>
@@ -24,17 +24,30 @@
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
+  import { hasLocatedRecord } from './record-location'
 
   const props = withDefaults(
     defineProps<{
       actionHint?: string
       locationReady?: boolean
+      table?: Pick<ArtTableQueryExpose, 'dataState'> | null
+      recordId?: string | number
+      recordKey?: string
+      recordRows?: readonly object[]
+      recordLoading?: boolean
+      recordError?: boolean
       customerId?: string
       customerName?: string
     }>(),
     {
       actionHint: '',
-      locationReady: true,
+      locationReady: undefined,
+      table: null,
+      recordKey: 'id',
+      recordRows: () => [],
+      recordLoading: false,
+      recordError: false,
       customerId: '',
       customerName: ''
     }
@@ -42,6 +55,18 @@
 
   const route = useRoute()
   const router = useRouter()
+  const locationReady = computed(() => {
+    if (props.locationReady !== undefined) return props.locationReady
+    const state = props.table?.dataState
+    const target = props.recordId ?? route.query.recordId
+    return hasLocatedRecord(
+      state?.rows.value ?? props.recordRows,
+      typeof target === 'string' || typeof target === 'number' ? target : undefined,
+      state?.loading.value ?? props.recordLoading,
+      state?.error.value ?? props.recordError,
+      props.recordKey
+    )
+  })
   const isMasterDelete = computed(() => route.query.fromMasterDelete === '1')
   const isActive = computed(() => isMasterDelete.value || route.query.fromCustomerDelete === '1')
   const resourceLabel = computed(() =>
@@ -54,7 +79,7 @@
   )
   const actionHint = computed(() => {
     if (props.actionHint) return props.actionHint
-    if (props.locationReady) return '已在当前页面找到关联记录。请核对并处理后返回原页面继续删除。'
+    if (locationReady.value) return '已在当前页面找到关联记录。请核对并处理后返回原页面继续删除。'
     const recordNo = route.query.recordNo
     return typeof recordNo === 'string' && recordNo
       ? `请核对关联记录“${recordNo}”，处理完成后返回原页面重新检查。`

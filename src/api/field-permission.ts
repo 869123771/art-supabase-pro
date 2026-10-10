@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 
 type SubjectType = Api.SystemManage.FieldPermissionSubjectType
 type AccessLevel = Api.Common.FieldAccessLevel

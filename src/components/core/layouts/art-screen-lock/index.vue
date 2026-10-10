@@ -1,17 +1,6 @@
 <!-- 锁屏 -->
 <template>
   <div class="layout-lock-screen">
-    <!-- 开发者工具警告覆盖层 -->
-    <div v-if="showDevToolsWarning" class="lock-warning" role="alert">
-      <div class="lock-warning__panel">
-        <span class="lock-warning__symbol" aria-hidden="true">
-          <ElIcon><WarningFilled /></ElIcon>
-        </span>
-        <h1>{{ $t('lockScreen.warning.title') }}</h1>
-        <p>{{ $t('lockScreen.warning.description') }}</p>
-      </div>
-    </div>
-
     <!-- 锁屏弹窗 -->
     <ElDialog
       v-if="!isLock"
@@ -20,7 +9,7 @@
       class="lock-dialog"
       align-center
       :aria-label="$t('lockScreen.lock.title')"
-      @open="handleDialogOpen"
+      @opened="handleDialogOpened"
       @closed="handleDialogClosed"
     >
       <template #header>
@@ -82,77 +71,87 @@
     </ElDialog>
 
     <!-- 解锁界面 -->
-    <ElScrollbar v-else class="unlock-scrollbar">
-      <main class="unlock-content">
-        <div class="unlock-content__brand">
-          <ArtLogo :size="32" />
-          <span>{{ brandName }}</span>
-        </div>
-
-        <section class="unlock-panel" aria-labelledby="unlock-title">
-          <span class="lock-symbol lock-symbol--large" aria-hidden="true">
-            <ElIcon><Lock /></ElIcon>
-          </span>
-          <h1 id="unlock-title">{{ $t('lockScreen.unlock.title') }}</h1>
-          <p class="unlock-panel__description">{{ $t('lockScreen.unlock.description') }}</p>
-
-          <div class="lock-identity">
-            <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
-            <div class="lock-identity__text">
-              <span>{{ $t('lockScreen.currentAccount') }}</span>
-              <strong :title="displayName">{{ displayName }}</strong>
-            </div>
+    <dialog
+      v-else
+      ref="unlockDialogRef"
+      class="fixed inset-0 m-0 h-dvh w-screen max-h-none max-w-none overflow-hidden border-0 p-0"
+      aria-labelledby="unlock-title"
+      @cancel.prevent
+      @keydown.esc.stop.prevent
+    >
+      <ElScrollbar class="unlock-scrollbar h-full">
+        <main class="unlock-content">
+          <div class="unlock-content__brand">
+            <ArtLogo :size="32" />
+            <span>{{ brandName }}</span>
           </div>
 
-          <ArtForm
-            ref="unlockFormRef"
-            :model-value="unlockForm"
-            @update:model-value="replaceReactiveModel(unlockForm, $event)"
-            custom-layout
-            root-class="lock-screen-form"
-            :show-reset="false"
-            :show-submit="false"
-            :rules="rules"
-            @submit="handleUnlock"
-          >
-            <ElFormItem
-              prop="password"
-              for="unlock-screen-password"
-              :label="$t('lockScreen.unlock.passwordLabel')"
-              class="lock-field"
+          <section class="unlock-panel" aria-labelledby="unlock-title">
+            <span class="lock-symbol lock-symbol--large" aria-hidden="true">
+              <ElIcon><Lock /></ElIcon>
+            </span>
+            <h1 id="unlock-title">{{ $t('lockScreen.unlock.title') }}</h1>
+            <p class="unlock-panel__description">{{ $t('lockScreen.unlock.description') }}</p>
+
+            <div class="lock-identity">
+              <img :src="userInfo.avatar || defaultAvatar" width="44" height="44" alt="" />
+              <div class="lock-identity__text">
+                <span>{{ $t('lockScreen.currentAccount') }}</span>
+                <strong :title="displayName">{{ displayName }}</strong>
+              </div>
+            </div>
+
+            <ArtForm
+              ref="unlockFormRef"
+              :model-value="unlockForm"
+              @update:model-value="replaceReactiveModel(unlockForm, $event)"
+              custom-layout
+              root-class="lock-screen-form"
+              :show-reset="false"
+              :show-submit="false"
+              :rules="rules"
+              @submit="handleUnlock"
             >
-              <ElInput
-                id="unlock-screen-password"
-                ref="unlockInputRef"
-                v-model="unlockForm.password"
-                class="lock-input"
-                type="password"
-                name="unlock-screen-password"
-                autocomplete="new-password"
-                show-password
-                :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
-                @input="unlockError = ''"
-              />
-            </ElFormItem>
-            <p v-if="unlockError" class="unlock-error" role="alert">{{ unlockError }}</p>
-            <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
-              {{ $t('lockScreen.unlock.btnText') }}
-            </ElButton>
-            <ElButton text class="lock-secondary" @click="toLogin">
-              {{ $t('lockScreen.unlock.backBtnText') }}
-            </ElButton>
-          </ArtForm>
-        </section>
-      </main>
-    </ElScrollbar>
+              <ElFormItem
+                prop="password"
+                for="unlock-screen-password"
+                :label="$t('lockScreen.unlock.passwordLabel')"
+                class="lock-field"
+              >
+                <ElInput
+                  id="unlock-screen-password"
+                  ref="unlockInputRef"
+                  v-model="unlockForm.password"
+                  class="lock-input"
+                  type="password"
+                  name="unlock-screen-password"
+                  autocomplete="new-password"
+                  show-password
+                  :placeholder="$t('lockScreen.unlock.inputPlaceholder')"
+                  @input="unlockError = ''"
+                />
+              </ElFormItem>
+              <p v-if="unlockError" class="unlock-error" role="alert">{{ unlockError }}</p>
+              <ElButton type="primary" native-type="submit" class="lock-submit" v-ripple>
+                {{ $t('lockScreen.unlock.btnText') }}
+              </ElButton>
+              <ElButton text class="lock-secondary" @click="toLogin">
+                {{ $t('lockScreen.unlock.backBtnText') }}
+              </ElButton>
+            </ArtForm>
+          </section>
+        </main>
+      </ElScrollbar>
+    </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
   import { replaceReactiveModel } from '@/utils/form/model'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
-  import { Lock, WarningFilled } from '@element-plus/icons-vue'
-  import { useScrollLock } from '@vueuse/core'
+  import { Lock } from '@element-plus/icons-vue'
+  import { useEventListener, useScrollLock } from '@vueuse/core'
+  import { getCurrentScope } from 'vue'
   import { ElInput, type FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import CryptoJS from 'crypto-js'
@@ -160,6 +159,8 @@
   import { useUserStore } from '@/store/modules/user'
   import { mittBus } from '@/utils/sys'
   import defaultAvatar from '@imgs/user/avatar.webp'
+
+  const componentScope = getCurrentScope()
 
   // 国际化
   const { t } = useI18n()
@@ -184,7 +185,7 @@
   const visible = ref<boolean>(false)
   const lockInputRef = ref<InstanceType<typeof ElInput>>()
   const unlockInputRef = ref<InstanceType<typeof ElInput>>()
-  const showDevToolsWarning = ref<boolean>(false)
+  const unlockDialogRef = ref<HTMLDialogElement>()
   const unlockError = ref('')
 
   // 表单相关
@@ -210,174 +211,6 @@
     ]
   }))
 
-  // 检测是否为移动设备
-  const isMobile = () => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    )
-  }
-
-  // 添加禁用控制台的函数
-  const disableDevTools = () => {
-    // 禁用右键菜单
-    const handleContextMenu = (e: Event) => {
-      if (isLock.value) {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-    }
-    document.addEventListener('contextmenu', handleContextMenu, true)
-
-    // 禁用开发者工具相关快捷键
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isLock.value) return
-
-      // 禁用 F12
-      if (e.key === 'F12') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+Shift+I/J/C/K (开发者工具)
-      if (e.ctrlKey && e.shiftKey) {
-        const key = e.key.toLowerCase()
-        if (['i', 'j', 'c', 'k'].includes(key)) {
-          e.preventDefault()
-          e.stopPropagation()
-          return false
-        }
-      }
-
-      // 禁用 Ctrl+U (查看源代码)
-      if (e.ctrlKey && e.key.toLowerCase() === 'u') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+S (保存页面)
-      if (e.ctrlKey && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+A (全选)
-      if (e.ctrlKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+P (打印)
-      if (e.ctrlKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+F (查找)
-      if (e.ctrlKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Alt+Tab (切换窗口)
-      if (e.altKey && e.key === 'Tab') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+Tab (切换标签页)
-      if (e.ctrlKey && e.key === 'Tab') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+W (关闭标签页)
-      if (e.ctrlKey && e.key.toLowerCase() === 'w') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+R 和 F5 (刷新页面)
-      if ((e.ctrlKey && e.key.toLowerCase() === 'r') || e.key === 'F5') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-
-      // 禁用 Ctrl+Shift+R (强制刷新)
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
-        e.preventDefault()
-        e.stopPropagation()
-        return false
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown, true)
-
-    // 禁用选择文本
-    const handleSelectStart = (e: Event) => {
-      if (isLock.value) {
-        e.preventDefault()
-        return false
-      }
-    }
-    document.addEventListener('selectstart', handleSelectStart, true)
-
-    // 禁用拖拽
-    const handleDragStart = (e: Event) => {
-      if (isLock.value) {
-        e.preventDefault()
-        return false
-      }
-    }
-    document.addEventListener('dragstart', handleDragStart, true)
-
-    // 监听开发者工具打开状态（仅在桌面端启用）
-    let devtools = { open: false }
-    const threshold = 160
-    let devToolsInterval: ReturnType<typeof setInterval> | null = null
-
-    const checkDevTools = () => {
-      if (!isLock.value || isMobile()) return
-
-      const isDevToolsOpen =
-        window.outerHeight - window.innerHeight > threshold ||
-        window.outerWidth - window.innerWidth > threshold
-
-      if (isDevToolsOpen && !devtools.open) {
-        devtools.open = true
-        showDevToolsWarning.value = true
-      } else if (!isDevToolsOpen && devtools.open) {
-        devtools.open = false
-        showDevToolsWarning.value = false
-      }
-    }
-
-    // 仅在桌面端启用开发者工具检测
-    if (!isMobile()) {
-      devToolsInterval = setInterval(checkDevTools, 500)
-    }
-
-    // 返回清理函数
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu, true)
-      document.removeEventListener('keydown', handleKeyDown, true)
-      document.removeEventListener('selectstart', handleSelectStart, true)
-      document.removeEventListener('dragstart', handleDragStart, true)
-      if (devToolsInterval) {
-        clearInterval(devToolsInterval)
-      }
-    }
-  }
-
   // 工具函数
   const verifyPassword = (inputPassword: string, storedPassword: string): boolean => {
     try {
@@ -393,16 +226,16 @@
 
   // 事件处理函数
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.altKey && event.key.toLowerCase() === '¬') {
+    if (!isLock.value && event.altKey && event.key.toLowerCase() === '¬') {
       event.preventDefault()
       visible.value = true
     }
   }
 
-  const handleDialogOpen = () => {
-    setTimeout(() => {
-      lockInputRef.value?.input?.focus()
-    }, 100)
+  useEventListener(document, 'keydown', handleKeydown)
+
+  const handleDialogOpened = () => {
+    lockInputRef.value?.focus()
   }
 
   const handleDialogClosed = () => {
@@ -414,7 +247,7 @@
     if (!formRef.value) return
 
     await formRef.value.validate((valid) => {
-      if (valid) {
+      if (valid && componentScope?.active) {
         const encryptedPassword = CryptoJS.AES.encrypt(formData.password, ENCRYPT_KEY).toString()
         userStore.setLockStatus(true)
         userStore.setLockPassword(encryptedPassword)
@@ -428,7 +261,7 @@
     if (!unlockFormRef.value) return
 
     await unlockFormRef.value.validate((valid) => {
-      if (valid) {
+      if (valid && componentScope?.active) {
         const isValid = verifyPassword(unlockForm.password, lockPassword.value)
 
         if (isValid) {
@@ -438,14 +271,12 @@
             unlockForm.password = ''
             unlockError.value = ''
             visible.value = false
-            showDevToolsWarning.value = false
           } catch (error) {
             console.error('更新store失败:', error)
           }
         } else {
           unlockError.value = t('lockScreen.pwdError')
-          unlockForm.password = ''
-          unlockInputRef.value?.input?.focus()
+          unlockInputRef.value?.focus()
         }
       }
     })
@@ -456,101 +287,42 @@
   }
 
   const openLockScreen = () => {
-    visible.value = true
+    if (!isLock.value) visible.value = true
   }
 
-  // 监听锁屏状态变化
-  watch(isLock, (newValue) => {
-    if (newValue) {
-      isBodyScrollLocked.value = true
-      setTimeout(() => {
-        unlockInputRef.value?.input?.focus()
-      }, 100)
-    } else {
-      isBodyScrollLocked.value = false
-      showDevToolsWarning.value = false
-      unlockError.value = ''
-    }
-  })
+  // 在实际输入框挂载后恢复焦点，初次进入和再次锁屏使用同一流程。
+  watch(
+    [isLock, unlockDialogRef, unlockInputRef],
+    ([locked, dialog, input]) => {
+      isBodyScrollLocked.value = locked
+      if (locked) {
+        // Native modal layers isolate existing and late-mounted business portals.
+        if (dialog && !dialog.open) dialog.showModal()
+        input?.focus()
+      } else unlockError.value = ''
+    },
+    { immediate: true, flush: 'post' }
+  )
 
-  // 存储清理函数
-  let cleanupDevTools: (() => void) | null = null
+  // Close before Vue removes the dialog so the browser restores its previous focus.
+  watch(
+    isLock,
+    (locked) => {
+      if (!locked) unlockDialogRef.value?.close()
+    },
+    { flush: 'sync' }
+  )
 
-  // 生命周期钩子
-  onMounted(() => {
-    mittBus.on('openLockScreen', openLockScreen)
-    document.addEventListener('keydown', handleKeydown)
+  onBeforeUnmount(() => unlockDialogRef.value?.close())
 
-    if (isLock.value) {
-      isBodyScrollLocked.value = true
-      setTimeout(() => {
-        unlockInputRef.value?.input?.focus()
-      }, 100)
-    }
-
-    // 初始化禁用开发者工具功能
-    cleanupDevTools = disableDevTools()
-  })
-
+  onMounted(() => mittBus.on('openLockScreen', openLockScreen))
   onUnmounted(() => {
     mittBus.off('openLockScreen', openLockScreen)
-    document.removeEventListener('keydown', handleKeydown)
     isBodyScrollLocked.value = false
-    // 清理禁用开发者工具的事件监听器
-    if (cleanupDevTools) {
-      cleanupDevTools()
-      cleanupDevTools = null
-    }
   })
 </script>
 
 <style lang="scss" scoped>
-  .lock-warning {
-    position: fixed;
-    inset: 0;
-    z-index: 999999;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: var(--el-bg-color-page);
-  }
-
-  .lock-warning__panel {
-    width: min(100%, 440px);
-    padding: 36px;
-    text-align: center;
-    background: var(--default-box-color);
-    border: 1px solid var(--art-modal-surface-border);
-    border-radius: var(--art-feature-radius, 18px);
-    box-shadow: var(--art-modal-surface-shadow);
-
-    h1 {
-      margin: 18px 0 8px;
-      font-size: 22px;
-      font-weight: 650;
-      line-height: 30px;
-      color: var(--el-text-color-primary);
-    }
-
-    p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 22px;
-      color: var(--el-text-color-secondary);
-    }
-  }
-
-  .lock-warning__symbol {
-    display: inline-grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    font-size: 26px;
-    color: var(--el-color-danger);
-    background: color-mix(in srgb, var(--el-color-danger) 10%, var(--default-box-color));
-    border-radius: 16px;
-  }
-
   :global(.el-dialog.lock-dialog) {
     max-width: calc(100vw - 32px);
     border: 1px solid var(--art-modal-surface-border);
@@ -708,12 +480,6 @@
   .lock-secondary:focus-visible {
     outline: 2px solid var(--theme-color);
     outline-offset: 2px;
-  }
-
-  .unlock-scrollbar {
-    position: fixed;
-    inset: 0;
-    z-index: 2500;
   }
 
   .unlock-content {

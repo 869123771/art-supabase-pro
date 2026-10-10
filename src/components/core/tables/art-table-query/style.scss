@@ -18,6 +18,7 @@
 
   &.is-focus-mode {
     height: 100%;
+    min-height: 0;
 
     // 展开的筛选项可独立滚动，避免在矮窗口中挤掉表格与分页。
     :deep(.art-search-bar) {

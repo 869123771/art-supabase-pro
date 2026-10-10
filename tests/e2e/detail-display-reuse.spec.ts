@@ -46,6 +46,8 @@ for (const vehicle of vehiclePages) {
             maintenanceItems: [],
             fieldAccess: {
               accidentNarrative: 'read',
+              inspectionFindings: 'read',
+              remediationDetails: 'read',
               documents: 'read',
               maintenanceIdentifiers: 'read',
               maintenanceItems: 'read',

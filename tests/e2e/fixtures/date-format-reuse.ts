@@ -14,6 +14,10 @@ import VehicleAccident from '../../../modules/art-supabase-vms/src/views/vehicle
 import VehicleMaintenance from '../../../modules/art-supabase-vms/src/views/vehicle-manage/maintenance-record-detail/index.vue'
 import VehicleInspection from '../../../modules/art-supabase-vms/src/views/vehicle-manage/routine-inspection-detail/index.vue'
 import VehicleInsurance from '../../../modules/art-supabase-vms/src/views/vehicle-manage/vehicle-insurance-detail/index.vue'
+import VehicleAnnualInspection from '../../../modules/art-supabase-vms/src/views/vehicle-manage/vehicle-inspection-detail/index.vue'
+import VehiclePartUsage from '../../../modules/art-supabase-vms/src/views/vehicle-manage/part-manage-detail/index.vue'
+import { initializeTheme } from '@/hooks/core/useTheme'
+import BusinessAttachmentRowActions from '@/components/business/business-attachment-row-actions/index.vue'
 import ProfitAnalysis from '../../../modules/art-supabase-fms/src/views/settlement/waybill-profit/modules/waybill-profit-analysis-drawer.vue'
 import CollectionAdvisor from '../../../modules/art-supabase-fms/src/views/workbench/modules/receivables-collection-advisor-drawer.vue'
 import '@styles/core/tailwind.css'
@@ -49,9 +53,28 @@ const Preview = defineComponent({
     const profit = ref<InstanceType<typeof ProfitAnalysis> | null>(null)
     const collection = ref<InstanceType<typeof CollectionAdvisor> | null>(null)
     const selected = ref('尚未选择')
+    const removable = ref(false)
+    const removed = ref(0)
+    const attachmentActions = new URLSearchParams(location.search).has('attachmentActions')
     const explicitClick = new URLSearchParams(location.search).has('click')
+    if (new URLSearchParams(location.search).has('detailLayout')) return () => h(RouterView)
     return () =>
       h('main', [
+        ...(attachmentActions
+          ? [
+              h(BusinessAttachmentRowActions, {
+                file: { url: 'https://example.com/test.pdf', name: '测试附件.pdf' },
+                removable: removable.value,
+                onRemove: () => removed.value++
+              }),
+              h(
+                'button',
+                { type: 'button', onClick: () => (removable.value = !removable.value) },
+                '切换附件编辑权限'
+              ),
+              h('p', { 'data-testid': 'attachment-remove-count' }, String(removed.value))
+            ]
+          : []),
         h(RouterView),
         h(
           'button',
@@ -97,7 +120,9 @@ const router = createRouter({
     { path: '/accident/:id', component: VehicleAccident },
     { path: '/maintenance/:id', component: VehicleMaintenance },
     { path: '/inspection/:id', component: VehicleInspection },
-    { path: '/insurance/:id', component: VehicleInsurance }
+    { path: '/insurance/:id', component: VehicleInsurance },
+    { path: '/annual-inspection/:id', component: VehicleAnnualInspection },
+    { path: '/part/:id', component: VehiclePartUsage }
   ]
 })
 app.use(router)
@@ -106,6 +131,16 @@ useUserStore(store).setUserInfo({
   tenantId: 'date-test-tenant',
   platformSuper: false
 })
+if (new URLSearchParams(location.search).has('detailLayout')) {
+  initializeTheme()
+  useUserStore(store).setDictMap({
+    vehiclePartUsageStatus: [{ label: '已报废', value: 'scrapped' }],
+    vehicleRecordProcessed: [{ label: '已处理', value: 'true' }],
+    vehicleMaintenanceType: [{ label: '常规保养', value: 'routine' }],
+    vehicleRoutineInspectionType: [{ label: '出车检查', value: 'pre_trip' }],
+    vehicleRoutineInspectionResult: [{ label: '合格', value: 'passed' }]
+  })
+}
 useMenuStore(store).setButtonList([
   { name: 'Fixture:View', path: '', type: 'button', meta: { title: '查看说明' } }
 ])

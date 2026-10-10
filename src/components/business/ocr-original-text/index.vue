@@ -9,7 +9,7 @@
         </div>
       </div>
       <div class="ocr-original-text__meta">
-        <span>{{ normalizedText.length.toLocaleString('zh-CN') }} 字</span>
+        <span>{{ formatNumberValue(normalizedText.length) }} 字</span>
         <ElButton link type="primary" :disabled="!normalizedText" @click="copyText">
           <ArtSvgIcon icon="ri:file-copy-line" />复制原文
         </ElButton>
@@ -36,7 +36,10 @@
 </template>
 
 <script setup lang="ts">
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
+
   import { ElMessage } from 'element-plus'
+  import { formatNumberValue } from '@/utils/ui/format'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 
@@ -64,7 +67,7 @@
   async function copyText(): Promise<void> {
     if (!normalizedText.value) return
     try {
-      await navigator.clipboard.writeText(normalizedText.value)
+      await copyTextToClipboard(normalizedText.value)
       ElMessage.success('识别原文已复制')
     } catch {
       ElMessage.warning('复制失败，请在文本框中手动选择复制')
@@ -118,14 +121,14 @@
 
       strong {
         font-size: 13px;
-        color: var(--art-text-gray-900);
+        color: var(--art-gray-900);
       }
 
       small {
         margin-top: 2px;
         font-size: 11px;
         line-height: 1.45;
-        color: var(--art-text-gray-500);
+        color: var(--art-gray-700);
       }
     }
 
@@ -135,14 +138,14 @@
 
       > span {
         font-size: 11px;
-        color: var(--art-text-gray-400);
+        color: var(--art-gray-700);
         white-space: nowrap;
       }
     }
 
     :deep(.el-textarea__inner) {
       line-height: 1.75;
-      color: var(--art-text-gray-800);
+      color: var(--art-gray-800);
       white-space: pre-wrap;
       background: var(--default-box-color);
       border-color: var(--art-card-border);

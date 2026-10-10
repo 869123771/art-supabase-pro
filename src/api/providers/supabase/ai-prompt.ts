@@ -1,7 +1,7 @@
 import { buildOrIlikeFilter } from '@/utils/supabase/search'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import { createTenantScopeReadGuard } from '@/utils/tenant-scope-context'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { omit } from 'lodash-es'
 
 const { supabase, keysToSnakeDeep, responseHandle } = useSupabase()

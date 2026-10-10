@@ -1,5 +1,5 @@
 import dayjs, { type Dayjs } from 'dayjs'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import type { SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 const { supabase, responseHandle } = useSupabase()

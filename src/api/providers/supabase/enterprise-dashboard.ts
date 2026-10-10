@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { fetchDashboardData, type DashboardData } from './dashboard'
 import type { SupabaseQueryLike } from './query'
 

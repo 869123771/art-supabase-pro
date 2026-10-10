@@ -7,6 +7,12 @@ test('SQL metadata failure keeps execution usable and retry reloads schema', asy
 }, testInfo) => {
   test.setTimeout(120_000)
   let metadataRequests = 0
+  const vueContextWarnings: string[] = []
+  page.on('console', (message) => {
+    if (message.text().includes('Missing ref owner context')) {
+      vueContextWarnings.push(message.text())
+    }
+  })
   await page.addInitScript(() => {
     localStorage.setItem(
       'sb-ckbftoopuyophiebamwy-auth-token',
@@ -111,4 +117,5 @@ test('SQL metadata failure keeps execution usable and retry reloads schema', asy
     scrollWidth: document.documentElement.scrollWidth
   }))
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.width + 1)
+  expect(vueContextWarnings).toEqual([])
 })

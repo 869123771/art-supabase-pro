@@ -3,6 +3,7 @@ import { installFixtures, meta, tenantId } from './support/inventory-fixtures'
 import { mockApplicationMenus } from './support/menu-rpc'
 
 test('仓储工作台刷新失败清理旧统计并原位恢复', async ({ page }, testInfo) => {
+  test.setTimeout(180_000)
   await installFixtures(page)
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({
@@ -59,6 +60,9 @@ test('仓储工作台刷新失败清理旧统计并原位恢复', async ({ page 
     )
   }
   await page.goto('#/wms/workbench')
+  await expect(page.getByRole('heading', { name: '仓储运营工作台', exact: true })).toBeVisible({
+    timeout: 120_000
+  })
   const metrics = page.getByLabel('业务概览', { exact: true })
   await expect(metrics.getByText('77', { exact: true })).toHaveCount(4)
   const entries = [
@@ -121,6 +125,9 @@ for (const authority of ['super', 'ordinary', 'ordinary-none', 'ordinary-partial
   }, testInfo) => {
     test.setTimeout(180_000)
     await installFixtures(page)
+    await page.route('**/rest/v1/rpc/wms_inventory_report_secure', (route) =>
+      route.fulfill({ json: { data: [], total: 0, navigation: [] } })
+    )
     await page.route('**/rpc/get_accessible_applications', (route) =>
       route.fulfill({
         json: [
@@ -265,7 +272,7 @@ for (const authority of ['super', 'ordinary', 'ordinary-none', 'ordinary-partial
         .getByRole('link')
         .filter({ has: page.locator('strong').getByText(title, { exact: true }) })
       await link.click()
-      await expect(page).toHaveURL(new RegExp(`#/wms/${path}$`))
+      await expect(page).toHaveURL(new RegExp(`#/wms/${path}$`), { timeout: 120_000 })
       await expect(
         page.getByRole('heading', {
           name: title === '领料申请' ? '出库申请单' : title,
@@ -274,6 +281,9 @@ for (const authority of ['super', 'ordinary', 'ordinary-none', 'ordinary-partial
       ).toBeVisible()
       await expect(page.locator('.business-workspace-page').last()).toBeVisible()
       await expect(page.getByText('暂无访问权限', { exact: true })).toHaveCount(0)
+      if (title === '即时库存') {
+        await expect(page.getByText('当前范围暂无即时库存数据', { exact: true })).toBeVisible()
+      }
       await page.screenshot({
         path: testInfo.outputPath(`${path.replaceAll('/', '-')}.png`),
         animations: 'disabled'

@@ -19,14 +19,16 @@
   --art-color: #fff;
   --theme-color: var(--main-color);
 
-  /* Theme Colors - OKLCH Format */
+  /* Theme Colors */
   --art-primary: #635bff;
   --art-secondary: #0ea5e9;
-  --art-error: #f43f5e;
-  --art-info: #64748b;
-  --art-success: #10b981;
-  --art-warning: #f59e0b;
-  --art-danger: #ef4444;
+
+  /* Share semantic colors with Element Plus in both light and dark themes. */
+  --art-error: var(--el-color-error);
+  --art-info: var(--el-color-info);
+  --art-success: var(--el-color-success);
+  --art-warning: var(--el-color-warning);
+  --art-danger: var(--el-color-danger);
 
   /* Semantic action colors */
   --art-action-add: var(--theme-color);

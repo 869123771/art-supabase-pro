@@ -55,7 +55,7 @@ import { useSettingStore } from '@/store/modules/setting'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
 import { h, render, type WatchSource } from 'vue'
-import { usePreferredReducedMotion } from '@vueuse/core'
+import { useEventListener, usePreferredReducedMotion, useResizeObserver } from '@vueuse/core'
 import { debounce } from 'lodash-es'
 import type { SeriesOption } from 'echarts'
 
@@ -127,7 +127,6 @@ export function useChart(options: UseChartOptions = {}) {
     if (latestOptions && !emptyStateDiv && !isDestroyed) applyChartOptions(latestOptions)
   })
   let intersectionObserver: IntersectionObserver | null = null
-  let containerResizeObserver: ResizeObserver | null = null
   let pendingOptions: EChartsOption | null = null
   let resizeFrameId: number | null = null
   let initTimerId: number | null = null
@@ -175,6 +174,8 @@ export function useChart(options: UseChartOptions = {}) {
 
   // 防抖的resize处理（用于窗口resize事件）
   const debouncedResize = debounce(requestAnimationResize, RESIZE_DEBOUNCE_DELAY)
+  const stopWindowResize = useEventListener(window, 'resize', debouncedResize)
+  const { stop: stopContainerResize } = useResizeObserver(chartRef, requestAnimationResize)
 
   // 多延迟resize处理 - 统一方法
   const multiDelayResize = (delays: readonly number[]) => {
@@ -632,8 +633,8 @@ export function useChart(options: UseChartOptions = {}) {
     cleanupThemeWatcher()
     emptyStateManager.remove()
     cleanupIntersectionObserver()
-    containerResizeObserver?.disconnect()
-    containerResizeObserver = null
+    stopWindowResize()
+    stopContainerResize()
     clearTimers()
     clearStyleCache()
     pendingOptions = null
@@ -646,23 +647,7 @@ export function useChart(options: UseChartOptions = {}) {
   // 获取图表是否已初始化
   const isChartInitialized = () => chart !== null
 
-  onMounted(() => {
-    window.addEventListener('resize', debouncedResize)
-    if (chartRef.value && typeof ResizeObserver !== 'undefined') {
-      containerResizeObserver = new ResizeObserver(requestAnimationResize)
-      containerResizeObserver.observe(chartRef.value)
-    }
-  })
-
-  onBeforeUnmount(() => {
-    window.removeEventListener('resize', debouncedResize)
-    containerResizeObserver?.disconnect()
-    containerResizeObserver = null
-  })
-
-  onUnmounted(() => {
-    destroyChart()
-  })
+  onBeforeUnmount(destroyChart)
 
   return {
     isDark,

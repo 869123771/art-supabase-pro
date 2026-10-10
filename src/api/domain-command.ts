@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
-import { countBy } from 'lodash-es'
+import { clamp, countBy } from 'lodash-es'
+import { formatArtValue, type ArtValueFormatOptions } from '@/utils/ui/format'
 import { loadAllDocumentPages } from '@/utils/business/document-detail-list'
 import { fetchAiOperationsOverview } from '@/api/ai-operations'
 import { fetchEnterpriseDashboardData } from '@/api/enterprise-dashboard'
@@ -18,7 +19,7 @@ import { fetchMdmGovernanceOverview, fetchMdmQualityIssues } from '@mdm/api/modu
 import { fetchRiskInspectionTaskList, fetchSafetyRiskList } from '@smis/api/modules/risk-control'
 import { fetchRiskMapPoints } from '@smis/api/modules/risk-four-color-map'
 import { fetchFleetHealthWorkspace } from '@vms/api/providers/supabase/vehicle/fleet-health'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 
 const { supabase, responseHandle } = useSupabase()
 
@@ -290,15 +291,13 @@ export const domainCommandDefinitions: Record<DomainCommandKind, DomainCommandDe
   }
 }
 
-const clampScore = (value: number) => Math.min(100, Math.max(0, Math.round(value)))
+const clampScore = (value: number) => clamp(Math.round(value), 0, 100)
 const rateScore = (risk: number, total: number) =>
   clampScore(total ? 100 - (risk / total) * 100 : 100)
-const asMoney = (value: number | undefined) =>
-  value === undefined
-    ? '—'
-    : new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 }).format(
-        value
-      )
+const compactAmountOptions: ArtValueFormatOptions = {
+  emptyText: '—',
+  numberFormat: { notation: 'compact', maximumFractionDigits: 1 }
+}
 
 const financialPressureLabels: Record<Api.Fms.CashForecastOverview['pressureLevel'], string> = {
   healthy: '资金充足',
@@ -825,13 +824,13 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
     generatedAt: exceptions.generatedAt,
     score,
     headline: exceptions.totalIssues ? '财务异常需要按阻塞程度集中处置' : '资金与结算链路运行平稳',
-    description: `当前 ${exceptions.totalIssues} 项财务异常，${aging.overdueStatementCount} 笔应收逾期，30 天预计余额 ${asMoney(forecast.projectedBalance30d)} 元。`,
+    description: `当前 ${exceptions.totalIssues} 项财务异常，${aging.overdueStatementCount} 笔应收逾期，30 天预计余额 ${formatArtValue(forecast.projectedBalance30d, 'number', compactAmountOptions)} 元。`,
     activeCount: exceptions.totalIssues,
     riskCount: exceptions.totalIssues + aging.overdueStatementCount,
     metrics: [
       {
         label: '可用资金',
-        value: asMoney(forecast.availableBalance),
+        value: formatArtValue(forecast.availableBalance, 'number', compactAmountOptions),
         unit: '元',
         hint: '本位币余额',
         icon: 'ri:wallet-3-line',
@@ -839,7 +838,7 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
       },
       {
         label: '30天预计余额',
-        value: asMoney(forecast.projectedBalance30d),
+        value: formatArtValue(forecast.projectedBalance30d, 'number', compactAmountOptions),
         unit: '元',
         hint: financialPressureLabels[forecast.pressureLevel],
         icon: 'ri:line-chart-line',
@@ -852,7 +851,7 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
       },
       {
         label: '应收余额',
-        value: asMoney(forecast.receivableOutstanding),
+        value: formatArtValue(forecast.receivableOutstanding, 'number', compactAmountOptions),
         unit: '元',
         hint: `${aging.overdueStatementCount} 笔逾期`,
         icon: 'ri:money-cny-circle-line',
@@ -860,7 +859,7 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
       },
       {
         label: '应付余额',
-        value: asMoney(forecast.payableOutstanding),
+        value: formatArtValue(forecast.payableOutstanding, 'number', compactAmountOptions),
         unit: '元',
         hint: '待支付口径',
         icon: 'ri:bank-card-line',
@@ -887,7 +886,7 @@ async function loadFinancialRisk(): Promise<DomainCommandData> {
       {
         label: '资金安全',
         score,
-        caption: `30天余额 ${asMoney(forecast.projectedBalance30d)}`,
+        caption: `30天余额 ${formatArtValue(forecast.projectedBalance30d, 'number', compactAmountOptions)}`,
         icon: 'ri:safe-2-line',
         tone: score < 60 ? 'danger' : score < 80 ? 'warning' : 'success'
       },

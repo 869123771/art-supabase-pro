@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
   import type { CSSProperties } from 'vue'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineOptions({ name: 'ArtLogo' })
 

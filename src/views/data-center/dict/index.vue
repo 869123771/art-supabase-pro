@@ -1,7 +1,8 @@
 <template>
   <div class="dict-page art-full-height business-workspace-page">
     <MasterDeleteProcessingNotice
-      action-hint="字典类型和关联字典项已自动定位；处理完成后可返回继续删除。"
+      :table="route.query.dependencyCode === 'dict_type_child' ? typeTreeRef : tableQueryRef"
+      action-hint="请核对关联字典类型与字典项；处理完成后可返回继续删除。"
     />
     <div class="dict-layout business-workspace-content">
       <ArtWorkspaceSplitter
@@ -14,7 +15,11 @@
       >
         <template #primary>
           <div class="dict-tree-panel">
-            <TypeTree :target-node-id="deleteTargetTypeId" @tree-node-click="handleTreeNodeClick" />
+            <TypeTree
+              ref="typeTreeRef"
+              :target-node-id="deleteTargetTypeId"
+              @tree-node-click="handleTreeNodeClick"
+            />
           </div>
         </template>
 
@@ -69,6 +74,7 @@
 </template>
 
 <script setup lang="tsx">
+  import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import { ElMessage } from 'element-plus'
@@ -153,6 +159,7 @@
   const { getDictMap } = storeToRefs(userStore)
 
   const tableQueryRef = ref<ArtTableQueryExpose>()
+  const typeTreeRef = ref<InstanceType<typeof TypeTree>>()
   const dictDialogRef = ref<DictDialogExpose>()
   const deleteGuardRef = ref<MasterDataDeleteGuardExpose>()
   const dictTreeUtils = new TreeUtils({
@@ -297,13 +304,13 @@
         width: 104,
         fixed: 'right',
         formatter: (row) => (
-          <div class="flex items-center">
+          <BusinessTableRowActions>
             <ArtButtonTable type="edit" onClick={() => handleEdit(row)} />
             <ArtButtonMore
               list={getRowMoreActions()}
               onClick={(item: ButtonMoreItem) => handleRowMoreAction(item, row)}
             />
-          </div>
+          </BusinessTableRowActions>
         )
       }
     ],

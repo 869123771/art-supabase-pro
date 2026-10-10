@@ -1588,7 +1588,7 @@
 
   /**
    * 只保留当前专注工作区到路由页面根节点之间的 DOM 路径。
-   * 默认工作区为查询表格本身；复合页面可通过 focusScopeSelector 保留导航树等必要上下文。
+   * 默认保留最近的标准页签容器；其他复合页面可通过 focusScopeSelector 保留导航树等必要上下文。
    */
   const applyFocusLayout = (): void => {
     restoreFocusLayout()
@@ -1603,7 +1603,15 @@
 
     const focusScopeElement = props.focusScopeSelector
       ? tableQueryElement.closest<HTMLElement>(props.focusScopeSelector)
-      : undefined
+      : tableQueryElement.closest<HTMLElement>('.el-tabs')
+    if (focusScopeElement?.matches('.el-tabs')) {
+      let contextElement = tableQueryElement.parentElement
+      while (contextElement && focusScopeElement.contains(contextElement)) {
+        addManagedClass(contextElement, focusPathClass, focusPathElements)
+        if (contextElement === focusScopeElement) break
+        contextElement = contextElement.parentElement
+      }
+    }
     let currentElement = focusScopeElement ?? tableQueryElement
     while (currentElement !== pageElement) {
       const parentElement: HTMLElement | null = currentElement.parentElement
@@ -1712,6 +1720,7 @@
   }
 
   useEventListener(document, 'keydown', handleFocusEscape)
+
   onDeactivated(() => {
     measurementActive = false
     stopHeaderTopMeasurement()
@@ -1724,7 +1733,22 @@
     restoreFocusLayout()
   })
 
+  export interface ArtTableQueryDataState {
+    /** 当前实际呈现的数据，沿用表格的请求失效保护。 */
+    rows: ComputedRef<readonly object[]>
+    loading: ComputedRef<boolean>
+    error: ComputedRef<unknown>
+  }
+
+  const dataState: ArtTableQueryDataState = {
+    rows: resolvedData,
+    loading: computed(() => Boolean(resolvedLoading.value)),
+    error: computed(() => (isManaged.value ? managedTable.error.value : null))
+  }
+
   export interface ArtTableQueryExpose {
+    /** 只读数据状态；关联记录提示等 UI 必须以实际表格结果为准。 */
+    dataState: ArtTableQueryDataState
     /** 全量刷新，适用于工具栏手动刷新。 */
     refreshData: () => Promise<void>
     /** 新增后刷新，默认回到第一页。 */
@@ -1764,6 +1788,7 @@
   }
 
   defineExpose<ArtTableQueryExpose>({
+    dataState,
     refreshData: managedTable.refreshData,
     refreshCreate: managedTable.refreshCreate,
     refreshContext: managedTable.refreshCreate,

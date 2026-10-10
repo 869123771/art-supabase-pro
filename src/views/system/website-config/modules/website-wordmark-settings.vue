@@ -305,14 +305,6 @@
 
     &__picker {
       min-width: 0;
-
-      :deep(.art-upload),
-      :deep(.el-upload),
-      :deep(.el-upload--text),
-      :deep(.el-upload-list),
-      :deep(.el-upload-list__item) {
-        width: 100%;
-      }
     }
   }
 

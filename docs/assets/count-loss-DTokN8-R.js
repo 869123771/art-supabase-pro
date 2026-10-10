@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./workspace-DWWB8ov2.js";var i=t({name:`WmsCountLoss`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`loss`}))}});export{i as default};

@@ -1,7 +1,10 @@
 <template>
   <div class="number-rule-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
-      action-hint="已按关联菜单过滤编号场景；请调整或迁移规则后返回。"
+      :table="tableQueryRef"
+      :record-id="targetRuleKey"
+      record-key="ruleKey"
+      action-hint="请核对关联菜单的编号场景；请调整或迁移规则后返回。"
     />
     <BusinessWorkspaceHeader
       density="compact"

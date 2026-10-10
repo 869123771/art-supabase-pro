@@ -84,7 +84,7 @@
   } from '@/api/auth'
   import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { buildAuthCallbackUrl, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 

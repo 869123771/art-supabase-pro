@@ -430,7 +430,7 @@
   import { useEventListener } from '@vueuse/core'
   import { fetchWebsiteConfig, saveWebsiteConfig } from '@/api/system-manage/website-config'
   import { createWebsiteConfigDefaults } from '@/config/website-config-defaults'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
   import { getPageScrollContainer } from '@/hooks/core/useCommon'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import { useUserStore } from '@/store/modules/user'

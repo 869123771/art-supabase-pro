@@ -90,7 +90,7 @@
   import { addUser, editUser, fetchEnabledOrganizationTree } from '@/api/system-manage'
   import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
-  import { useSystemParam } from '@/hooks'
+  import { useSystemParam } from '@/hooks/core/system-param'
 
   type UserListItem = Api.SystemManage.UserListItem
   type UserAccountIdentityType = Api.SystemManage.UserAccountIdentityType

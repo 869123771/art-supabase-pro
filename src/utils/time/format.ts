@@ -34,9 +34,12 @@ export function formatWithDayjs(
 }
 
 /** Whether a value can be interpreted by the shared date/time formatter. */
-export function isValidDateTimeValue(value: string | Date | null | undefined): boolean {
+export function isValidDateTimeValue(
+  value: string | Date | null | undefined,
+  allowTimeOnly = true
+): boolean {
   if (value == null || value === '') return false
-  if (typeof value === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) return true
+  if (typeof value === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) return allowTimeOnly
   return dayjs(value).isValid()
 }
 

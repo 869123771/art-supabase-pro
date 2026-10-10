@@ -16,6 +16,7 @@ export interface DateTimeValueFormatOptions {
   format?: string
   invalidText?: string
   timezone?: string
+  allowTimeOnly?: boolean
 }
 
 export interface PercentValueFormatOptions {
@@ -27,6 +28,7 @@ export interface PercentValueFormatOptions {
 const isEmptyValue = (value: unknown): boolean =>
   value === undefined || value === null || value === ''
 const currencyFormatters = new Map<string, Intl.NumberFormat>()
+const numberFormatters = new Map<string, Intl.NumberFormat>()
 
 /** Keep telemetry latency readable across AI, benchmark and chat surfaces. */
 export function formatDurationMs(value?: number | null): string {
@@ -41,7 +43,26 @@ export function formatNumberValue(
   options?: Intl.NumberFormatOptions
 ): string {
   const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue.toLocaleString(locale, options) : String(value)
+  if (!Number.isFinite(numberValue)) return String(value)
+  if (options && ![Object.prototype, null].includes(Object.getPrototypeOf(options))) {
+    return new Intl.NumberFormat(locale, options).format(numberValue)
+  }
+
+  // Normalize option order so equivalent table-column configurations share a formatter.
+  const formatterKey = JSON.stringify([
+    locale,
+    Object.fromEntries(
+      Object.entries(options ?? {}).sort(([left], [right]) => left.localeCompare(right))
+    )
+  ])
+  let formatter = numberFormatters.get(formatterKey)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options)
+    // User-configurable precision/locales must not grow the application cache indefinitely.
+    if (numberFormatters.size >= 64) numberFormatters.clear()
+    numberFormatters.set(formatterKey, formatter)
+  }
+  return formatter.format(numberValue)
 }
 
 /** Format operational measurements with bounded precision and without trailing zeroes. */
@@ -112,7 +133,8 @@ export function formatCurrencyCodeValue(
 /** Preserve server-provided count text and masks; format only numeric counts. */
 export function formatSensitiveCountValue(value: number | string | null | undefined): string {
   if (isEmptyValue(value)) return '--'
-  return typeof value === 'number' ? value.toLocaleString('zh-CN') : String(value)
+  if (typeof value !== 'number') return String(value)
+  return Number.isFinite(value) ? formatNumberValue(value) : value.toLocaleString('zh-CN')
 }
 
 export function formatPercentValue(
@@ -135,7 +157,7 @@ export function formatDateTimeValue(
 ): string {
   const emptyText = options.emptyText ?? '--'
   if (value == null || value === '') return emptyText
-  if (options.invalidText !== undefined && !isValidDateTimeValue(value)) {
+  if (options.invalidText !== undefined && !isValidDateTimeValue(value, options.allowTimeOnly)) {
     return options.invalidText
   }
   return (

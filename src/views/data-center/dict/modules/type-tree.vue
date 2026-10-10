@@ -926,6 +926,11 @@
   })
 
   defineExpose({
+    dataState: {
+      rows: computed(() => tree.data),
+      loading: computed(() => tree.loading),
+      error: computed(() => tree.error)
+    },
     getCurrentDictType
   })
 </script>

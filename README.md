@@ -252,6 +252,8 @@ cd art-supabase-pro
 pnpm install
 ```
 
+共享依赖补丁由主仓 `patches/` 维护。Element Plus 2.14.7 的补丁修复数字输入框解除禁用后 `aria-disabled` 不更新的问题，同时覆盖 ES Module 和 CommonJS。业务子仓保留相同补丁以支持独立安装；更新主仓补丁后运行 `pnpm dependencies:sync-patches` 同步副本，`pnpm dependencies:audit` 会检查配置和内容一致性。上游修复后，升级依赖时应移除对应补丁并重新验证表单禁用切换。
+
 ### 2. 配置环境变量
 
 在项目根目录配置 `.env` 或 `.env.development`：
@@ -272,6 +274,10 @@ VITE_AMAP_SECURITY_JS_CODE=your-amap-security-code
 ```bash
 pnpm dev
 ```
+
+主仓与 Vue 业务子仓统一使用 `sass-embedded`。Sass 全局注入由 `scripts/scss-globals.mjs` 维护：普通组件只注入共用混合宏，平台全局样式与 Element Plus 主题源码继续加载配置过的主题变量；子仓不要另行复制注入规则。
+
+开发性能排查应分别测量服务器启动、首次页面加载和实际文件热更新。使用具体 hooks 时直接导入对应的 `@/hooks/core/**` 或 `@/hooks/component/**` 文件，避免统一导出入口把无关控件带入当前页面的加载链路。
 
 ### 4. 质量检查与构建
 

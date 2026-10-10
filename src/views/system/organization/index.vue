@@ -1,7 +1,8 @@
 <template>
   <div class="organization-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
-      action-hint="当前组织已自动定位；请先处理成员、角色或下级组织。"
+      :table="tableQueryRef"
+      action-hint="请核对关联组织；请先处理成员、角色或下级组织。"
     />
     <BusinessWorkspaceHeader
       class="organization-page__overview"

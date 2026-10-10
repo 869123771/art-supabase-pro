@@ -124,8 +124,8 @@
   import type { FormItemRule, FormRules } from 'element-plus'
   import type { QueryResult } from '@/types/api/response'
   import { register } from '@/api/auth'
-  import { useSystemParam } from '@/hooks'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useSystemParam } from '@/hooks/core/system-param'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineOptions({ name: 'Register' })
 

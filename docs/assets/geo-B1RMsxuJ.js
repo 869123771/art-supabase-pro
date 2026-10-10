@@ -1,0 +1,1 @@
+import{r as e}from"./normalize-CDkeF65h.js";function t(t,n){let r=e(t),i=e(n);return r===null||i===null||Math.abs(r)>180||Math.abs(i)>90?null:{longitude:r,latitude:i}}export{t};

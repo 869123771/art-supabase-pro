@@ -1,9 +1,15 @@
 import { createApp, h } from 'vue'
 import { ElAlert, ElButton, ElTag } from 'element-plus'
-import '@styles/core/tailwind.css'
+import './semantic-colors.css'
 import '@styles/index.scss'
 
-const types = ['success', 'warning', 'danger'] as const
+const types = ['success', 'warning', 'danger', 'info'] as const
+const tokenClasses = {
+  success: 'semantic-token-text text-success',
+  warning: 'semantic-token-text text-warning',
+  danger: 'semantic-token-text text-danger',
+  info: 'semantic-token-text text-info'
+}
 createApp({
   render: () =>
     h(
@@ -11,6 +17,10 @@ createApp({
       { class: 'grid gap-4 p-4 bg-[var(--el-bg-color)]' },
       types.map((type) =>
         h('section', { class: 'grid gap-3', 'aria-label': type }, [
+          h('p', { class: tokenClasses[type] }, `${type} 公共文本颜色`),
+          ...(type === 'danger'
+            ? [h('p', { class: 'semantic-token-text text-error' }, 'error 公共文本颜色')]
+            : []),
           h('div', { class: 'flex flex-wrap gap-3' }, [
             ...(['light', 'plain', 'dark'] as const).map((effect) =>
               h(ElTag, { type, effect }, () => `${type} ${effect}`)

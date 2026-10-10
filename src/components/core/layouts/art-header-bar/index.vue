@@ -216,7 +216,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { useFullscreen, useTimeoutFn, useWindowSize } from '@vueuse/core'
+  import { useEventListener, useFullscreen, useTimeoutFn, useWindowSize } from '@vueuse/core'
   import { LanguageEnum, MenuTypeEnum } from '@/enums/app-enum'
   import { useSettingStore } from '@/store/modules/setting'
   import { useUserStore } from '@/store/modules/user'
@@ -283,7 +283,11 @@
       ? `打开通知中心，${notificationUnreadCount.value} 条未读`
       : '打开通知中心'
   )
-  let settingGuideTimer: ReturnType<typeof setTimeout> | undefined
+  const { start: scheduleSettingGuide } = useTimeoutFn(
+    () => settingStore.hideSettingGuide(),
+    8000,
+    { immediate: false }
+  )
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
@@ -296,16 +300,9 @@
 
   onMounted(() => {
     initLanguage()
-    document.addEventListener('click', bodyCloseNotice)
-
     if (showSettingGuide.value) {
-      settingGuideTimer = setTimeout(() => settingStore.hideSettingGuide(), 8000)
+      scheduleSettingGuide()
     }
-  })
-
-  onUnmounted(() => {
-    document.removeEventListener('click', bodyCloseNotice)
-    if (settingGuideTimer) clearTimeout(settingGuideTimer)
   })
 
   /**
@@ -397,6 +394,8 @@
       showNotice.value = false
     }
   }
+
+  useEventListener(document, 'click', bodyCloseNotice)
 
   /**
    * 切换通知面板显示状态

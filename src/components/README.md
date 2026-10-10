@@ -24,6 +24,14 @@ Shared components are organized by responsibility, not by the page that first ne
 
 `ArtButtonMore` adapts its default trigger to the device: touch devices use click, while devices with hover use hover. Set `trigger` explicitly only when the interaction requires an override; business pages should reuse this behavior rather than implement their own mobile dropdown.
 
+### Overlay lifecycle
+
+`ArtDialog` and `ArtDrawer` share `useArtOverlay`. Unmounting invalidates pending open, confirm, and close continuations and clears local loading state. It does not invoke business `onClose` or `onReset` callbacks. Retained APIs cannot reopen or reset an unmounted instance. Requests already started by a business callback remain owned by that business layer; their server outcome must be reconciled when the page is next loaded.
+
+`ArtScreenLock` owns workspace lock isolation through a native modal dialog. Business portals stay mounted to preserve drafts while the rest of the document is inert; pages should reuse this policy without adding local lock overlays, z-index rules, or keyboard traps. Unlocking and component teardown close the native modal before removal to restore the previous input focus.
+
+`ArtGlobalComponent` owns deferred activation of search, settings, chat, and fireworks. A pending load retains the latest activation and reports a failure once. Cached components must actually mount before activation is replayed, including activation in the same update as unlocking. Locking or unmounting invalidates older intents; business pages should emit the existing activation events rather than add their own loader or replay policy.
+
 ## Cross-repository import paths
 
 Business modules under `modules/**` also build against a pinned, separately distributed `art-supabase-pro` package. A shared component's source path is therefore part of their integration contract. Before relocating one, verify that the pinned platform package contains the new path, update every module import and dependency pin together, and run the standalone module typechecks. `ArtIconButton` currently stays under `core/widget/art-icon-button` for this reason.
@@ -38,6 +46,7 @@ Examples:
 - `ArtEmployeeSelect`: tenant-scoped employee lookup and employee identity display. `allowAllTenantRead` enables aggregate search only for platform super administrators in the all-tenant scope; write targets still come from the owning form. `displayFields` can include `gender` and `age` when the authorized source supplies these fields, such as accident employee snapshots; the selector preserves the source records when emitting selections.
 - `ArtEmployeeSelect` and `ArtMaterialSelect` configure the same `ArtDataSelect` table workspace directly. Employee events retain `EmployeeIntegrationItem`; material events infer the complete record type from `apiFn` and `selectedData`, including domain-specific fields. Their `change` values are strings for single selection and string arrays for multiple selection. Reuse these record types in callbacks instead of converting generic rows with assertions or adding DTO index signatures.
 - `BusinessWorkspaceHeader`: shared business workspace identity and overview metrics.
+- `BusinessAttachmentRowActions`: attachment preview/download actions with shared row spacing. The caller supplies its authorized `removable` state and handles the `remove` event; the component does not delete or persist records.
 - `BusinessMenuFilter`: menu-tree search, selection, counts and complete states; each feature supplies its own visible menus and business statistics.
 - Business record links, history, and permission-aware action surfaces.
 

@@ -1,6 +1,9 @@
 // 导入暗黑主题
 @use 'element-plus/theme-chalk/src/dark/var.scss' with (
   $colors: (
+    'info': (
+      'base': #b4bbc7
+    ),
     'success': (
       'base': #13deb9
     ),
@@ -22,7 +25,7 @@ html.dark {
   --el-text-color-regular: rgb(255 255 255 / 85%);
 
   // 深色主题的状态底色较亮，实心控件必须使用深色前景。
-  @each $type in success, warning, danger, error {
+  @each $type in success, warning, danger, error, info {
     .el-tag--dark.el-tag--#{$type} {
       --el-tag-text-color: #141414;
     }

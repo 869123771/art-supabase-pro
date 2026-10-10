@@ -10,6 +10,8 @@ import ElementPlus from 'unplugin-element-plus/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { createViteWatchPolicy } from './vite-watch-policy.mjs'
+import { withSharedScssGlobals } from './scss-globals.mjs'
+import { hostedModuleSharedDependencies } from './hosted-module-dependencies.mjs'
 import { matchElementPlusStyles } from './element-plus-style-chunks.mjs'
 
 function createSourceTransformPattern(...roots) {
@@ -133,7 +135,11 @@ export async function createModuleViteConfig({
         '@stores': path.join(platformSourceRoot, 'store'),
         '@styles': path.join(platformSourceRoot, 'assets/styles')
       },
-      dedupe: ['vue', 'vue-router', 'pinia', 'element-plus']
+      // A standalone module can share only dependencies installed at its own root.
+      // Other platform dependencies retain normal package-relative resolution.
+      dedupe: hostedModuleSharedDependencies.filter((dependency) =>
+        existsSync(path.join(applicationRoot, 'node_modules', dependency))
+      )
     },
     plugins: [
       createModuleTailwindSourcePlugin(applicationRoot, platformSourceRoot),
@@ -179,10 +185,7 @@ export async function createModuleViteConfig({
       preprocessorMaxWorkers: 4,
       preprocessorOptions: {
         scss: {
-          additionalData: `
-            @use "@styles/core/el-light.scss" as elementTheme;
-            @use "@styles/core/mixin.scss" as *;
-          `
+          additionalData: withSharedScssGlobals
         }
       }
     },

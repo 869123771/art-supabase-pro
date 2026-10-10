@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="tsx">
-  import { createDateTimeFormatter } from '@/utils/ui/format'
+  import { createDateTimeFormatter, formatNumberValue } from '@/utils/ui/format'
 
   import { ElMessage, ElTag } from 'element-plus'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
@@ -174,7 +174,7 @@
       {
         label: '平均超时',
         value: `${averageTimeout} 秒`,
-        description: `租户总日配额 ${dailyQuota.toLocaleString('zh-CN')} 次`,
+        description: `租户总日配额 ${formatNumberValue(dailyQuota)} 次`,
         icon: 'ri:timer-flash-line',
         tone: 'warning'
       }

@@ -1,0 +1,1 @@
+import{$t as e,zn as t}from"./framework-D3WzblCr.js";function n(n){let r=t();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await e()}}}export{n as t};

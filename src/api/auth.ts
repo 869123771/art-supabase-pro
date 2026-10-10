@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { formatSupabaseAuthErrorMessage, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 import type { QueryResult } from '@/types/api/response'
 import {

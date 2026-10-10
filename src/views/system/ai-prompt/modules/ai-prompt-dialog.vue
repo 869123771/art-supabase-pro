@@ -50,7 +50,7 @@
             </div>
             <div>
               <dt>字符数</dt>
-              <dd>{{ form.model.systemPrompt.length.toLocaleString('zh-CN') }} / 16,000</dd>
+              <dd>{{ formatNumberValue(form.model.systemPrompt.length) }} / 16,000</dd>
             </div>
           </dl>
         </section>
@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatNumberValue } from '@/utils/ui/format'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { normalizeNullableText } from '@/utils/form/normalize'

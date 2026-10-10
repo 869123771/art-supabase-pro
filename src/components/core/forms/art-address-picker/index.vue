@@ -180,10 +180,13 @@
 </template>
 
 <script setup lang="ts">
+  import { useEventListener } from '@vueuse/core'
+  import { normalizeCoordinatePair } from '@/utils/geo'
+  import { formatCoordinateValue } from '@/utils/ui/coordinates'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Aim, Loading, Location, MapLocation } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { isNil, trim } from 'lodash-es'
+  import { trim } from 'lodash-es'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
@@ -374,22 +377,22 @@
     ...props.cascaderProps
   }))
 
-  const hasCoordinate = computed(() => {
-    const lng = trim(String(longitude.value ?? ''))
-    const lat = trim(String(latitude.value ?? ''))
-    return Boolean(lng && lat)
-  })
-
-  const canConfirmPick = computed(
-    () => Boolean(draftAddress.value) && !isNil(draftLongitude.value) && !isNil(draftLatitude.value)
+  const hasCoordinate = computed(
+    () => normalizeCoordinatePair(longitude.value, latitude.value) !== null
   )
 
-  const draftCoordinateText = computed(() => {
-    if (isNil(draftLongitude.value) || isNil(draftLatitude.value)) return ''
-    return `${draftLongitude.value}, ${draftLatitude.value}`
-  })
+  const canConfirmPick = computed(
+    () =>
+      Boolean(draftAddress.value) &&
+      normalizeCoordinatePair(draftLongitude.value, draftLatitude.value) !== null
+  )
+
+  const draftCoordinateText = computed(() =>
+    formatCoordinateValue(draftLongitude.value, draftLatitude.value, { emptyText: '' })
+  )
 
   const effectiveCoordinateStatus = computed<AddressCoordinateStatus>(() => {
+    if (!hasCoordinate.value && coordinateStatus.value === 'located') return 'unconfirmed'
     if (hasCoordinate.value && (!coordinateStatus.value || coordinateStatus.value === 'pending')) {
       return 'located'
     }
@@ -549,21 +552,11 @@
   ): { longitude: number; latitude: number } | undefined => {
     const longitude = typeof position?.getLng === 'function' ? position.getLng() : position?.lng
     const latitude = typeof position?.getLat === 'function' ? position.getLat() : position?.lat
-    const parsedLongitude = Number(longitude)
-    const parsedLatitude = Number(latitude)
-    if (
-      !Number.isFinite(parsedLongitude) ||
-      !Number.isFinite(parsedLatitude) ||
-      parsedLongitude < -180 ||
-      parsedLongitude > 180 ||
-      parsedLatitude < -90 ||
-      parsedLatitude > 90
-    ) {
-      return undefined
-    }
+    const coordinate = normalizeCoordinatePair(longitude, latitude)
+    if (!coordinate) return undefined
     return {
-      longitude: Number(parsedLongitude.toFixed(7)),
-      latitude: Number(parsedLatitude.toFixed(7))
+      longitude: Number(coordinate.longitude.toFixed(7)),
+      latitude: Number(coordinate.latitude.toFixed(7))
     }
   }
 
@@ -873,14 +866,10 @@
 
   onMounted(() => {
     void loadRegionOptions()
-    window.addEventListener('resize', handleViewportResize)
-    window.visualViewport?.addEventListener('resize', handleViewportResize)
   })
 
-  onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleViewportResize)
-    window.visualViewport?.removeEventListener('resize', handleViewportResize)
-  })
+  useEventListener(window, 'resize', handleViewportResize)
+  useEventListener(window.visualViewport, 'resize', handleViewportResize)
 
   defineExpose({
     locateCurrent,

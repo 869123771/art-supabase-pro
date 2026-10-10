@@ -84,6 +84,19 @@ for (const theme of ['light', 'dark']) {
                 actionsBox!.width
             )
           ).toBeLessThanOrEqual(2)
+          if (generic && (await card.locator('.art-section-card__subtitle').count())) {
+            const subtitle = (await card.locator('.art-section-card__subtitle').boundingBox())!
+            const contentWidth = await header.evaluate((element) => {
+              const style = getComputedStyle(element)
+              return (
+                element.getBoundingClientRect().width -
+                Number.parseFloat(style.paddingLeft) -
+                Number.parseFloat(style.paddingRight)
+              )
+            })
+            expect(subtitle.width).toBeGreaterThanOrEqual(contentWidth - 1)
+            expect(subtitle.y).toBeGreaterThanOrEqual(actionsBox!.y + actionsBox!.height - 1)
+          }
           if (!generic) {
             const identity = await card.locator('.art-section-card__identity').boundingBox()
             expect(Math.abs(actionsBox!.y - identity!.y)).toBeLessThanOrEqual(2)
@@ -148,3 +161,19 @@ for (const theme of ['light', 'dark']) {
     }
   }
 }
+
+test('生产组织树保持紧凑头部和手机说明隐藏', async ({ page }, info) => {
+  await prepareIsolatedSession(page)
+  await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+  await page.goto('/tests/e2e/fixtures/card-sort-layout.html?production=1')
+  const tree = page.locator('.production-tree')
+  await expect(tree).toContainText('尚未建立生产组织')
+  const subtitle = tree.locator('.art-section-card__subtitle')
+  if ((page.viewportSize()?.width ?? 1440) <= 767) await expect(subtitle).toBeHidden()
+  else await expect(subtitle).toBeVisible()
+  const header = (await tree.locator('.art-section-card__header').boundingBox())!
+  const actions = (await tree.locator('.art-section-card__actions').boundingBox())!
+  expect(Math.abs(header.x + header.width - actions.x - actions.width)).toBeLessThanOrEqual(2)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: info.outputPath('production-tree-header.png') })
+})

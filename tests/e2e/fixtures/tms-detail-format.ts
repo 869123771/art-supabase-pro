@@ -5,13 +5,21 @@ import { useUserStore } from '@/store/modules/user'
 import language from '@/locales'
 import { setupGlobDirectives } from '@/directives'
 import Customer from '@tms/views/basic-data/customer-price-detail/index.vue'
+import CarrierMaster from '@tms/views/basic-data/carrier-detail/index.vue'
 import Carrier from '@tms/views/basic-data/carrier-price-detail/index.vue'
 import Contract from '@tms/views/basic-data/contract-detail/index.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
 const kind = new URLSearchParams(location.search).get('kind')
-const component = kind === 'customer' ? Customer : kind === 'carrier' ? Carrier : Contract
+const component =
+  kind === 'carrier-master'
+    ? CarrierMaster
+    : kind === 'customer'
+      ? Customer
+      : kind === 'carrier'
+        ? Carrier
+        : Contract
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [

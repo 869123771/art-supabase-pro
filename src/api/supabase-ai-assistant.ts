@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { normalizeFunctionError } from './ai-assistant'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 import {

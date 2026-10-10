@@ -14,9 +14,15 @@
     "scripts/ui-audit.ts",
     "scripts/generate-offline-icons.ts",
     "scripts/module-vite-config.mjs",
+    "scripts/module-vite-config.d.mts",
+    "scripts/hosted-module-dependencies.mjs",
+    "scripts/hosted-module-dependencies.d.mts",
     "scripts/element-plus-style-chunks.mjs",
     "scripts/element-plus-style-chunks.d.mts",
     "scripts/vite-watch-policy.mjs",
+    "scripts/vite-watch-policy.d.mts",
+    "scripts/scss-globals.mjs",
+    "scripts/scss-globals.d.mts",
     "scripts/build-log-policy.mjs",
     "scripts/build-log-policy.d.mts"
   ],
@@ -73,7 +79,8 @@
     "lint:lint-staged": "lint-staged",
     "git-hooks:install": "husky",
     "commit": "git-cz",
-    "dependencies:audit": "tsx scripts/audit-module-dependencies.ts"
+    "dependencies:audit": "tsx scripts/audit-module-dependencies.ts",
+    "dependencies:sync-patches": "tsx scripts/audit-module-dependencies.ts --sync-patches"
   },
   "config": {
     "commitizen": {
@@ -196,7 +203,7 @@
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "rollup-plugin-visualizer": "^7.1.1",
-    "sass": "^1.105.1",
+    "sass-embedded": "^1.105.1",
     "stylelint": "^17.16.0",
     "stylelint-config-html": "^2.0.0",
     "stylelint-config-recess-order": "^7.8.0",
@@ -211,7 +218,7 @@
     "unplugin-auto-import": "^21.1.0",
     "unplugin-element-plus": "^0.11.2",
     "unplugin-vue-components": "^32.1.0",
-    "vite": "^8.3.3",
+    "vite": "^8.3.4",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vue-demi": "^0.14.10",

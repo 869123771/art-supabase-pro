@@ -1,7 +1,8 @@
 <template>
   <div class="user-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
-      action-hint="当前用户已自动定位；可调整组织归属或角色授权后返回。"
+      :table="tableQueryRef"
+      action-hint="请核对关联用户；可调整组织归属或角色授权后返回。"
     />
     <BusinessWorkspaceHeader
       class="user-page__overview"
@@ -122,7 +123,7 @@
   } from '@/api/system-manage'
   import ArtButtonMore, { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import UserRoleDialog from '@views/system/user/modules/user-role-dialog.vue'
-  import { useSystemParam } from '@/hooks'
+  import { useSystemParam } from '@/hooks/core/system-param'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessWorkspaceHeader, {

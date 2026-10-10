@@ -177,6 +177,8 @@
 </template>
 
 <script setup lang="ts">
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
+
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useEventListener, useMediaQuery, useStorage } from '@vueuse/core'
   import { ElMessage } from 'element-plus'
@@ -395,8 +397,13 @@
 
   async function copyDdl(): Promise<void> {
     if (!detail.value?.ddl) return
-    await navigator.clipboard.writeText(detail.value.ddl)
-    ElMessage.success('DDL 已复制')
+    try {
+      await copyTextToClipboard(detail.value.ddl)
+
+      ElMessage.success('DDL 已复制')
+    } catch {
+      ElMessage.warning('复制失败，请手动选择文字复制')
+    }
   }
 
   async function openHistory(): Promise<void> {

@@ -1,13 +1,22 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { isBuiltin } from 'node:module'
 import path from 'node:path'
 import ts from 'typescript'
 import { parse } from '@vue/compiler-sfc'
 import { isPlainObjectRecord } from '../src/utils/type-guards'
-import { hostedApplicationSourceDirectories } from './hosted-module-dependencies'
+import { hostedApplicationSourceDirectories } from './hosted-module-dependencies.mjs'
 
 const findings = new Set<string>()
 let checkedFiles = 0
+const syncPatches = process.argv.includes('--sync-patches')
+const dependencyPatches = (await readdir('patches')).filter((name) => name.endsWith('.patch'))
+const platformWorkspaceConfig = await readFile('pnpm-workspace.yaml', 'utf8')
+for (const patchName of dependencyPatches) {
+  const patchSetting = `  ${patchName.slice(0, -6)}: patches/${patchName}`
+  if (!platformWorkspaceConfig.split(/\r?\n/).includes(patchSetting)) {
+    findings.add(`主仓 pnpm-workspace.yaml 缺少共享依赖补丁 ${patchName}`)
+  }
+}
 
 const platformManifest: unknown = JSON.parse(await readFile('package.json', 'utf8'))
 if (!isPlainObjectRecord(platformManifest) || !Array.isArray(platformManifest.files)) {
@@ -53,6 +62,31 @@ for (const sourceDirectory of Object.values(hostedApplicationSourceDirectories))
       return isPlainObjectRecord(dependencies) ? Object.keys(dependencies) : []
     })
   )
+  // Standalone module installs need local copies; the platform owns their contents.
+  for (const patchName of dependencyPatches) {
+    const dependency = patchName.slice(0, patchName.lastIndexOf('@'))
+    if (!declared.has(dependency)) continue
+    const canonicalPatch = await readFile(path.join('patches', patchName), 'utf8')
+    const modulePatch = path.join(moduleRoot, 'patches', patchName)
+    if (syncPatches) {
+      await mkdir(path.dirname(modulePatch), { recursive: true })
+      await writeFile(modulePatch, canonicalPatch)
+    }
+    const workspaceConfig = await readFile(path.join(moduleRoot, 'pnpm-workspace.yaml'), 'utf8')
+    const patchSetting = `  ${patchName.slice(0, -6)}: patches/${patchName}`
+    if (!workspaceConfig.split(/\r?\n/).includes(patchSetting)) {
+      findings.add(`${moduleRoot}: pnpm-workspace.yaml 缺少共享依赖补丁 ${patchName}`)
+    }
+    const installedCopy = await readFile(modulePatch, 'utf8').catch((error: unknown) => {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null
+      throw error
+    })
+    if (installedCopy !== canonicalPatch) {
+      findings.add(
+        `${moduleRoot}: 依赖补丁 ${patchName} 与主仓不一致，请运行 dependencies:sync-patches`
+      )
+    }
+  }
   const config = ts.readConfigFile(path.join(moduleRoot, 'tsconfig.json'), ts.sys.readFile)
   if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
   const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, moduleRoot)

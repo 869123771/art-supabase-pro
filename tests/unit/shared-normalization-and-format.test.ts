@@ -60,6 +60,54 @@ test('operational precision uses locale grouping without changing default number
   assert.equal(formatPercentValue(1.2, { fractionDigits: 2 }), '1.20%')
 })
 
+test('number formatting keeps locale, option mutations and cache turnover independent', () => {
+  const options: Intl.NumberFormatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+  assert.equal(formatNumberValue(1234.5, 'de-DE', options), '1.234,50')
+  assert.equal(formatNumberValue(1234.5, 'zh-CN', options), '1,234.50')
+  options.useGrouping = false
+  assert.equal(formatNumberValue(1234.5, 'zh-CN', options), '1234.50')
+  for (let digits = 0; digits <= 20; digits++) {
+    for (const locale of ['zh-CN', 'de-DE', 'en-US', 'fr-FR']) {
+      const precision = { minimumFractionDigits: digits, maximumFractionDigits: digits }
+      assert.equal(
+        formatNumberValue(1234.5, locale, precision),
+        (1234.5).toLocaleString(locale, precision)
+      )
+    }
+  }
+  assert.equal(formatNumberValue(1234.5, 'de-DE', options), '1234,50')
+  assert.equal(formatNumberValue('***'), '***')
+  assert.equal(formatNumberValue(Infinity), 'Infinity')
+  assert.equal(formatNumberValue(NaN), 'NaN')
+})
+
+test('displayed measurements distinguish missing values from a valid zero', () => {
+  for (const value of [undefined, null, '']) assert.equal(formatArtValue(value, 'number'), '--')
+  assert.equal(formatArtValue(0, 'number'), '0')
+  assert.equal(formatArtValue('***', 'number'), '***')
+})
+
+test('business timestamps reject time-only input without changing time-control formatting', () => {
+  const date = createDateTimeFormatter({
+    format: 'YYYY-MM-DD',
+    invalidText: '--',
+    allowTimeOnly: false
+  })
+  const receipt = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '未识别',
+    invalidText: '未识别',
+    allowTimeOnly: false
+  })
+  assert.equal(date('2026-10-09 12:34:56'), '2026-10-09')
+  assert.equal(receipt('2026-10-09 12:34:56'), '2026-10-09 12:34')
+  for (const value of [undefined, null, '', '***', 'invalid', '12:34', '12:34:56']) {
+    assert.equal(date(value), '--')
+    assert.equal(receipt(value), '未识别')
+  }
+  assert.equal(formatDateTimeValue('12:34', { format: 'HH:mm', invalidText: '--' }), '12:34')
+})
+
 test('imported status preserves explicit disabled values and defaults omitted status to enabled', () => {
   for (const value of [false, 'false', '停用', '否'])
     assert.equal(normalizeImportedEnabled(value), false)
@@ -161,6 +209,9 @@ test('sensitive counts preserve masks, numeric strings and unavailable values', 
   assert.equal(formatSensitiveCountValue('不可用'), '不可用')
   assert.equal(formatSensitiveCountValue(1234), '1,234')
   assert.equal(formatSensitiveCountValue(0), '0')
+  assert.equal(formatSensitiveCountValue(Infinity), '∞')
+  assert.equal(formatSensitiveCountValue(-Infinity), '-∞')
+  assert.equal(formatSensitiveCountValue(NaN), 'NaN')
 })
 
 test('tenant labels share one fallback and composition rule', () => {

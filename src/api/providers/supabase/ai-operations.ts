@@ -1,7 +1,7 @@
 import { normalizeNullableText } from '@/utils/form/normalize'
 import { buildSupabasePageRange } from '@/utils/supabase/pagination'
 import dayjs from 'dayjs'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { createFriendlySupabaseFunctionError } from '@/utils/supabase/error'
 import type { AiFeedbackIssueType } from '@/api/providers/supabase/ai-feedback'
 

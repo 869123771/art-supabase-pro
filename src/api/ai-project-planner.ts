@@ -1,5 +1,5 @@
 import { normalizeFunctionError } from './ai-assistant'
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { invokeSupabaseFunctionWithSessionRecovery } from '@/utils/supabase/functions'
 import {
   isPlannerCapabilities,

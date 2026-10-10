@@ -15,11 +15,11 @@
     <header v-else-if="hasHeader" class="art-section-card__header">
       <div class="art-section-card__identity">
         <ArtSectionTitle :show-line="false" :show-marker="showMarker">{{ title }}</ArtSectionTitle>
-        <p v-if="subtitle">{{ subtitle }}</p>
       </div>
       <div v-if="$slots.actions" class="art-section-card__actions">
         <slot name="actions" />
       </div>
+      <p v-if="subtitle" class="art-section-card__subtitle">{{ subtitle }}</p>
     </header>
 
     <slot v-if="preserveContentStructure && !hasActiveState" />
@@ -163,7 +163,7 @@
     &__header {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--art-space-2) var(--art-space-3);
+      gap: var(--art-space-1) var(--art-space-3);
       align-items: flex-start;
       justify-content: space-between;
       min-width: 0;
@@ -178,14 +178,18 @@
         margin: 0;
         font-size: var(--art-font-size-section-title);
       }
+    }
 
-      p {
-        margin: var(--art-space-1) 0 0 11px;
-        font-size: var(--art-font-size-caption);
-        line-height: 20px;
-        color: var(--el-text-color-secondary);
-        overflow-wrap: anywhere;
-      }
+    &__subtitle {
+      flex: 0 1 100%;
+      grid-column: 1 / -1;
+      min-width: 0;
+      padding-left: 11px;
+      margin: 0;
+      font-size: var(--art-font-size-caption);
+      line-height: 20px;
+      color: var(--el-text-color-secondary);
+      overflow-wrap: anywhere;
     }
 
     &__actions {

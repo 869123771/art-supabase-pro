@@ -213,7 +213,7 @@
   import { MenuProcessor } from '@/router/core/menu-processor'
   import { clearAccessibleApplicationsCache } from '@/api/system-manage/application-access'
   import { getFirstMenuPath } from '@/utils/navigation/route'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import FeishuQrLogin from './modules/feishu-qr-login.vue'

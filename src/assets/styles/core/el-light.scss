@@ -3,9 +3,17 @@
 // 状态文字需要同时在白底与 light-9 底色上可读；light-3 保留实心按钮悬停对比度。
 
 @forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $text-color: (
+    'secondary': #626b7a,
+    'placeholder': #667080
+  ),
   $colors: (
     'white': #ffffff,
     'black': #000000,
+    'info': (
+      'base': #5b6474,
+      'light-3': #667080
+    ),
     'success': (
       'base': #066e5c,
       'light-3': #167968

@@ -44,10 +44,11 @@
 <script setup lang="ts" generic="TData extends object = Record<string, unknown>">
   import { get } from 'lodash-es'
   import { ElMessage, type ComponentSize } from 'element-plus'
-  import { useBreakpoints, useClipboard } from '@vueuse/core'
+  import { useBreakpoints } from '@vueuse/core'
   import { type PropType, type VNodeChild } from 'vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
   import { formatArtValue } from '@/utils/ui'
   import type { ArtDescriptionItem } from './types'
   import { storeToRefs } from 'pinia'
@@ -94,7 +95,6 @@
 
   const breakpoints = useBreakpoints({ mobile: 0, tablet: 768, desktop: 1200 })
   const activeBreakpoint = breakpoints.active()
-  const { copy } = useClipboard()
   const { isPlatformScope } = storeToRefs(useTenantScopeStore())
   const visibleItems = computed(() =>
     filterTenantDimensionDescriptors(props.items, isPlatformScope.value)
@@ -132,8 +132,12 @@
   }
 
   const handleCopy = async (item: ArtDescriptionItem<TData>): Promise<void> => {
-    await copy(String(resolveRawValue(item)))
-    ElMessage.success('复制成功')
+    try {
+      await copyTextToClipboard(String(resolveRawValue(item)))
+      ElMessage.success('复制成功')
+    } catch {
+      ElMessage.warning('复制失败，请手动选择文字复制')
+    }
   }
 </script>
 

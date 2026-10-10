@@ -97,7 +97,7 @@
   import { languageOptions } from '@/locales'
   import { LanguageEnum } from '@/enums/app-enum'
   import AppConfig from '@/config'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineOptions({ name: 'AuthTopBar' })
   const themeAnimation = useThemeAnimation()

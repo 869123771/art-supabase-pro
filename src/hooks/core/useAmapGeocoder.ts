@@ -1,4 +1,5 @@
 import { round, trim } from 'lodash-es'
+import { normalizeCoordinatePair } from '@/utils/geo'
 import { useAmapSdk } from './useAmapSdk'
 
 interface AMapLngLatLike {
@@ -61,29 +62,19 @@ export function useAmapGeocoder() {
         const location = result?.geocodes?.[0]?.location
         const longitude = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
         const latitude = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
-        if (!isValidCoordinate(longitude, latitude)) {
+        const pair = normalizeCoordinatePair(longitude, latitude)
+        if (!pair) {
           resolve(null)
           return
         }
 
         resolve({
-          longitude: round(Number(longitude), 6),
-          latitude: round(Number(latitude), 6)
+          longitude: round(pair.longitude, 6),
+          latitude: round(pair.latitude, 6)
         })
       })
     })
   }
 
   return { geocodeAddress }
-}
-
-function isValidCoordinate(longitude?: number, latitude?: number): boolean {
-  return (
-    Number.isFinite(longitude) &&
-    Number.isFinite(latitude) &&
-    Number(longitude) >= -180 &&
-    Number(longitude) <= 180 &&
-    Number(latitude) >= -90 &&
-    Number(latitude) <= 90
-  )
 }

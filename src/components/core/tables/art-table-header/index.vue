@@ -5,10 +5,7 @@
       <slot name="left"></slot>
     </div>
 
-    <div
-      class="art-table-header__right flex-c flex-wrap gap-y-2 md:justify-end max-md:mt-3"
-      :class="{ 'max-sm:!hidden': !focusMode }"
-    >
+    <div class="art-table-header__right flex-c flex-wrap gap-y-2 md:justify-end max-md:mt-3">
       <ArtIconButton
         v-if="showSearchBar != null"
         class="art-table-header__action"

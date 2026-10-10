@@ -98,10 +98,11 @@ app.use(router)
 app.use(language)
 setupGlobDirectives(app)
 const limited = new URLSearchParams(location.search).get('permission') === 'employee-only'
+const locationMode = new URLSearchParams(location.search).has('location')
 useUserStore(store).setUserInfo({
   userId: 'permission-test-user',
   tenantId: 'permission-test-tenant',
-  platformSuper: !limited
+  platformSuper: !limited && !locationMode
 })
 if (limited)
   useMenuStore(store).setButtonList(
@@ -112,6 +113,11 @@ if (limited)
       meta: { title: name }
     }))
   )
+if (locationMode)
+  useMenuStore(store).setButtonList([
+    { name: 'Hr:Compliance:View', path: '', type: 'button', meta: { title: '用工合规查看' } },
+    { name: 'Hr:Employee:View', path: '', type: 'button', meta: { title: '员工档案查看' } }
+  ])
 await router.push(
   new URLSearchParams(location.search).get('page') === 'performance'
     ? '/hr/talent/performance'
@@ -134,7 +140,15 @@ await router.push(
             }
           }
         : new URLSearchParams(location.search).get('page') === 'employee'
-          ? '/hr/personnel/employee-roster'
+          ? {
+              path: '/hr/personnel/employee-roster',
+              query: locationMode
+                ? {
+                    fromMasterDelete: '1',
+                    recordId: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa'
+                  }
+                : {}
+            }
           : '/hr/personnel/position'
 )
 await router.isReady()

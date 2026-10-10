@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-DZqGOvEn.js";import{t as r}from"./domain-command-screen-CmNvjS9z.js";var i=t({name:`SafetyProductionCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`safety-production`}))}});export{i as default};

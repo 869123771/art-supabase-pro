@@ -1,7 +1,8 @@
 <template>
   <div class="role-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
-      action-hint="当前角色已自动定位；可先解除用户或菜单授权后返回。"
+      :table="tableQueryRef"
+      action-hint="请核对关联角色；可先解除用户或菜单授权后返回。"
     />
     <BusinessWorkspaceHeader
       class="role-page__overview"

@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { applyCreateTimeRange, type SupabaseQueryLike } from '@/api/providers/supabase/query'
 
 type Artifact = Api.IntelligentRecognition.RecognitionArtifact

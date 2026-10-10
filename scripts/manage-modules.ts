@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { hostedModuleSharedDependencies } from './hosted-module-dependencies'
+import { hostedModuleSharedDependencies } from './hosted-module-dependencies.mjs'
 
 type ModuleAction = 'pull' | 'update' | 'install' | 'check' | 'build' | 'setup' | 'status'
 type ModulePackageAction = 'install' | 'check' | 'build'

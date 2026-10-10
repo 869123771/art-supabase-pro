@@ -596,6 +596,7 @@
 </template>
 
 <script setup lang="ts">
+  import { clamp } from 'lodash-es'
   import { computed, ref, watch } from 'vue'
   import { useFullscreen } from '@vueuse/core'
   import { uploadAttachment } from '@/api/attachments'
@@ -1017,7 +1018,7 @@
     const nodes: JSONContent[] = [buildMediaNode(kind, resource), { type: 'paragraph' }]
     const chain = targetEditor.chain().focus()
     if (position === undefined) return chain.insertContent(nodes).run()
-    const safePosition = Math.min(Math.max(position, 0), targetEditor.state.doc.content.size)
+    const safePosition = clamp(position, 0, targetEditor.state.doc.content.size)
     return chain.insertContentAt(safePosition, nodes).run()
   }
 

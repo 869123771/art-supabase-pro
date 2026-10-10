@@ -117,11 +117,12 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, ref, watch, nextTick, onUnmounted } from 'vue'
+  import { clamp } from 'lodash-es'
+  import { computed, onMounted, ref, watch, nextTick } from 'vue'
   import { LocationQueryRaw, useRoute, useRouter } from 'vue-router'
   import { useI18n } from 'vue-i18n'
   import { storeToRefs } from 'pinia'
-  import { useRafFn, useResizeObserver, useTimeoutFn } from '@vueuse/core'
+  import { useEventListener, useRafFn, useResizeObserver, useTimeoutFn } from '@vueuse/core'
 
   import { useWorktabStore } from '@/store/modules/worktab'
   import { useUserStore } from '@/store/modules/user'
@@ -184,7 +185,7 @@
     const viewportWidth = scrollRef.value.offsetWidth
     const tabsWidth = tabsRef.value.offsetWidth
     const minTranslate = Math.min(viewportWidth - tabsWidth, 0)
-    const translateX = Math.min(Math.max(scrollState.value.translateX, minTranslate), 0)
+    const translateX = clamp(scrollState.value.translateX, minTranslate, 0)
 
     scrollState.value.translateX = translateX
     hasOverflow.value = tabsWidth > viewportWidth + 1
@@ -410,28 +411,10 @@
       setTransition()
     }
 
-    const setupEventListeners = () => {
-      if (tabsRef.value) {
-        tabsRef.value.addEventListener('wheel', handleWheelScroll, { passive: false })
-        tabsRef.value.addEventListener('touchstart', handleTouchStart, { passive: true })
-        tabsRef.value.addEventListener('touchmove', handleTouchMove, { passive: true })
-        tabsRef.value.addEventListener('touchend', handleTouchEnd, { passive: true })
-      }
-    }
-
-    const cleanupEventListeners = () => {
-      if (tabsRef.value) {
-        tabsRef.value.removeEventListener('wheel', handleWheelScroll)
-        tabsRef.value.removeEventListener('touchstart', handleTouchStart)
-        tabsRef.value.removeEventListener('touchmove', handleTouchMove)
-        tabsRef.value.removeEventListener('touchend', handleTouchEnd)
-      }
-    }
-
-    return {
-      setupEventListeners,
-      cleanupEventListeners
-    }
+    useEventListener(tabsRef, 'wheel', handleWheelScroll, { passive: false })
+    useEventListener(tabsRef, 'touchstart', handleTouchStart, { passive: true })
+    useEventListener(tabsRef, 'touchmove', handleTouchMove, { passive: true })
+    useEventListener(tabsRef, 'touchend', handleTouchEnd, { passive: true })
   }
 
   // 标签页操作逻辑
@@ -511,7 +494,7 @@
   // 组合所有逻辑
   const { menuItems } = useContextMenu()
   const { setTransition, autoPositionTab, adjustPositionAfterClose } = useScrolling()
-  const { setupEventListeners, cleanupEventListeners } = useEventHandlers(setTransition)
+  useEventHandlers(setTransition)
   const { clickTab, closeWorktab, showMenu, handleSelect } =
     useTabOperations(adjustPositionAfterClose)
 
@@ -551,18 +534,13 @@
         : scrollState.value.translateX - step
 
     setTransition()
-    scrollState.value.translateX = Math.min(Math.max(nextTranslate, minTranslate), 0)
+    scrollState.value.translateX = clamp(nextTranslate, minTranslate, 0)
   }
 
   // 生命周期
   onMounted(() => {
-    setupEventListeners()
     autoPositionTab()
     nextTick(updateScrollAffordances)
-  })
-
-  onUnmounted(() => {
-    cleanupEventListeners()
   })
 
   // 监听器

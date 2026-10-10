@@ -198,7 +198,7 @@
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import LoginMethods from './modules/login-methods.vue'
-  import { useSystemParam } from '@/hooks'
+  import { useSystemParam } from '@/hooks/core/system-param'
   import { useUserStore } from '@/store/modules/user'
   import defaultAvatar from '@imgs/user/avatar.webp'
   import type { FormItemRule, FormRules } from 'element-plus'

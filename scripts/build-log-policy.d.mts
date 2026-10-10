@@ -1,3 +1,5 @@
+import type { BuildOptions } from 'vite'
+
 export interface BuildLogLike {
   message?: string
 }
@@ -7,11 +9,7 @@ export function getKnownFileViewerExternalization(log: BuildLogLike): string | n
 export interface BuildLogPolicy {
   chunkSizeWarningLimit: number
   rolldownOptions: {
-    onLog(
-      level: string,
-      log: BuildLogLike,
-      defaultHandler: (level: string, log: BuildLogLike) => void
-    ): void
+    onLog: NonNullable<NonNullable<BuildOptions['rolldownOptions']>['onLog']>
     checks: {
       invalidAnnotation: false
       pluginTimings: false

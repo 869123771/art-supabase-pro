@@ -123,11 +123,11 @@
           <dl class="geofence-config-page__radius-list">
             <div>
               <dt><i class="is-loading"></i>装货范围</dt>
-              <dd>{{ form.loadingRadiusM.toLocaleString() }} 米</dd>
+              <dd>{{ formatSensitiveCountValue(form.loadingRadiusM) }} 米</dd>
             </div>
             <div>
               <dt><i class="is-unloading"></i>卸货范围</dt>
-              <dd>{{ form.unloadingRadiusM.toLocaleString() }} 米</dd>
+              <dd>{{ formatSensitiveCountValue(form.unloadingRadiusM) }} 米</dd>
             </div>
           </dl>
         </ArtSectionCard>
@@ -229,6 +229,7 @@
 </template>
 
 <script setup lang="ts">
+  import { formatSensitiveCountValue } from '@/utils/ui/format'
   import { replaceReactiveModel } from '@/utils/form/model'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import type { FormRules } from 'element-plus'
@@ -331,14 +332,14 @@
   const overviewCards = computed(() => [
     {
       label: '装货默认半径',
-      value: `${form.loadingRadiusM} m`,
+      value: `${formatSensitiveCountValue(form.loadingRadiusM)} m`,
       description: '用于发货地址的进场识别',
       icon: 'ri:login-circle-line',
       tone: 'primary'
     },
     {
       label: '卸货默认半径',
-      value: `${form.unloadingRadiusM} m`,
+      value: `${formatSensitiveCountValue(form.unloadingRadiusM)} m`,
       description: '用于收货地址的到场识别',
       icon: 'ri:logout-circle-r-line',
       tone: 'success'

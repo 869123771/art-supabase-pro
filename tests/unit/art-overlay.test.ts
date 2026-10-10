@@ -1,10 +1,140 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { effectScope } from 'vue'
 import {
   cloneOverlayData,
   useArtOverlay,
   type ArtOverlayOptions
 } from '../../src/hooks/core/useArtOverlay'
+
+for (const operation of ['open', 'confirm', 'close'] as const) {
+  test(`disposed overlay suppresses pending ${operation} failure and cannot reopen`, async () => {
+    const errors: unknown[] = []
+    let focusRequests = 0
+    let closeCalls = 0
+    let resetCalls = 0
+    let rejectPending: ((error: Error) => void) | undefined
+    const pending = () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectPending = reject
+      })
+    const scope = effectScope()
+    const overlay = scope.run(() =>
+      createOverlay(
+        (error) => errors.push(error),
+        () => focusRequests++
+      )
+    )!
+    const opening = overlay.handleOpen(
+      { id: 'disposed' },
+      {
+        onOpen: operation === 'open' ? pending : undefined,
+        onConfirm: operation === 'confirm' ? pending : undefined,
+        onClose: () => {
+          closeCalls++
+          return operation === 'close' ? pending() : undefined
+        },
+        onReset: () => resetCalls++
+      }
+    )
+    await Promise.resolve()
+    const work =
+      operation === 'open'
+        ? opening
+        : operation === 'confirm'
+          ? overlay.handleConfirm()
+          : overlay.handleClose()
+    scope.stop()
+    rejectPending?.(new Error('disposed callback failed'))
+    await work
+    await overlay.handleOpen({ id: 'stale retry' })
+    overlay.handleModelValueChange(true)
+    overlay.handleClosed()
+    overlay.handleReset()
+    assert.equal(await overlay.handleConfirm(), false)
+    assert.equal(await overlay.handleClose(), false)
+    assert.equal(overlay.visible.value, false)
+    assert.equal(overlay.loading.value, false)
+    assert.equal(overlay.confirmLoading.value, false)
+    assert.equal(overlay.getData().id, 'disposed')
+    assert.equal(closeCalls, operation === 'close' ? 1 : 0)
+    assert.equal(resetCalls, 0)
+    assert.equal(focusRequests, 0)
+    assert.deepEqual(errors, [])
+  })
+}
+
+test('disposal before the open tick prevents starting its business callback', async () => {
+  const scope = effectScope()
+  const overlay = scope.run(() => createOverlay())!
+  let openCalls = 0
+  const opening = overlay.handleOpen(
+    {},
+    {
+      onOpen: () => {
+        openCalls++
+      }
+    }
+  )
+  scope.stop()
+  await opening
+  assert.equal(openCalls, 0)
+  assert.equal(overlay.visible.value, false)
+})
+
+test('a successful submission after disposal cannot invoke business close or reset', async () => {
+  const scope = effectScope()
+  const overlay = scope.run(() => createOverlay())!
+  let finishSubmit: (() => void) | undefined
+  let closeCalls = 0
+  let resetCalls = 0
+  await overlay.handleOpen(
+    {},
+    {
+      onConfirm: () =>
+        new Promise<void>((resolve) => {
+          finishSubmit = resolve
+        }),
+      onClose: () => {
+        closeCalls++
+      },
+      onReset: () => {
+        resetCalls++
+      }
+    }
+  )
+  const submitting = overlay.handleConfirm()
+  scope.stop()
+  finishSubmit?.()
+  assert.equal(await submitting, false)
+  assert.equal(closeCalls, 0)
+  assert.equal(resetCalls, 0)
+})
+
+test('a native close continuation after disposal cannot call its business guard or done', async () => {
+  const scope = effectScope()
+  const overlay = scope.run(() => createOverlay())!
+  let release: (() => void) | undefined
+  let closeCalls = 0
+  await overlay.handleOpen(
+    {},
+    {
+      onClose: () => {
+        closeCalls++
+      }
+    }
+  )
+  overlay.handleBeforeClose(
+    () => assert.fail('disposed native close completed'),
+    (done: () => void) => {
+      release = done
+    }
+  )
+  scope.stop()
+  release?.()
+  await Promise.resolve()
+  assert.equal(closeCalls, 0)
+})
 
 test('fallback snapshots isolate nested values while preserving callback identity and cycles', () => {
   const callback = () => 'unchanged'

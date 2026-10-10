@@ -95,23 +95,23 @@
 
 除 `model` 由 `v-model` 接管外，`ElForm` 的 Props 可直接写在 `ArtForm` 上，并会透传到内部 `ElForm`：
 
-| ElForm 属性                 | 类型/说明                                |
-| --------------------------- | ---------------------------------------- |
-| `rules`                     | 表单校验规则                             |
-| `label-position`            | 标签位置；也可用 `ArtForm.labelPosition` |
-| `require-asterisk-position` | 必填星号位置                             |
-| `label-width`               | 标签宽度；也可用 `ArtForm.labelWidth`    |
-| `label-suffix`              | 标签后缀                                 |
-| `inline`                    | 行内表单                                 |
-| `inline-message`            | 行内显示校验信息                         |
-| `status-icon`               | 显示校验状态图标                         |
-| `show-message`              | 是否显示校验信息                         |
-| `validate-on-rule-change`   | rules 变化后是否触发校验                 |
-| `hide-required-asterisk`    | 隐藏必填星号                             |
-| `scroll-to-error`           | 校验失败时滚动到错误项                   |
-| `scroll-into-view-options`  | 滚动配置                                 |
-| `size`                      | 表单尺寸                                 |
-| `disabled`                  | 禁用整个表单                             |
+| ElForm 属性 | 类型/说明 |
+| --- | --- |
+| `rules` | 表单校验规则 |
+| `label-position` | 标签位置；也可用 `ArtForm.labelPosition` |
+| `require-asterisk-position` | 必填星号位置 |
+| `label-width` | 标签宽度；也可用 `ArtForm.labelWidth` |
+| `label-suffix` | 标签后缀 |
+| `inline` | 行内表单 |
+| `inline-message` | 行内显示校验信息 |
+| `status-icon` | 显示校验状态图标 |
+| `show-message` | 是否显示校验信息 |
+| `validate-on-rule-change` | rules 变化后是否触发校验 |
+| `hide-required-asterisk` | 隐藏必填星号 |
+| `scroll-to-error` | 校验失败时滚动到错误项 |
+| `scroll-into-view-options` | 滚动配置 |
+| `size` | 表单尺寸 |
+| `disabled` | 禁用整个表单；优先于字段的 `disabled: false`，同时禁用提交和重置操作 |
 
 示例：
 
@@ -164,6 +164,12 @@
 ```
 
 ## Ref API
+
+### 预置控件的加载约定
+
+- `customLayout` 表单不加载预置控件注册表；只有字段使用预置类型时才加载 `components.ts`。业务页面继续复用已有字段组件，无需自行维护控件映射。
+- 加载期间保留字段容器和表单模型，显示共享加载状态；提交、重置和公开 `validate()` 会阻止操作。加载失败显示共享错误状态，重试保留已填值；持续失败时提示刷新，不反复提交无效重试。
+- 普通表单的日期范围控件受字段可用宽度约束。窄屏验收应同时检查控件边界和页面横向溢出，不能仅依靠父容器裁切隐藏问题。
 
 ### 远程选项的状态约定
 

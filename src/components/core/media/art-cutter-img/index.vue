@@ -1,38 +1,41 @@
 <!-- 图片裁剪组件 github: https://github.com/acccccccb/vue-img-cutter/tree/master -->
 <template>
-  <div class="cutter-container">
-    <div class="cutter-component">
+  <div class="cutter-container flex min-w-0 flex-wrap gap-6">
+    <div class="cutter-component min-w-0 max-w-full">
       <div class="title">{{ title }}</div>
-      <ImgCutter
-        ref="imgCutterModal"
-        @cutDown="cutDownImg"
-        @onPrintImg="cutterPrintImg"
-        @onImageLoadComplete="handleImageLoadComplete"
-        @onImageLoadError="handleImageLoadError"
-        @onClearAll="handleClearAll"
-        v-bind="cutterProps"
-        class="img-cutter"
-      >
-        <template #choose>
-          <ElButton type="primary" plain v-ripple>选择图片</ElButton>
-        </template>
-        <template #cancel>
-          <ElButton type="danger" plain v-ripple>清除</ElButton>
-        </template>
-        <template #confirm>
-          <!-- <ElButton type="primary" style="margin-left: 10px">确定</ElButton> -->
-          <div></div>
-        </template>
-      </ImgCutter>
+      <ElScrollbar always class="h-auto! pb-3">
+        <ImgCutter
+          ref="imgCutterModal"
+          @cutDown="cutDownImg"
+          @onPrintImg="cutterPrintImg"
+          @onImageLoadComplete="handleImageLoadComplete"
+          @onImageLoadError="handleImageLoadError"
+          @onClearAll="handleClearAll"
+          v-bind="cutterProps"
+          class="img-cutter"
+        >
+          <template #choose>
+            <ElButton type="primary" plain v-ripple>选择图片</ElButton>
+          </template>
+          <template #cancel>
+            <ElButton type="danger" plain v-ripple>清除</ElButton>
+          </template>
+          <template #confirm>
+            <!-- <ElButton type="primary" style="margin-left: 10px">确定</ElButton> -->
+            <div></div>
+          </template>
+        </ImgCutter>
+      </ElScrollbar>
     </div>
 
-    <div v-if="showPreview" class="preview-container">
+    <div v-if="showPreview" class="preview-container min-w-0 max-w-full">
       <div class="title">{{ previewTitle }}</div>
       <div
         class="preview-box"
         :style="{
           width: `${cutterProps.cutWidth}px`,
-          height: `${cutterProps.cutHeight}px`
+          maxWidth: '100%',
+          aspectRatio: `${cutterProps.cutWidth} / ${cutterProps.cutHeight}`
         }"
       >
         <img
@@ -44,7 +47,11 @@
           alt="裁剪结果预览"
         />
       </div>
-      <ElButton class="download-btn" @click="downloadImg" :disabled="!temImgPath" v-ripple
+      <ElButton
+        class="download-btn"
+        @click="downloadFile(temImgPath, 'image.png')"
+        :disabled="!temImgPath"
+        v-ripple
         >下载图片</ElButton
       >
     </div>
@@ -53,6 +60,9 @@
 
 <script setup lang="ts">
   import ImgCutter from 'vue-img-cutter'
+  import 'vue-img-cutter/vue-img-cutter.css'
+  import { downloadFile } from '@/utils/file'
+  import { useImage } from '@vueuse/core'
 
   defineOptions({ name: 'ArtCutterImg' })
 
@@ -171,7 +181,21 @@
   }>()
 
   const temImgPath = ref('')
-  const imgCutterModal = ref()
+  const imgCutterModal = ref<{
+    handleOpen: (source: { name: string; src: string }) => void
+    clearAll: () => void
+  }>()
+  const { state: loadedImage, error: imageError } = useImage(
+    () => ({
+      src: props.imgUrl || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+      crossorigin: 'anonymous'
+    }),
+    {
+      immediate: Boolean(props.imgUrl),
+      // The scoped error watcher owns feedback for the latest image only.
+      onError: () => undefined
+    }
+  )
 
   // 计算属性：整合所有ImgCutter的props
   const cutterProps = computed(() => ({
@@ -181,49 +205,27 @@
     WatermarkColor: props.watermarkColor
   }))
 
-  // 图片预加载
-  function preloadImage(url: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve()
-      img.onerror = reject
-      img.src = url
-    })
-  }
-
-  // 初始化裁剪器
-  async function initImgCutter() {
-    if (props.imgUrl) {
-      try {
-        await preloadImage(props.imgUrl)
-        imgCutterModal.value?.handleOpen({
-          name: '封面图片',
-          src: props.imgUrl
-        })
-      } catch (error) {
-        emit('error', error)
+  watch(
+    [loadedImage, imgCutterModal],
+    ([image, cutter]) => {
+      if (image && cutter && props.imgUrl) {
+        cutter.handleOpen({ name: '封面图片', src: props.imgUrl })
       }
-    }
-  }
-
-  // 生命周期钩子
-  onMounted(() => {
-    if (props.imgUrl) {
-      temImgPath.value = props.imgUrl
-      initImgCutter()
-    }
+    },
+    { flush: 'post' }
+  )
+  watch(imageError, (error) => {
+    if (error && props.imgUrl) emit('error', error)
   })
 
   // 监听图片URL变化
   watch(
     () => props.imgUrl,
     (newVal) => {
-      if (newVal) {
-        temImgPath.value = newVal
-        initImgCutter()
-      }
-    }
+      temImgPath.value = newVal || ''
+      if (!newVal) imgCutterModal.value?.clearAll()
+    },
+    { immediate: true, flush: 'sync' }
   )
 
   // 实时预览
@@ -251,29 +253,14 @@
   function handleClearAll() {
     temImgPath.value = ''
   }
-
-  // 下载图片
-  function downloadImg() {
-    const a = document.createElement('a')
-    a.href = temImgPath.value
-    a.download = 'image.png'
-    a.click()
-  }
 </script>
 
 <style lang="scss" scoped>
   .cutter-container {
-    display: flex;
-    flex-flow: row wrap;
-
     .title {
       padding-bottom: 10px;
       font-size: 18px;
       font-weight: 500;
-    }
-
-    .cutter-component {
-      margin-right: 30px;
     }
 
     .preview-container {
@@ -295,6 +282,11 @@
 
     :deep(.toolBoxControl) {
       z-index: 100;
+    }
+
+    :deep(.dialogMainModal) {
+      color: var(--el-text-color-primary);
+      background-color: var(--el-bg-color);
     }
 
     :deep(.dockMain) {

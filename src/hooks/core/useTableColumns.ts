@@ -148,6 +148,22 @@ export function useTableColumns<T = unknown>(
 } & DynamicColumnConfig<T> {
   const dynamicColumns = ref<ColumnOption<T>[]>(columnsFactory())
   const columnChecks = ref<ColumnOption<T>[]>(getColumnChecks(dynamicColumns.value))
+  let factoryOrder = dynamicColumns.value.map(getColumnKey)
+
+  // 权限、字典等异步数据改变列工厂依赖时重新生成列；下方 watcher 保留用户的列显隐设置。
+  watch(columnsFactory, (columns) => {
+    const currentOrder = columnChecks.value.map(getColumnKey)
+    const hasCustomOrder = currentOrder.some((key, index) => key !== factoryOrder[index])
+    const orderMap = new Map(currentOrder.map((key, index) => [key, index]))
+    factoryOrder = columns.map(getColumnKey)
+    dynamicColumns.value = hasCustomOrder
+      ? [...columns].sort(
+          (left, right) =>
+            (orderMap.get(getColumnKey(left)) ?? Number.MAX_SAFE_INTEGER) -
+            (orderMap.get(getColumnKey(right)) ?? Number.MAX_SAFE_INTEGER)
+        )
+      : columns
+  })
 
   // 当 dynamicColumns 变动时，重新生成 columnChecks 且保留已存在的显示状态
   watch(

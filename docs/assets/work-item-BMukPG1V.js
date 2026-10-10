@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./qualification-catalog-page-uUAeMtgl.js";var i=t({name:`SmisWorkItem`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"catalog-type":`work_item`}))}});export{i as default};

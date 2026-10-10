@@ -1,28 +1,25 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { templateCompilerOptions } from '@tresjs/core'
+import templateCompilerOptions from '@tresjs/core/template-compiler-options'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import vueDevTools from 'vite-plugin-vue-devtools'
-import viteCompression from 'vite-plugin-compression'
 import Components from 'unplugin-vue-components/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import ElementPlus from 'unplugin-element-plus/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import tailwindcss from '@tailwindcss/vite'
-import { fileViewerRenderers } from '@file-viewer/vite-plugin'
-import { visualizer } from 'rollup-plugin-visualizer'
 import { createBuildLogPolicy } from './scripts/build-log-policy.mjs'
 import { createViteWatchPolicy } from './scripts/vite-watch-policy.mjs'
+import { withSharedScssGlobals } from './scripts/scss-globals.mjs'
 import { matchElementPlusStyles } from './scripts/element-plus-style-chunks.mjs'
 import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries.ts'
 import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync.ts'
 import {
   hostedApplicationSourceDirectories,
   hostedModuleSharedDependencies
-} from './scripts/hosted-module-dependencies.ts'
+} from './scripts/hosted-module-dependencies.mjs'
 
 // 添加插件用于生成 .nojekyll 文件
 import { createNoJekyllPlugin } from './src/plugins/nojekyll.ts'
@@ -80,13 +77,18 @@ const getElementPlusStyleDeps = (root: string): string[] => {
     .sort()
 }
 
-export default ({ mode }: { mode: string }) => {
+export default async ({ mode }: { mode: string }) => {
   const root = process.cwd()
   const env = loadEnv(mode, root)
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
   const isProduction = mode === 'production'
   const isE2E = mode === 'e2e'
+  const e2eServerPort = Number(process.env.E2E_SERVER_PORT)
+  const cacheNamespace =
+    isE2E && Number.isInteger(e2eServerPort) && e2eServerPort > 0 && e2eServerPort <= 65535
+      ? `${mode}-${e2eServerPort}`
+      : mode
   const enableGeneratedDeclarations = !isProduction && !isE2E
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
   const enableBundleAnalyzer =
@@ -94,6 +96,12 @@ export default ({ mode }: { mode: string }) => {
   const enableVueDevTools = env.VITE_DEVTOOLS === 'true'
   const enableFileViewerPlugin = !isE2E && (isProduction || env.VITE_FILE_VIEWER === 'true')
   const enableFileViewerAssets = !isE2E && (isProduction || env.VITE_FILE_VIEWER_ASSETS === 'true')
+  const [devToolsModule, compressionModule, fileViewerModule, analyzerModule] = await Promise.all([
+    !isProduction && !isE2E && enableVueDevTools ? import('vite-plugin-vue-devtools') : undefined,
+    enableBuildCompression ? import('vite-plugin-compression') : undefined,
+    enableFileViewerPlugin ? import('@file-viewer/vite-plugin') : undefined,
+    enableBundleAnalyzer ? import('rollup-plugin-visualizer') : undefined
+  ])
   const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
   const fileViewerAssetStageDir = path.resolve(
     root,
@@ -101,8 +109,8 @@ export default ({ mode }: { mode: string }) => {
   )
   const elementPlusStyleDeps = getElementPlusStyleDeps(root)
   const buildLogPolicy = createBuildLogPolicy()
-  const fileViewerPlugin = enableFileViewerPlugin
-    ? fileViewerRenderers({
+  const fileViewerPlugin = fileViewerModule
+    ? fileViewerModule.fileViewerRenderers({
         preset: 'all',
         inject: false,
         copyAssets: enableFileViewerAssets
@@ -127,16 +135,16 @@ export default ({ mode }: { mode: string }) => {
   console.log(`[vite] outDir=${outDir}`)
 
   return defineConfig({
-    // 开发、E2E 与其他模式使用独立依赖缓存，避免并行启动时互相清理预构建文件。
-    cacheDir: path.resolve(root, 'node_modules/.vite', mode),
+    // 区分开发模式与并行验证服务，避免重优化时清理其他服务正在使用的缓存。
+    cacheDir: path.resolve(root, 'node_modules/.vite', cacheNamespace),
     define: {
       __APP_VERSION__: JSON.stringify(VITE_VERSION)
     },
     base: VITE_BASE_URL,
     server: {
       port: Number(VITE_PORT),
-      // 大型模块宿主按浏览器请求转换，避免启动时预转换抢占交互请求。
-      preTransformRequests: false,
+      // 提前转换静态依赖，避免浏览器逐层请求造成首屏转换瀑布。
+      preTransformRequests: !isE2E,
       // 浏览器回归期间固定页面，避免并发文件修改导致弹窗与测试输入丢失。
       watch: isE2E ? null : createViteWatchPolicy(outDir),
       hmr: isE2E ? false : undefined,
@@ -307,9 +315,9 @@ export default ({ mode }: { mode: string }) => {
         useSource: true
       }),
       // 压缩
-      ...(enableBuildCompression
+      ...(compressionModule
         ? [
-            viteCompression({
+            compressionModule.default({
               verbose: false, // 是否在控制台输出压缩结果
               disable: false, // 是否禁用
               algorithm: 'gzip', // 压缩算法
@@ -319,12 +327,12 @@ export default ({ mode }: { mode: string }) => {
             })
           ]
         : []),
-      ...(!isProduction && !isE2E && enableVueDevTools ? [vueDevTools()] : []),
+      ...(devToolsModule ? [devToolsModule.default()] : []),
       // 创建 .nojekyll 文件，禁用 Jekyll 处理
       createNoJekyllPlugin(),
-      ...(enableBundleAnalyzer
+      ...(analyzerModule
         ? [
-            visualizer({
+            analyzerModule.visualizer({
               filename: '.bundle-stats.html',
               open: false,
               gzipSize: true,
@@ -344,7 +352,6 @@ export default ({ mode }: { mode: string }) => {
     optimizeDeps: {
       // 路由 glob 包含全部业务模块；启动时不递归扫描所有页面，保留按需发现。
       entries: [],
-      ignoreOutdatedRequests: true,
       // Element Plus 的按需样式入口会导入 Sass 源码。让 Vite 直接按需处理它们，
       // 避免懒加载页面首次访问时触发依赖重优化和整页刷新。
       exclude: elementPlusStyleDeps,
@@ -368,13 +375,16 @@ export default ({ mode }: { mode: string }) => {
         'xgplayer',
         'crypto-js',
         'file-saver',
-        // 设备台账页面来自 SMIS 子模块，不在根页面扫描范围内；显式预构建可避免首次导航 404。
-        'qrcode.vue',
+        'vue-draggable-plus',
+        'ohash',
         'vue-img-cutter',
         'element-plus/es',
-        // 预打包 SQL 控制台实际使用的 Monaco 核心与 JSON Worker。
-        'monaco-editor/esm/vs/editor/editor.worker.js',
-        'monaco-editor/esm/vs/language/json/json.worker.js'
+        // 预构建 Monaco 主线程入口；?worker 由 Vite worker 管线独立编译。
+        '@guolao/vue-monaco-editor',
+        'sql-formatter',
+        'monaco-editor/editor/editor.api',
+        'monaco-editor/language/json/monaco.contribution',
+        'monaco-sql-languages/esm/languages/pgsql/pgsql.js'
       ]
     },
     css: {
@@ -383,10 +393,7 @@ export default ({ mode }: { mode: string }) => {
       preprocessorOptions: {
         // sass variable and mixin
         scss: {
-          additionalData: `
-            @use "@styles/core/el-light.scss" as elementTheme;
-            @use "@styles/core/mixin.scss" as *;
-          `
+          additionalData: withSharedScssGlobals
         }
       },
       postcss: {

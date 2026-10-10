@@ -43,3 +43,41 @@ export function createNamedClipboardFile(file: File, index: number, total: numbe
     lastModified: Date.now()
   })
 }
+
+/** Copy only after a confirmed native write; unsupported or denied writes must reject. */
+export async function copyTextToClipboard(
+  value: string,
+  options: { legacyFallback?: boolean } = {}
+): Promise<void> {
+  if (typeof navigator === 'undefined' || typeof navigator.clipboard?.writeText !== 'function') {
+    if (options.legacyFallback) return copyTextWithSelection(value)
+    throw new Error('当前浏览器不支持复制，请手动选择文字复制')
+  }
+  try {
+    await navigator.clipboard.writeText(value)
+  } catch (cause) {
+    if (options.legacyFallback) return copyTextWithSelection(value)
+    throw new Error('复制失败，请检查浏览器剪贴板权限或手动复制', { cause })
+  }
+}
+
+/** Explicit compatibility mode; a failed browser command must never report success. */
+function copyTextWithSelection(value: string): void {
+  const previousFocus = document.activeElement
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.readOnly = true
+  textarea.style.position = 'fixed'
+  textarea.style.top = '-9999px'
+  document.body.appendChild(textarea)
+  try {
+    textarea.focus({ preventScroll: true })
+    textarea.select()
+    if (!document.execCommand('copy')) throw new Error('复制失败，请手动选择文字复制')
+  } finally {
+    textarea.remove()
+    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+      previousFocus.focus({ preventScroll: true })
+    }
+  }
+}

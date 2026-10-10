@@ -24,6 +24,7 @@
       @refresh="refreshAll"
     >
       <template #actions>
+        <BusinessTableWorkspaceActions :table="tableRef" />
         <ElButton type="primary" plain @click="openAnalytics">
           <ArtSvgIcon icon="ri:bar-chart-box-line" />运营分析
         </ElButton>
@@ -154,6 +155,8 @@
   import dayjs from 'dayjs'
   import { ElTag } from 'element-plus'
   import { storeToRefs } from 'pinia'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
+  import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import type { ComputedRef, UnwrapNestedRefs } from 'vue'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import type { ArtTableQueryExpose } from '@/components/core/tables/art-table-query/index.vue'
@@ -218,7 +221,10 @@
     handleOpen: (data?: { focusFailures?: boolean }) => Promise<void>
   }
 
-  const { getDictMap, isPlatformSuper } = storeToRefs(useUserStore())
+  const { isPlatformSuper } = storeToRefs(useUserStore())
+  const businessTypeOptions = useDictionaryOptions('workflowBusinessType')
+  const instanceStatusOptions = useDictionaryOptions('workflowInstanceStatus')
+  const slaStatusOptions = useDictionaryOptions('workflowSlaStatus')
   const tableRef = ref<ArtTableQueryExpose>()
   const route = useRoute()
   const { component: analyticsDialogComponent, load: loadAnalyticsDialog } = useLazyComponent(
@@ -333,7 +339,7 @@
         key: 'businessType',
         type: 'select',
         props: {
-          options: getDictMap.value.workflowBusinessType ?? [],
+          options: businessTypeOptions,
           placeholder: '全部业务类型',
           clearable: true
         }
@@ -343,7 +349,7 @@
         key: 'status',
         type: 'select',
         props: {
-          options: getDictMap.value.workflowInstanceStatus ?? [],
+          options: instanceStatusOptions,
           placeholder: '全部流程状态',
           clearable: true
         }
@@ -353,9 +359,7 @@
         key: 'slaStatus',
         type: 'select',
         props: {
-          options: (getDictMap.value.workflowSlaStatus ?? []).filter(
-            (item) => item.value !== 'due_soon'
-          ),
+          options: slaStatusOptions.filter((item) => item.value !== 'due_soon'),
           placeholder: '全部时效状态',
           clearable: true
         }

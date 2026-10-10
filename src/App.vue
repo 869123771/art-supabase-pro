@@ -25,7 +25,7 @@
   import { toggleTransition } from './utils/ui/animation'
   import { checkStorageCompatibility } from './utils/storage'
   import { initializeTheme } from './hooks/core/useTheme'
-  import { useWebsiteConfig } from './hooks'
+  import { useWebsiteConfig } from './hooks/core/useWebsiteConfig'
   import i18n, { getPreferredLanguage } from './locales'
   import { fetchLoginDefaultLanguage } from '@/api/system-manage/system-param'
   import { LanguageEnum } from './enums/app-enum'

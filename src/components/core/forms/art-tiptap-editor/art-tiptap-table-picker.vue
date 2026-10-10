@@ -46,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+  import { clamp } from 'lodash-es'
   import { nextTick, ref } from 'vue'
 
   defineOptions({ name: 'ArtTiptapTablePicker' })
@@ -86,8 +87,8 @@
   }
 
   const focusCell = async (row: number, column: number) => {
-    keyboardRow.value = Math.min(Math.max(row, 1), props.maxRows)
-    keyboardColumn.value = Math.min(Math.max(column, 1), props.maxColumns)
+    keyboardRow.value = clamp(row, 1, props.maxRows)
+    keyboardColumn.value = clamp(column, 1, props.maxColumns)
     preview(keyboardRow.value, keyboardColumn.value)
     await nextTick()
     pickerRef.value

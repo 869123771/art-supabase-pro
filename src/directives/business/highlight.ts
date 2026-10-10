@@ -42,6 +42,7 @@
 
 import { App, Directive } from 'vue'
 import hljs from 'highlight.js'
+import { copyTextToClipboard } from '@/utils/file/clipboard'
 
 export type HighlightDirective = Directive<HTMLElement>
 
@@ -64,17 +65,20 @@ function insertLineNumbers(block: HTMLElement) {
 }
 
 // 添加复制按钮：调整 DOM 结构，将代码部分包裹在 .code-wrapper 内
-function addCopyButton(block: HTMLElement) {
-  const copyButton = document.createElement('i')
+function addCopyButton(block: HTMLElement, codeContent: string) {
+  const copyButton = document.createElement('button')
+  copyButton.type = 'button'
+  copyButton.setAttribute('aria-label', '复制代码')
   copyButton.className = 'copy-button'
   copyButton.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M7 6V3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3v3c0 .552-.45 1-1.007 1H4.007A1 1 0 0 1 3 21l.003-14c0-.552.45-1 1.006-1zM5.002 8L5 20h10V8zM9 6h8v10h2V4H9z"/></svg>'
-  copyButton.onclick = () => {
-    // 过滤掉行号，只复制代码内容
-    const codeContent = block.innerText.replace(/^\d+\s+/gm, '')
-    navigator.clipboard.writeText(codeContent).then(() => {
+  copyButton.onclick = async () => {
+    try {
+      await copyTextToClipboard(codeContent)
       ElMessage.success('复制成功')
-    })
+    } catch {
+      ElMessage.warning('复制失败，请手动选择代码复制')
+    }
   }
 
   const preElement = block.parentElement
@@ -112,9 +116,10 @@ function processBlock(block: HTMLElement) {
   }
 
   try {
+    const codeContent = block.textContent ?? ''
     highlightCode(block)
     insertLineNumbers(block)
-    addCopyButton(block)
+    addCopyButton(block, codeContent)
     markBlockAsProcessed(block)
   } catch (error) {
     console.warn('处理代码块时出错:', error)

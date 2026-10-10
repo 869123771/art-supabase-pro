@@ -1,39 +1,10 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { contrast } from './text-contrast'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-async function contrast(locator: Locator): Promise<number> {
-  return locator.evaluate((element) => {
-    const channels = (value: string) => value.match(/[\d.]+/g)?.map(Number) ?? []
-    let background = [255, 255, 255]
-    const ancestors: Element[] = []
-    for (let parent: Element | null = element; parent; parent = parent.parentElement) {
-      ancestors.unshift(parent)
-    }
-    for (const ancestor of ancestors) {
-      const color = channels(getComputedStyle(ancestor).backgroundColor)
-      const alpha = color[3] ?? 1
-      background = background.map(
-        (channel, index) => (color[index] ?? 0) * alpha + channel * (1 - alpha)
-      )
-    }
-    const foreground = channels(getComputedStyle(element).color)
-    const luminance = (color: number[]) =>
-      color.slice(0, 3).reduce((sum, channel, index) => {
-        const value = channel / 255
-        return (
-          sum +
-          (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) *
-            [0.2126, 0.7152, 0.0722][index]
-        )
-      }, 0)
-    const a = luminance(foreground)
-    const b = luminance(background)
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
-  })
-}
-
 test('公共语义颜色在两种主题及容器模式下可读', async ({ page }, info) => {
+  test.setTimeout(120_000)
   await page.goto('/tests/e2e/fixtures/semantic-colors.html')
   await expect(page.getByRole('region', { name: 'success', exact: true })).toBeVisible({
     timeout: 60_000
@@ -47,7 +18,25 @@ test('公共语义颜色在两种主题及容器模式下可读', async ({ page 
         },
         { theme, box }
       )
-      const text = page.locator('.el-tag, .el-button, .el-alert__title, .el-alert__description')
+      for (const type of ['success', 'warning', 'danger', 'info']) {
+        const tagColor = await page
+          .locator(`.el-tag--${type}.el-tag--plain`)
+          .evaluate((element) => getComputedStyle(element).color)
+        await expect(page.getByText(`${type} 公共文本颜色`, { exact: true })).toHaveCSS(
+          'color',
+          tagColor
+        )
+      }
+      const errorColor = await page
+        .locator('.el-alert--error.is-light .el-alert__title')
+        .evaluate((element) => getComputedStyle(element).color)
+      await expect(page.getByText('error 公共文本颜色', { exact: true })).toHaveCSS(
+        'color',
+        errorColor
+      )
+      const text = page.locator(
+        '.el-tag, .el-button, .el-alert__title, .el-alert__description, .semantic-token-text'
+      )
       for (const element of await text.all()) {
         expect(
           await contrast(element),

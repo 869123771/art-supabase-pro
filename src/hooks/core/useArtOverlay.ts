@@ -1,4 +1,14 @@
-import { nextTick, ref, shallowRef, toRaw, type Component, type Ref, type ShallowRef } from 'vue'
+import {
+  getCurrentScope,
+  nextTick,
+  onScopeDispose,
+  ref,
+  shallowRef,
+  toRaw,
+  type Component,
+  type Ref,
+  type ShallowRef
+} from 'vue'
 import { cloneDeep } from 'lodash-es'
 
 export type Awaitable<T> = T | Promise<T>
@@ -124,6 +134,7 @@ export const mergeOverlayRecords = <T extends Record<string, unknown> | undefine
 export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TData, TApi>>(
   config: UseArtOverlayConfig<TData, TOptions, TApi>
 ) => {
+  const scope = getCurrentScope()
   const visible = ref(false)
   const loading = ref(false)
   const confirmLoading = ref(false)
@@ -132,6 +143,17 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   const options = ref<TOptions>(config.getDefaultOptions()) as Ref<TOptions>
   const closePending = ref(false)
   let openSequence = 0
+
+  if (scope) {
+    onScopeDispose(() => {
+      // Invalidate UI continuations without invoking business close/reset callbacks.
+      ++openSequence
+      visible.value = false
+      loading.value = false
+      confirmLoading.value = false
+      closePending.value = false
+    })
+  }
 
   const setLoading = (value: boolean) => {
     loading.value = value
@@ -159,6 +181,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   const getData = () => openData.value
 
   const handleReset = () => {
+    if (scope && !scope.active) return
     openData.value = cloneOverlayData(initialData.value)
     loading.value = false
     confirmLoading.value = false
@@ -167,6 +190,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   }
 
   const handleOpen = async (data = {} as TData, openOptions: Partial<TOptions> = {}) => {
+    if (scope && !scope.active) return
     const sequence = ++openSequence
     options.value = config.mergeOptions(config.getDefaultOptions(), openOptions)
     const activeOptions = options.value
@@ -257,6 +281,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   }
 
   const handleModelValueChange = (value: boolean) => {
+    if (scope && !scope.active) return
     if (value) {
       visible.value = true
       return
@@ -285,6 +310,7 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   }
 
   const handleClosed = () => {
+    if (scope && !scope.active) return
     ++openSequence
     visible.value = false
     closePending.value = false

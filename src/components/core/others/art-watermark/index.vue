@@ -24,7 +24,7 @@
 <script setup lang="ts">
   import { useSettingStore } from '@/store/modules/setting'
   import { useUserStore } from '@/store/modules/user'
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineOptions({ name: 'ArtWatermark' })
 

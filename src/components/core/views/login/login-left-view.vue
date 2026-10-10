@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useWebsiteConfig } from '@/hooks'
+  import { useWebsiteConfig } from '@/hooks/core/useWebsiteConfig'
 
   defineProps<{ hideContent?: boolean }>()
 

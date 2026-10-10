@@ -91,7 +91,7 @@
   import type { FormRules } from 'element-plus'
   import { useI18n } from 'vue-i18n'
   import { resetPassword } from '@/api/auth'
-  import { useSystemParam } from '@/hooks'
+  import { useSystemParam } from '@/hooks/core/system-param'
 
   defineOptions({ name: 'ResetPassword' })
 

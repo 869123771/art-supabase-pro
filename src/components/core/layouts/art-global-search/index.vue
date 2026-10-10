@@ -172,12 +172,14 @@
   import { router } from '@/router'
   import { isNavigationFailure, NavigationFailureType } from 'vue-router'
   import { ElMessage, type ScrollbarInstance } from 'element-plus'
-  import { useTimeoutFn } from '@vueuse/core'
+  import { useEventListener, useTimeoutFn } from '@vueuse/core'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { useWorkspaceInteraction } from '@/hooks/core/useWorkspaceInteraction'
 
   defineOptions({ name: 'ArtGlobalSearch' })
 
   const userStore = useUserStore()
+  const { isLocked, captureIntent } = useWorkspaceInteraction()
   const { menuList } = storeToRefs(useMenuStore())
 
   const showSearchDialog = ref(false)
@@ -195,6 +197,11 @@
   const navigationPending = ref(false)
   const navigationTargetKey = ref<string | null>(null)
   const navigationTargetTitle = ref('')
+  const resetNavigation = (): void => {
+    navigationPending.value = false
+    navigationTargetKey.value = null
+    navigationTargetTitle.value = ''
+  }
   const { start: focusInput, stop: stopFocusInput } = useTimeoutFn(
     () => {
       if (showSearchDialog.value) searchInput.value?.focus()
@@ -216,6 +223,18 @@
       isKeyboardNavigating.value = false
     }
   })
+  watch(
+    isLocked,
+    (locked) => {
+      if (!locked) return
+      showSearchDialog.value = false
+      resetNavigation()
+      stopFocusInput()
+      stopKeyboardNavigation()
+      isKeyboardNavigating.value = false
+    },
+    { flush: 'sync' }
+  )
 
   const getItemKey = (item: AppRouteRecord) =>
     item.path || String(item.meta.link || item.name || '')
@@ -223,20 +242,16 @@
   // 生命周期钩子
   onMounted(() => {
     mittBus.on('openSearchDialog', openSearchDialog)
-    document.addEventListener('keydown', handleKeydown)
   })
 
   onUnmounted(() => {
     mittBus.off('openSearchDialog', openSearchDialog)
-    document.removeEventListener('keydown', handleKeydown)
   })
 
   // 键盘快捷键处理
   const handleKeydown = (event: KeyboardEvent) => {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-    const isCommandKey = isMac ? event.metaKey : event.ctrlKey
-
-    if (isCommandKey && event.key.toLowerCase() === 'k') {
+    if (isLocked.value) return
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault()
       showSearchDialog.value = true
       focusInput()
@@ -396,7 +411,8 @@
     navigationPending.value && navigationTargetKey.value === getItemKey(item)
 
   const searchGoPage = async (item: AppRouteRecord) => {
-    if (navigationPending.value) return
+    if (isLocked.value || navigationPending.value) return
+    const isCurrentIntent = captureIntent()
     navigationTargetKey.value = getItemKey(item)
     navigationTargetTitle.value = formatMenuTitle(item.meta.title)
     navigationPending.value = true
@@ -404,7 +420,9 @@
       if (!(item.meta.link && !item.meta.isIframe)) {
         await preloadMenuRoute(item, false, true)
       }
+      if (!isCurrentIntent()) return
       const failure = await handleMenuJump(item)
+      if (!isCurrentIntent()) return
       if (
         failure &&
         isNavigationFailure(failure) &&
@@ -419,17 +437,17 @@
         throw new Error('导航未进入目标页面')
       }
       await nextTick()
+      if (!isCurrentIntent()) return
       addHistory(item)
       showSearchDialog.value = false
       searchVal.value = ''
       searchResult.value = []
     } catch (error) {
+      if (!isCurrentIntent()) return
       console.error('[GlobalSearch] 页面导航失败:', error)
       ElMessage.error('页面打开失败，请重试或从左侧菜单进入')
     } finally {
-      navigationPending.value = false
-      navigationTargetKey.value = null
-      navigationTargetTitle.value = ''
+      if (isCurrentIntent()) resetNavigation()
     }
   }
 
@@ -468,6 +486,7 @@
 
   // 对话框控制
   const openSearchDialog = () => {
+    if (isLocked.value) return
     showSearchDialog.value = true
     focusInput()
   }
@@ -491,6 +510,7 @@
       historyHIndex.value = index
     }
   }
+  useEventListener(document, 'keydown', handleKeydown)
 </script>
 <style lang="scss">
   .search-modal {

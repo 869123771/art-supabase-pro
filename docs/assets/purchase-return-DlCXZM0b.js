@@ -1,1 +1,0 @@
-import{Kn as e,Pt as t,Wt as n,un as r}from"./framework-DZqGOvEn.js";import{t as i}from"./wms-purchase-document-workspace-DIJ4XRL7.js";import{a}from"./permissions-DchWetX0.js";var o=n({name:`WmsPurchaseReturn`,__name:`index`,setup(n){let o=a;return(n,a)=>(r(),t(i,{kind:`purchase_return`,permissions:e(o)},null,8,[`permissions`]))}});export{o as default};

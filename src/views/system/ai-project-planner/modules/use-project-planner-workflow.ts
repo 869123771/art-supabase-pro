@@ -1,3 +1,4 @@
+import { copyTextToClipboard } from '@/utils/file/clipboard'
 import { computed, reactive, ref, type Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -160,7 +161,7 @@ export function useProjectPlannerWorkflow(options: UseProjectPlannerWorkflowOpti
     if (isSuggestionPending(suggestion.id)) return
     pendingActions[suggestion.id] = 'copied'
     try {
-      await navigator.clipboard.writeText(suggestion.prompt)
+      await copyTextToClipboard(suggestion.prompt)
     } catch (error) {
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '复制失败，请检查浏览器剪贴板权限'))
       delete pendingActions[suggestion.id]

@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./scm-document-workspace-eilCSj06.js";var i=t({name:`ScmSalesOrder`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`sales_order`}))}});export{i as default};

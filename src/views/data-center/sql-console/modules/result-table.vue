@@ -34,7 +34,7 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtMenuRight, { MenuItemType } from '@/components/core/others/art-menu-right/index.vue'
   import CellContentView, { type CellContentViewExpose } from './cell-content-view.vue'
-  import { useClipboard } from '@vueuse/core'
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
   import type { ColumnOption } from '@/types'
 
   type SqlResultRow = Record<string, unknown>
@@ -66,7 +66,6 @@
 
   const menuRef = ref<MenuExpose>()
   const cellContentViewRef = ref<CellContentViewExpose>()
-  const { copy } = useClipboard()
 
   // Selected cell info
   const selectedCell = ref<{
@@ -148,11 +147,18 @@
   }
 
   // Handle Menu Selection
-  const handleMenuSelect = (item: MenuItemType) => {
+  const handleMenuSelect = async (item: MenuItemType) => {
     if (!selectedCell.value) return
 
     if (item.key === 'copy') {
-      copy(getCellContent(selectedCell.value.row, selectedCell.value.column.property))
+      try {
+        await copyTextToClipboard(
+          getCellContent(selectedCell.value.row, selectedCell.value.column.property)
+        )
+        ElMessage.success('复制成功')
+      } catch {
+        ElMessage.warning('复制失败，请打开查看内容后手动复制')
+      }
     } else if (item.key === 'view') {
       void openDrawer()
     }

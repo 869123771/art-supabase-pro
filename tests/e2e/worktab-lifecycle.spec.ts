@@ -40,3 +40,29 @@ test('触摸滑动使用实际事件处理并保持滚动边界', async ({ page 
     .poll(async () => tabs.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41))
     .toBe(0)
 })
+
+test('关闭再打开标签栏后滚轮和触摸仍绑定到新元素', async ({ page }) => {
+  await page.goto('/tests/e2e/fixtures/worktab-lifecycle.html')
+  const toggle = page.getByRole('button', { name: '切换标签栏显示', exact: true })
+  for (let cycle = 0; cycle < 2; cycle++) {
+    await toggle.click()
+    await expect(page.getByRole('tablist', { name: '已打开页面' })).toHaveCount(0)
+    await toggle.click()
+    const tabs = page.getByRole('tablist', { name: '已打开页面' })
+    await expect(tabs).toBeVisible()
+    await tabs.dispatchEvent('touchstart', {
+      touches: [{ identifier: 1, clientX: 100, clientY: 20 }]
+    })
+    await tabs.dispatchEvent('touchmove', {
+      touches: [{ identifier: 1, clientX: 2000, clientY: 20 }]
+    })
+    await tabs.dispatchEvent('touchend', { touches: [] })
+    await expect
+      .poll(() => tabs.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41))
+      .toBe(0)
+    await tabs.dispatchEvent('wheel', { deltaY: 140 })
+    await expect
+      .poll(() => tabs.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41))
+      .toBe(-140)
+  }
+})

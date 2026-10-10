@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./material-reference-BUwVVGhB.js";var i=t({name:`MdmMaterialAttributeGroup`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

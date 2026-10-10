@@ -1,4 +1,5 @@
 import { omit } from 'lodash-es'
+import { formatNumberValue } from '@/utils/ui/format'
 
 export type FieldAccessLevel = 'hidden' | 'masked' | 'read' | 'edit'
 
@@ -81,7 +82,7 @@ export const formatSensitiveNumber = (
   }
   const numericValue = Number(value)
   if (!Number.isFinite(numericValue)) return '--'
-  return numericValue.toLocaleString('zh-CN', options)
+  return formatNumberValue(numericValue, 'zh-CN', options)
 }
 
 export interface SensitiveNumberAffixOptions {

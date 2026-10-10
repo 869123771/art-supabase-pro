@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 import { WRITE_PERMISSION_DENIED_MESSAGE } from '@/hooks/core/useSupabase'
 import type { QueryResult } from '@/types/api/response'
 import { applyFilters, fetchAllRangePages, FilterSpec } from '@/utils/supabase'

@@ -227,10 +227,6 @@
     "currentAccount": "当前账号",
     "passwordRequired": "请输入锁屏密码",
     "pwdError": "密码不正确，请重新输入",
-    "warning": {
-      "title": "工作台暂不可用",
-      "description": "检测到开发者工具已打开。请关闭开发者工具后继续使用。"
-    },
     "lock": {
       "title": "锁定工作台",
       "description": "设置锁屏密码，保护当前工作内容。",

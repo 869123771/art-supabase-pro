@@ -39,6 +39,15 @@ const app = createApp({
           'button',
           {
             onClick: () => {
+              settings.showWorkTab = !settings.showWorkTab
+            }
+          },
+          '切换标签栏显示'
+        ),
+        h(
+          'button',
+          {
+            onClick: () => {
               mounted.value = false
             }
           },

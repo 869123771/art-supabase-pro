@@ -119,6 +119,8 @@
 </template>
 
 <script setup lang="ts">
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
+
   import { createDateTimeFormatter, formatArtValue, formatDurationMs } from '@/utils/ui/format'
   import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
 
@@ -325,7 +327,7 @@
   async function copyTaskId(): Promise<void> {
     if (!detail.data) return
     try {
-      await navigator.clipboard.writeText(detail.data.id)
+      await copyTextToClipboard(detail.data.id)
       ElMessage.success('任务编号已复制')
     } catch {
       ElMessage.warning('复制失败，请手动复制任务编号')

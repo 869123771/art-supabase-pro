@@ -328,6 +328,8 @@
   import './enterprise-big-screen.scss'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import dayjs from 'dayjs'
+  import { clamp } from 'lodash-es'
+  import { formatNumberValue } from '@/utils/ui/format'
   import { formatScreenDate } from './screen-format'
   import EnterpriseCommandCore from './enterprise-command-core.vue'
   import ScreenGaugeChart from './screen-gauge-chart.vue'
@@ -459,7 +461,7 @@
   const workforceRate = computed(() => percentage(data.workforce.active, data.workforce.total))
   const financeHealthScore = computed(() =>
     data.finance.cashOutflow
-      ? Math.min(100, Math.round((data.finance.cashInflow / data.finance.cashOutflow) * 100))
+      ? clamp(Math.round((data.finance.cashInflow / data.finance.cashOutflow) * 100), 0, 100)
       : 100
   )
   const safetyScore = computed(() =>
@@ -484,15 +486,12 @@
   )
   const grossMarginRate = computed(() => {
     if (!transportRevenue.value) return 0
-    return Math.max(
+    return clamp(
+      Math.round(
+        ((transportRevenue.value - data.finance.approvedWaybillCost) / transportRevenue.value) * 100
+      ),
       0,
-      Math.min(
-        100,
-        Math.round(
-          ((transportRevenue.value - data.finance.approvedWaybillCost) / transportRevenue.value) *
-            100
-        )
-      )
+      100
     )
   })
   const decisionHeadline = computed(() => {
@@ -637,7 +636,7 @@
     {
       label: '资金运行',
       score: financeHealthScore.value,
-      caption: `流入 ${formatCompactCurrency(data.finance.cashInflow)} · 流出 ${formatCompactCurrency(data.finance.cashOutflow)}`,
+      caption: `流入 ${formatCompactNumber(data.finance.cashInflow)} 元 · 流出 ${formatCompactNumber(data.finance.cashOutflow)} 元`,
       icon: 'ri:funds-box-line',
       tone: scoreTone(financeHealthScore.value)
     }
@@ -696,7 +695,7 @@
           { label: '本月订单', value: monthOrderCount.value, unit: '单', tone: 'primary' as const },
           {
             label: '本月运输收入',
-            value: formatCompactCurrency(transportRevenue.value),
+            value: `${formatCompactNumber(transportRevenue.value)} 元`,
             tone: 'success' as const
           },
           {
@@ -799,7 +798,7 @@
   }
 
   function percentage(value: number, total: number): number {
-    return total ? Math.max(0, Math.min(100, Math.round((value / total) * 100))) : 100
+    return total ? clamp(Math.round((value / total) * 100), 0, 100) : 100
   }
 
   function scoreTone(score: number): MetricTone {
@@ -810,14 +809,10 @@
   }
 
   function formatCompactNumber(value: number): string {
-    return new Intl.NumberFormat('zh-CN', {
+    return formatNumberValue(value, 'zh-CN', {
       notation: value >= 10000 ? 'compact' : 'standard',
       maximumFractionDigits: 1
-    }).format(value)
-  }
-
-  function formatCompactCurrency(value: number): string {
-    return `${formatCompactNumber(value)} 元`
+    })
   }
 
   function formatEta(value?: string | null): string {

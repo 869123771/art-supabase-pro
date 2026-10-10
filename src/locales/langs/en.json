@@ -227,10 +227,6 @@
     "currentAccount": "Current account",
     "passwordRequired": "Enter your lock password",
     "pwdError": "Incorrect password. Please try again.",
-    "warning": {
-      "title": "Workspace temporarily unavailable",
-      "description": "Developer tools are open. Close them to continue."
-    },
     "lock": {
       "title": "Lock workspace",
       "description": "Set a password to protect your current work.",

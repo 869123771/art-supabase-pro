@@ -1,5 +1,10 @@
 <template>
-  <div v-if="readonly" class="art-upload is-readonly flex flex-wrap gap-1.5" v-bind="$attrs">
+  <div
+    v-if="readonly || (uploadDisabled && fileList.length > 0)"
+    class="art-upload is-readonly flex flex-wrap gap-1.5"
+    :class="{ 'is-full-width': width === '100%' }"
+    v-bind="$attrs"
+  >
     <div
       v-for="(file, index) in fileList"
       :key="file.url"
@@ -25,40 +30,40 @@
   </div>
   <el-upload
     v-else
-    ref="uploadRef"
     v-model:file-list="fileList"
     class="art-upload"
-    :class="{ 'is-readonly': readonly, 'is-disabled': uploadDisabled }"
+    :class="{
+      'is-disabled': uploadDisabled,
+      'hide-upload-trigger': !canUpload,
+      'is-full-width': width === '100%'
+    }"
     :before-upload="beforeUpload"
     :http-request="handleUpload"
     :on-success="handleSuccess"
     :on-exceed="handleExceed"
     :on-error="handleError"
     :multiple="multiple"
-    :limit="limit"
+    :limit="effectiveLimit"
     :accept="fileType"
     :disabled="readonly || uploadDisabled"
     v-bind="$attrs"
   >
     <template #trigger>
       <slot name="default">
-        <component
-          :is="btnRender()"
-          v-show="!readonly && fileList.length === 0"
-          ref="uploadBtnRef"
-        />
+        <component :is="btnRender()" />
       </slot>
     </template>
     <button
-      v-if="canPickResource && fileList.length < limit"
+      v-if="canPickResource && fileList.length === 0"
       type="button"
       class="resource-picker-action"
-      :class="{ 'resource-picker-action--inline': fileList.length > 0 }"
+      :style="{ width: `calc(${getSize.width} - 2px)` }"
       aria-label="从资源库选择图片"
       title="从资源库选择图片"
       @click="isOpenResource = true"
     >
       <ArtSvgIcon icon="ri-folder-open-line" aria-hidden="true" />
+      <span>资源库</span>
     </button>
     <template #file="{ file, index }">
       <div class="preview-list upload-container relative" :style="getSize">
@@ -71,7 +76,7 @@
               @click.stop="handleView(index)"
             />
             <ArtIconButton
-              v-if="!readonly"
+              v-if="!uploadDisabled"
               class="preview-action preview-action--danger"
               icon="ri-delete-bin-2-line"
               tone="danger"
@@ -91,7 +96,7 @@
           <ArtSvgIcon icon="ri:error-warning-line" aria-hidden="true" />
           <span>加载失败</span>
           <button
-            v-if="!readonly"
+            v-if="!uploadDisabled"
             type="button"
             class="upload-state__remove"
             aria-label="移除加载失败的图片"
@@ -105,15 +110,9 @@
           <span>上传中</span>
         </div>
       </div>
-      <component
-        :is="btnRender()"
-        v-if="!readonly && index === fileList.length - 1 && multiple && fileList.length < limit"
-        class="cursor-pointer"
-        @click="() => uploadBtnRef?.click?.()"
-      />
     </template>
     <template #tip>
-      <div v-if="fileList.length < 1" class="pt-1 text-sm text-dark-50 dark-text-gray-3">
+      <div v-if="$slots.tip || $attrs.tip" class="upload-tip">
         <slot name="tip">
           {{ $attrs?.tip }}
         </slot>
@@ -124,7 +123,8 @@
       v-model:visible="isOpenResource"
       :resource-tenant-id="resourceTenantId"
       :multiple="multiple"
-      :limit="limit"
+      :limit="multiple ? Math.max(effectiveLimit - fileList.length, 0) : 1"
+      default-file-type="image"
       @confirm="handleConfirm"
     />
   </el-upload>
@@ -158,6 +158,9 @@
   import ResourceListItem = Api.DataCenter.Resources.ResourceListItem
   import { uploadAttachment } from '@/api/attachments'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { uniqBy } from 'lodash-es'
+  import { isAcceptedFileType } from '@/utils/file/accept'
+  import { formatSize } from '@/utils/file/format-size'
 
   defineOptions({ name: 'ArtUploadImage', inheritAttrs: false })
 
@@ -200,8 +203,6 @@
     (e: 'resource-change', value: Api.DataCenter.Resources.ResourceListItem[]): void
   }>()
 
-  const uploadBtnRef = ref<HTMLElement>()
-  const uploadRef = ref<{ $el?: HTMLElement }>()
   const isOpenResource = ref<boolean>(false)
   const tenantScopeStore = useTenantScopeStore()
   const missingTenantTarget = computed(
@@ -214,6 +215,8 @@
   const previewList = computed(() => fileList.value.flatMap((file) => (file.url ? [file.url] : [])))
   const previewVisible = ref(false)
   const previewIndex = ref(0)
+  const effectiveLimit = computed(() => (multiple ? limit : 1))
+  const canUpload = computed(() => fileList.value.length < effectiveLimit.value)
 
   const getSize = computed(() => {
     const toCssSize = (value: number | string): string =>
@@ -230,7 +233,10 @@
       <div
         class={[
           'upload-container',
-          { 'has-resource-picker': canPickResource.value, 'is-disabled': uploadDisabled.value }
+          {
+            'is-disabled': uploadDisabled.value,
+            'has-resource-picker': canPickResource.value && fileList.value.length === 0
+          }
         ]}
         style={getSize.value}
         title={
@@ -251,18 +257,6 @@
 
   const fileList = ref<UploadUserFile[]>([])
   const lastSyncedModelUrls = ref<string[]>([])
-
-  watch(
-    () => fileList.value.length,
-    async (length: number) => {
-      await nextTick()
-      const uploadTextDom = uploadRef.value?.$el?.querySelector<HTMLElement>('.el-upload--text')
-      if (uploadTextDom) {
-        uploadTextDom.style.display = length > 0 ? 'none' : 'inline-flex'
-      }
-    },
-    { immediate: true }
-  )
 
   watch(
     () => modelValue,
@@ -314,12 +308,12 @@
 
   function beforeUpload(rawFile: File) {
     if (readonly || uploadDisabled.value) return false
-    /*if (!fileType.includes(rawFile.type)) {
-      ElMessage.error(`只允许上传：${fileType.join(', ')}`)
+    if (!isAcceptedFileType(rawFile, fileType)) {
+      ElMessage.warning('图片格式不符合当前上传要求')
       return false
-    }*/
+    }
     if (fileSize < rawFile.size) {
-      ElMessage.error(`只允许上传${fileSize}字节大小的文件`)
+      ElMessage.error(`单张图片不能超过 ${formatSize(fileSize, { precision: 1, trimZeros: true })}`)
       return false
     }
 
@@ -327,7 +321,7 @@
   }
 
   function handleExceed() {
-    ElMessage.error(`当前最多只能上传 ${limit} 张图片，请重新选择上传！`)
+    ElMessage.warning(`当前最多只能上传 ${effectiveLimit.value} 张图片`)
   }
 
   function handleError(error?: unknown) {
@@ -342,6 +336,7 @@
   }
 
   const handleRemove = (index: number) => {
+    if (readonly || uploadDisabled.value) return
     fileList.value.splice(index, 1)
     updateModelValue()
   }
@@ -352,9 +347,31 @@
       ElMessage.warning('所选图片不属于当前目标租户，请重新选择')
       return
     }
-    fileList.value = selected.map((item) => {
-      return { name: item.originName ?? item.objectName ?? '资源文件', url: item.url }
-    })
+    if (
+      selected.some(
+        (item) =>
+          !isAcceptedFileType(
+            { name: item.originName || item.objectName || '', type: item.mimeType || '' },
+            fileType
+          )
+      )
+    ) {
+      ElMessage.warning('所选资源格式不符合当前图片要求')
+      return
+    }
+    const chosenFiles: UploadUserFile[] = selected
+      .filter((item) => item.url)
+      .map((item) => {
+        return { name: item.originName ?? item.objectName ?? '资源文件', url: item.url }
+      })
+    const nextFiles = multiple
+      ? uniqBy([...fileList.value, ...chosenFiles], (file) => file.url || file.uid)
+      : chosenFiles.slice(0, 1)
+    if (nextFiles.length > effectiveLimit.value) {
+      handleExceed()
+      return
+    }
+    fileList.value = nextFiles
     updateModelValue()
     emit('resource-change', selected)
   }
@@ -370,6 +387,16 @@
     position: relative;
     width: fit-content;
     max-width: 100%;
+
+    &.is-full-width {
+      width: 100%;
+
+      :deep(.el-upload),
+      :deep(.el-upload-list),
+      :deep(.el-upload-list__item) {
+        width: 100%;
+      }
+    }
   }
 
   .resource-picker-action {
@@ -377,95 +404,87 @@
     top: 1px;
     left: 1px;
     z-index: 2;
-    display: flex;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 6px;
     align-items: center;
     justify-content: center;
-    width: calc(100% - 2px);
-    height: 32px;
-    padding: 0;
-    color: var(--el-text-color-secondary);
+    max-width: calc(100% - 2px);
+    min-height: 32px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--el-text-color-regular);
     cursor: pointer;
     background: var(--art-gray-200);
-    border: 1px dashed var(--el-border-color);
-    border-width: 0 0 1px;
+    border: 0;
+    border-bottom: 1px dashed var(--el-border-color);
     border-radius: 0.375rem 0.375rem 0 0;
-    transition:
-      color var(--art-motion-duration-fast) ease,
-      background-color var(--art-motion-duration-fast) ease,
-      border-color var(--art-motion-duration-fast) ease,
-      box-shadow var(--art-motion-duration-fast) ease;
 
-    .art-svg-icon {
-      font-size: 18px;
-    }
-
-    &:hover,
-    &:focus-visible {
+    &:hover {
       color: var(--el-color-primary);
       background: var(--el-color-primary-light-9);
       border-color: var(--el-color-primary);
     }
 
     &:focus-visible {
-      outline: none;
-      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-color) 28%, transparent);
+      outline: 2px solid var(--el-color-primary);
+      outline-offset: 2px;
     }
+  }
 
-    &--inline {
-      position: relative;
-      width: 32px;
-      border-radius: var(--art-control-radius);
-    }
+  .art-upload:not(.is-readonly) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
   }
 
   :deep(.el-upload) {
     display: inline-flex;
+    order: 1;
     width: auto;
+    max-width: 100%;
     vertical-align: top;
   }
 
-  :deep(.el-upload--text) {
-    display: inline-flex;
-    width: auto;
+  .hide-upload-trigger > :deep(.el-upload) {
+    display: none;
+  }
+
+  .upload-tip {
+    flex-basis: 100%;
+    order: 3;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--el-text-color-secondary);
   }
 
   :deep(.el-upload-list) {
-    // @apply flex gap-1.5 flex-wrap;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.375rem;
+    gap: 8px;
+    max-width: 100%;
     margin: 0;
 
+    &:empty {
+      display: none;
+    }
+
     .el-upload-list__item {
-      // @apply w-auto outline-none b-0;
+      flex: 0 0 auto;
       width: auto;
-      outline: 2px solid transparent;
-      outline-offset: 2px;
+      max-width: 100%;
+      padding: 0;
+      margin: 0;
       border: 0;
+      border-radius: var(--el-border-radius-base);
+
+      &:hover {
+        background: none;
+      }
     }
-
-    .el-upload-list__item:hover {
-      background: none;
-    }
-
-    & :last-child {
-      // @apply flex gap-x-1.5;
-      display: flex;
-      column-gap: 0.375rem;
-    }
-  }
-
-  .art-upload:not(.is-readonly):hover .upload-container,
-  .art-upload:not(.is-readonly):focus-within .upload-container {
-    color: var(--el-color-primary);
-    border-color: var(--el-color-primary);
-  }
-
-  .art-upload:hover .resource-picker-action,
-  .art-upload:focus-within .resource-picker-action {
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
-    border-color: var(--el-color-primary);
   }
 
   .upload-container {
@@ -473,9 +492,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6b7280; /* text-gray-5 默认值 */
+    color: var(--el-text-color-secondary);
     background-color: var(--color-box);
-    border-color: var(--color-g-300); /* b-gray-3 默认值 */
+    border-color: var(--el-border-color);
     border-style: dashed;
     border-width: 1px;
     border-radius: 0.375rem;
@@ -628,7 +647,7 @@
 
     .upload-state--loading {
       color: var(--el-color-primary);
-      background-color: rgb(255 255 255 / 72%);
+      background-color: var(--el-fill-color-light);
     }
 
     .upload-state__spinner {
@@ -667,8 +686,7 @@
       }
     }
 
-    &:hover {
-      // @apply text-[rgb(var(--ui-primary))] b-[rgb(var(--ui-primary))];
+    &:not(.is-disabled):hover {
       color: var(--el-color-primary);
       border-color: var(--el-color-primary);
 

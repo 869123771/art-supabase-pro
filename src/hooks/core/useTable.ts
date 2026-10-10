@@ -17,7 +17,7 @@
  */
 
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, readonly } from 'vue'
-import { useWindowSize } from '@vueuse/core'
+import { useIntervalFn, useWindowSize } from '@vueuse/core'
 import { useTableColumns } from './useTableColumns'
 import type { ColumnOption } from '@/types/component'
 import {
@@ -218,9 +218,6 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
 
   // 请求取消控制器
   let abortController: AbortController | null = null
-
-  // 缓存清理定时器
-  let cacheCleanupTimer: NodeJS.Timeout | null = null
 
   // 搜索参数
   const searchParams = reactive(
@@ -658,13 +655,11 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
 
   // 设置定期清理过期缓存
   if (enableCache && cache) {
-    cacheCleanupTimer = setInterval(
+    useIntervalFn(
       () => {
-        const cleanedCount = cache.cleanupExpired()
+        const cleanedCount = clearExpiredCache()
         if (cleanedCount > 0) {
           logger.log(`自动清理 ${cleanedCount} 条过期缓存`)
-          // 手动触发缓存状态更新
-          cacheUpdateTrigger.value++
         }
       },
       Math.max(cacheTime / 2, 1000)
@@ -683,9 +678,6 @@ function useTableImpl<TApiFn extends AnyTableApiFn, TRecord>(
     cancelRequest()
     if (cache) {
       cache.clear()
-    }
-    if (cacheCleanupTimer) {
-      clearInterval(cacheCleanupTimer)
     }
   })
 

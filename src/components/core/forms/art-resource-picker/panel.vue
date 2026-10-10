@@ -244,7 +244,11 @@
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
   import { formatSize, viewAttachment } from '@/utils/file'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
-  import { createNamedClipboardFile, getClipboardFiles } from '@/utils/file/clipboard'
+  import {
+    copyTextToClipboard,
+    createNamedClipboardFile,
+    getClipboardFiles
+  } from '@/utils/file/clipboard'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { useDebounceFn, useTimeoutFn } from '@vueuse/core'
   import MasterDataDeleteGuard, {
@@ -674,35 +678,11 @@
     }
 
     try {
-      await copyPlainText(url)
+      await copyTextToClipboard(url, { legacyFallback: true })
       ElMessage.success('资源链接已复制，可粘贴到浏览器或消息中')
     } catch {
       ElMessage.error('链接复制失败，请检查浏览器剪贴板权限后重试')
     }
-  }
-
-  async function copyPlainText(value: string): Promise<void> {
-    if (window.isSecureContext && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(value)
-        return
-      } catch {
-        // 浏览器拒绝现代剪贴板权限时，继续使用兼容复制通道。
-      }
-    }
-
-    const textarea = document.createElement('textarea')
-    textarea.value = value
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.top = '-9999px'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.focus()
-    textarea.select()
-    const copied = document.execCommand('copy')
-    textarea.remove()
-    if (!copied) throw new Error('CLIPBOARD_COPY_FAILED')
   }
 
   async function handleCopyImage(resource: Resource): Promise<void> {

@@ -97,9 +97,10 @@
 
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
-  import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
+  import { useDocumentVisibility, useIntervalFn, useTimeoutFn } from '@vueuse/core'
+  import { getCurrentScope } from 'vue'
   import { useRouter, type LocationQueryRaw } from 'vue-router'
-  import { formatWithDayjs } from '@/utils/time'
+  import { createDateTimeFormatter } from '@/utils/ui/format'
   import { fetchHeaderNotificationCenter, markHeaderNotificationsRead } from '@/api/notification'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
 
@@ -128,11 +129,10 @@
   }>()
 
   const router = useRouter()
+  const componentScope = getCurrentScope()
   const show = ref(false)
   const visible = ref(false)
   const barActiveIndex = ref(0)
-  let animationTimer: ReturnType<typeof setTimeout> | undefined
-  let warmupTimer: ReturnType<typeof setTimeout> | undefined
   let centerRequest: Promise<void> | undefined
   let lastLoadedAt = 0
   const NOTIFICATION_WARMUP_DELAY_MS = 30_000
@@ -202,9 +202,12 @@
     return 'ri:notification-3-line'
   }
 
-  function formatNotificationTime(value: string): string {
-    return formatWithDayjs(value, 'YYYY-MM-DD HH:mm') ?? '--'
-  }
+  const formatNotificationTime = createDateTimeFormatter({
+    format: 'YYYY-MM-DD HH:mm',
+    emptyText: '--',
+    invalidText: '--',
+    allowTimeOnly: false
+  })
 
   function changeBar(index: number): void {
     barActiveIndex.value = index
@@ -219,6 +222,7 @@
   }
 
   async function loadNotificationCenter(showLoading = false): Promise<void> {
+    if (!componentScope?.active) return
     if (showLoading) state.loading = true
     if (centerRequest) return centerRequest
 
@@ -234,26 +238,30 @@
   async function requestNotificationCenter(): Promise<void> {
     try {
       const response = await fetchHeaderNotificationCenter()
+      if (!componentScope?.active) return
       Object.assign(state.data, response.data ?? createEmptyCenter())
       state.error = ''
       lastLoadedAt = Date.now()
       emit('unread-change', state.data.totalUnreadCount)
     } catch (error) {
-      state.error = getFriendlySupabaseErrorMessage(error, '通知服务暂时不可用')
+      if (componentScope?.active)
+        state.error = getFriendlySupabaseErrorMessage(error, '通知服务暂时不可用')
     } finally {
-      state.loading = false
+      if (componentScope?.active) state.loading = false
     }
   }
 
   async function markCurrentCategoryRead(): Promise<void> {
-    if (activeCategory.value === 'todo' || activeUnreadCount.value === 0) return
+    const category = activeCategory.value
+    if (category === 'todo' || activeUnreadCount.value === 0) return
     state.marking = true
     try {
       if (centerRequest) await centerRequest
-      await markHeaderNotificationsRead({ category: activeCategory.value })
+      if (!componentScope?.active) return
+      await markHeaderNotificationsRead({ category })
       await loadNotificationCenter()
     } finally {
-      state.marking = false
+      if (componentScope?.active) state.marking = false
     }
   }
 
@@ -268,9 +276,11 @@
   async function handleItemClick(item: NotificationItem): Promise<void> {
     if (!item.isRead && item.category !== 'todo') {
       if (centerRequest) await centerRequest
+      if (!componentScope?.active) return
       await markHeaderNotificationsRead({ notificationIds: [item.id] })
       await loadNotificationCenter()
     }
+    if (!componentScope?.active) return
     emit('update:value', false)
     await router.push({
       path: item.routePath || '/workflow/workbench',
@@ -286,36 +296,43 @@
     })
   }
 
+  const animationDelay = ref(5)
+  const { start: startAnimation, stop: stopAnimation } = useTimeoutFn(
+    () => {
+      if (props.value) show.value = true
+      else visible.value = false
+    },
+    animationDelay,
+    { immediate: false }
+  )
+  const { start: startWarmup, stop: stopWarmup } = useTimeoutFn(
+    () => void loadNotificationCenter(),
+    NOTIFICATION_WARMUP_DELAY_MS,
+    { immediate: false }
+  )
+
   function showPanel(open: boolean): void {
-    if (animationTimer) clearTimeout(animationTimer)
+    stopAnimation()
     if (open) {
-      if (warmupTimer) {
-        clearTimeout(warmupTimer)
-        warmupTimer = undefined
-      }
+      stopWarmup()
       visible.value = true
-      animationTimer = setTimeout(() => {
-        show.value = true
-      }, 5)
+      animationDelay.value = 5
+      startAnimation()
       void loadNotificationCenter(true)
       return
     }
     show.value = false
-    animationTimer = setTimeout(() => {
-      visible.value = false
-    }, 250)
+    if (!visible.value) return
+    animationDelay.value = 250
+    startAnimation()
   }
 
   function scheduleNotificationWarmup(): void {
-    if (warmupTimer) clearTimeout(warmupTimer)
-    if (documentVisibility.value !== 'visible') return
-    warmupTimer = setTimeout(() => {
-      warmupTimer = undefined
-      void loadNotificationCenter()
-    }, NOTIFICATION_WARMUP_DELAY_MS)
+    stopWarmup()
+    if (documentVisibility.value === 'visible' && !props.value && !lastLoadedAt) startWarmup()
   }
 
-  watch(() => props.value, showPanel)
+  watch(() => props.value, showPanel, { immediate: true })
   const { pause, resume } = useIntervalFn(
     () => void loadNotificationCenter(),
     NOTIFICATION_REFRESH_INTERVAL_MS,
@@ -324,8 +341,7 @@
   watch(documentVisibility, (visibility) => {
     if (visibility === 'hidden') {
       pause()
-      if (warmupTimer) clearTimeout(warmupTimer)
-      warmupTimer = undefined
+      stopWarmup()
       return
     }
 
@@ -339,13 +355,8 @@
   onMounted(() => {
     if (documentVisibility.value === 'visible') {
       resume()
-      scheduleNotificationWarmup()
+      if (!props.value) scheduleNotificationWarmup()
     }
-  })
-  onUnmounted(() => {
-    pause()
-    if (animationTimer) clearTimeout(animationTimer)
-    if (warmupTimer) clearTimeout(warmupTimer)
   })
 </script>
 
@@ -366,9 +377,9 @@
     transform: translateY(-8px) scale(0.98);
     transform-origin: top right;
     transition:
-      opacity 180ms ease,
-      transform 180ms ease,
-      visibility 180ms ease;
+      opacity var(--art-motion-duration-fast) var(--art-motion-ease-out),
+      transform var(--art-motion-duration-fast) var(--art-motion-ease-out),
+      visibility var(--art-motion-duration-fast) var(--art-motion-ease-out);
 
     &.is-show {
       visibility: visible;

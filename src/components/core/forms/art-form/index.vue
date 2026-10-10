@@ -110,6 +110,18 @@
                 >
                   {{ getTextDisplayValue(item) }}
                 </span>
+                <ArtAsyncState
+                  v-else-if="!item.render && !componentMap"
+                  size="compact"
+                  loading-mode="skeleton"
+                  :skeleton-rows="1"
+                  :min-height="36"
+                  :loading="componentsLoading"
+                  :error="componentLoadErrorMessage"
+                  error-title="控件加载失败"
+                  :retryable="componentLoadAttempts < 2"
+                  @retry="loadFormComponents()"
+                />
                 <component
                   v-else
                   :is="getComponent(item)"
@@ -143,6 +155,7 @@
                       :is="getProps(item).optionType === 'button' ? ElCheckboxButton : ElCheckbox"
                       v-for="option in getOptions(item)"
                       v-bind="option"
+                      :disabled="isFieldDisabled(item) || option.disabled"
                       :key="option.value"
                     />
                   </template>
@@ -153,6 +166,7 @@
                       :is="getProps(item).optionType === 'button' ? ElRadioButton : ElRadio"
                       v-for="option in getOptions(item)"
                       v-bind="option"
+                      :disabled="isFieldDisabled(item) || option.disabled"
                       :key="option.value"
                     />
                   </template>
@@ -202,6 +216,7 @@
               <ElButton
                 v-if="showReset"
                 class="reset-button"
+                :disabled="props.disabled || !formControlsReady"
                 :loading="resetLoading"
                 @click="handleReset"
                 v-ripple
@@ -217,7 +232,7 @@
                 class="submit-button"
                 @click="handleSubmit"
                 v-ripple
-                :disabled="disabledSubmit || hasBlockingOptions"
+                :disabled="props.disabled || disabledSubmit || hasBlockingFields"
                 :loading="submitLoading"
               >
                 <ElIcon>
@@ -249,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useWindowSize } from '@vueuse/core'
+  import { useAsyncState, useWindowSize } from '@vueuse/core'
   import { useI18n } from 'vue-i18n'
   import { get, isEqual, unset } from 'lodash-es'
   import {
@@ -263,29 +278,11 @@
     type VNodeChild
   } from 'vue'
   import {
-    ElCascader,
-    ElAutocomplete,
     ElCheckbox,
     ElCheckboxButton,
-    ElCheckboxGroup,
-    ElColorPicker,
-    ElDatePicker,
     ElIcon,
-    ElInput,
-    ElInputTag,
-    ElInputNumber,
     ElRadio,
-    ElRadioGroup,
     ElRadioButton,
-    ElRate,
-    ElSegmented,
-    ElSelect,
-    ElSelectV2,
-    ElSlider,
-    ElSwitch,
-    ElTimePicker,
-    ElTimeSelect,
-    ElTreeSelect,
     type FormInstance,
     type FormItemProp,
     type FormPropsPublic
@@ -297,13 +294,8 @@
     RefreshLeft,
     Search
   } from '@element-plus/icons-vue'
-  import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
-  import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
   import { artFormFocusKey } from './focus'
-  import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
-  import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
-  import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
-  import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
+  import type { ComponentMap } from './components'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import { useTenantScopeFormPolicy } from '@/hooks/core/useTenantScopeFormPolicy'
@@ -323,38 +315,36 @@
 
   defineOptions({ name: 'ArtForm' })
 
-  const componentMap = {
-    input: ElInput, // 输入框
-    autocomplete: ElAutocomplete, // 自动补全输入框
-    textarea: ElInput, // 多行文本框
-    inputTag: ElInputTag, // 标签输入框
-    number: ElInputNumber, // 数字输入框
-    select: ElSelect,
-    selectV2: ElSelectV2, // 选择器
-    tagStyleSelect: ArtTagStyleSelect, // 标签样式选择器
-    segment: ElSegmented, // 分段选择器
-    switch: ElSwitch, // 开关
-    colorPicker: ElColorPicker, // 颜色选择器
-    checkbox: ElCheckbox, // 复选框
-    radio: ElRadio, // 单选框
-    checkboxGroup: ElCheckboxGroup, // 复选框组
-    radioGroup: ElRadioGroup, // 单选框组
-    date: ElDatePicker, // 日期选择器
-    daterange: ElDatePicker, // 日期范围选择器（兼容业务表单快捷写法）
-    datetimerange: ElDatePicker, // 日期时间范围选择器
-    monthrange: ElDatePicker, // 月份范围选择器
-    rate: ElRate, // 评分
-    slider: ElSlider, // 滑块
-    cascader: ElCascader, // 级联选择器
-    timePicker: ElTimePicker, // 时间选择器
-    timeSelect: ElTimeSelect, // 时间选择
-    treeSelect: ElTreeSelect, // 树选择器
-    iconPicker: ArtIconPicker, // 图标选择器
-    dataSelect: ArtDataSelect, // 数据选择器
-    userSelect: ArtUserSelect, // 用户选择器
-    uploadFile: ArtUploadFile, // 文件上传
-    uploadImage: ArtUploadImage // 图片上传
-  }
+  const componentLoadAttempts = ref(0)
+  // A failed ES-module fetch is cached by the browser. The compiled retry entry
+  // gives one explicit retry a fresh URL without reloading or losing the model.
+  const retryComponentRegistry = import.meta.glob<{ default: ComponentMap }>('./components.ts', {
+    query: '?form-controls-retry'
+  })
+  const {
+    state: componentMap,
+    isLoading: componentsLoading,
+    error: componentsError,
+    execute: loadFormComponents
+  } = useAsyncState<ComponentMap | undefined>(
+    async () => {
+      componentLoadAttempts.value++
+      const module =
+        componentLoadAttempts.value === 1
+          ? await import('./components')
+          : await retryComponentRegistry['./components.ts']()
+      return module.default
+    },
+    undefined,
+    { immediate: false, resetOnExecute: false, onError: () => undefined }
+  )
+  const componentLoadErrorMessage = computed(() =>
+    componentsError.value
+      ? componentLoadAttempts.value < 2
+        ? '表单控件加载失败，请重试'
+        : '表单控件暂时无法加载，请保留已填内容后刷新页面'
+      : null
+  )
 
   const dividerType = 'divider'
   const textType = 'text'
@@ -368,7 +358,6 @@
 
   const formInstance = useTemplateRef<FormInstance>('formRef')
 
-  type ComponentMap = typeof componentMap
   export interface FormItemOption extends FormRecord {
     /** 选项显示文本 */
     label?: string
@@ -604,6 +593,21 @@
     collapsibleSections: true,
     sanitizeOutput: () => ({})
   })
+  const needsComponentRegistry = computed(
+    () =>
+      !props.customLayout &&
+      props.items.some(
+        (item) => item.type !== dividerType && item.type !== textType && !item.render
+      )
+  )
+  const formControlsReady = computed(() => !needsComponentRegistry.value || !!componentMap.value)
+  watch(
+    needsComponentRegistry,
+    (needed) => {
+      if (needed && !componentMap.value && !componentsLoading.value) void loadFormComponents()
+    },
+    { immediate: true }
+  )
   const overlayFocus = inject(artFormFocusKey, undefined)
   const activeLabelTooltipKey = ref<string | null>(null)
   const showOverflowLabelTooltip = (event: MouseEvent, key: string): void => {
@@ -646,13 +650,15 @@
   const asyncErrorMap = shallowRef<Record<string, Error | undefined>>({})
   const optionRequestVersions: Record<string, number> = {}
   let optionsActive = true
-  const hasBlockingOptions = computed(() =>
-    visibleFormItems.value.some(
-      (item) =>
-        item.api &&
-        isOptionComponent(item) &&
-        (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key])
-    )
+  const hasBlockingFields = computed(
+    () =>
+      !formControlsReady.value ||
+      visibleFormItems.value.some(
+        (item) =>
+          item.api &&
+          isOptionComponent(item) &&
+          (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key])
+      )
   )
   const asyncRequestSignatureMap = ref<Record<string, string>>({})
 
@@ -1098,47 +1104,53 @@
       : item.labelWidth || labelWidth.value
   }
 
+  const isFieldDisabled = (item: FormItem): boolean =>
+    Boolean(
+      props.disabled ||
+      getProps(item).disabled ||
+      (item.api &&
+        isOptionComponent(item) &&
+        (asyncLoadingMap.value[item.key] || asyncErrorMap.value[item.key]))
+    )
+
   const getComponentProps = (item: FormItem) => {
-    const props = { ...getDefaultComponentProps(item), ...getProps(item) }
+    const componentProps = { ...getDefaultComponentProps(item), ...getProps(item) }
+    if (isFieldDisabled(item)) componentProps.disabled = true
     const options = getOptions(item)
 
     if (['select', 'selectV2', 'checkboxGroup', 'radioGroup'].includes(String(item.type))) {
-      delete props.options
+      delete componentProps.options
     }
     if (['selectV2', 'cascader', 'segment'].includes(String(item.type))) {
-      props.options = options
+      componentProps.options = options
     }
     if (String(item.type) === 'tagStyleSelect') {
-      props.options = options
+      componentProps.options = options
     }
     if (String(item.type) === 'treeSelect') {
-      props.data = props.data ?? options
+      componentProps.data = componentProps.data ?? options
     }
     if (String(item.type) === 'userSelect') {
-      props.options = options
+      componentProps.options = options
     }
     if (String(item.type) === 'dataSelect') {
-      if (item.api && !props.apiFn) {
-        props.apiFn = (params: FormRecord) => {
+      if (item.api && !componentProps.apiFn) {
+        componentProps.apiFn = (params: FormRecord) => {
           const baseParams =
             item.params && typeof item.params === 'object' ? (item.params as FormRecord) : {}
           return item.api?.({ ...baseParams, ...params })
         }
       }
-      props.rowKey = props.rowKey ?? item.valueField
-      props.labelKey = props.labelKey ?? item.labelField
-      props.childrenKey = props.childrenKey ?? item.childrenField
-      props.resultField = props.resultField ?? item.resultField
+      componentProps.rowKey = componentProps.rowKey ?? item.valueField
+      componentProps.labelKey = componentProps.labelKey ?? item.labelField
+      componentProps.childrenKey = componentProps.childrenKey ?? item.childrenField
+      componentProps.resultField = componentProps.resultField ?? item.resultField
     }
     if (item.api) {
-      props.loading = asyncLoadingMap.value[item.key] || props.loading
-      if (isOptionComponent(item)) {
-        props.disabled =
-          props.disabled || asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key]
-      }
+      componentProps.loading = asyncLoadingMap.value[item.key] || componentProps.loading
     }
-    delete props.optionType
-    return props
+    delete componentProps.optionType
+    return componentProps
   }
 
   // 获取插槽
@@ -1169,7 +1181,7 @@
     }
     // 使用 type 获取预定义组件
     const { type } = item
-    return componentMap[type as keyof typeof componentMap] || componentMap['input']
+    return componentMap.value?.[type as keyof ComponentMap] || componentMap.value?.input
   }
 
   /**
@@ -1293,7 +1305,8 @@
    * 处理提交事件
    */
   const handleSubmit = () => {
-    if (props.submitLoading || props.disabledSubmit || hasBlockingOptions.value) return
+    if (props.disabled || props.submitLoading || props.disabledSubmit || hasBlockingFields.value)
+      return
     syncTenantScopeField()
     // 对外只抛出清洗后的结果，避免业务层重复过滤空值。
     emit('submit', getSanitizedOutput())
@@ -1401,21 +1414,24 @@
   defineExpose({
     ref: formInstance,
     validate: async (...args: Parameters<FormInstance['validate']>) => {
-      if (hasBlockingOptions.value) {
+      if (hasBlockingFields.value) {
         const invalidFields = Object.fromEntries(
           visibleFormItems.value
             .filter(
               (item) =>
-                item.api &&
-                isOptionComponent(item) &&
-                (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key])
+                (!formControlsReady.value && !isDividerItem(item) && !isTextItem(item)) ||
+                (item.api &&
+                  isOptionComponent(item) &&
+                  (asyncLoadingMap.value[item.key] || !!asyncErrorMap.value[item.key]))
             )
             .map((item) => [
               item.key,
               [
                 {
                   field: item.key,
-                  message: asyncErrorMap.value[item.key]?.message ?? '选项正在加载，请稍候'
+                  message: !formControlsReady.value
+                    ? (componentLoadErrorMessage.value ?? '表单控件正在加载，请稍候')
+                    : (asyncErrorMap.value[item.key]?.message ?? '选项正在加载，请稍候')
                 }
               ]
             ])

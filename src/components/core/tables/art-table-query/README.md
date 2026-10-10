@@ -1,5 +1,11 @@
 # ArtTableQuery
 
+## 关联记录定位
+
+`ArtTableQueryExpose.dataState` 提供只读的 `rows`、`loading`、`error` 计算属性，代表当前表格实际呈现的结果，并沿用公共请求的失效保护。业务页应把表格引用传给 `MasterDeleteProcessingNotice`，由公共组件匹配目标记录；不要根据路由参数是否存在提前显示“已找到”。目标与路由 `recordId` 不同时传 `record-id`，编号规则等非 `id` 主键传 `record-key`。树形记录沿用公共树工具查找。
+
+没有公共查询表格的页面可提供 `record-rows`、`record-loading`、`record-error`；只有已确认的详情加载状态才使用显式 `location-ready`。这些状态用于界面提示，删除前仍须执行 `MasterDataDeleteGuard` 引用检查。
+
 ## 字典展示规范
 
 后续涉及字典值展示时统一使用 `ArtDictDisplay`。表格场景优先配置 `ColumnOption.dict`，不要在业务页面重复编写 `formatter`、`ElTag` 或颜色判断。
@@ -195,14 +201,14 @@ const load = () => {
 | `onError` | `(error) => void` | 内管 | - | 请求失败回调。 |
 | `onCacheHit` | `(data, response) => void` | 内管 | - | 缓存命中回调。 |
 | `debug` | `boolean` | 内管 | `false` | 是否开启 `useTable` 调试日志。 |
-| `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂。 |
+| `columnsFactory` | `() => ColumnOption[]` | 内管 | `() => []` | 内管模式列工厂；响应式依赖变化时重新生成列，保留已有列的用户显隐和排序设置。 |
 | `columnsContextKey` | `string \| number` | 内管 | — | 列工厂依赖的业务模式；变化时重新生成列，数据查询仍由业务事件控制。 |
 | `searchBarProps` | `ArtTableQuerySearchBarProps` | 两种 | `{}` | 透传给 `ArtSearchBar`。 |
 | `tableHeaderProps` | `ArtTableQueryTableHeaderProps` | 两种 | `{}` | 透传给 `ArtTableHeader`。 |
 | `showTableToolbar` | `boolean` | 两种 | `false` | 是否启用刷新、密度、全屏、列设置等右侧工具；支持 `v-model`。专注模式期间有效值强制为开启，退出后恢复原值。 |
 | `tableProps` | `ArtTableQueryTableProps` | 两种 | `{}` | 透传给 `ArtTable` / `ElTable`。 |
 | `focusable` | `boolean` | 两种 | `false` | 是否允许专注模式；工具栏开启时显示入口，也可通过 `v-model:focus-mode` 从页面头部直接进入。 |
-| `focusScopeSelector` | `string` | 两种 | - | 专注模式整体保留的最近祖先选择器；用于“导航树 + 查询表格”等不可拆分的复合工作区。 |
+| `focusScopeSelector` | `string` | 两种 | - | 专注模式整体保留的最近祖先选择器；用于“导航树 + 查询表格”等不可拆分的复合工作区。未指定时保留最近的 Element Plus 页签容器及其导航，无页签时保留当前查询表格。 |
 
 ### searchBarProps
 

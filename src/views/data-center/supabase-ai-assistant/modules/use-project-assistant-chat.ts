@@ -1,3 +1,4 @@
+import { copyTextToClipboard } from '@/utils/file/clipboard'
 import { computed, onBeforeUnmount, reactive, type Ref } from 'vue'
 import { useDebounceFn, useIntervalFn } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
@@ -10,7 +11,7 @@ import {
 } from '@/api/supabase-ai-assistant'
 import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
 import { downloadBlob } from '@/utils/file'
-import { formatDurationMs } from '@/utils/ui/format'
+import { formatDateTimeValue, formatDurationMs } from '@/utils/ui/format'
 import type {
   ProjectAssistantCapabilities,
   ProjectAssistantConversationSummary,
@@ -140,8 +141,13 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
   }
 
   async function copyMessage(content: string): Promise<void> {
-    await navigator.clipboard.writeText(content)
-    ElMessage.success('回答已复制')
+    try {
+      await copyTextToClipboard(content)
+
+      ElMessage.success('回答已复制')
+    } catch {
+      ElMessage.warning('复制失败，请手动选择文字复制')
+    }
   }
 
   function retryMessage(messageId: string): void {
@@ -157,10 +163,11 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
 
   function exportConversation(): void {
     if (!chat.messages.length) return
+    const exportedAt = new Date()
     const content = [
       '# Supabase AI 助手会话',
       '',
-      `- 导出时间：${new Date().toLocaleString('zh-CN')}`,
+      `- 导出时间：${formatDateTimeValue(exportedAt)}`,
       `- 项目：${options.overview.value?.projectRef || 'ckbftoopuyophiebamwy'}`,
       `- 安全模式：${options.assistantMode.value === 'controlled_write' ? '管理员受控变更' : '只读'}`,
       '',
@@ -179,7 +186,7 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
     ].join('\n')
     downloadBlob(
       new Blob([content], { type: 'text/markdown;charset=utf-8' }),
-      `supabase-ai-${new Date().toISOString().slice(0, 10)}.md`
+      `supabase-ai-${formatDateTimeValue(exportedAt, { format: 'YYYY-MM-DD' })}.md`
     )
     ElMessage.success('会话已导出为 Markdown')
   }

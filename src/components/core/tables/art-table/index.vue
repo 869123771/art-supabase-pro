@@ -258,6 +258,7 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import BusinessAttachmentRowActions from '@/components/business/business-attachment-row-actions/index.vue'
   import { useTableStore } from '@/store/modules/table'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useCommon } from '@/hooks/core/useCommon'
@@ -679,7 +680,8 @@
   const isRowActionsColumn = (col: ArtTableColumn): boolean => col.prop === 'operation'
 
   const isBusinessTableRowActions = (content: unknown): boolean =>
-    isVNode(content) && content.type === BusinessTableRowActions
+    isVNode(content) &&
+    (content.type === BusinessTableRowActions || content.type === BusinessAttachmentRowActions)
 
   const EMPTY_CELL_TEXT = '--'
 

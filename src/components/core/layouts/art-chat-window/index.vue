@@ -292,6 +292,8 @@
 </template>
 
 <script setup lang="ts">
+  import { copyTextToClipboard } from '@/utils/file/clipboard'
+
   import { formatDurationMs } from '@/utils/ui/format'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Refresh } from '@element-plus/icons-vue'
@@ -690,8 +692,13 @@
   }
 
   async function copyMessage(content: string): Promise<void> {
-    await navigator.clipboard.writeText(content)
-    ElMessage.success('回答已复制')
+    try {
+      await copyTextToClipboard(content)
+
+      ElMessage.success('回答已复制')
+    } catch {
+      ElMessage.warning('复制失败，请手动选择文字复制')
+    }
   }
 
   function hasMessageTrace(message: ChatMessage): boolean {

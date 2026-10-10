@@ -1,4 +1,4 @@
-import { useSupabase } from '@/hooks'
+import { useSupabase } from '@/hooks/core/useSupabase'
 
 export type MasterGroupDomain =
   'customer' | 'material' | 'project' | 'operation' | 'process-route' | 'supplier'

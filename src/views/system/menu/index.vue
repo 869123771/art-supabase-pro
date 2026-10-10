@@ -2,7 +2,8 @@
 <template>
   <div class="menu-page business-workspace-page art-full-height">
     <MasterDeleteProcessingNotice
-      action-hint="当前菜单已自动定位；可先解除角色授权或处理编号场景后返回。"
+      :table="tableQueryRef"
+      action-hint="请核对关联菜单；可先解除角色授权或处理编号场景后返回。"
     />
     <BusinessWorkspaceHeader
       class="menu-page__overview"

@@ -1,8 +1,9 @@
 <!-- 右键菜单 -->
 <template>
   <Teleport to="body">
-    <Transition name="context-menu" @before-enter="onBeforeEnter" @after-leave="onAfterLeave">
+    <Transition name="context-menu" @before-enter="onBeforeEnter">
       <div
+        ref="menuRef"
         v-show="visible"
         :style="menuStyle"
         class="menu-right context-menu art-card-xs min-w-[var(--menu-width)] w-[var(--menu-width)]"
@@ -105,6 +106,7 @@
 
 <script setup lang="ts">
   import type { CSSProperties } from 'vue'
+  import { useEventListener, useTimeoutFn } from '@vueuse/core'
 
   defineOptions({ name: 'ArtMenuRight' })
 
@@ -164,9 +166,18 @@
   const visible = ref(false)
   const position = ref({ x: 0, y: 0 })
 
-  // 用于清理定时器和事件监听器
-  let showTimer: number | null = null
-  let eventListenersAdded = false
+  const menuRef = ref<HTMLDivElement>()
+  const listenersReady = ref(false)
+  const listenerTarget = computed(() =>
+    visible.value && listenersReady.value ? document : undefined
+  )
+  const { start: startListenersDelay, stop: stopListenersDelay } = useTimeoutFn(
+    () => {
+      if (visible.value) listenersReady.value = true
+    },
+    50,
+    { immediate: false }
+  )
 
   // 计算菜单样式
   const menuStyle = computed((): CSSProperties => ({
@@ -242,32 +253,11 @@
     return { x, y }
   }
 
-  // 添加事件监听器
-  const addEventListeners = () => {
-    if (eventListenersAdded) return
-
-    document.addEventListener('click', handleDocumentClick)
-    document.addEventListener('contextmenu', handleDocumentContextmenu)
-    document.addEventListener('keydown', handleKeydown)
-    eventListenersAdded = true
-  }
-
-  // 移除事件监听器
-  const removeEventListeners = () => {
-    if (!eventListenersAdded) return
-
-    document.removeEventListener('click', handleDocumentClick)
-    document.removeEventListener('contextmenu', handleDocumentContextmenu)
-    document.removeEventListener('keydown', handleKeydown)
-    eventListenersAdded = false
-  }
-
   // 处理文档点击事件
   const handleDocumentClick = (e: Event) => {
     // 检查点击是否在菜单内部
-    const target = e.target as Element
-    const menuElement = document.querySelector('.context-menu')
-    if (menuElement && menuElement.contains(target)) {
+    const target = e.target
+    if (target instanceof Node && menuRef.value?.contains(target)) {
       return
     }
     hide()
@@ -289,11 +279,8 @@
     e.preventDefault()
     e.stopPropagation()
 
-    // 清理之前的定时器
-    if (showTimer) {
-      window.clearTimeout(showTimer)
-      showTimer = null
-    }
+    stopListenersDelay()
+    listenersReady.value = false
 
     // 计算位置
     position.value = calculatePosition(e)
@@ -301,13 +288,8 @@
 
     emit('show')
 
-    // 延迟添加事件监听器，避免立即触发关闭
-    showTimer = window.setTimeout(() => {
-      if (visible.value) {
-        addEventListeners()
-      }
-      showTimer = null
-    }, 50) // 减少延迟时间，提升响应性
+    // 延迟监听，避免打开菜单的点击事件立即关闭菜单。
+    startListenersDelay()
   }
 
   const hide = () => {
@@ -316,14 +298,8 @@
     visible.value = false
     emit('hide')
 
-    // 清理定时器
-    if (showTimer) {
-      window.clearTimeout(showTimer)
-      showTimer = null
-    }
-
-    // 移除事件监听器
-    removeEventListeners()
+    stopListenersDelay()
+    listenersReady.value = false
   }
 
   const handleMenuClick = (item: MenuItemType) => {
@@ -338,23 +314,9 @@
     element.style.transformOrigin = 'top left'
   }
 
-  const onAfterLeave = () => {
-    // 确保清理所有资源
-    removeEventListeners()
-    if (showTimer) {
-      window.clearTimeout(showTimer)
-      showTimer = null
-    }
-  }
-
-  // 组件卸载时清理资源
-  onUnmounted(() => {
-    removeEventListeners()
-    if (showTimer) {
-      window.clearTimeout(showTimer)
-      showTimer = null
-    }
-  })
+  useEventListener(listenerTarget, 'click', handleDocumentClick)
+  useEventListener(listenerTarget, 'contextmenu', handleDocumentContextmenu)
+  useEventListener(listenerTarget, 'keydown', handleKeydown)
 
   // 导出方法供父组件调用
   defineExpose({

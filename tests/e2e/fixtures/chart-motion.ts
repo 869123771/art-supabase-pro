@@ -17,7 +17,7 @@ const app = createApp({
     const kind = new URLSearchParams(location.search).get('kind')
     const visible = ref(kind !== 'hidden')
     const delayed =
-      kind === 'delayed' || kind === 'hidden'
+      kind === 'delayed' || kind === 'hidden' || kind === 'dispose'
         ? useChart({ initDelay: kind === 'delayed' ? 5000 : 0 })
         : undefined
     const initializeDelayed = () =>
@@ -40,6 +40,7 @@ const app = createApp({
     return () =>
       h('main', { class: 'p-4' }, [
         h('button', { onClick: () => (visible.value = true) }, '显示图表'),
+        h('button', { onClick: () => delayed?.destroyChart() }, '销毁图表'),
         h(
           'button',
           {

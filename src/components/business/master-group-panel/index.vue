@@ -228,7 +228,7 @@
       min-width: 0;
     }
 
-    :deep(.art-section-card__identity p),
+    :deep(.art-section-card__subtitle),
     :deep(.art-section-title) {
       overflow: hidden;
       text-overflow: ellipsis;

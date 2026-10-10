@@ -172,6 +172,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { formatSensitiveCountValue } from '@/utils/ui/format'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { ElMessage, ElTag } from 'element-plus'
   import type { TagProps } from 'element-plus'
@@ -422,7 +423,7 @@
       title: '金额',
       width: 14,
       formatter: (row) =>
-        `￥${Number((row as Record<string, unknown>).amount ?? 0).toLocaleString()}`
+        `￥${formatSensitiveCountValue(Number((row as Record<string, unknown>).amount ?? 0))}`
     },
     { key: 'owner', title: '负责人', width: 16 },
     { key: 'city', title: '城市', width: 12 },
@@ -540,7 +541,7 @@
       label: '金额',
       minWidth: 120,
       align: 'right',
-      formatter: (row) => `￥${toDemoOrder(row).amount.toLocaleString()}`
+      formatter: (row) => `￥${formatSensitiveCountValue(toDemoOrder(row).amount)}`
     },
     { prop: 'owner', label: '负责人', minWidth: 130 },
     { prop: 'city', label: '城市', width: 100 },
@@ -630,7 +631,9 @@
     })
   }
 
-  type ArtTableQueryMethod = Exclude<keyof ArtTableQueryExpose, 'workspaceController'>
+  type ArtTableQueryMethod = {
+    [Key in keyof ArtTableQueryExpose]: ArtTableQueryExpose[Key] extends () => unknown ? Key : never
+  }[keyof ArtTableQueryExpose]
 
   const callExpose = async (method: ArtTableQueryMethod): Promise<void> => {
     logEvent(`expose.${method}()`)
