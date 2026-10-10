@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./task-workspace-DbUYdNhI.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`preventive`,mode:`task`}))}});export{i as default};

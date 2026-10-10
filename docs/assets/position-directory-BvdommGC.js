@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./catalog-N-9z34md.js";var i=t({name:`MdmPositionDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

@@ -5,6 +5,7 @@ import {
   fetchWmsDocumentDeleteDestination
 } from '@/api/master-data-delete'
 import type { MasterDataDeleteDependencyMeta } from './index.vue'
+import { fetchPurchasePayableDeleteDestination } from '@/api/purchase-payable'
 
 const purchaseReferenceRoutes: Record<string, string> = {
   initial_inbound: 'WmsInitialPurchaseInbound',
@@ -78,6 +79,21 @@ export function createRecordReferenceNavigation(
   )
   return {
     ...warehouseReferences,
+    fms_purchase_payable_document: {
+      routeNames: ['FinanceEstimatedPayable', 'FinancePurchasePayable'],
+      canNavigate: () =>
+        hasAuth('FinanceEstimatedPayable:View') || hasAuth('FinancePurchasePayable:View'),
+      resolveRouteName: async (record) => {
+        const kind = await fetchPurchasePayableDeleteDestination(record.targetId)
+        const name =
+          kind === 'estimated'
+            ? 'FinanceEstimatedPayable'
+            : kind === 'financial'
+              ? 'FinancePurchasePayable'
+              : null
+        return name && hasAuth(`${name}:View`) ? name : null
+      }
+    },
     mdm_warehouse_bin: { routeName: 'MdmWarehouseBin', ...permitted('MdmWarehouseBin:View') },
     wms_inventory_batch: { routeName: 'MdmInventoryBatch', ...permitted('MdmInventoryBatch:View') },
     wms_inventory_reservation: {

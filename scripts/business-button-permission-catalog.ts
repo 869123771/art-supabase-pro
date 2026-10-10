@@ -2464,8 +2464,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'FinanceAssetPayable',
-    buttons: [button('View', '查看'), button('Add', '下推生成'), button('Approve', '审核应付')]
+    buttons: [button('View', '查看'), button('Approve', '审核应付')]
   },
+  { menuName: 'FinanceEstimatedPayable', buttons: [button('View', '查看')] },
+  { menuName: 'FinancePurchasePayable', buttons: [button('View', '查看')] },
   {
     menuName: 'WmsInventoryEnable',
     buttons: [button('View', '查看'), button('Enable', '启用'), button('Disable', '反启用')]
@@ -2558,6 +2560,14 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   ].map((menuName) => ({
     menuName,
     buttons: [
+      ...([
+        'WmsPurchaseInbound',
+        'WmsPurchaseReturn',
+        'WmsEntrustedProcessingInbound',
+        'WmsEntrustedProcessingReturn'
+      ].includes(menuName)
+        ? [button('Print', '批量打印')]
+        : []),
       button('View', '查看'),
       button('Add', '新增'),
       button('Copy', '复制'),
@@ -2613,7 +2623,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'WmsReceiptInbound',
     buttons: [
       button('View', '查看'),
-      button('Add', '下推生成'),
       button('AssignScope', '指定施工号'),
       button('AssignBin', '指定入库库位'),
       button('CaptureSN', '录入收料 SN'),
@@ -3051,6 +3060,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Withdraw', '撤回'),
       button('Approve', '审核'),
       button('Complete', '完结'),
+      button('Print', '批量打印'),
       button('RecentPrice', '获取最近采购价')
     ]
   },
@@ -3061,7 +3071,6 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Copy', '复制'),
       button('Submit', '提交'),
       button('Withdraw', '撤回'),
-      button('Complete', '确认收料'),
       button('GenerateBatch', '生成批号'),
       button('GenerateSerial', '生成序列号'),
       button('Import', '导入'),

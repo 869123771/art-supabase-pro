@@ -47,7 +47,7 @@
         }}物料价格、税额、折扣与辅助数量由系统核算；退货以负数入账。
       </ElAlert>
       <ElAlert v-if="orderTarget" type="success" :closable="false" show-icon>
-        承接采购订单 {{ orderTarget.sourceOrderNo }}（下推单
+        承接采购来源 {{ orderTargets.map((target) => target.sourceOrderNo).join('、') }}（下推单
         {{
           orderTarget.documentNo
         }}）。物料数量已按未入库余量预填；可按批次调整本次数量，审核时校验累计入库量。
@@ -91,6 +91,22 @@
               @update:selected-data="onSupplierSelected"
             />
           </template>
+          <template #sourceProjectId>
+            <ElSelect
+              v-model="headerProjectId"
+              filterable
+              clearable
+              class="w-full!"
+              placeholder="选择项目以筛选来源明细"
+            >
+              <ElOption
+                v-for="project in projects"
+                :key="project.id"
+                :label="project.name"
+                :value="project.id"
+              />
+            </ElSelect>
+          </template>
           <template #customerId>
             <ArtTableSingleSelect
               :model-value="form.customerId || undefined"
@@ -132,7 +148,7 @@
         </ArtForm>
       </ArtSectionCard>
       <ArtSectionCard
-        title="物料明细"
+        :title="kind === 'purchase_return' ? '退货明细' : '物料明细'"
         :subtitle="`共 ${lines.length} 行 · 数量 ${quantityTotal.toFixed(4)} · 价税合计 ${totalAmount.toFixed(2)} 元`"
         :empty="lines.length === 0"
         empty-title="尚未选择物料"
@@ -143,7 +159,40 @@
             v-if="mode !== 'view' && form.tenantId"
             class="flex flex-wrap items-center justify-end gap-2 whitespace-nowrap lg:flex-nowrap"
           >
+            <ElDropdown
+              v-if="kind === 'purchase_inbound' && (form.supplierId || headerProjectId)"
+              trigger="click"
+              @command="openSourcePicker"
+            >
+              <ElButton :loading="selectingSource"
+                >选单 <ArtSvgIcon icon="ri:arrow-down-s-line"
+              /></ElButton>
+              <template #dropdown
+                ><ElDropdownMenu>
+                  <ElDropdownItem command="purchase_order">采购订单</ElDropdownItem>
+                  <ElDropdownItem command="receipt_notice">收料通知单</ElDropdownItem>
+                </ElDropdownMenu></template
+              >
+            </ElDropdown>
+            <ArtTableMultipleSelect
+              v-if="kind === 'purchase_return' || kind === 'entrusted_processing_return'"
+              :api-fn="stockPickerApi"
+              :columns="returnStockColumns"
+              :disabled-key="stockRowDisabled"
+              row-key="id"
+              label-key="materialCode"
+              description-key="materialDescription"
+              title="选择退货库存"
+              subtitle="仅显示所选仓库的可用库存；同一物料只能添加一次。"
+              @confirm="addStockMaterials"
+              ><template #trigger="{ open }"
+                ><ElButton type="primary" :disabled="!form.warehouseId" @click="open"
+                  ><ArtSvgIcon icon="ri:add-line" />添加物料</ElButton
+                ></template
+              ></ArtTableMultipleSelect
+            >
             <ArtMaterialSelect
+              v-else
               v-model:model-values="materialPickerIds"
               v-model:selected-data="materialPickerRows"
               class="w-auto! shrink-0"
@@ -219,8 +268,22 @@
               <span v-else>{{ projectName(row.projectId) }}</span>
             </template>
             <template #constructionNo="{ row }">
+              <ArtTableSingleSelect
+                v-if="mode !== 'view' && isEntrustedProcessing"
+                :model-value="row.constructionNo || undefined"
+                :api-fn="(params) => constructionPickerApi(row, params)"
+                :columns="constructionColumns"
+                row-key="constructionNo"
+                label-key="constructionNo"
+                description-key="sectionName"
+                title="选择施工号"
+                placeholder="可选，允许为空"
+                clearable
+                :disabled="!row.projectId"
+                @update:model-value="row.constructionNo = String($event || '') || null"
+              />
               <ElInput
-                v-if="mode !== 'view'"
+                v-else-if="mode !== 'view'"
                 v-model="row.constructionNo"
                 :disabled="!row.projectId"
                 placeholder="施工号"
@@ -272,9 +335,16 @@
               </ElSelect>
               <span v-else>{{ unitName(row.baseUnitId) }}</span>
             </template>
-            <template #baseQuantity="{ row }">{{
-              mode === 'view' ? Math.abs(Number(row.baseQuantity || 0)) : baseQuantity(row)
-            }}</template>
+            <template #baseQuantity="{ row }"
+              >{{ kind === 'purchase_return' ? '￥' : ''
+              }}{{
+                kind === 'purchase_return'
+                  ? -Math.abs(mode === 'view' ? Number(row.baseQuantity || 0) : baseQuantity(row))
+                  : mode === 'view'
+                    ? Math.abs(Number(row.baseQuantity || 0))
+                    : baseQuantity(row)
+              }}</template
+            >
             <template #auxiliaryUnitId="{ row }">{{ unitName(row.auxiliaryUnitId) }}</template>
             <template #auxiliaryQuantity="{ row }">{{
               mode === 'view'
@@ -352,8 +422,18 @@
             <template #discountAmount="{ row }">{{
               lineFinancial(row).discount.toFixed(2)
             }}</template>
-            <template #amount="{ row }">{{ lineFinancial(row).amount.toFixed(2) }}</template>
-            <template #totalAmount="{ row }">{{ lineFinancial(row).total.toFixed(2) }}</template>
+            <template #amount="{ row }"
+              >{{ kind === 'purchase_return' ? '￥' : ''
+              }}{{ lineFinancial(row).amount.toFixed(2) }}</template
+            >
+            <template #taxAmount="{ row }"
+              >{{ kind === 'purchase_return' ? '￥' : ''
+              }}{{ lineFinancial(row).tax.toFixed(2) }}</template
+            >
+            <template #totalAmount="{ row }"
+              >{{ kind === 'purchase_return' ? '￥' : ''
+              }}{{ lineFinancial(row).total.toFixed(2) }}</template
+            >
             <template #gift="{ row }"
               ><ElCheckbox v-if="mode !== 'view'" v-model="row.gift" aria-label="赠品" /><span
                 v-else
@@ -571,6 +651,19 @@
       </ArtSectionCard>
     </div>
   </ArtDrawer>
+  <ArtTableMultipleSelect
+    ref="sourcePickerRef"
+    :api-fn="sourcePickerApi"
+    :columns="inboundSourceColumns"
+    :disabled-key="sourceRowDisabled"
+    row-key="id"
+    label-key="documentNo"
+    description-key="materialDescription"
+    :title="sourcePickerKind === 'purchase_order' ? '选择采购订单明细' : '选择收料通知单明细'"
+    subtitle="按表头供应商、项目筛选未全部入库的明细，支持多选和分批入库。"
+    @confirm="addSourceLines"
+    ><template #trigger><span hidden /></template
+  ></ArtTableMultipleSelect>
 
   <ArtDialog ref="serialEntryDialogRef" size="sm" :show-footer="mode !== 'view'">
     <ArtExcelImport
@@ -618,7 +711,8 @@
   import { parseSerialNumberText } from '@/utils/file/serial-number-text'
   import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import dayjs from 'dayjs'
-  import { cloneDeep } from 'lodash-es'
+  import { cloneDeep, uniq } from 'lodash-es'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
   import { ElMessage } from 'element-plus'
   import { normalizeNullableText } from '@/utils/form/normalize'
   import { useUserStore } from '@/store/modules/user'
@@ -644,6 +738,16 @@
     MaterialSelectRecord
   } from '@/components/business/art-material-select/types'
   import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import ArtTableMultipleSelect from '@/components/core/forms/art-data-select/table-multiple.vue'
+  import { inboundSourceColumns, returnStockColumns } from './purchase-selection-columns'
+  import {
+    fetchWmsInboundSources,
+    prepareWmsInboundSources,
+    fetchWmsReturnStock,
+    fetchWmsConstructionOptions,
+    type WmsInboundSourceRow,
+    type WmsReturnStockRow
+  } from '@/api/wms-purchase-selection'
   import { fetchWmsMaterialCategories } from '@/api/wms-material-category'
   import type {
     DataSelectColumn,
@@ -688,6 +792,7 @@
     documentId?: string
     importIntent?: boolean
     orderTargetId?: string
+    orderTargets?: Array<{ targetId: string; sourceLineIds: string[] }>
   }
   const props = defineProps<{
     kind: WmsPurchaseKind
@@ -705,6 +810,7 @@
   const importIntent = ref(false)
   const currentDocument = shallowRef<WmsPurchaseDocument | null>(null)
   const orderTarget = shallowRef<WmsPurchaseOrderTarget | null>(null)
+  const orderTargets = shallowRef<WmsPurchaseOrderTarget[]>([])
   const optionError = ref(false)
   const documentError = ref('')
   const openData = shallowRef<OpenData>()
@@ -807,6 +913,17 @@
     { prop: 'unitDiscountRate', label: '单位折扣', width: 120, useSlot: true },
     { prop: 'discountAmount', label: '折扣额', width: 110, align: 'right', useSlot: true },
     { prop: 'amount', label: '金额', width: 110, align: 'right', useSlot: true },
+    ...(props.kind === 'purchase_return'
+      ? [
+          {
+            prop: 'taxAmount',
+            label: '税额(元)',
+            width: 110,
+            align: 'right' as const,
+            useSlot: true
+          }
+        ]
+      : []),
     { prop: 'totalAmount', label: '价税合计', width: 124, align: 'right', useSlot: true },
     { prop: 'gift', label: '赠品', width: 68, align: 'center', useSlot: true },
     { prop: 'batchNo', label: '批号', width: 145, useSlot: true },
@@ -895,6 +1012,187 @@
     isInitialization: true,
     remark: ''
   })
+  const headerProjectId = ref<string | null>(null)
+  const selectingSource = ref(false)
+  const sourcePickerRef =
+    ref<import('@/components/core/forms/art-data-select/types').ArtDataSelectExpose>()
+  const sourcePickerKind = ref<'purchase_order' | 'receipt_notice'>('purchase_order')
+  async function openSourcePicker(kind: 'purchase_order' | 'receipt_notice'): Promise<void> {
+    if (selectingSource.value) return
+    sourcePickerKind.value = kind
+    await sourcePickerRef.value?.open()
+  }
+  function sourcePickerApi(params: DataSelectFetchParams) {
+    return fetchWmsInboundSources({
+      ...params,
+      kind: sourcePickerKind.value,
+      tenantId: form.tenantId,
+      supplierId: form.supplierId || null,
+      projectId: headerProjectId.value
+    })
+  }
+  function sourceRowDisabled(row: WmsInboundSourceRow): boolean {
+    return lines.value.some(
+      (line) => line.sourceDocument === row.documentNo && line.sourceLineNo === String(row.lineNo)
+    )
+  }
+  function targetLineToLine(
+    target: WmsPurchaseOrderTarget,
+    sourceLine: WmsPurchaseOrderTarget['lines'][number]
+  ): WmsPurchaseLine {
+    const unit = units.value.find(
+      (item) => item.unitCode === sourceLine.unitCode || item.unitName === sourceLine.unitCode
+    )
+    if (!unit) throw new Error(`采购单据第 ${sourceLine.lineNo} 行单位未配置到 WMS`)
+    const line = makeLine(sourceLine.material)
+    Object.assign(line, {
+      projectId: target.projectId,
+      constructionNo: target.constructionNo,
+      warehouseId: sourceLine.warehouseId || form.warehouseId,
+      binId: sourceLine.binId,
+      batchNo: sourceLine.batchNo,
+      serialNos: sourceLine.serialNos,
+      purchaserId: target.purchaserId,
+      keeperId: target.keeperId,
+      gift: sourceLine.gift,
+      inventoryUnitId: unit.id,
+      quantity: sourceLine.quantity,
+      unitPrice: sourceLine.unitPrice,
+      taxRate: sourceLine.taxRate,
+      taxInclusiveUnitPrice: round(sourceLine.unitPrice * (1 + sourceLine.taxRate / 100)),
+      discountMethod: sourceLine.discountRate > 0 ? 'rate' : 'none',
+      unitDiscountRate: sourceLine.discountRate / 100,
+      stockType: sourceLine.gift ? 'gift' : 'normal',
+      ownerType: sourceLine.ownerType,
+      ownerId: sourceLine.ownerId,
+      sourceDocument: target.sourceOrderNo,
+      sourceLineNo: String(sourceLine.lineNo),
+      sourceOrderTargetLineId: sourceLine.id
+    })
+    return line
+  }
+  async function addSourceLines(_ids: unknown, rows: WmsInboundSourceRow[]): Promise<void> {
+    if (!rows.length || selectingSource.value) return
+    selectingSource.value = true
+    const request = documentRequest
+    const context = `${form.tenantId}:${form.supplierId}:${headerProjectId.value}`
+    try {
+      const selections = await prepareWmsInboundSources(rows)
+      if (request !== documentRequest) return
+      const targets = await Promise.all(
+        selections.map(async (selection) => {
+          const target = await fetchWmsPurchaseOrderTarget(selection.targetId)
+          return {
+            ...target,
+            lines: target.lines.filter((line) =>
+              selection.sourceLineIds.includes(line.sourceLineId)
+            )
+          }
+        })
+      )
+      if (request !== documentRequest) return
+      if (context !== `${form.tenantId}:${form.supplierId}:${headerProjectId.value}`)
+        throw new Error('表头已变化，请重新选单')
+      if (
+        targets.some(
+          (target) =>
+            target.tenantId !== form.tenantId ||
+            (form.supplierId && target.supplierId !== form.supplierId)
+        )
+      )
+        throw new Error('所选明细与当前供应商不一致，请重新选单')
+      const additions = targets.flatMap((target) =>
+        target.lines.map((line) => targetLineToLine(target, line))
+      )
+      if (
+        additions.some((line) =>
+          lines.value.some(
+            (existing) => existing.sourceOrderTargetLineId === line.sourceOrderTargetLineId
+          )
+        )
+      )
+        throw new Error('所选来源明细已添加，请重新选择')
+      form.supplierId = targets[0].supplierId
+      form.supplierCode = suppliers.value.find((item) => item.id === form.supplierId)?.code || ''
+      selectedSupplier.value = suppliers.value.filter((item) => item.id === form.supplierId)
+      lines.value.push(...additions)
+      orderTargets.value.push(...targets)
+      renumber()
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '选单带入失败，请刷新重试'))
+    } finally {
+      selectingSource.value = false
+    }
+  }
+  function stockPickerApi(params: DataSelectFetchParams) {
+    if (!form.warehouseId) throw new Error('请先选择退货仓库')
+    return fetchWmsReturnStock({
+      ...params,
+      kind:
+        props.kind === 'entrusted_processing_return'
+          ? 'entrusted_processing_return'
+          : 'purchase_return',
+      tenantId: form.tenantId,
+      organizationId: form.organizationId,
+      warehouseId: form.warehouseId
+    })
+  }
+  const constructionColumns: DataSelectColumn<
+    import('@/api/wms-purchase-selection').WmsConstructionOption
+  >[] = [
+    { prop: 'constructionNo', label: '施工号', minWidth: 160 },
+    { prop: 'sectionName', label: '名称', minWidth: 200 }
+  ]
+  async function constructionPickerApi(line: WmsPurchaseLine, params: DataSelectFetchParams) {
+    if (!line.projectId) return { data: [], total: 0 }
+    const data = await fetchWmsConstructionOptions(line.projectId, form.tenantId, params.keyword)
+    return { data, total: data.length }
+  }
+  function stockRowDisabled(row: WmsReturnStockRow): boolean {
+    return (
+      row.availableQuantity <= 0 || lines.value.some((line) => line.materialId === row.materialId)
+    )
+  }
+  function addStockMaterials(_ids: unknown, rows: WmsReturnStockRow[]): void {
+    const materialIds = rows.map((row) => row.materialId)
+    if (uniq(materialIds).length !== materialIds.length || rows.some(stockRowDisabled)) {
+      ElMessage.warning('同一退货单不能重复添加物料，请重新选择')
+      return
+    }
+    if (
+      rows.some(
+        (row) => row.warehouseId !== form.warehouseId || row.material.tenantId !== form.tenantId
+      )
+    ) {
+      ElMessage.warning('仓库已变化，请重新选择库存')
+      return
+    }
+    lines.value.push(
+      ...rows.map((row) => {
+        const line = makeLine(row.material)
+        Object.assign(line, {
+          projectId: row.projectId,
+          constructionNo: row.constructionNo,
+          warehouseId: row.warehouseId,
+          binId: row.binId,
+          quantity: row.availableQuantity,
+          inventoryUnitId: row.inventoryUnitId,
+          sourceBatchId: row.id,
+          unitPrice: row.unitPrice,
+          taxInclusiveUnitPrice: row.unitPrice,
+          batchNo: row.batchNo,
+          serialNos: row.serialNos,
+          keeperId: row.keeperId,
+          ownerType: row.ownerType,
+          ownerId: row.ownerId,
+          stockType: row.stockType,
+          stockStatus: row.stockStatus
+        })
+        return line
+      })
+    )
+    renumber()
+  }
   void userStore.ensureDictLoaded('wmsInitialStockType')
   void userStore.ensureDictLoaded('wmsInitialStockCondition')
   void userStore.ensureDictLoaded('mdmBusinessOwnerType')
@@ -1029,7 +1327,7 @@
   )
   function purchaseLineCellClassName({ column }: { column: { property?: string } }): string {
     if (
-      isOpeningReturn.value &&
+      (isOpeningReturn.value || props.kind === 'purchase_return') &&
       [
         'quantity',
         'baseQuantity',
@@ -1037,6 +1335,7 @@
         'auxiliaryQuantity2',
         'discountAmount',
         'amount',
+        'taxAmount',
         'totalAmount'
       ].includes(column.property || '')
     )
@@ -1050,6 +1349,25 @@
     }))
   )
   const headerItems = computed<FormItem[]>(() => [
+    ...(props.kind === 'purchase_inbound'
+      ? [
+          {
+            key: 'sourceProjectId',
+            label: '项目名称',
+            type: 'select' as const,
+            options: projects.value.map((item) => ({ label: item.name, value: item.id })),
+            props: {
+              modelValue: headerProjectId.value,
+              'onUpdate:modelValue': (value: string | null) => {
+                headerProjectId.value = value
+              },
+              clearable: true,
+              filterable: true,
+              disabled: mode.value === 'view'
+            }
+          }
+        ]
+      : []),
     {
       key: 'documentNo',
       label: '单据编号',
@@ -1183,6 +1501,9 @@
     }
   ])
   const headerRules = computed(() => ({
+    ...(['purchase_return', 'entrusted_processing_return'].includes(props.kind)
+      ? { warehouseId: [{ required: true, message: '请选择退货仓库', trigger: 'change' }] }
+      : {}),
     organizationId: [{ required: true, message: '请选择已启用的库存组织', trigger: 'change' }],
     documentTypeId: [{ required: true, message: '请选择单据类型', trigger: 'change' }],
     businessTypeId: [{ required: true, message: '请选择业务类型', trigger: 'change' }],
@@ -1368,6 +1689,10 @@
     materialPickerRows.value = []
   }
   function copyLine(index: number): void {
+    if (['purchase_return', 'entrusted_processing_return'].includes(props.kind)) {
+      ElMessage.warning('同一退货单不能重复添加物料')
+      return
+    }
     lines.value.splice(index + 1, 0, cloneDeep(lines.value[index]))
     renumber()
   }
@@ -1715,7 +2040,7 @@
           ElMessage.warning(`第 ${line.lineNo} 行批次管理物料请填写期初历史批次`)
           return false
         }
-        if (line.projectId && !line.constructionNo?.trim()) {
+        if (!isEntrustedProcessing.value && line.projectId && !line.constructionNo?.trim()) {
           ElMessage.warning(`第 ${line.lineNo} 行选择项目后请填写施工号`)
           return false
         }
@@ -1778,6 +2103,7 @@
     documentError.value = ''
     mode.value = data.mode
     orderTarget.value = null
+    orderTargets.value = []
     importIntent.value = Boolean(data.importIntent)
     await drawerRef.value?.handleOpen(data, {
       loading: true,
@@ -1816,6 +2142,7 @@
         (data.documentId ? await fetchWmsPurchaseDocument(data.documentId) : undefined)
       if (request !== documentRequest) return
       currentDocument.value = source ?? null
+      headerProjectId.value = source?.lines[0]?.projectId || null
       Object.assign(form, {
         id: data.mode === 'edit' ? source?.id || '' : '',
         tenantId: source?.tenantId || '',
@@ -1851,14 +2178,39 @@
       selectedKeeper.value = []
       if (
         data.mode === 'create' &&
-        data.orderTargetId &&
+        (data.orderTargetId || data.orderTargets?.length) &&
         ['purchase_inbound', 'other_inbound'].includes(props.kind)
       ) {
-        orderTarget.value = await fetchWmsPurchaseOrderTarget(data.orderTargetId)
+        const requests = data.orderTargets ?? [{ targetId: data.orderTargetId!, sourceLineIds: [] }]
+        orderTargets.value = await Promise.all(
+          requests.map(async (request) => {
+            const target = await fetchWmsPurchaseOrderTarget(request.targetId)
+            return {
+              ...target,
+              lines: request.sourceLineIds.length
+                ? target.lines.filter((line) => request.sourceLineIds.includes(line.sourceLineId))
+                : target.lines
+            }
+          })
+        )
+        const first = orderTargets.value[0]
+        if (
+          !first ||
+          orderTargets.value.some(
+            (target) => target.tenantId !== first.tenantId || target.supplierId !== first.supplierId
+          )
+        ) {
+          throw new Error('请选择同一租户、同一供应商的来源单据')
+        }
+        if (!orderTargets.value.every((target) => target.lines.length)) {
+          throw new Error('选中明细已无可入库数量，请刷新后重试')
+        }
+        orderTarget.value = first
         form.tenantId = orderTarget.value.tenantId
         form.supplierId = orderTarget.value.supplierId
       }
       await loadOptions()
+      if (request !== documentRequest) return
       if (form.supplierId) {
         const supplier = suppliers.value.find((item) => item.id === form.supplierId)
         selectedSupplier.value = supplier ? [supplier] : []
@@ -1869,29 +2221,20 @@
       }
       if (orderTarget.value) {
         const target = orderTarget.value
+        form.purchaserId = orderTargets.value.every(
+          (item) => item.purchaserId === target.purchaserId
+        )
+          ? target.purchaserId
+          : null
+        form.keeperId = orderTargets.value.every((item) => item.keeperId === target.keeperId)
+          ? target.keeperId
+          : null
         form.supplierCode =
           suppliers.value.find((item) => item.id === target.supplierId)?.code || ''
-        lines.value = target.lines.map((sourceLine) => {
-          const unit = units.value.find((item) => item.unitCode === sourceLine.unitCode)
-          if (!unit) throw new Error(`采购订单第 ${sourceLine.lineNo} 行单位未配置到 WMS`)
-          const line = makeLine(sourceLine.material)
-          line.projectId = target.projectId
-          line.gift = sourceLine.gift
-          line.inventoryUnitId = unit.id
-          line.quantity = sourceLine.quantity
-          line.unitPrice = sourceLine.unitPrice
-          line.taxRate = sourceLine.taxRate
-          line.taxInclusiveUnitPrice = round(sourceLine.unitPrice * (1 + sourceLine.taxRate / 100))
-          line.discountMethod = sourceLine.discountRate > 0 ? 'rate' : 'none'
-          line.unitDiscountRate = sourceLine.discountRate / 100
-          line.stockType = sourceLine.gift ? 'gift' : 'normal'
-          line.ownerType = sourceLine.ownerType
-          line.ownerId = sourceLine.ownerId
-          line.sourceDocument = target.sourceOrderNo
-          line.sourceLineNo = String(sourceLine.lineNo)
-          line.sourceOrderTargetLineId = sourceLine.id
-          return line
-        })
+        lines.value = orderTargets.value.flatMap((target) =>
+          target.lines.map((line) => targetLineToLine(target, line))
+        )
+        renumber()
       }
       if (request !== documentRequest) return
       await nextTick()

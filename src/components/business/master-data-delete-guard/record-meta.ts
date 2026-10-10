@@ -126,6 +126,8 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   mdm_equipment: { label: '设备档案' },
   smis_equipment_inspection: { label: '设备检验记录' },
   wms_purchase_document: { label: '仓库采购单据' },
+  fms_purchase_payable_document: { label: '采购应付单据' },
+  fms_purchase_payable_line: { label: '采购应付明细' },
   scm_receipt_target_document: { label: '供应链收货单据' },
   scm_order_target_document: { label: '供应链订单' },
   scm_purchase_document: { label: '供应链采购单据' },

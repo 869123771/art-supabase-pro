@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./task-workspace-0liXiJ0W.js";var i=t({name:`PmisPatrolTask`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`,mode:`task`}))}});export{i as default};

@@ -139,10 +139,18 @@ export interface WmsPurchaseOrderTarget {
   tenantId: string
   documentNo: string
   sourceOrderNo: string
+  purchaserId: string | null
+  keeperId: string | null
+  constructionNo: string | null
   projectId: string | null
   supplierId: string
   lines: Array<{
     id: string
+    sourceLineId: string
+    warehouseId: string | null
+    binId: string | null
+    batchNo: string
+    serialNos: string[]
     lineNo: number
     material: WmsPurchaseMaterial
     orderedQuantity: number
@@ -213,6 +221,7 @@ export interface WmsPurchaseListRow extends WmsDocumentClassification {
   projectId: string | null
   projectName: string | null
   inventoryUnitName: string | null
+  baseUnitName?: string | null
   quantity: number
   baseQuantity: number
   auxiliaryQuantity: number | null

@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./execution-event-workspace-BPw55AC9.js";var i=t({name:`MesMold`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`mold`}))}});export{i as default};

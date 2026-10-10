@@ -216,12 +216,14 @@
       :deep(> .el-scrollbar__wrap > .el-scrollbar__view) {
         display: flex;
         flex-direction: column;
-        height: 100%;
         min-height: 100%;
       }
     }
 
     &.is-scrollable {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
       padding: 0;
 
       .art-section-card__header {

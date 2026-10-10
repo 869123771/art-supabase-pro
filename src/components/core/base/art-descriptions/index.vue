@@ -145,6 +145,10 @@
   .art-descriptions {
     width: 100%;
 
+    :deep(.el-descriptions__table) {
+      table-layout: fixed;
+    }
+
     &__value {
       min-width: 0;
       overflow-wrap: anywhere;
@@ -158,6 +162,7 @@
     :deep(.el-descriptions__label) {
       font-weight: 500;
       color: var(--el-text-color-secondary);
+      overflow-wrap: anywhere;
     }
 
     :deep(.el-descriptions__content) {

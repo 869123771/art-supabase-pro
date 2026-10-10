@@ -33,20 +33,15 @@
       </article>
     </div>
 
-    <dl v-if="displayFields.length">
-      <div v-for="field in displayFields" :key="field.key">
-        <dt>{{ field.label }}</dt>
-        <dd>
-          <ArtDictDisplay
-            v-if="field.dictCode"
-            :dict-code="field.dictCode"
-            :value="field.value"
-            display="text"
-          />
-          <span v-else>{{ field.value || '—' }}</span>
-        </dd>
-      </div>
-    </dl>
+    <ArtDescriptions
+      v-if="displayFields.length"
+      :data="snapshot"
+      :items="displayFields"
+      :columns="2"
+      :tablet-columns="2"
+      :label-width="100"
+      empty-text="—"
+    />
 
     <div v-if="snapshot.attachments.length" class="workflow-business-snapshot__attachments">
       <strong>业务附件（{{ snapshot.attachments.length }}）</strong>
@@ -75,19 +70,13 @@
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
+  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
+  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
   import { getWorkflowBusinessContract } from './workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowBusinessSnapshot' })
-
-  interface DisplayField {
-    key: string
-    label: string
-    value: string
-    dictCode?: string
-  }
 
   const props = defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
 
@@ -100,7 +89,7 @@
     }
     return parts.join(' · ')
   })
-  const displayFields = computed<DisplayField[]>(() =>
+  const displayFields = computed<ArtDescriptionItem<Api.Workflow.WorkflowBusinessSnapshot>[]>(() =>
     props.snapshot.fields.map((field, index) => {
       const metadata = businessContract.value.fields.find(
         (item) => item.key === field.label || item.label === field.label
@@ -110,7 +99,8 @@
         key: `${metadata?.key || field.label}-${index}`,
         label: metadata?.label || normalizeFieldLabel(field.label, index),
         value: metadata?.referenceType && isUuid(value) ? '已关联，可查看业务原单' : value || '—',
-        dictCode: metadata?.dictCode
+        dictCode: metadata?.dictCode,
+        dictDisplay: 'text'
       }
     })
   )
@@ -216,40 +206,6 @@
       }
     }
 
-    dl {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1px;
-      margin: 0;
-      overflow: hidden;
-      background: var(--el-border-color-lighter);
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: var(--el-border-radius-base);
-
-      div {
-        display: grid;
-        grid-template-columns: 90px minmax(0, 1fr);
-        gap: 8px;
-        padding: 10px 12px;
-        background: var(--el-bg-color);
-      }
-
-      dt {
-        color: var(--el-text-color-secondary);
-      }
-
-      dd {
-        min-width: 0;
-        margin: 0;
-        color: var(--el-text-color-primary);
-        overflow-wrap: anywhere;
-
-        > span {
-          display: block;
-        }
-      }
-    }
-
     &__attachments {
       display: grid;
       gap: 8px;
@@ -292,12 +248,6 @@
           white-space: nowrap;
         }
       }
-    }
-  }
-
-  @media (width <= 640px) {
-    .workflow-business-snapshot dl {
-      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>

@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./operational-master-ARxx5Tjj.js";var i=t({name:`MdmOperationControlCode`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

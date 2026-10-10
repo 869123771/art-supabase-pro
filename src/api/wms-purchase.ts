@@ -55,11 +55,15 @@ interface OrderTargetRecord {
   projectId: string | null
   supplierId: string
   status: 'draft' | 'partial' | 'completed'
-  source: { documentNo: string } | null
+  source: {
+    documentNo: string
+    details: { buyer?: string; keeper?: string; constructionNo?: string }
+  } | null
 }
 
 interface OrderTargetLineRecord {
   id: string
+  sourceLineId: string
   lineSnapshot: Record<string, unknown>
 }
 
@@ -99,7 +103,7 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
       supabase
         .from('scm_order_target_document')
         .select(
-          'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no)'
+          'id,tenant_id,document_no,project_id,supplier_id,status,source:scm_purchase_document!scm_order_target_document_source_order_id_fkey(document_no,details)'
         )
         .eq('id', id)
         .eq('target_kind', 'purchase_inbound')
@@ -112,7 +116,7 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
       () =>
         supabase
           .from('scm_order_target_line')
-          .select('id,line_snapshot')
+          .select('id,source_line_id,line_snapshot')
           .eq('target_document_id', id)
           .eq('tenant_id', target.tenantId)
           .order('created_at'),
@@ -163,6 +167,7 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
           : 'self'
       return {
         id: line.id,
+        sourceLineId: line.sourceLineId,
         lineNo: Number(snapshot.lineNo) || (index + 1) * 10,
         material,
         orderedQuantity: Number(remaining?.orderedQuantity) || 0,
@@ -174,7 +179,13 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
         discountRate: Number(snapshot.discountRate) || 0,
         gift: snapshot.gift === true,
         ownerType,
-        ownerId: typeof snapshot.ownerId === 'string' ? snapshot.ownerId : null
+        ownerId: typeof snapshot.ownerId === 'string' ? snapshot.ownerId : null,
+        warehouseId: typeof snapshot.warehouseId === 'string' ? snapshot.warehouseId : null,
+        binId: typeof snapshot.binId === 'string' ? snapshot.binId : null,
+        batchNo: typeof snapshot.batchNo === 'string' ? snapshot.batchNo : '',
+        serialNos: Array.isArray(snapshot.serialNumbers)
+          ? snapshot.serialNumbers.filter((value): value is string => typeof value === 'string')
+          : []
       }
     })
     .filter((line) => line.quantity > 0)
@@ -186,6 +197,9 @@ export async function fetchWmsPurchaseOrderTarget(id: string): Promise<WmsPurcha
     sourceOrderNo: target.source?.documentNo || target.documentNo,
     projectId: target.projectId,
     supplierId: target.supplierId,
+    purchaserId: target.source?.details?.buyer || null,
+    keeperId: target.source?.details?.keeper || null,
+    constructionNo: target.source?.details?.constructionNo || null,
     lines
   }
 }

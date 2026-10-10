@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./domain-command-screen-BLexAObs.js";var i=t({name:`WorkforceInsightCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`workforce-insight`}))}});export{i as default};

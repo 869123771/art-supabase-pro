@@ -45,6 +45,28 @@
         focusable
         @selection-change="onSelectionChange"
       >
+        <template #purchase-payable-push>
+          <ElDropdown
+            trigger="click"
+            :disabled="pushingPayable || !selectedRows.length"
+            @command="pushPayable"
+          >
+            <ElButton
+              v-auth="permission.Push"
+              type="primary"
+              plain
+              :loading="pushingPayable"
+              :disabled="!selectedRows.length"
+              >下推 <ArtSvgIcon icon="ri:arrow-down-s-line"
+            /></ElButton>
+            <template #dropdown
+              ><ElDropdownMenu
+                ><ElDropdownItem command="estimated">暂估应付单</ElDropdownItem
+                ><ElDropdownItem command="financial">财务应付单</ElDropdownItem></ElDropdownMenu
+              ></template
+            >
+          </ElDropdown>
+        </template>
         <template #search-displayMode>
           <ElRadioGroup v-model="displayMode" aria-label="单据列表展示方式" @change="refresh">
             <ElRadioButton label="document" value="document">按单据</ElRadioButton>
@@ -76,6 +98,7 @@
         @success="refresh"
       />
       <ArtDialog
+        v-if="kind === 'other_inbound'"
         ref="orderTargetDialogRef"
         size="md"
         :show-footer="false"
@@ -83,13 +106,9 @@
       >
         <ArtEntitySummary
           icon="ri:link-m"
-          :eyebrow="kind === 'other_inbound' ? 'SOURCE DOCUMENT' : 'PURCHASE ORDER'"
-          :title="kind === 'other_inbound' ? '选择来源单据' : '承接采购订单'"
-          :description="
-            kind === 'other_inbound'
-              ? '选择已下推的来源单据明细，生成其他入库草稿。'
-              : '选择 SCM 已下推的订单明细，生成可分批办理的采购入库草稿。'
-          "
+          eyebrow="SOURCE DOCUMENT"
+          title="选择来源单据"
+          description="选择已下推的来源单据明细，生成其他入库草稿。"
         />
         <ArtAsyncState
           :error="orderTargetError"
@@ -122,7 +141,7 @@
               :disabled="orderTargetLoading || Boolean(orderTargetError) || !selectedOrderTargetId"
               @click="openSelectedOrderTarget"
             >
-              {{ kind === 'other_inbound' ? '生成入库草稿' : '承接订单' }}
+              生成入库草稿
             </ElButton>
           </div>
           <ArtEmptyState
@@ -176,6 +195,48 @@
         </div>
       </ArtDialog>
       <MasterDataDeleteGuard ref="deleteGuardRef" />
+      <PurchasePrintSheet ref="printSheetRef" />
+      <ArtDialog ref="payableResultRef" size="md" :show-footer="false">
+        <ArtEntitySummary
+          icon="ri:bill-line"
+          title="应付单已生成"
+          description="所选入库明细已带入应付草稿，重复下推会由服务端阻止。"
+        />
+        <div class="mt-4 grid gap-3">
+          <div
+            v-for="record in generatedPayables"
+            :key="record.id"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--el-border-color)] p-4"
+          >
+            <div
+              ><strong>{{ record.documentNo }}</strong
+              ><p class="text-sm text-[var(--el-text-color-secondary)]"
+                >{{ record.supplierName }} · {{ record.lines.length }} 行 ·
+                {{ formatCurrencyValue(record.totalAmount) }}</p
+              ></div
+            >
+            <ElButton
+              v-if="
+                hasAuth(
+                  record.kind === 'estimated'
+                    ? 'FinanceEstimatedPayable:View'
+                    : 'FinancePurchasePayable:View'
+                )
+              "
+              @click="
+                router.push({
+                  name:
+                    record.kind === 'estimated'
+                      ? 'FinanceEstimatedPayable'
+                      : 'FinancePurchasePayable',
+                  query: { recordId: record.id }
+                })
+              "
+              >查看应付单</ElButton
+            >
+          </div>
+        </div>
+      </ArtDialog>
     </div>
   </ArtPermissionGuard>
 </template>
@@ -183,6 +244,8 @@
 <script setup lang="tsx">
   import { wmsDocumentClassificationColumns } from '@/utils/business/wms-document-columns'
   import { useWmsInitialObligationPush } from '@/hooks/business/useWmsInitialObligationPush'
+  import PurchasePrintSheet from './modules/purchase-print-sheet.vue'
+  import { getFriendlySupabaseErrorMessage } from '@/utils/supabase/error'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
   import { formatCurrencyValue } from '@/utils/ui/format'
@@ -190,7 +253,12 @@
   import { ElMessage, ElTag } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
   import { useRouteDocumentDrawer } from '@/hooks/core/useRouteDocumentDrawer'
-  import { chunk } from 'lodash-es'
+  import { chunk, uniq, groupBy } from 'lodash-es'
+  import {
+    pushPurchasePayables,
+    type PurchasePayableDocument,
+    type PurchasePayableKind
+  } from '@/api/purchase-payable'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { useDocumentBulkDelete } from '@/hooks/business/useDocumentBulkDelete'
@@ -254,7 +322,7 @@
 
   const props = defineProps<{
     kind: WmsPurchaseKind
-    permissions: Record<PurchaseAction, string>
+    permissions: Record<PurchaseAction, string> & { Print?: string }
   }>()
   const { confirmAction } = useArtFeedback()
   const deleteResourceLabel = ref('')
@@ -328,6 +396,24 @@
       : ([1, 1] as [number, number])
   }
   const drawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
+  const printSheetRef = ref<InstanceType<typeof PurchasePrintSheet>>()
+  const printing = ref(false)
+  async function printSelection(): Promise<void> {
+    if (!props.permissions.Print || !hasAuth(props.permissions.Print) || printing.value) return
+    const ids = uniq(selectedRows.value.map((row) => row.documentId))
+    if (!ids.length) {
+      ElMessage.warning('请选择需要打印的单据或明细')
+      return
+    }
+    printing.value = true
+    try {
+      await printSheetRef.value?.print(await Promise.all(ids.map(fetchWmsPurchaseDocument)))
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '打印数据加载失败，请重试'))
+    } finally {
+      printing.value = false
+    }
+  }
   const returnDrawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const entrustedTargetDrawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const pushDialogRef = ref<ArtDialogExpose>()
@@ -354,7 +440,43 @@
   })
   const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
-  const selectedRows = ref<Array<{ documentId: string; kind: unknown; status: unknown }>>([])
+  const selectedRows = ref<
+    Array<{ documentId: string; lineId: string | null; kind: unknown; status: unknown }>
+  >([])
+  const payableResultRef = ref<ArtDialogExpose>()
+  const pushingPayable = ref(false)
+  const generatedPayables = ref<PurchasePayableDocument[]>([])
+  async function pushPayable(kind: PurchasePayableKind): Promise<void> {
+    if (!hasAuth(permission.value.Push) || pushingPayable.value) return
+    if (
+      !selectedRows.value.length ||
+      selectedRows.value.some((row) => row.kind !== 'purchase_inbound' || row.status !== 'approved')
+    ) {
+      ElMessage.warning('请选择已审核的采购入库单或明细')
+      return
+    }
+    pushingPayable.value = true
+    try {
+      generatedPayables.value = await pushPurchasePayables(
+        kind,
+        Object.entries(groupBy(selectedRows.value, 'documentId')).map(([documentId, rows]) => ({
+          documentId,
+          lineIds:
+            displayMode.value === 'document'
+              ? null
+              : rows.flatMap((row) => (row.lineId ? [row.lineId] : []))
+        }))
+      )
+      payableResultRef.value?.handleOpen(undefined, {
+        title: kind === 'estimated' ? '暂估应付单' : '财务应付单',
+        showFooter: false
+      })
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '下推应付单失败，请刷新重试'))
+    } finally {
+      pushingPayable.value = false
+    }
+  }
   const { pushing: pushingInitialObligation, push: pushInitialObligation } =
     useWmsInitialObligationPush({
       area: 'purchase',
@@ -603,13 +725,14 @@
     column: { property?: string }
   }): string {
     if (
-      row.kind === 'initial_return' &&
+      (row.kind === 'initial_return' || row.kind === 'purchase_return') &&
       [
         'quantity',
         'baseQuantity',
         'auxiliaryQuantity',
         'auxiliaryQuantity2',
         'amount',
+        'taxAmount',
         'discountAmount',
         'totalAmount'
       ].includes(column.property || '')
@@ -620,8 +743,10 @@
       : ''
   }
   function onSelectionChange(rows: Record<string, unknown>[]): void {
-    selectedRows.value = rows.flatMap(({ documentId, kind, status }) =>
-      typeof documentId === 'string' ? [{ documentId, kind, status }] : []
+    selectedRows.value = rows.flatMap(({ documentId, lineId, kind, status }) =>
+      typeof documentId === 'string'
+        ? [{ documentId, lineId: typeof lineId === 'string' ? lineId : null, kind, status }]
+        : []
     )
   }
   async function openDocument(
@@ -643,7 +768,7 @@
       await drawerRef.value?.handleOpen({ mode: 'create', orderTargetId: targetId })
       return true
     } catch {
-      ElMessage.error('订单下推单无法承接，请核对未入库数量、物料与单位配置')
+      ElMessage.error('来源单据无法带入，请核对未入库数量、物料与单位配置')
       return false
     }
   }
@@ -663,7 +788,7 @@
     resetOrderTargetRows('')
     selectedOrderTargetId.value = ''
     await orderTargetDialogRef.value?.handleOpen(undefined, {
-      title: props.kind === 'other_inbound' ? '选择来源单据' : '承接采购订单',
+      title: '选择来源单据',
       loading: true,
       loadingText: '正在加载来源单据…',
       onOpen: () => {
@@ -790,11 +915,23 @@
   })
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
     bulkDeleteAction(),
-    ...(['purchase_inbound', 'other_inbound'].includes(props.kind)
+    ...(props.permissions.Print
+      ? [
+          {
+            key: 'batch-print',
+            label: '批量打印',
+            icon: 'ri:printer-line',
+            permission: props.permissions.Print,
+            buttonProps: { loading: printing.value },
+            onClick: printSelection
+          }
+        ]
+      : []),
+    ...(props.kind === 'other_inbound'
       ? [
           {
             key: 'receive-order',
-            label: props.kind === 'other_inbound' ? '选单' : '承接订单',
+            label: '选单',
             icon: 'ri:link-m',
             permission: permission.value.Add,
             buttonProps: { type: 'primary' as const, plain: true },
@@ -859,6 +996,9 @@
     },
     {
       key: 'push',
+      ...(props.kind === 'purchase_inbound'
+        ? { slot: 'purchase-payable-push', selectionRequired: true }
+        : {}),
       label: '下推',
       icon: 'ri:file-transfer-line',
       permission: permission.value.Push,
@@ -997,12 +1137,31 @@
           </span>
         )
       },
-      ...(displayMode.value === 'line' && props.kind === 'initial_return'
+      ...(displayMode.value === 'line' && ['initial_return', 'purchase_return'].includes(props.kind)
         ? ([
-            { prop: 'baseQuantity', label: '基本数量', minWidth: 115, align: 'right' },
+            {
+              prop: 'baseQuantity',
+              label: '基本数量',
+              minWidth: 115,
+              align: 'right',
+              formatter: (row) =>
+                props.kind === 'purchase_return'
+                  ? `￥${Number(row.baseQuantity).toFixed(4)}`
+                  : Number(row.baseQuantity).toFixed(4)
+            },
             { prop: 'auxiliaryQuantity', label: '辅助数量', minWidth: 115, align: 'right' },
             { prop: 'auxiliaryQuantity2', label: '辅助数量2', minWidth: 125, align: 'right' }
           ] as ColumnOption<WmsPurchaseListRow>[])
+        : []),
+      ...(displayMode.value === 'line' && props.kind === 'purchase_return'
+        ? [
+            {
+              prop: 'baseUnitName',
+              label: '基本单位',
+              width: 100,
+              formatter: (row: WmsPurchaseListRow) => formatUnitDisplayName(row.baseUnitName)
+            }
+          ]
         : []),
       ...(isEntrustedProcessing.value
         ? [

@@ -263,44 +263,6 @@ export async function setScmReceiptLineBin(lineId: string, binId: string | null)
   )
 }
 
-export async function fetchPushedReceiptLineIds(
-  receiptId: string,
-  targetKind: ScmReceiptTargetKind
-) {
-  const { data } = await responseHandle<Array<{ sourceLineId: string }>>(
-    () =>
-      supabase
-        .from('scm_receipt_target_line')
-        .select('source_line_id')
-        .eq('source_receipt_id', receiptId)
-        .eq('target_kind', targetKind),
-    { breakReturn: true, showErrorMessage: true, errorMessage: '已下推明细加载失败' }
-  )
-  return new Set((data ?? []).map((row) => row.sourceLineId))
-}
-
-export async function pushScmReceiptLines(
-  receiptId: string,
-  lineIds: string[],
-  targetKind: ScmReceiptTargetKind
-) {
-  const { data } = await responseHandle<string>(
-    () =>
-      supabase.rpc('scm_push_receipt_lines_secure', {
-        p_receipt_id: receiptId,
-        p_line_ids: lineIds,
-        p_target_kind: targetKind
-      }),
-    {
-      breakReturn: true,
-      showMessage: true,
-      message: targetKind === 'inbound' ? '已生成收料入库草稿' : '已生成资产应付草稿',
-      errorMessage: '下推失败，请检查单据状态、已下推明细及权限'
-    }
-  )
-  return data
-}
-
 export async function transitionScmReceiptTarget(id: string, kind: ScmReceiptTargetKind) {
   return responseHandle<void>(
     () =>

@@ -4,7 +4,7 @@ import { extname, join, resolve } from 'node:path'
 
 const projectRoot = resolve(import.meta.dirname, '..')
 const moduleRoot = join(projectRoot, 'modules')
-const regressionQueryPath = join(projectRoot, 'supabase/tests/database_security_policy_test.sql')
+const regressionQueryPath = join(projectRoot, 'tests/integration/database-security-policy.sql')
 const sourceExtensions = new Set(['.js', '.mjs', '.ts', '.tsx', '.vue'])
 const internalOnlyFunctions = [
   'get_app_user_display_name',

@@ -115,6 +115,17 @@ test('采购订单逐行批量操作、收料带入和参选布局', async ({ pa
       }
     })
   })
+  await page.route('**/rest/v1/rpc/scm_purchase_line_progress_secure', (route) =>
+    route.fulfill({
+      json: request.lines.map((line) => ({
+        document_id: request.id,
+        line_id: line.line_id,
+        delivered_quantity: 6,
+        received_quantity: 3,
+        returned_quantity: 1
+      }))
+    })
+  )
   const failCheck = false
   const operations: Array<{
     p_action: string
@@ -174,7 +185,29 @@ test('采购订单逐行批量操作、收料带入和参选布局', async ({ pa
   await page.getByRole('radio', { name: '按明细' }).locator('..').click()
   const rows = page.locator('.el-table__body-wrapper tbody tr')
   await expect(rows).toHaveCount(2)
+  await expect(page.getByText('已送货数量', { exact: true })).toBeVisible()
+  await expect(page.getByText('未入库数量', { exact: true })).toBeVisible()
+  await expect(rows.nth(0)).toContainText('6')
+  let printed = 0
+  await page.exposeFunction('recordPurchasePrint', () => {
+    printed += 1
+  })
+  await page.evaluate(() => {
+    window.print = () => {
+      void (window as unknown as { recordPurchasePrint: () => Promise<void> }).recordPurchasePrint()
+    }
+  })
   await rows.nth(1).getByRole('checkbox').locator('..').click()
+  await page.getByRole('button', { name: '批量打印', exact: true }).click()
+  await expect.poll(() => printed).toBe(1)
+  const printSheet = page.locator('.purchase-request-print-sheet')
+  await expect(printSheet).toContainText('采购订单')
+  await expect(printSheet).toContainText('购货金额')
+  await expect(printSheet).toContainText('QA-ORDER-001')
+  await page.emulateMedia({ media: 'print' })
+  await page.screenshot({ path: testInfo.outputPath('purchase-order-print.png') })
+  await page.emulateMedia({ media: 'screen' })
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
   await page.getByRole('button', { name: '批量复制', exact: true }).click()
   await page.getByRole('button', { name: '确定', exact: true }).click()
   await expect.poll(() => operations.length).toBe(1)

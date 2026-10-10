@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./enterprise-big-screen-C3PRQ3QL.js";var i=t({name:`BusinessCockpit`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`business`}))}});export{i as default};
