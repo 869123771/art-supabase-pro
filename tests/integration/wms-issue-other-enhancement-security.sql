@@ -2,7 +2,7 @@
 begin;
 do $test$
 declare super_id uuid;d public.wms_sales_document%rowtype; l jsonb; req uuid;reqline uuid;reqtype uuid;reqbiz uuid;wh uuid;
- outid uuid;out2 uuid;returnid uuid;rt uuid;rb uuid;payload jsonb; result jsonb; other uuid;aset uuid;cat uuid;assetdoc uuid;project_id uuid;project_req uuid;u public.sys_user%rowtype;role_row public.sys_role%rowtype;
+ outid uuid;out2 uuid;returnid uuid;rt uuid;rb uuid;payload jsonb; result jsonb; other uuid;aset uuid;cat uuid;assetdoc uuid;project_id uuid;project_req uuid;stock record;stock_line jsonb;stock_req uuid;u public.sys_user%rowtype;role_row public.sys_role%rowtype;
 begin
  select x.auth_user_id into strict super_id from public.sys_user x join public.sys_role s on s.tenant_id=x.tenant_id and s.role_code=any(x.user_roles) where s.builtin_type='platform_super' and x.system_protected and x.status='1' limit 1;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',super_id,'role','authenticated')::text,true);
@@ -13,6 +13,12 @@ begin
  select id into strict reqtype from public.mdm_document_type where tenant_id=d.tenant_id and document_type_name='标准出库申请单' and enabled limit 1;
  select id into strict reqbiz from public.mdm_business_type where tenant_id=d.tenant_id and reqtype=any(document_type_ids) and enabled limit 1;
  l:=l||jsonb_build_object('quantity',4,'unit_price',100,'tax_rate',13,'price_basis','untaxed','discount_method','none','gift',false,'stock_batch_id',null,'source_document_id',null,'source_line_id',null,'project_id',null,'construction_no',null,'batch_no',null,'bin_id',null,'serial_nos','[]'::jsonb);
+ select b.id,b.material_id,b.bin_id,m.inventory_unit_id,m.base_unit_id into strict stock from public.wms_inventory_batch b join public.mdm_material m on m.id=b.material_id and m.tenant_id=b.tenant_id where b.warehouse_id=wh and b.tenant_id=d.tenant_id and b.project_id is null and nullif(btrim(b.batch_no),'') is null and b.quantity>=10 and b.status in ('normal','available') and not m.serial_management_enabled and m.inventory_unit_id is not null and m.base_unit_id is not null limit 1;
+ stock_line:=l||jsonb_build_object('quantity',1,'stock_batch_id',stock.id,'material_id',stock.material_id,'bin_id',stock.bin_id,'batch_no','','inventory_unit_id',stock.inventory_unit_id,'base_unit_id',stock.base_unit_id);
+ stock_req:=public.wms_create_issue_request_secure(jsonb_build_object('organization_id',d.organization_id,'document_type_id',reqtype,'business_type_id',reqbiz,'warehouse_id',wh,'request_type','consumables_outbound','lines',jsonb_build_array(stock_line)));
+ if not exists(select 1 from public.wms_issue_request_line where request_id=stock_req and stock_batch_id=stock.id) then raise exception 'empty stock batch rejected by request';end if;
+ perform public.wms_save_sales_document_secure((to_jsonb(d)-'id')||jsonb_build_object('kind','other_outbound','warehouse_id',wh,'using_department_id',d.organization_id,'customer_id',null,'lines',jsonb_build_array(stock_line)));
+ begin perform public.wms_create_issue_request_secure(jsonb_build_object('organization_id',d.organization_id,'document_type_id',reqtype,'business_type_id',reqbiz,'warehouse_id',wh,'request_type','consumables_outbound','lines',jsonb_build_array(stock_line||jsonb_build_object('batch_no','forged-batch'))));raise exception 'mismatched stock batch allowed';exception when check_violation then null;end;
  req:=public.wms_create_issue_request_secure(jsonb_build_object('organization_id',d.organization_id,'document_type_id',reqtype,'business_type_id',reqbiz,'warehouse_id',wh,'request_type','consumables_outbound','using_department_id',d.organization_id,'lines',jsonb_build_array(l,l||jsonb_build_object('gift',true))));
  if (select work_order_id from public.wms_issue_request where id=req) is not null or (select count(*) from public.wms_issue_request_line where request_id=req)<>2 then raise exception 'optional work order or duplicate material lines failed';end if;
  if (select array_agg(line_no order by line_no) from public.wms_issue_request_line where request_id=req)<>array[10,20] then raise exception 'line numbering failed';end if;

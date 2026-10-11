@@ -1505,6 +1505,7 @@
       }
       if (action.type === 'delete' && !rows) clearSelectedRows()
     } catch (error) {
+      if (error === 'cancel' || error === 'close') return
       if (!wasErrorUserNotified(error)) {
         console.error('[ArtTableQuery] header action failed', error)
         ElMessage.error(getFriendlySupabaseErrorMessage(error, '操作未完成，请重试'))

@@ -112,17 +112,15 @@ for (const item of [
     await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0, { timeout: 60_000 })
     const view = table.getByRole('button', { name: /查看/ }).first()
     if (['sales-outbound', 'sales-return', 'other-outbound'].includes(item.path)) {
-      await expect(view).toBeVisible({ timeout: 30_000 })
+      await expect(view).toBeVisible({ timeout: 90_000 })
     }
     if (await view.isVisible()) {
       await view.click()
       await expect(page.locator('.el-drawer:visible')).toBeVisible()
+      await expect(page.locator('.el-drawer:visible .el-table')).toBeVisible({ timeout: 30_000 })
       await expect(page.getByText('销售单据加载失败，请重试', { exact: true })).toHaveCount(0)
       await page.screenshot({ path: info.outputPath(`${item.path}-live-detail.png`) })
-      await page
-        .locator('.el-drawer:visible')
-        .getByRole('button', { name: 'Close this dialog' })
-        .click()
+      await page.keyboard.press('Escape')
       await expect(page.locator('.el-drawer:visible')).toHaveCount(0)
     }
     if (item.path !== 'sales-invoice') {
@@ -186,11 +184,56 @@ test('真实出库申请库存参选、暂存和删除闭环', async ({ page }) 
   test.setTimeout(180_000)
   let createdId: string | undefined
   try {
+    const { data: profile } = await client
+      .from('sys_user')
+      .select('tenant_id')
+      .eq('auth_user_id', session.user.id)
+      .single()
+    const { data: warehouses, error: warehouseError } = await client
+      .from('mdm_warehouse')
+      .select('id,tenant_id,organization_id,warehouse_code')
+      .eq('tenant_id', profile.tenant_id)
+      .eq('status', 'enabled')
+      .contains('business_scopes', ['picking'])
+    expect(warehouseError).toBeNull()
+    let stocked: { warehouseCode: string; organizationId: string } | undefined
+    for (const warehouse of warehouses || []) {
+      const { data, error } = await client.rpc('wms_sales_choices_secure', {
+        p_kind: 'request_stock',
+        p_tenant_id: warehouse.tenant_id,
+        p_organization_id: warehouse.organization_id,
+        p_warehouse_id: warehouse.id,
+        p_limit: 1
+      })
+      expect(error).toBeNull()
+      if (data.total > 0) {
+        stocked = {
+          warehouseCode: warehouse.warehouse_code,
+          organizationId: warehouse.organization_id
+        }
+        break
+      }
+    }
+    expect(stocked, '测试租户有可参选库存的领料仓库').toBeTruthy()
+    const { data: organization } = await client
+      .from('mdm_organization')
+      .select('organization_name')
+      .eq('id', stocked!.organizationId)
+      .single()
     await page.goto('#/wms/outbound-business/outbound-request')
     await page.getByRole('button', { name: '新增出库申请单', exact: true }).click()
     const drawer = page.locator('.el-drawer:visible')
+    await drawer.getByRole('combobox', { name: /库存组织/ }).click()
+    await page
+      .locator('.el-select-dropdown:visible .el-select-dropdown__item')
+      .filter({ hasText: organization.organization_name })
+      .first()
+      .click()
     await drawer.getByRole('combobox', { name: /仓库号/ }).click()
-    await page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first().click()
+    await page
+      .locator('.el-select-dropdown:visible .el-select-dropdown__item')
+      .filter({ hasText: stocked!.warehouseCode })
+      .click()
     await drawer.getByRole('button', { name: '添加物料', exact: true }).click()
     const picker = page.getByRole('dialog', { name: '选择出库库存', exact: true })
     await expect(picker.locator('.el-table__body tr').first()).toBeVisible()

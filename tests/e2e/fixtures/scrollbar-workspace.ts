@@ -25,6 +25,9 @@ import PartsDialog from '../../../modules/art-supabase-vms/src/views/basic-info/
 import Parts from '../../../modules/art-supabase-vms/src/views/basic-info/parts/index.vue'
 import FavoriteRoute from '../../../modules/art-supabase-tms/src/views/basic-data/favorite-route/index.vue'
 import CarrierPrice from '../../../modules/art-supabase-tms/src/views/basic-data/carrier-price/index.vue'
+import Contract from '../../../modules/art-supabase-tms/src/views/basic-data/contract/index.vue'
+import Cargo from '../../../modules/art-supabase-tms/src/views/basic-data/cargo/index.vue'
+import CustomerAddress from '../../../modules/art-supabase-tms/src/views/basic-data/customer-address/index.vue'
 import ShippingNotice from '../../../modules/art-supabase-scm/src/views/sales-management/shipping-notice/index.vue'
 import FavoriteRouteDialog from '../../../modules/art-supabase-tms/src/views/basic-data/favorite-route/modules/favorite-route-dialog.vue'
 import '@styles/core/tailwind.css'
@@ -228,6 +231,9 @@ const pages: Record<string, Component> = {
   'parts-category': PartsCategory,
   shipping: ShippingNotice,
   'carrier-price': CarrierPrice,
+  contract: Contract,
+  cargo: Cargo,
+  'customer-address': CustomerAddress,
   'favorite-route': FavoriteRoute,
   'insurance-company': InsuranceCompany,
   supplier: Supplier,

@@ -22,7 +22,8 @@ declare
 begin
   foreach trigger_function in array array[
     'app_private.set_fms_auto_posting_creator_identity',
-    'app_private.set_tms_financial_document_creator_identity'
+    'app_private.set_tms_financial_document_creator_identity',
+    'app_private.set_fms_voucher_creator_identity'
   ] loop
   truncate posting_creator_probe;
   execute 'drop trigger if exists posting_creator_probe_identity on posting_creator_probe';
@@ -49,7 +50,7 @@ begin
     values(ordinary_user.tenant_id,admin_user.id,admin_user.user_email)
     returning created_by_user_id into actual_creator;
   if actual_creator is not null then raise exception 'Selected-tenant creator FK should remain tenant-local'; end if;
-  if trigger_function = 'app_private.set_tms_financial_document_creator_identity' then
+  if trigger_function in ('app_private.set_tms_financial_document_creator_identity', 'app_private.set_fms_voucher_creator_identity') then
     begin
       insert into posting_creator_probe(tenant_id,create_by)
         values(admin_user.tenant_id,admin_user.user_email);
