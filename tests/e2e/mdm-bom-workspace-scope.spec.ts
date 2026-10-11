@@ -44,10 +44,13 @@ for (const failed of [false, true]) {
     })
     release()
     await expect.poll(() => returned).toBe(true)
-    await expect(page.getByRole('button', { name: '创建分组', exact: true })).toBeEnabled()
+    // ArtDialog closes on navigation; the stale save must neither reopen it nor refresh groups.
+    await expect(page.getByRole('button', { name: '创建分组', exact: true })).toHaveCount(0)
     await expect(page.locator('.el-message')).toHaveCount(0)
     expect(groupReads).toBe(readsBefore)
-    await expect(page.getByRole('textbox', { name: /分组编码/ })).toHaveValue('OLD_GROUP')
+    await page.getByRole('button', { name: '新增 BOM 分组', exact: true }).click()
+    await expect(page.getByRole('button', { name: '创建分组', exact: true })).toBeEnabled()
+    await expect(page.getByRole('textbox', { name: /分组编码/ })).toHaveValue('')
   })
 }
 
@@ -159,6 +162,7 @@ test('BOM 分组切换租户后忽略旧响应', async ({ page }) => {
         await held
       }
       await route.fulfill({
+        headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' },
         json: [
           {
             id: old ? 'group-a' : 'group-b',

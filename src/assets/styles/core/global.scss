@@ -52,6 +52,13 @@ body {
   text-rendering: optimizelegibility;
 }
 
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+}
+
 h1 {
   font-weight: 600;
   text-wrap: balance;

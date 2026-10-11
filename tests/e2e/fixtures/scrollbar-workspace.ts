@@ -27,8 +27,11 @@ import FavoriteRoute from '../../../modules/art-supabase-tms/src/views/basic-dat
 import CarrierPrice from '../../../modules/art-supabase-tms/src/views/basic-data/carrier-price/index.vue'
 import Contract from '../../../modules/art-supabase-tms/src/views/basic-data/contract/index.vue'
 import Cargo from '../../../modules/art-supabase-tms/src/views/basic-data/cargo/index.vue'
+import Driver from '../../../modules/art-supabase-tms/src/views/basic-data/driver/index.vue'
+import Carrier from '../../../modules/art-supabase-tms/src/views/basic-data/carrier/index.vue'
 import CustomerAddress from '../../../modules/art-supabase-tms/src/views/basic-data/customer-address/index.vue'
 import ShippingNotice from '../../../modules/art-supabase-scm/src/views/sales-management/shipping-notice/index.vue'
+import MovementType from '../../../modules/art-supabase-mdm/src/views/inventory-master/movement-type/index.vue'
 import FavoriteRouteDialog from '../../../modules/art-supabase-tms/src/views/basic-data/favorite-route/modules/favorite-route-dialog.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
@@ -228,11 +231,14 @@ const formWorkspace = defineComponent({
   }
 })
 const pages: Record<string, Component> = {
+  'movement-type': MovementType,
   'parts-category': PartsCategory,
   shipping: ShippingNotice,
   'carrier-price': CarrierPrice,
   contract: Contract,
   cargo: Cargo,
+  driver: Driver,
+  carrier: Carrier,
   'customer-address': CustomerAddress,
   'favorite-route': FavoriteRoute,
   'insurance-company': InsuranceCompany,
@@ -250,7 +256,10 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'ScrollbarWorkspace',
+          name:
+            new URLSearchParams(location.search).get('page') === 'movement-type'
+              ? 'MdmStockMovementType'
+              : 'ScrollbarWorkspace',
           component: pages[new URLSearchParams(location.search).get('page') ?? ''] ?? workspace
         }
       ]
@@ -270,13 +279,31 @@ useUserStore(store).setUserInfo({
   buttons: ['TmsFavoriteRoute:Add', 'PartsCategory:Add']
 })
 useMenuStore(store).setButtonList(
-  ['TmsFavoriteRoute:Add', 'PartsCategory:Add'].map((name) => ({
+  [
+    'TmsFavoriteRoute:Add',
+    'PartsCategory:Add',
+    ...(scopeQuery.get('governedDelete') === 'true'
+      ? [
+          'TmsCargo:Delete',
+          'TmsCustomerAddress:Delete',
+          'TmsDriver:Delete',
+          'TmsCarrier:Delete',
+          'MdmStockMovementType:View',
+          'MdmStockMovementType:Delete'
+        ]
+      : [])
+  ].map((name) => ({
     name,
     path: name,
     type: 'button',
     meta: { title: name }
   }))
 )
+if (scopeQuery.get('governedDelete') === 'true') {
+  document.addEventListener('revoke-governed-delete', () => {
+    useMenuStore(store).setButtonList([])
+  })
+}
 const requestedTenant = scopeQuery.get('tenant')
 if (requestedTenant) {
   const tenantScope = useTenantScopeStore(store)

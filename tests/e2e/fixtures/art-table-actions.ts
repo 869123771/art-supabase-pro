@@ -4,6 +4,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { setupGlobDirectives } from '@/directives'
 import language from '@/locales'
 import { store } from '@/store'
+import { useUserStore } from '@/store/modules/user'
+import { useMenuStore } from '@/store/modules/menu'
 import { markErrorAsUserNotified } from '@/utils/supabase/error'
 import ArtTableQuery, {
   type ArtTableQueryHeaderAction
@@ -18,6 +20,7 @@ const action: ArtTableQueryHeaderAction = {
   key: 'run-preview',
   label: '执行测试操作',
   confirm: true,
+  permission: mode === 'revoked' ? 'Fixture:Execute' : undefined,
   content: '确认执行测试操作？',
   onClick: async () => {
     document.body.dataset.attempts = String(++attempts)
@@ -46,6 +49,15 @@ const app = createApp({
     ])
 })
 app.use(store)
+if (mode === 'revoked') {
+  const user = useUserStore()
+  const menu = useMenuStore()
+  user.info = { isPlatformSuper: false }
+  menu.buttonList = [{ name: 'Fixture:Execute', path: '/fixture' }]
+  document.addEventListener('revoke-fixture-permission', () => {
+    menu.buttonList = []
+  })
+}
 app.use(
   createRouter({
     history: createMemoryHistory(),

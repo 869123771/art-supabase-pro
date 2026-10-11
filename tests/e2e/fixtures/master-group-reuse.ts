@@ -23,6 +23,10 @@ const mode = params.get('mode') || 'panel'
 const pages = {
   supplier: { component: Supplier, path: '/mdm/purchase-master/supplier' },
   project: { component: OperationalMaster, path: '/mdm/sales-master/project' },
+  operation: { component: OperationalMaster, path: '/mdm/process-master/operation' },
+  formula: { component: OperationalMaster, path: '/mdm/process-master/activity-formula' },
+  control: { component: OperationalMaster, path: '/mdm/process-master/operation-control-code' },
+  workstation: { component: OperationalMaster, path: '/mdm/process-master/workstation' },
   route: { component: ProcessRoute, path: '/mdm/process-master/process-route' },
   customer: { component: Customer, path: '/tms/basic-data/customer' },
   cargo: { component: Cargo, path: '/tms/basic-data/cargo' }
@@ -53,17 +57,28 @@ useMenuStore(store).setButtonList(
   [
     'MdmPurchaseSupplier',
     'MdmSalesProject',
+    'MdmOperationSet',
+    'MdmActivityFormula',
+    'MdmOperationControlCode',
+    'MdmWorkstation',
     'MdmProcessRoute',
     'TmsCustomer',
     'TmsCargo',
     'FixtureGroup'
   ]
-    .flatMap((name) => [`${name}:View`, `${name}:ManageGroup`])
+    .flatMap((name) => [`${name}:View`, `${name}:ManageGroup`, `${name}:Delete`])
     .map((name) => ({ name, path: '', type: 'button', meta: { title: '测试权限' } }))
 )
 const router = createRouter({
   history: createMemoryHistory(),
-  routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }]
+  routes: [
+    {
+      path: '/mdm/process-master/process-route',
+      name: 'MdmProcessRoute',
+      component: { template: '<div />' }
+    },
+    { path: '/:pathMatch(.*)*', component: { template: '<div />' } }
+  ]
 })
 const app = createApp({
   render: () =>

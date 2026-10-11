@@ -30,12 +30,25 @@ const names: Record<string, string> = {
   'purchase-return': 'WmsInitialPurchaseReturn'
 }
 const name = names[kind] || names.stock
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [{ path: '/', name, component: {} }]
+})
+const linkedDocuments = (params.get('routeDocumentIds') || '').split(',').filter(Boolean)
 document.documentElement.style.setProperty('--art-full-height', 'calc(100vh - 32px)')
 const app = createApp({
   render: () =>
-    h(
-      'main',
-      { class: 'art-page-view', style: { padding: '16px' } },
+    h('main', { class: 'art-page-view', style: { padding: '16px' } }, [
+      ...linkedDocuments.map((id, index) =>
+        h(
+          'button',
+          {
+            'data-testid': `open-linked-document-${index + 1}`,
+            onClick: () => router.replace({ name, query: { documentId: id } })
+          },
+          `承接新草稿 ${index + 1}`
+        )
+      ),
       ['sales', 'sales-return', 'outbound', 'return', 'other'].includes(kind)
         ? h(Sales, {
             kind:
@@ -54,13 +67,11 @@ const app = createApp({
             : h(
                 kind === 'purchase' ? Purchase : kind === 'purchase-return' ? PurchaseReturn : Stock
               )
-    )
+    ])
 })
 app.use(store)
 app.use(language)
-app.use(
-  createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name, component: {} }] })
-)
+app.use(router)
 setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'bulk-delete-test',

@@ -66,7 +66,7 @@
         <template #dropdown>
           <ElDropdownMenu>
             <ElDropdownItem :disabled="pickerAtLimit" @click="resourcePickerVisible = true">
-              <span class="inline-flex items-center gap-2 whitespace-nowrap">
+              <span class="art-icon-label whitespace-nowrap">
                 <ArtSvgIcon icon="ri:folder-open-line" aria-hidden="true" />
                 <span>从资源库选择</span>
               </span>

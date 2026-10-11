@@ -55,7 +55,18 @@ for (const kind of ['estimated', 'financial'] as const) {
         const rows = page.locator('.el-table__body-wrapper tbody tr')
         await expect(rows).toHaveCount(2)
         await expect(page.getByRole('textbox', { name: '组合查询' })).toBeVisible()
+        const heading = page.getByRole('heading', {
+          name: kind === 'estimated' ? '暂估应付单' : '财务应付单',
+          exact: true
+        })
         await page.getByRole('switch', { name: '进入专注模式', exact: true }).locator('..').click()
+        await expect(heading).not.toBeVisible()
+        await expect(rows).toHaveCount(2)
+        await expect(page.getByRole('textbox', { name: '组合查询' })).toBeVisible()
+        await page.getByRole('button', { name: '退出专注模式', exact: true }).click()
+        await expect(heading).toBeVisible()
+        await page.getByRole('switch', { name: '进入专注模式', exact: true }).locator('..').click()
+        await expect(heading).not.toBeVisible()
         await page.keyboard.press('Escape')
         await expect(
           page.getByRole('heading', {

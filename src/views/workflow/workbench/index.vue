@@ -1069,7 +1069,7 @@
       display: flex;
       flex: 1;
       flex-direction: column;
-      min-height: 0;
+      min-height: 540px;
       padding: 18px;
       overflow: hidden;
     }

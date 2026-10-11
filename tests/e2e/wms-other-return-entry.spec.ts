@@ -81,6 +81,8 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
   test(`${title}退回记录打开对应详情`, async ({ page }, testInfo) => {
     test.setTimeout(120_000)
     await installFixtures(page)
+    const openingReturn = kind === 'initial_return'
+    const expectedQuantity = openingReturn ? /^1\.0000$/ : /^[￥¥]?-1\.0000$/
     const partyType =
       table === 'wms_sales_document_list' || kind === 'entrusted_processing_return'
         ? 'customer'
@@ -302,11 +304,8 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
     await expect(drawer).toContainText('退回记录独立备注')
     await expect(drawer.locator('.el-table__body tr')).toHaveCount(1)
     await expect(drawer.locator('.el-table__body tr')).toContainText('RETURN-MATERIAL')
-    await expect(drawer.locator('strong').filter({ hasText: /^-1\.0000$/ })).toBeVisible()
-    await drawer
-      .locator('strong')
-      .filter({ hasText: /^-1\.0000$/ })
-      .scrollIntoViewIfNeeded()
+    await expect(drawer.locator('strong').filter({ hasText: expectedQuantity })).toBeVisible()
+    await drawer.locator('strong').filter({ hasText: expectedQuantity }).scrollIntoViewIfNeeded()
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
     await page.screenshot({
       path: testInfo.outputPath('other-return-detail-entry.png'),
@@ -336,7 +335,7 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
       await expect(form.locator('.el-table__body tr')).toContainText('RETURN-MATERIAL')
       const quantityColumn = await form
         .locator('.el-table__header th')
-        .filter({ hasText: /^\*?\s*数量\s*$/ })
+        .filter({ hasText: /^\*?\s*数量(?:\s*（必填）)?\s*$/ })
         .evaluate((cell) => Array.from(cell.parentElement!.children).indexOf(cell))
       await expect(
         form.locator('.el-table__body tr').locator('td').nth(quantityColumn).locator('input')
@@ -360,7 +359,12 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
       await quantityInput.press('Tab')
       await expect(quantityInput).toHaveValue('2.0000')
       await expect(
-        form.getByText('共 1 行 · 数量 -2.0000 · 价税合计 -22.60 元', { exact: true })
+        form.getByText(
+          openingReturn
+            ? '共 1 行 · 数量 2.0000 · 价税合计 22.60 元'
+            : '共 1 行 · 数量 -2.0000 · 价税合计 -22.60 元',
+          { exact: true }
+        )
       ).toBeVisible()
       await page.screenshot({
         path: testInfo.outputPath(`other-return-${label}-quantity-changed.png`),
@@ -368,7 +372,7 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
       })
       await expect(
         form.getByRole('textbox', {
-          name: `* ${kind === 'entrusted_processing_return' ? '客户全称' : partyLabel}`,
+          name: `${kind === 'other_inbound' || kind === 'other_outbound' ? '' : '* '}${kind === 'entrusted_processing_return' ? '客户全称' : partyLabel}`,
           exact: true
         })
       ).toHaveValue(new RegExp(`退回测试${partyLabel}`))
@@ -402,7 +406,7 @@ for (const [path, name, title, returnTitle, table, documentTable, kind] of [
     await row.getByRole('button', { name: '查看', exact: true }).click()
     await expect(drawer).toContainText('退回记录独立备注')
     await expect(drawer).not.toContainText('未保存备注')
-    await expect(drawer.locator('strong').filter({ hasText: /^-1\.0000$/ })).toBeVisible()
+    await expect(drawer.locator('strong').filter({ hasText: expectedQuantity })).toBeVisible()
     await drawer.getByRole('button', { name: '关闭此对话框', exact: true }).click()
     await expect(drawer).toBeHidden()
   })

@@ -341,7 +341,11 @@
         label: '是否启用',
         width: 92,
         formatter: (row) => (
-          <ArtDictDisplay dictCode="commonBoolean" value={String(row.enabled)} display="tag" />
+          <ArtDictDisplay
+            dictCode="commonBoolean"
+            value={String(row.enabled ?? '')}
+            display="tag"
+          />
         )
       },
       {

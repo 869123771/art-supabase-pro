@@ -1,5 +1,5 @@
 -- Run on the scoped project. Trigger behavior is exercised on disposable rows;
--- Both posting-event and financial-document creator triggers are checked;
+-- Posting-event, financial-document, and voucher creator triggers are checked;
 -- no invoice, voucher, workflow, user permission, or posting event is persisted.
 begin;
 create temporary table posting_creator_users as select id,tenant_id from public.sys_user;
@@ -90,5 +90,5 @@ begin
   end loop;
 end
 $test$;
-select 'posting and financial creator identity: all/selected/ordinary/forged/impersonation/immutable passed' as result;
+select 'posting, financial and voucher creator identity: all/selected/ordinary/forged/impersonation/immutable passed' as result;
 rollback;

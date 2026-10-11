@@ -179,6 +179,7 @@
 <script setup lang="ts">
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
+  import { formatReferenceStatus } from './record-meta'
   import { groupBy, uniq } from 'lodash-es'
   import { Loading } from '@element-plus/icons-vue'
   import { ElMessage, type MessageHandler, type CheckboxValueType } from 'element-plus'
@@ -558,7 +559,10 @@
   const formatRecordMeta = (record: MasterDataDeleteDependencyDetail): string => {
     const hasStatusDictionary =
       currentOptions.value?.dependencyMeta?.[record.dependencyCode]?.statusDictCode
-    const parts = [record.recordSummary, hasStatusDictionary ? null : record.recordStatus]
+    const parts = [
+      record.recordSummary,
+      hasStatusDictionary ? null : formatReferenceStatus(record.recordStatus)
+    ]
     if ((currentOptions.value?.resources.length ?? 0) > 1) {
       const resource = currentOptions.value?.resources.find((item) => item.id === record.resourceId)
       if (resource) parts.unshift(`引用：${resource.label}`)

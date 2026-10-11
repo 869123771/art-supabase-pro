@@ -1,6 +1,6 @@
 <!-- 更多按钮 -->
 <template>
-  <div class="art-button-more">
+  <div class="art-button-more" :data-trigger="resolvedTrigger">
     <ElDropdown v-if="hasAnyAuthItem" :trigger="resolvedTrigger">
       <slot name="trigger">
         <ArtIconButton icon="ri:more-2-fill" label="更多操作" class="art-button-more__trigger" />

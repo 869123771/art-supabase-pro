@@ -79,6 +79,10 @@ export function createRecordReferenceNavigation(
   )
   return {
     ...warehouseReferences,
+    mdm_stock_movement_type: {
+      routeName: 'MdmStockMovementType',
+      ...permitted('MdmStockMovementType:View')
+    },
     wms_sales_invoice: { routeName: 'WmsSalesInvoice', ...permitted('WmsSalesInvoice:View') },
     fms_purchase_payable_document: {
       routeNames: ['FinanceEstimatedPayable', 'FinancePurchasePayable'],

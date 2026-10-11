@@ -35,6 +35,7 @@ export const WRITE_PERMISSION_DENIED_MESSAGE = '当前账号没有该数据的�
 export interface RunQueryOptions {
   showMessage?: boolean // 是否显示提示，默认 false
   showErrorMessage?: boolean // 是否显示错误提示；未指定时跟随 showMessage，显式 false 交由调用方处理
+  showReferenceFeedback?: boolean // 默认展示全局引用反馈；已有本地删除守卫的调用方设为 false
   convertToCamel?: boolean // 是否将返回字段从 snake_case 转为 camelCase，默认 true
   convertToCamelShadow?: boolean // 是否只转换最外层的驼峰命名，默认 false（深层转换）
   returnRawError?: boolean // 是否返回原生错误字段，默认 false
@@ -140,7 +141,9 @@ export function useSupabase() {
           )
       const referenceContext = getDeleteReferenceContext(error)
       const referenceHandled = Boolean(
-        referenceContext && mittBus.all.get('deleteReferenceBlocked')?.length
+        options.showReferenceFeedback !== false &&
+        referenceContext &&
+        mittBus.all.get('deleteReferenceBlocked')?.length
       )
       if (referenceContext && referenceHandled)
         mittBus.emit('deleteReferenceBlocked', referenceContext)

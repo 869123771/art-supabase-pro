@@ -113,6 +113,8 @@ export function useRecordDeleteGuard(
     onDeleted?: () => Promise<unknown>
     confirmMessage?: string
     failureMessage?: string
+    /** Preserve domain-specific reference checks while sharing submission safeguards. */
+    inspectReferences?: (resources: MasterDataDeleteResource[]) => Promise<boolean>
   }): Promise<void> => {
     if (deleteBusy.value) return
     const permissions = Array.isArray(options.permission)
@@ -134,8 +136,12 @@ export function useRecordDeleteGuard(
     const assertScope = createTenantScopeReadGuard()
     const label = options.resourceLabel ?? toValue(resourceLabel)
     const tableName = toValue(table)
+    const inspect = (constraint?: string) =>
+      options.inspectReferences
+        ? options.inspectReferences(resources)
+        : inspectResolvedReferences(resources, tableName, label, constraint)
     try {
-      if (await inspectResolvedReferences(resources, tableName, label)) return
+      if (await inspect()) return
       assertScope()
       await confirmDelete(
         options.confirmMessage ??
@@ -151,15 +157,8 @@ export function useRecordDeleteGuard(
       try {
         await options.remove()
       } catch (error) {
-        if (
-          await inspectResolvedReferences(
-            resources,
-            tableName,
-            label,
-            getDeleteReferenceContext(error)?.constraint
-          )
-        )
-          return
+        assertScope()
+        if (await inspect(getDeleteReferenceContext(error)?.constraint)) return
         throw error
       }
       await options.onDeleted?.()

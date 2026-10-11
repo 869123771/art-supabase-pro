@@ -5,8 +5,8 @@
     :subtitle="snapshotSubtitle"
     aria-label="审批业务资料"
   >
-    <template v-if="snapshot.routePath" #actions>
-      <RouterLink class="workflow-business-snapshot__source-link" :to="snapshot.routePath">
+    <template v-if="sourceRoutePath" #actions>
+      <RouterLink class="workflow-business-snapshot__source-link" :to="sourceRoutePath">
         查看业务原单<ArtSvgIcon icon="ri:arrow-right-up-line" aria-hidden="true" />
       </RouterLink>
     </template>
@@ -74,12 +74,17 @@
   import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import OcrOriginalText from '@/components/business/ocr-original-text/index.vue'
+  import { resolveLegacyBusinessPath } from '@/router/business-paths'
   import { getWorkflowBusinessContract } from './workflow-business-contracts'
 
   defineOptions({ name: 'WorkflowBusinessSnapshot' })
 
   const props = defineProps<{ snapshot: Api.Workflow.WorkflowBusinessSnapshot }>()
 
+  const sourceRoutePath = computed(() => {
+    const path = props.snapshot.routePath
+    return path ? resolveLegacyBusinessPath(path) || path : undefined
+  })
   const businessContract = computed(() => getWorkflowBusinessContract(props.snapshot.businessType))
   const snapshotSubtitle = computed(() => {
     const parts = [businessContract.value.label]

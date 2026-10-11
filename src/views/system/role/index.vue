@@ -420,7 +420,7 @@
           prop: 'enabled',
           label: '是否启用',
           width: 96,
-          dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.enabled) }
+          dict: { code: 'commonBoolean', display: 'tag', value: (row) => String(row.enabled ?? '') }
         },
         {
           prop: 'createTime',

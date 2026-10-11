@@ -12,6 +12,7 @@
       @update:model-value="replaceReactiveModel(form, $event)"
       :items="items"
       :rules="rules"
+      :span="24"
       :show-submit="false"
       :show-reset="false"
       label-position="top"

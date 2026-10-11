@@ -19,7 +19,11 @@ const app = createApp({
   render: () =>
     h(
       'main',
-      { class: 'art-page-view h-screen p-4' },
+      {
+        class: 'art-page-view h-screen p-4',
+        // 独立组件夹具没有应用外壳，高度契约由真正的外壳回归另行验证。
+        style: { '--art-full-height': 'calc(100dvh - 32px)' }
+      },
       mode === 'list'
         ? [h(MovementPage)]
         : [

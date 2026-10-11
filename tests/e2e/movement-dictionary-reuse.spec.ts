@@ -4,11 +4,83 @@ import { prepareIsolatedSession } from './support/isolated-session'
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 30_000 })
 test.setTimeout(180_000)
+
+for (const width of [1440, 1280]) {
+  test(`移动类型应用外壳普通与专注模式填满内容区 ${width}`, async ({ page }, info) => {
+    await prepareIsolatedSession(page)
+    await page.setViewportSize({ width, height: 900 })
+    await mockMovement(page)
+    await page.goto('/tests/e2e/fixtures/scrollbar-workspace.html?page=movement-type')
+    const card = page.locator('.art-table-card')
+    const header = page.locator('.business-workspace-header')
+    await expect(card).toBeVisible()
+    await expect(page.getByRole('textbox', { name: '综合查询', exact: true })).toBeVisible()
+    const expectFilled = async () => {
+      await expect
+        .poll(() => card.evaluate((el) => innerHeight - el.getBoundingClientRect().bottom))
+        .toBeLessThanOrEqual(17)
+      await expect(page.locator('.el-pagination')).toBeInViewport()
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+      ).toBeLessThanOrEqual(1)
+    }
+    await expectFilled()
+    await page.screenshot({ path: info.outputPath('movement-shell-normal.png') })
+    await page.getByRole('switch', { name: '进入专注模式', exact: true }).locator('..').click()
+    await expect(header).toBeHidden()
+    await expectFilled()
+    await page.screenshot({ path: info.outputPath('movement-shell-focus.png') })
+    await page.getByRole('button', { name: '退出专注模式', exact: true }).click()
+    await expect(header).toBeVisible()
+    await expectFilled()
+    await page.getByRole('switch', { name: '进入专注模式', exact: true }).locator('..').click()
+    await page.keyboard.press('Escape')
+    await expect(header).toBeVisible()
+    await expectFilled()
+  })
+}
+
+test('布尔字典区分真、假、空值与缺失字段', async ({ page }, info) => {
+  await prepareIsolatedSession(page)
+  await mockMovement(page)
+  await page.route('**/rest/v1/mdm_stock_movement_type?*', (route) =>
+    route.fulfill({
+      json: [true, false, null, undefined].map((value, index) => ({
+        id: `boolean-${index}`,
+        tenant_id: 'test-tenant',
+        movement_code: `BOOL-${index}`,
+        movement_name: `布尔显示 ${index}`,
+        direction: 'inbound',
+        reversal: value,
+        other_io: value,
+        status: 'enabled'
+      })),
+      headers: { 'content-range': '0-3/4', 'access-control-expose-headers': 'content-range' }
+    })
+  )
+  await page.goto('/tests/e2e/fixtures/movement-dictionary-reuse.html?mode=list')
+  for (const [index, label] of ['公共肯定', '公共否定', '--', '--'].entries()) {
+    const row = page.locator('.el-table__body-wrapper tr').filter({ hasText: `BOOL-${index}` })
+    await expect(row).toBeVisible()
+    await expect(row.locator('td').nth(6)).toHaveText(label)
+    await expect(row.locator('td').nth(7)).toHaveText(label)
+    await expect(row.getByText('undefined', { exact: true })).toHaveCount(0)
+    await expect(row.getByText('null', { exact: true })).toHaveCount(0)
+  }
+  await expect(page.getByRole('textbox', { name: '综合查询', exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: '出入标志', exact: true })).toBeVisible()
+  await page.screenshot({ path: info.outputPath('boolean-values.png') })
+})
+
 async function mockMovement(page: Page, gate: Promise<void> = Promise.resolve()) {
   await page.route('**/rest/v1/**', async (route) => {
     const url = new URL(route.request().url())
-    let json: unknown = []
+    let json: unknown
     if (url.pathname.endsWith('/sys_dictionary')) {
+      if (!url.searchParams.has('dict_type_table.code')) {
+        await route.fallback()
+        return
+      }
       await gate
       json = url.search.includes('commonBoolean')
         ? [
@@ -33,7 +105,13 @@ async function mockMovement(page: Page, gate: Promise<void> = Promise.resolve())
         status: 'enabled',
         reverse_type_id: null
       }))
+    } else {
+      await route.fallback()
+      return
     }
+    const requestedValue = url.searchParams.get('value')?.replace(/^eq\./, '')
+    if (url.pathname.endsWith('/sys_dictionary') && requestedValue && Array.isArray(json))
+      json = json.filter((item) => item.value === requestedValue)
     await route.fulfill({
       json,
       headers: {
@@ -42,6 +120,152 @@ async function mockMovement(page: Page, gate: Promise<void> = Promise.resolve())
       }
     })
   })
+}
+
+for (const mode of ['single', 'bulk']) {
+  for (const state of [
+    'referenced',
+    'failed',
+    'clear',
+    'concurrent',
+    'zero',
+    'cancel',
+    'scope',
+    'permission'
+  ]) {
+    test(`出入库类型删除守卫 ${mode} ${state}`, async ({ page }, info) => {
+      await prepareIsolatedSession(page)
+      await mockMovement(page)
+      const id = '00000000-0000-4000-a000-000000000001'
+      const events: string[] = []
+      await page.route('**/rest/v1/mdm_stock_movement_type?*', (route) =>
+        route.fulfill({
+          json: [
+            {
+              id,
+              movement_code: 'MOVE-TEST-001',
+              movement_name: '测试入库类型',
+              direction: 'inbound',
+              status: 'enabled',
+              tenant_id: '11111111-1111-4111-a111-111111111111'
+            }
+          ],
+          headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+        })
+      )
+      await page.route('**/rest/v1/rpc/get_record_delete_dependency_details**', (route) => {
+        expect(route.request().postDataJSON().p_table).toBe('mdm_stock_movement_type')
+        expect(route.request().postDataJSON().p_ids).toEqual([id])
+        events.push('inspect')
+        if (state === 'failed')
+          return route.fulfill({ status: 500, json: { code: 'XX000', message: 'test failure' } })
+        return route.fulfill({
+          json:
+            state === 'referenced' || (state === 'concurrent' && events.includes('delete'))
+              ? [
+                  {
+                    resource_id: id,
+                    source_table: 'mdm_stock_movement_type',
+                    record_id: id,
+                    target_id: id,
+                    record_no: 'MOVE-REF-001',
+                    record_summary: '测试反向类型',
+                    record_status: 'enabled',
+                    created_at: '2026-10-01'
+                  }
+                ]
+              : []
+        })
+      })
+      await page.route('**/rest/v1/rpc/mdm_delete_stock_movement_types_secure', (route) => {
+        expect(route.request().postDataJSON().p_ids).toEqual([id])
+        events.push('delete')
+        return state === 'concurrent'
+          ? route.fulfill({
+              status: 409,
+              json: { code: '23503', message: '出入库类型已被其他类型引用，不能删除' }
+            })
+          : route.fulfill({ json: state === 'zero' ? 0 : 1 })
+      })
+      await page.goto(
+        `/tests/e2e/fixtures/scrollbar-workspace.html?page=movement-type&governedDelete=true${state === 'permission' ? '&ordinary=true' : ''}`
+      )
+      const row = page.locator('.el-table__body-wrapper tr').first()
+      await expect(row).toContainText('MOVE-TEST-001')
+      if (mode === 'single') {
+        await expect(row.getByRole('button', { name: '更多操作', exact: true })).toHaveCount(1)
+        await expect(row.getByRole('button', { name: '删除类型', exact: true })).toHaveCount(0)
+        await row.getByRole('button', { name: '更多操作', exact: true }).click()
+        await page.getByRole('menuitem', { name: '删除类型', exact: true }).click()
+      } else {
+        await page.locator('.el-table__header-wrapper .el-checkbox').click()
+        await page.getByRole('button', { name: '批量删除', exact: true }).click()
+      }
+      const confirmation = page.locator('.el-message-box')
+      if (state === 'referenced' || state === 'failed') {
+        await expect(
+          page.getByText(state === 'referenced' ? 'MOVE-REF-001' : '删除检查未完成', {
+            exact: true
+          })
+        ).toBeVisible()
+        expect(events).toEqual(['inspect'])
+        await expect(confirmation).toHaveCount(0)
+        if (state === 'referenced') {
+          await page.screenshot({ path: info.outputPath('references.png') })
+          await page.getByRole('button', { name: '查看关联', exact: true }).click()
+          await expect(page.getByRole('textbox', { name: '综合查询', exact: true })).toHaveValue(
+            'MOVE-REF-001'
+          )
+        }
+      } else {
+        await expect(confirmation).toBeVisible()
+        expect(events).toEqual(['inspect'])
+        if (state === 'scope')
+          await page.evaluate(() => {
+            sessionStorage.setItem('art-platform-tenant-scope-active', '1')
+            sessionStorage.setItem(
+              'art-platform-tenant-scope-id',
+              '22222222-2222-4222-a222-222222222222'
+            )
+          })
+        if (state === 'permission')
+          await page.evaluate(() => document.dispatchEvent(new Event('revoke-governed-delete')))
+        await confirmation
+          .getByRole('button', { name: state === 'cancel' ? '取消' : '删除', exact: true })
+          .click()
+        if (state === 'concurrent') {
+          await expect(page.getByText('MOVE-REF-001', { exact: true })).toBeVisible()
+          expect(events).toEqual(['inspect', 'delete', 'inspect'])
+          await expect(page.locator('.el-message--error')).toHaveCount(0)
+        } else if (state === 'zero') {
+          await expect.poll(() => events).toEqual(['inspect', 'delete', 'inspect'])
+          await expect(page.locator('.el-message--success')).toHaveCount(0)
+          await expect(page.locator('.el-message--error')).toHaveCount(1)
+        } else if (state === 'clear') {
+          await expect.poll(() => events).toEqual(['inspect', 'delete'])
+          await expect(page.getByText('出入库类型已删除', { exact: true })).toBeVisible()
+        } else if (state === 'scope' || state === 'permission') {
+          await expect(
+            page.getByText(
+              state === 'scope'
+                ? '租户范围已变化，请刷新后重试'
+                : '删除权限已变化，请刷新页面后重试',
+              { exact: true }
+            )
+          ).toBeVisible()
+          expect(events).toEqual(['inspect'])
+        } else {
+          await expect(confirmation).toBeHidden()
+          await expect(page.locator('.el-message--error')).toHaveCount(0)
+          expect(events).toEqual(['inspect'])
+        }
+      }
+      if (mode === 'bulk' && state !== 'permission' && state !== 'referenced') {
+        if (state === 'clear') await expect(row.locator('input[type="checkbox"]')).not.toBeChecked()
+        else await expect(row.locator('input[type="checkbox"]')).toBeChecked()
+      }
+    })
+  }
 }
 
 for (const mode of ['type', 'inventory']) {

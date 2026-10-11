@@ -82,27 +82,11 @@
               ><strong :title="data.name">{{ data.name }}</strong
               ><small>{{ data.code }}</small></span
             >
-            <span class="master-group-panel__node-actions">
-              <ArtIconButton
+            <span class="master-group-panel__node-actions" @click.stop>
+              <ArtButtonMore
                 v-if="managePermission"
-                v-auth="managePermission"
-                icon="ri:add-line"
-                label="新增下级分组"
-                @click.stop="$emit('add', data)"
-              />
-              <ArtIconButton
-                v-if="managePermission"
-                v-auth="managePermission"
-                icon="ri:edit-line"
-                label="编辑分组"
-                @click.stop="$emit('edit', data)"
-              />
-              <ArtIconButton
-                v-if="managePermission"
-                v-auth="managePermission"
-                icon="ri:delete-bin-6-line"
-                label="删除分组"
-                @click.stop="$emit('remove', data)"
+                :list="groupActions"
+                @click="handleGroupAction($event, data)"
               />
             </span>
           </div>
@@ -129,6 +113,9 @@
   import ArtTreeExpandToggle from '@/components/core/widget/art-tree-expand-toggle/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtButtonMore, {
+    type ButtonMoreItem
+  } from '@/components/core/forms/art-button-more/index.vue'
   import type { MasterGroup } from '@/api/master-groups'
 
   const props = withDefaults(
@@ -143,13 +130,29 @@
     }>(),
     { showTreeToggle: true }
   )
-  defineEmits<{
+  const emit = defineEmits<{
     select: [id: string]
     refresh: []
     add: [parent?: MasterGroup]
     edit: [row: MasterGroup]
     remove: [row: MasterGroup]
   }>()
+  const groupActions = computed<ButtonMoreItem[]>(() => [
+    { key: 'add', label: '新增下级分组', icon: 'ri:add-line', auth: props.managePermission },
+    { key: 'edit', label: '编辑分组', icon: 'ri:edit-line', auth: props.managePermission },
+    {
+      key: 'delete',
+      label: '删除分组',
+      icon: 'ri:delete-bin-6-line',
+      color: 'var(--el-color-danger)',
+      auth: props.managePermission
+    }
+  ])
+  const handleGroupAction = (item: ButtonMoreItem, group: MasterGroup): void => {
+    if (item.key === 'add') emit('add', group)
+    else if (item.key === 'edit') emit('edit', group)
+    else if (item.key === 'delete') emit('remove', group)
+  }
 
   const keyword = ref('')
   const isNarrow = useMediaQuery('(max-width: 900px)')
@@ -177,6 +180,11 @@
     async (id) => {
       await nextTick()
       treeRef.value?.setCurrentKey(id || undefined)
+      let parent = id ? treeRef.value?.getNode(id)?.parent : undefined
+      while (parent) {
+        parent.expanded = true
+        parent = parent.parent
+      }
     },
     { immediate: true }
   )

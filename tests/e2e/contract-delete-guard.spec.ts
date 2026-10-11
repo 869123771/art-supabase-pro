@@ -109,6 +109,12 @@ for (const state of ['referenced', 'failed', 'clear', 'concurrent', 'zero'] as c
         expect(events).toEqual(['inspect'])
         await expect(page.locator('.el-message-box')).toHaveCount(0)
       }
+      if (mode === 'bulk' && state !== 'clear')
+        await expect(page.locator('.el-table__body-wrapper input[type="checkbox"]')).toBeChecked()
+      if (mode === 'bulk' && state === 'clear')
+        await expect(
+          page.locator('.el-table__body-wrapper input[type="checkbox"]')
+        ).not.toBeChecked()
       await page.screenshot({ path: info.outputPath('delete-guard.png') })
     })
 }

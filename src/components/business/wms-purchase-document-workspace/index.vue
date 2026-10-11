@@ -677,6 +677,7 @@
   }): string {
     if (
       (row.kind === 'initial_return' || row.kind === 'purchase_return') &&
+      Number(row[column.property || '']) < 0 &&
       [
         'quantity',
         'baseQuantity',
@@ -689,7 +690,9 @@
       ].includes(column.property || '')
     )
       return 'opening-return-negative-cell'
-    return column.property === 'quantity' && returnKinds.some((kind) => kind === row.kind)
+    return column.property === 'quantity' &&
+      Number(row.quantity) < 0 &&
+      returnKinds.some((kind) => kind === row.kind)
       ? 'wms-purchase-negative-cell'
       : ''
   }

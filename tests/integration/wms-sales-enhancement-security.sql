@@ -6,14 +6,19 @@ declare
  d public.wms_sales_document%rowtype; l jsonb; source_id uuid; line_id uuid;
  return_id uuid; return_type uuid; return_business uuid; result jsonb; invoice_id uuid;
  other uuid; payload jsonb; remain numeric;
+ b public.wms_inventory_batch%rowtype;
 begin
  select x.auth_user_id into strict super_id from public.sys_user x join public.sys_role s on s.tenant_id=x.tenant_id and s.role_code=any(x.user_roles)
  where s.builtin_type='platform_super' and x.system_protected and x.status='1' limit 1;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',super_id,'role','authenticated')::text,true);
  perform set_config('request.headers','{}',true);
- select * into strict d from public.wms_sales_document where kind='outbound' and status='approved' limit 1;
+ select * into strict b from public.wms_inventory_batch where id='afe16e97-8462-4d7f-805d-6fe8430b4c18';
+ select * into strict d from public.wms_sales_document where kind='outbound' and status='approved' and tenant_id=b.tenant_id limit 1;
  select to_jsonb(x) into strict l from public.wms_sales_document_line x join public.mdm_material m on m.id=x.material_id where x.document_id=d.id and not m.serial_management_enabled limit 1;
- l:=l||jsonb_build_object('quantity',4,'stock_batch_id',null,'source_document_id',null,'source_line_id',null);
+ l:=l||jsonb_build_object('quantity',4,'stock_batch_id',b.id,'source_document_id',null,'source_line_id',null,
+ 'material_id',b.material_id,'inventory_unit_id',b.display_unit_id,'base_unit_id',b.display_unit_id,
+ 'warehouse_id',b.warehouse_id,'bin_id',b.bin_id,'batch_no',b.batch_no,'project_id',b.project_id,'construction_no',b.construction_no,
+ 'stock_type',b.stock_type,'stock_status','available','owner_type',b.owner_type,'owner_id',b.owner_id);
  source_id:=public.wms_save_sales_document_secure((to_jsonb(d)-'id')||jsonb_build_object('business_date',current_date,'lines',jsonb_build_array(l,l)));
  perform public.wms_change_sales_document_status_secure(source_id,'submit');
  perform public.wms_change_sales_document_status_secure(source_id,'approve');

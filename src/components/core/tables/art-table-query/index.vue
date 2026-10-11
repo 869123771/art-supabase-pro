@@ -1497,13 +1497,20 @@
           return
         }
       }
+      const permission = getHeaderActionPermission(action)
+      if (permission && !hasAuth(permission)) {
+        ElMessage.error('操作权限已变化，请刷新页面后重试')
+        return
+      }
       emit('header-action-click', action, ctx)
       if (action.type === 'export' && !action.onClick) {
         await handleDefaultExport(action, ctx)
       } else {
         await action.onClick?.(ctx)
       }
-      if (action.type === 'delete' && !rows) clearSelectedRows()
+      // 自行确认的删除流程可能被引用检查阻止；成功后由 refreshRemove 更新选择。
+      if (action.type === 'delete' && !rows && shouldConfirmHeaderAction(action))
+        clearSelectedRows()
     } catch (error) {
       if (error === 'cancel' || error === 'close') return
       if (!wasErrorUserNotified(error)) {

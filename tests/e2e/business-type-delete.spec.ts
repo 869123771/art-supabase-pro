@@ -4,6 +4,45 @@ import { prepareIsolatedSession } from './support/isolated-session'
 test.use({ storageState: { cookies: [], origins: [] } })
 // The fixture boots the full business page and shared feedback components through Vite.
 test.setTimeout(120_000)
+test('未配置本地守卫的调用保留全局引用反馈', async ({ page }) => {
+  await prepareIsolatedSession(page)
+  let inspections = 0
+  await page.route('**/rest/v1/mdm_business_type?**', (route) =>
+    route.fulfill({
+      status: 409,
+      json: {
+        code: '23503',
+        message:
+          'update or delete on table "mdm_business_type" violates foreign key constraint "scm_purchase_document_business_type_id_fkey" on table "scm_purchase_document"',
+        details: 'Key (id)=(1) is still referenced from table "scm_purchase_document".'
+      }
+    })
+  )
+  await page.route('**/rest/v1/rpc/get_record_delete_dependency_details**', (route) => {
+    inspections++
+    return route.fulfill({
+      json: [
+        {
+          resource_id: '1',
+          source_table: 'scm_purchase_document',
+          record_id: 'reference-test',
+          target_id: 'reference-test',
+          record_no: 'GLOBAL-REF-001',
+          record_summary: '测试全局引用',
+          record_status: 'draft',
+          created_at: '2026-10-01'
+        }
+      ]
+    })
+  })
+  await page.goto('/tests/e2e/fixtures/business-type-delete.html?global')
+  await page.getByRole('button', { name: '验证全局引用反馈', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(page.getByRole('dialog')).toContainText('GLOBAL-REF-001')
+  await expect(page.locator('.el-message--error')).toHaveCount(0)
+  expect(inspections).toBe(1)
+})
+
 for (const entry of ['row', 'bulk'] as const) {
   for (const affected of [
     1,
@@ -13,6 +52,8 @@ for (const entry of ['row', 'bulk'] as const) {
     'blocked-purchase' as const,
     'blocked-issue' as const,
     'concurrent' as const,
+    'scope' as const,
+    'permission' as const,
     ...(entry === 'bulk' ? ['partial' as const] : [])
   ]) {
     test(`业务类型 ${entry} 删除检查与计数 affected=${affected}`, async ({ page }, testInfo) => {
@@ -105,7 +146,7 @@ for (const entry of ['row', 'bulk'] as const) {
         events.push('inspect')
         expect(route.request().postDataJSON()).toMatchObject({
           p_table: 'mdm_business_type',
-          p_ids: concurrentRejected ? [ids[0]] : ids
+          p_ids: ids
         })
         if (
           affected === 'blocked' ||
@@ -146,11 +187,12 @@ for (const entry of ['row', 'bulk'] as const) {
             .getByLabel('批量操作')
             .getByRole('button', { name: '批量删除', exact: true })
             .click()
-        else
-          await page
-            .locator('.el-table__body-wrapper')
-            .getByRole('button', { name: '删除', exact: true })
-            .click()
+        else {
+          const row = page.locator('.el-table__body-wrapper tr').first()
+          await expect(row.getByRole('button', { name: '删除', exact: true })).toHaveCount(0)
+          await row.getByRole('button', { name: '更多操作', exact: true }).click()
+          await page.getByRole('menuitem', { name: '删除', exact: true }).click()
+        }
       }
       await clickDelete()
       if (
@@ -212,6 +254,35 @@ for (const entry of ['row', 'bulk'] as const) {
         .click()
       expect(events).not.toContain('delete')
       await clickDelete()
+      if (affected === 'scope' || affected === 'permission') {
+        await expect(page.locator('.el-message-box')).toBeVisible()
+        if (affected === 'scope')
+          await page.evaluate(() => {
+            sessionStorage.setItem('art-platform-tenant-scope-active', '1')
+            sessionStorage.setItem(
+              'art-platform-tenant-scope-id',
+              '22222222-2222-4222-a222-222222222222'
+            )
+          })
+        else
+          await page.evaluate(() =>
+            document.dispatchEvent(new Event('revoke-business-type-delete'))
+          )
+        await page
+          .locator('.el-message-box')
+          .getByRole('button', { name: '删除', exact: true })
+          .click()
+        await expect(
+          page.getByText(
+            affected === 'scope'
+              ? '租户范围已变化，请刷新后重试'
+              : '删除权限已变化，请刷新页面后重试',
+            { exact: true }
+          )
+        ).toBeVisible()
+        expect(events).not.toContain('delete')
+        return
+      }
       await page
         .locator('.el-message-box')
         .getByRole('button', { name: '删除', exact: true })
