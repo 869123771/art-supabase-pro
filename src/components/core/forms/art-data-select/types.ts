@@ -74,8 +74,12 @@ export type DataSelectApiFn<T extends object = DataSelectRecord> = (
 export interface ArtDataSelectProps<T extends object = DataSelectRecord> {
   modelValue?: DataSelectModelValue
   selectedData?: T[]
+  /** Resolve saved keys before the picker opens; must enforce the owning source's read scope. */
+  resolveSelected?: (keys: DataSelectKey[]) => MaybePromise<T[]>
   mode?: DataSelectMode
   multiple?: boolean
+  /** 通过 open() 打开的选择器可隐藏触发区域，避免占用页面布局空间。 */
+  showTrigger?: boolean
   data?: T[]
   /** Loading state for data fetched by the caller instead of apiFn. */
   loading?: boolean

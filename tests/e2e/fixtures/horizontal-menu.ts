@@ -5,6 +5,7 @@ import { router } from '@/router'
 import { RouterView } from 'vue-router'
 import type { AppRouteRecord } from '@/types/router'
 import ArtHorizontalMenu from '@/components/core/layouts/art-menus/art-horizontal-menu/index.vue'
+import ArtMixedMenu from '@/components/core/layouts/art-menus/art-mixed-menu/index.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -61,7 +62,13 @@ for (const [path, title] of [
   router.addRoute({ path, component: { render: () => h('p', title) } })
 }
 const app = createApp({
-  render: () => h('main', { class: 'p-4' }, [h(ArtHorizontalMenu, { list: items }), h(RouterView)])
+  render: () =>
+    h('main', { class: 'p-4' }, [
+      h(new URLSearchParams(location.search).has('mixed') ? ArtMixedMenu : ArtHorizontalMenu, {
+        list: items
+      }),
+      h(RouterView)
+    ])
 })
 app.use(store)
 app.use(language)

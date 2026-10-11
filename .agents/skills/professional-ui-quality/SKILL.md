@@ -66,6 +66,13 @@ The star in the global header is `PageDesignReference`, a platform-super-only co
 
 ## Verify The Rendered Result
 
+### Mandatory icon and text alignment
+
+- Every inline icon and label in buttons, dropdown menu items, segmented choices, tabs, links, and status labels must be vertically centered as one flex group with visible spacing. Use the shared `art-icon-label` class for custom groups and the global Element Plus control rules for library controls; never align them with baseline offsets or page-local margin nudges.
+- Use `--art-control-icon-gap` (8px) normally and its compact token (6px) only for small controls. Remove icon margins when the parent gap owns spacing. Default 14px labels use 16px icons; scale both together for other control sizes. Keep standalone icon buttons, section illustrations, and metric icons sized for their own hierarchy.
+- Apply the same rule to teleported dropdowns and nested label wrappers. Compare with `ArtButtonMore`: the icon and right-hand text must have aligned vertical centers, a consistent gap, and balanced visual size. Long labels must retain spacing and avoid clipping.
+- Verify rendered center alignment, spacing, and icon/text size in the browser, including selected/disabled states and light/dark themes. Source classes alone do not satisfy this requirement.
+
 Run focused formatting, ESLint, type checking, and the repository UI audit. When CSS or SCSS changes, run focused Stylelint as a separate gate; ESLint and `ui:audit` do not replace it. Then verify the affected workflow in a real browser.
 
 Use the bundled browser audit when a locally reachable URL is available:

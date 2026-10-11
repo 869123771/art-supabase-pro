@@ -5,6 +5,7 @@
     :show-selected-panel="multiple"
     :model-value="multiple ? modelValues : modelValue"
     :selected-data="selectedData"
+    :resolve-selected="selectedReferenceLoader"
     :api-fn="fetchEmployees"
     :columns="columns"
     :placeholder="canFetchEmployees ? placeholder : '请先选择目标租户'"
@@ -54,6 +55,7 @@
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import {
     fetchEmployeeSelectorList,
+    fetchEmployeeReferencesByIds,
     type EmployeeIntegrationItem
   } from '@/api/integration/employees'
 
@@ -116,6 +118,12 @@
         tenantScopeStore.isPlatformScope &&
         tenantScopeStore.isAllTenants)
   )
+  const selectedReferenceLoader = computed(() => {
+    const tenantId = resolvedTenantId.value
+    return !props.apiFn && tenantId
+      ? (keys: DataSelectKey[]) => fetchEmployeeReferencesByIds(tenantId, normalizeStringList(keys))
+      : undefined
+  })
   const employeeMaintenanceActions = [
     {
       label: '去维护员工花名册',

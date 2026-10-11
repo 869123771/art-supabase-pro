@@ -81,6 +81,7 @@
               >
                 <component
                   :is="isRowActionsColumn(child) ? BusinessTableRowActions : 'span'"
+                  :row="isRowActionsColumn(child) ? slotScope.row : undefined"
                   class="art-table__cell-value"
                 >
                   <slot
@@ -157,6 +158,7 @@
               </button>
               <component
                 :is="isRowActionsColumn(col) ? BusinessTableRowActions : 'span'"
+                :row="isRowActionsColumn(col) ? slotScope.row : undefined"
                 class="art-table__cell-value"
               >
                 <slot
@@ -249,7 +251,7 @@
     h,
     isVNode
   } from 'vue'
-  import type { ComponentPublicInstance } from 'vue'
+  import { cloneVNode, type ComponentPublicInstance } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { TableProps } from 'element-plus'
   import { storeToRefs } from 'pinia'
@@ -264,7 +266,13 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
-  import { useEventListener, useRafFn, useResizeObserver, useWindowSize } from '@vueuse/core'
+  import {
+    useEventListener,
+    useMutationObserver,
+    useRafFn,
+    useResizeObserver,
+    useWindowSize
+  } from '@vueuse/core'
   import ArtDictDisplay from '@/components/core/base/art-dict-display/index.vue'
   import TreeUtils from '@/utils/tree'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
@@ -317,12 +325,50 @@
   const { width } = useWindowSize()
   const containerRef = ref<HTMLElement>()
   const containerWidth = ref(0)
+  const rowActionsWidth = ref(64)
   let pendingContainerWidth = 0
   let measurementActive = true
   // 固定列切换会再次布局；在下一帧接收容器宽度，避免观察回调中的尺寸反馈。
   const { resume: scheduleContainerWidth, pause: stopContainerWidth } = useRafFn(
     () => {
       containerWidth.value = pendingContainerWidth
+      const groups = containerRef.value?.querySelectorAll<HTMLElement>(
+        '.el-table__body-wrapper .business-table-row-actions'
+      )
+      let minimumWidth = 64
+      groups?.forEach((group) => {
+        if (!group.offsetWidth) return
+        const cell = group.closest<HTMLElement>('.cell')
+        if (!cell) return
+        const style = getComputedStyle(cell)
+        const scrollbar = containerRef.value?.querySelector<HTMLElement>(
+          '.el-scrollbar__bar.is-vertical'
+        )
+        const scrollbarSize = scrollbar
+          ? Number.parseFloat(getComputedStyle(scrollbar).width) || 6
+          : 6
+        // Measure the actual controls, not a wrapper stretched by the current column width.
+        // Measuring that wrapper feeds the previous width back into every row deletion/layout.
+        const controls = Array.from(
+          group.querySelectorAll<HTMLElement>('button, a, [role="button"]')
+        ).filter(
+          (control) =>
+            control.offsetWidth > 0 && !control.querySelector('button, a, [role="button"]')
+        )
+        if (!controls.length) return
+        const gap = Number.parseFloat(getComputedStyle(group).columnGap) || 0
+        const contentWidth =
+          controls.reduce((total, control) => total + control.getBoundingClientRect().width, 0) +
+          Math.max(controls.length - 1, 0) * gap
+        minimumWidth = Math.max(
+          minimumWidth,
+          Math.ceil(contentWidth) +
+            (Number.parseFloat(style.paddingLeft) || 0) +
+            (Number.parseFloat(style.paddingRight) || 0) +
+            scrollbarSize
+        )
+      })
+      rowActionsWidth.value = minimumWidth
     },
     { immediate: false, once: true }
   )
@@ -331,6 +377,13 @@
     pendingContainerWidth = entry.contentRect.width
     scheduleContainerWidth()
   })
+  useMutationObserver(
+    containerRef,
+    () => {
+      if (measurementActive) scheduleContainerWidth()
+    },
+    { childList: true, subtree: true }
+  )
   const elTableRef = ref<ArtTableInstance | null>(null)
   const paginationRef = ref<HTMLElement>()
   const tableHeaderRef = ref<HTMLElement>()
@@ -623,7 +676,7 @@
     return {
       ...tableProps,
       height: height.value,
-      scrollbarAlwaysOn: hasExplicitTableProp('scrollbarAlwaysOn') ? props.scrollbarAlwaysOn : true,
+      scrollbarAlwaysOn: false,
       stripe: stripe.value,
       border: border.value,
       size: size.value,
@@ -1321,6 +1374,11 @@
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ArtTableColumn) => {
     const columnProps = { ...col }
+    if (isRowActionsColumn(columnProps)) {
+      // 按当前可见操作测量宽度，计入单元格留白和纵向滚动条，避免按钮被遮挡。
+      columnProps.width = rowActionsWidth.value
+      columnProps.minWidth = rowActionsWidth.value
+    }
     if (columnProps.sortable) {
       // Reserve room for the header label and Element Plus sorting controls.
       const minimumWidth = Math.max(100, (columnProps.label?.length ?? 0) * 14 + 52)
@@ -1356,10 +1414,18 @@
 
         if (
           isRowActionsColumn(columnProps) &&
+          isVNode(formattedValue) &&
+          isBusinessTableRowActions(formattedValue)
+        ) {
+          return cloneVNode(formattedValue, { row })
+        }
+
+        if (
+          isRowActionsColumn(columnProps) &&
           userFormatter &&
           !isBusinessTableRowActions(formattedValue)
         ) {
-          return h(BusinessTableRowActions, null, { default: () => formattedValue })
+          return h(BusinessTableRowActions, { row }, { default: () => formattedValue })
         }
 
         return formattedValue

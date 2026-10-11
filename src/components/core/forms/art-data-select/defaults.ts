@@ -22,6 +22,7 @@ export const dataSelectDefaults = {
   pageSize: 10,
   pageSizes: () => [10, 20, 30, 50],
   showSearch: true,
+  showTrigger: true,
   clearable: true,
   disabled: false,
   loading: false,

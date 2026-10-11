@@ -268,6 +268,8 @@ Apply the same ownership model to `ArtDrawer`.
 
 ## Style Rules
 
+- Inline icon/label groups must follow the mandatory alignment, spacing, sizing, and browser-verification contract in `professional-ui-quality`. Reuse `art-icon-label` or the shared Element Plus control rules instead of local icon margins.
+
 - In Vue SFCs with `lang="scss"`, write styles with SCSS nesting under the feature/root class instead of repeating flat sibling selectors.
 - Keep responsive overrides nested under the same root selector and place `:deep(...)` rules inside the relevant component block.
 - Avoid adding scattered top-level selectors in scoped SCSS unless the selector genuinely targets an independent root.

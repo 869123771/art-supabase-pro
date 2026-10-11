@@ -10,6 +10,8 @@ import Stock from '../../../modules/art-supabase-wms/src/views/initialization/in
 import Sales from '../../../modules/art-supabase-wms/src/views/initialization/initial-sales/workspace.vue'
 import Purchase from '../../../modules/art-supabase-wms/src/views/initialization/initial-purchase-inbound/index.vue'
 import PurchaseReturn from '../../../modules/art-supabase-wms/src/views/initialization/initial-purchase-return/index.vue'
+import Request from '../../../modules/art-supabase-wms/src/views/outbound-business/outbound-request/index.vue'
+import Invoice from '../../../modules/art-supabase-wms/src/views/outbound-business/sales-invoice/index.vue'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
 
@@ -19,6 +21,11 @@ const names: Record<string, string> = {
   stock: 'WmsInitialStock',
   sales: 'WmsInitialSalesOutbound',
   'sales-return': 'WmsInitialSalesReturn',
+  outbound: 'WmsSalesOutbound',
+  return: 'WmsSalesReturnDocument',
+  other: 'WmsOtherOutbound',
+  request: 'WmsIssueRequest',
+  invoice: 'WmsSalesInvoice',
   purchase: 'WmsInitialPurchaseInbound',
   'purchase-return': 'WmsInitialPurchaseReturn'
 }
@@ -29,9 +36,24 @@ const app = createApp({
     h(
       'main',
       { class: 'art-page-view', style: { padding: '16px' } },
-      kind === 'sales' || kind === 'sales-return'
-        ? h(Sales, { kind: kind === 'sales' ? 'initial_outbound' : 'initial_return' })
-        : h(kind === 'purchase' ? Purchase : kind === 'purchase-return' ? PurchaseReturn : Stock)
+      ['sales', 'sales-return', 'outbound', 'return', 'other'].includes(kind)
+        ? h(Sales, {
+            kind:
+              kind === 'sales'
+                ? 'initial_outbound'
+                : kind === 'sales-return'
+                  ? 'initial_return'
+                  : kind === 'other'
+                    ? 'other_outbound'
+                    : kind
+          })
+        : kind === 'request'
+          ? h(Request)
+          : kind === 'invoice'
+            ? h(Invoice)
+            : h(
+                kind === 'purchase' ? Purchase : kind === 'purchase-return' ? PurchaseReturn : Stock
+              )
     )
 })
 app.use(store)
@@ -43,7 +65,7 @@ setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'bulk-delete-test',
   tenantId: '11111111-1111-4111-8111-111111111111',
-  platformSuper: false
+  platformSuper: ['outbound', 'return', 'other', 'request', 'invoice'].includes(kind)
 })
 useMenuStore(store).setButtonList(
   ['View', ...(params.get('authority') === 'readonly' ? [] : ['Delete'])].map<AppRouteRecord>(

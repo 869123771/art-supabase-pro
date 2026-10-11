@@ -23,6 +23,7 @@ const app = createApp({
       path: `/tab-${index}`,
       name: `LifecycleTab${index}`,
       title: `业务页面${index}`,
+      icon: 'ri:file-line',
       keepAlive: false,
       fixedTab: index === 0
     }))

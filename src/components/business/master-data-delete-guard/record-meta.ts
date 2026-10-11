@@ -5,6 +5,8 @@ interface RecordReferenceMeta {
 }
 
 const recordReferences: Record<string, RecordReferenceMeta> = {
+  mdm_part_category: { label: '子类别', statusDictCode: 'status' },
+  vehicle_part_usage: { label: '零部件使用记录', statusDictCode: 'vehiclePartUsageStatus' },
   hr_employee_contract: { label: '劳动合同', routeName: 'HrCompliance' },
   hr_employee_qualification: { label: '员工资质', routeName: 'HrCompliance' },
   hr_performance_cycle: { label: '考核周期', routeName: 'HrPerformance' },
@@ -180,6 +182,8 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   wms_purchase_document_line: { label: '采购入退库明细' },
   wms_sales_document_line: { label: '销售出退库明细' },
   wms_sales_document: { label: '销售出退库单' },
+  wms_sales_invoice: { label: '销售发票草稿' },
+  wms_sales_invoice_line: { label: '销售发票草稿明细' },
   wms_sales_outbound_allocation: { label: '销售出库分配' },
   wms_serial_number: { label: '序列号台账' },
   wms_transfer_document: { label: '库存调拨单' },

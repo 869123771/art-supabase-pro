@@ -38,6 +38,13 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
+  import {
+    actionIdentity,
+    commandIcon,
+    isRangeAction,
+    tableActionRowKey,
+    tableRowCommandsKey
+  } from '@/components/core/tables/art-table-query/row-action-context'
 
   defineOptions({ name: 'ArtButtonMore' })
 
@@ -75,9 +82,36 @@
   const prefersTouch = useMediaQuery('(hover: none), (pointer: coarse)')
   const resolvedTrigger = computed(() => props.trigger ?? (prefersTouch.value ? 'click' : 'hover'))
 
-  const dropdownList = computed(() =>
-    typeof props.list === 'function' ? props?.list() : props.list
-  )
+  const row = inject(tableActionRowKey, undefined)
+  const rowCommands = inject(tableRowCommandsKey, undefined)
+  const ownItems = computed(() => (typeof props.list === 'function' ? props.list() : props.list))
+  const inheritedItems = computed(() => (row?.value ? (rowCommands?.items(row.value) ?? []) : []))
+  const dropdownList = computed(() => {
+    const existing = ownItems.value
+      .filter((item) => !row?.value || !isRangeAction(item.key, item.label))
+      .map((item) => {
+        const matching = inheritedItems.value.find(
+          (candidate) => actionIdentity(candidate) === actionIdentity(item)
+        )
+        const destructive = /delete|remove|删除|注销/.test(`${item.key}:${item.label}`)
+        return {
+          ...item,
+          icon:
+            commandIcon(item.key, item.label) ??
+            matching?.icon ??
+            item.icon ??
+            'ri:settings-3-line',
+          color: destructive ? 'var(--el-color-danger)' : item.color,
+          iconColor: destructive ? 'var(--el-color-danger)' : item.iconColor
+        }
+      })
+    return [
+      ...existing,
+      ...inheritedItems.value.filter(
+        (item) => !existing.some((candidate) => actionIdentity(candidate) === actionIdentity(item))
+      )
+    ]
+  })
 
   const resolveItemPermission = (item: ButtonMoreItem): string | undefined =>
     resolveBusinessButtonPermission(route, item.key, item.auth)
@@ -99,7 +133,14 @@
   }>()
 
   const handleClick = (item: ButtonMoreItem) => {
-    emit('click', item)
+    if (item.disabled) return
+    if (
+      row?.value &&
+      inheritedItems.value.some((candidate) => candidate.key === item.key) &&
+      !ownItems.value.some((candidate) => candidate.key === item.key)
+    ) {
+      void rowCommands?.run(item.key, row.value)
+    } else emit('click', item)
   }
 </script>
 
@@ -108,16 +149,12 @@
     display: inline-flex;
     flex: none;
     align-items: center;
-    height: 32px;
-    line-height: 0;
     vertical-align: middle;
 
     :deep(.el-dropdown),
     :deep(.el-tooltip__trigger) {
       display: inline-flex;
       align-items: center;
-      height: 32px;
-      line-height: 0;
       vertical-align: middle;
     }
 

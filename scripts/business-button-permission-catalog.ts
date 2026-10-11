@@ -2564,7 +2564,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
         'WmsPurchaseInbound',
         'WmsPurchaseReturn',
         'WmsEntrustedProcessingInbound',
-        'WmsEntrustedProcessingReturn'
+        'WmsEntrustedProcessingReturn',
+        'WmsSalesOutbound',
+        'WmsSalesReturnDocument'
       ].includes(menuName)
         ? [button('Print', '批量打印')]
         : []),
@@ -2581,6 +2583,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Approve', '审核')
     ]
   })),
+  {
+    menuName: 'WmsSalesInvoice',
+    buttons: [button('View', '查看'), button('Add', '下推创建'), button('Edit', '编辑草稿')]
+  },
   {
     menuName: 'WmsOtherInbound',
     buttons: [
@@ -2601,6 +2607,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   {
     menuName: 'WmsOtherOutbound',
     buttons: [
+      button('Print', '批量打印'),
       button('View', '查看'),
       button('Add', '新增'),
       button('Copy', '复制'),
@@ -2658,7 +2665,8 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Submit', '提交'),
       button('Approve', '审核'),
       button('Cancel', '取消'),
-      button('Issue', '按申请出库')
+      button('Issue', '按申请出库'),
+      button('Push', '下推其他出库单')
     ]
   },
   ...['WmsProductionIssue', 'WmsProductionReturn'].map((menuName) => ({

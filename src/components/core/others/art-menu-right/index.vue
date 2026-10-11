@@ -20,14 +20,14 @@
               <button
                 type="button"
                 role="menuitem"
-                class="menu-item relative flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
                 :style="menuItemStyle"
                 :disabled="item.disabled"
                 @click="handleMenuClick(item)"
               >
                 <ArtSvgIcon
                   v-if="item.icon"
-                  class="mr-2 shrink-0 text-sm text-g-800"
+                  class="text-g-800"
                   :icon="item.icon"
                   aria-hidden="true"
                 />
@@ -44,12 +44,12 @@
                 type="button"
                 role="menuitem"
                 aria-haspopup="menu"
-                class="menu-item submenu-title flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                class="menu-item submenu-title art-icon-label w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
                 :style="menuItemStyle"
               >
                 <ArtSvgIcon
                   v-if="item.icon"
-                  class="mr-2 shrink-0 text-sm text-g-800"
+                  class="text-g-800"
                   :icon="item.icon"
                   aria-hidden="true"
                 />
@@ -59,7 +59,7 @@
                 >
                 <ArtSvgIcon
                   icon="ri:arrow-right-s-line"
-                  class="submenu-arrow ml-auto mr-0 text-sm text-g-500 transition-transform duration-150"
+                  class="submenu-arrow text-g-500 transition-transform duration-150"
                   aria-hidden="true"
                 />
               </button>
@@ -78,14 +78,14 @@
                   <button
                     type="button"
                     role="menuitem"
-                    class="menu-item relative flex-c w-full c-p select-none rounded text-xs transition-colors duration-150 hover:bg-g-200"
+                    class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
                     :style="menuItemStyle"
                     :disabled="child.disabled"
                     @click="handleMenuClick(child)"
                   >
                     <ArtSvgIcon
                       v-if="child.icon"
-                      class="shrink-0 text-sm text-g-800 mr-1"
+                      class="text-g-800"
                       :icon="child.icon"
                       aria-hidden="true"
                     />
@@ -147,7 +147,7 @@
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    menuWidth: 120,
+    menuWidth: 150,
     submenuWidth: 150,
     itemHeight: 32,
     boundaryDistance: 10,

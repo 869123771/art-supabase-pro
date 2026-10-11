@@ -6,9 +6,11 @@
     >
       <div class="ai-planner__empty-actions">
         <div class="ai-planner__empty-badges">
-          <span><ArtSvgIcon icon="ri:shield-check-line" />只读分析</span>
-          <span><ArtSvgIcon icon="ri:file-copy-2-line" />一键复制 Prompt</span>
-          <span><ArtSvgIcon icon="ri:history-line" />反馈持续优化</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:shield-check-line" />只读分析</span>
+          <span class="art-icon-label"
+            ><ArtSvgIcon icon="ri:file-copy-2-line" />一键复制 Prompt</span
+          >
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:history-line" />反馈持续优化</span>
         </div>
         <ElButton
           type="primary"

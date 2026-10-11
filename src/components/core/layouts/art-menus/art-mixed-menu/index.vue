@@ -27,7 +27,7 @@
           <button
             v-if="!item.meta.isHide"
             type="button"
-            class="menu-item relative flex-shrink-0 h-10 px-3 text-sm flex-c c-p hover:text-theme"
+            class="menu-item art-icon-label relative flex-shrink-0 h-10 px-3 text-sm c-p hover:text-theme"
             :class="{
               'menu-item-active text-theme': item.isActive
             }"
@@ -35,13 +35,10 @@
           >
             <ArtSvgIcon
               :icon="item.meta.icon"
-              class="text-lg text-g-700 dark:text-g-800 mr-1"
+              class="text-g-700 dark:text-g-800"
               :class="item.isActive && '!text-theme'"
             />
-            <span
-              class="text-md text-g-700 dark:text-g-800"
-              :class="item.isActive && '!text-theme'"
-            >
+            <span class="text-g-700 dark:text-g-800" :class="item.isActive && '!text-theme'">
               {{ item.formattedTitle }}
             </span>
             <span v-if="item.meta.showBadge" class="art-badge art-badge-mixed" />

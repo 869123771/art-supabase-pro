@@ -24,6 +24,7 @@ export interface WmsPurchaseOption {
   isDefault?: boolean
   enabled?: boolean
   menuIds?: string[]
+  stockMovement?: string
 }
 
 export interface WmsPendingInitializationDocument {
@@ -173,8 +174,8 @@ export interface WmsPurchaseDocument {
   organization?: { organizationName: string; organizationCode: string } | null
   supplier?: { supplierName: string; supplierCode: string } | null
   customer?: { customerName: string; customerCode: string } | null
-  purchaser?: { employeeName: string } | null
-  keeper?: { employeeName: string } | null
+  purchaser?: EmployeeIntegrationItem | null
+  keeper?: EmployeeIntegrationItem | null
   kind: WmsPurchaseKind
   documentNo: string
   documentTypeId: string
@@ -185,6 +186,7 @@ export interface WmsPurchaseDocument {
   customerId: string | null
   purchaserId: string | null
   purchaseDepartmentId: string | null
+  businessDepartmentId?: string | null
   keeperId: string | null
   warehouseId: string | null
   status: WmsPurchaseStatus

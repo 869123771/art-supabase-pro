@@ -32,7 +32,12 @@ export function useDocumentBulkDelete(options: DocumentBulkDeleteOptions) {
     label: '批量删除',
     permission: toValue(options.permission),
     confirm: false,
-    disabled: () => deleting.value || toValue(options.busy),
+    disabled: ({ selectedRows }) =>
+      deleting.value ||
+      toValue(options.busy) ||
+      selectedRows.some(
+        (row) => row.status !== 'draft' || (options.canDelete && !options.canDelete(row))
+      ),
     onClick: async ({ selectedRows }) => {
       if (deleting.value || toValue(options.busy)) return
       const permission = toValue(options.permission)

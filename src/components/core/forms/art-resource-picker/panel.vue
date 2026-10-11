@@ -10,11 +10,8 @@
           @change="handleFileTypesChange"
         >
           <template #default="{ item }">
-            <div class="flex items-center justify-center">
-              <ArtSvgIcon
-                :icon="item!.icon"
-                class="mr-1 flex items-center justify-center text-[17px]"
-              />
+            <div class="art-icon-label">
+              <ArtSvgIcon :icon="item!.icon" aria-hidden="true" />
               <span>{{ typeof item.label === 'function' ? item.label() : item.label }}</span>
             </div>
           </template>

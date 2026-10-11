@@ -39,8 +39,8 @@ const documentSelect = `*,
  organization:mdm_organization!wms_purchase_document_organization_id_fkey(organization_name,organization_code),
  supplier:mdm_supplier!wms_purchase_document_supplier_id_fkey(supplier_name,supplier_code),
  customer:mdm_customer!wms_purchase_document_customer_id_fkey(customer_name,customer_code),
- purchaser:mdm_employee!wms_purchase_document_purchaser_id_fkey(employee_name),
- keeper:mdm_employee!wms_purchase_document_keeper_id_fkey(employee_name),
+ purchaser:mdm_employee!wms_purchase_document_purchaser_id_fkey(id,tenant_id,employee_no,employee_name,employment_status),
+ keeper:mdm_employee!wms_purchase_document_keeper_id_fkey(id,tenant_id,employee_no,employee_name,employment_status),
  lines:wms_purchase_document_line(*,
  purchaser:mdm_employee!wms_purchase_line_purchaser_tenant_fk(id,tenant_id,employee_no,employee_name,employment_status),
  keeper:mdm_employee!wms_purchase_document_line_keeper_id_fkey(id,tenant_id,employee_no,employee_name,employment_status),
@@ -527,7 +527,12 @@ export async function fetchWmsPurchaseMaterials(params: {
 
 export async function fetchWmsPurchaseOptions(
   table:
-    'mdm_document_type' | 'mdm_business_type' | 'mdm_project' | 'mdm_supplier' | 'mdm_customer',
+    | 'mdm_document_type'
+    | 'mdm_business_type'
+    | 'mdm_project'
+    | 'mdm_supplier'
+    | 'mdm_customer'
+    | 'mdm_organization',
   tenantId: string
 ): Promise<WmsPurchaseOption[]> {
   const config = {
@@ -537,13 +542,18 @@ export async function fetchWmsPurchaseOptions(
       'documentTypeName'
     ],
     mdm_business_type: [
-      'id,tenant_id,document_type_id,document_type_ids,menu_ids,is_default,enabled,business_type_code,business_type_name',
+      'id,tenant_id,document_type_id,document_type_ids,menu_ids,is_default,enabled,business_type_code,business_type_name,stock_movement',
       'businessTypeCode',
       'businessTypeName'
     ],
     mdm_project: ['id,tenant_id,project_code,project_name', 'projectCode', 'projectName'],
     mdm_supplier: ['id,tenant_id,supplier_code,supplier_name', 'supplierCode', 'supplierName'],
-    mdm_customer: ['id,tenant_id,customer_code,customer_name', 'customerCode', 'customerName']
+    mdm_customer: ['id,tenant_id,customer_code,customer_name', 'customerCode', 'customerName'],
+    mdm_organization: [
+      'id,tenant_id,organization_code,organization_name',
+      'organizationCode',
+      'organizationName'
+    ]
   }[table]
   const { data } = await responseHandle<Record<string, unknown>[]>(
     () => supabase.from(table).select(config[0]).eq('tenant_id', tenantId).order('id'),
@@ -563,6 +573,7 @@ export async function fetchWmsPurchaseOptions(
         : undefined,
       isDefault: row.isDefault === true,
       enabled: row.enabled === true,
+      stockMovement: typeof row.stockMovement === 'string' ? row.stockMovement : undefined,
       menuIds: Array.isArray(row.menuIds)
         ? row.menuIds.filter((id): id is string => typeof id === 'string')
         : undefined

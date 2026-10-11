@@ -20,9 +20,9 @@
       </template>
       <template #meta>
         <div class="geofence-config-page__meta">
-          <span><ArtSvgIcon icon="ri:global-line" />全平台策略</span>
-          <span><ArtSvgIcon icon="ri:time-line" />{{ updateTimeText }}</span>
-          <span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:global-line" />全平台策略</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:time-line" />{{ updateTimeText }}</span>
+          <span class="art-icon-label">
             <ArtSvgIcon icon="ri:user-3-line" />
             {{ form.updateBy || form.createBy || '系统初始化' }}
           </span>

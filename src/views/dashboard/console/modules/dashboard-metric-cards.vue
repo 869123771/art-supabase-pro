@@ -5,7 +5,7 @@
         <p>DAILY SNAPSHOT</p>
         <h2 id="dashboard-overview-title">今日运营概览</h2>
       </div>
-      <span>
+      <span class="art-icon-label">
         <ArtSvgIcon icon="ri:cursor-line" aria-hidden="true" />
         点击指标查看业务明细
       </span>

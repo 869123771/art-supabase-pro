@@ -55,10 +55,12 @@
               <strong :title="data.label">{{ data.label }}</strong>
               <small>{{ data.assignee }} · {{ data.approval }}</small>
               <div>
-                <span v-if="data.hasCondition">
+                <span class="art-icon-label" v-if="data.hasCondition">
                   <ArtSvgIcon icon="ri:git-branch-line" />有条件
                 </span>
-                <span><ArtSvgIcon icon="ri:time-line" />{{ data.dueHours }} 小时</span>
+                <span class="art-icon-label"
+                  ><ArtSvgIcon icon="ri:time-line" />{{ data.dueHours }} 小时</span
+                >
               </div>
               <Handle type="source" :position="Position.Right" />
             </article>

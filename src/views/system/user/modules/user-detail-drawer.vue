@@ -14,7 +14,9 @@
             <ElTag v-if="isCurrentUser" type="primary" effect="plain">当前账号</ElTag>
           </div>
           <p>@{{ user.userName }}</p>
-          <span><ArtSvgIcon icon="ri:mail-line" />{{ user.userEmail || '未填写邮箱' }}</span>
+          <span class="art-icon-label"
+            ><ArtSvgIcon icon="ri:mail-line" />{{ user.userEmail || '未填写邮箱' }}</span
+          >
         </div>
       </section>
 

@@ -115,9 +115,13 @@
             </div>
 
             <div class="art-ai-assistant__capabilities">
-              <span><ArtSvgIcon icon="ri:shield-check-line" /> 权限隔离</span>
-              <span><ArtSvgIcon icon="ri:database-2-line" /> {{ dataCapabilityLabel }}</span>
-              <span><ArtSvgIcon icon="ri:eye-line" /> 不修改数据</span>
+              <span class="art-icon-label"
+                ><ArtSvgIcon icon="ri:shield-check-line" /> 权限隔离</span
+              >
+              <span class="art-icon-label"
+                ><ArtSvgIcon icon="ri:database-2-line" /> {{ dataCapabilityLabel }}</span
+              >
+              <span class="art-icon-label"><ArtSvgIcon icon="ri:eye-line" /> 不修改数据</span>
             </div>
           </section>
 
@@ -153,13 +157,13 @@
                     class="art-ai-assistant__trace"
                     aria-label="回答运行信息"
                   >
-                    <span v-if="message.model">
+                    <span class="art-icon-label" v-if="message.model">
                       <ArtSvgIcon icon="ri:cpu-line" /> {{ message.model }}
                     </span>
-                    <span v-if="message.latencyMs != null">
+                    <span class="art-icon-label" v-if="message.latencyMs != null">
                       <ArtSvgIcon icon="ri:timer-line" /> {{ formatDurationMs(message.latencyMs) }}
                     </span>
-                    <span v-if="message.usage">
+                    <span class="art-icon-label" v-if="message.usage">
                       <ArtSvgIcon icon="ri:braces-line" /> {{ getTokenTotal(message) }} tokens
                     </span>
                     <span
@@ -266,7 +270,9 @@
             />
             <div class="art-ai-assistant__composer-actions">
               <div class="art-ai-assistant__composer-meta">
-                <span><ArtSvgIcon icon="ri:shield-check-line" /> {{ assistantModeLabel }}</span>
+                <span class="art-icon-label"
+                  ><ArtSvgIcon icon="ri:shield-check-line" /> {{ assistantModeLabel }}</span
+                >
                 <span>{{ state.input.length }} / 4000</span>
                 <span class="art-ai-assistant__keyboard-hint">Shift + Enter 换行</span>
               </div>

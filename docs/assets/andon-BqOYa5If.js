@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./execution-event-workspace-Bh9Ea84A.js";var i=t({name:`MesAndon`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`andon`}))}});export{i as default};

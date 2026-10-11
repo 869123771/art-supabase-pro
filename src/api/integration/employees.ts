@@ -120,3 +120,23 @@ export async function fetchEmployeeSelectorList(
     fieldAccess: result.data?.fieldAccess ?? {}
   }
 }
+
+/** Resolve existing business references under the table's RLS; includes historical employees. */
+export async function fetchEmployeeReferencesByIds(
+  tenantId: string,
+  ids: string[]
+): Promise<EmployeeIntegrationItem[]> {
+  if (!tenantId || !ids.length) return []
+  const { data } = await responseHandle<EmployeeIntegrationItem[]>(
+    () =>
+      supabase
+        .from('mdm_employee')
+        .select(
+          'id,tenant_id,organization_id,employee_no,employee_name,job_title,employment_status,organization:mdm_organization(id,organization_code,organization_name)'
+        )
+        .eq('tenant_id', tenantId)
+        .in('id', ids),
+    { breakReturn: true, showErrorMessage: false, errorMessage: '人员资料加载失败，请重试' }
+  )
+  return data ?? []
+}

@@ -169,7 +169,9 @@
             />
             {{ assistantMode === 'controlled_write' ? '受控变更模式' : '只读安全模式' }}
           </button>
-          <span v-else><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span>
+          <span class="art-icon-label" v-else
+            ><ArtSvgIcon icon="ri:shield-check-line" /> 只读安全模式</span
+          >
           <span class="project-assistant__send-actions">
             <small>Enter 发送</small>
             <ArtIconButton

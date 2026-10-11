@@ -16,12 +16,14 @@
             </div>
             <p>{{ organization.description || '暂未填写组织职责说明。' }}</p>
             <div class="organization-detail__meta">
-              <span><ArtSvgIcon icon="ri:hashtag" />{{ organization.organizationCode }}</span>
-              <span>
+              <span class="art-icon-label"
+                ><ArtSvgIcon icon="ri:hashtag" />{{ organization.organizationCode }}</span
+              >
+              <span class="art-icon-label">
                 <ArtSvgIcon icon="ri:building-line" />
                 {{ organization.tenant?.tenantName || '当前租户' }}
               </span>
-              <span v-if="organization.leader">
+              <span class="art-icon-label" v-if="organization.leader">
                 <ArtSvgIcon icon="ri:user-star-line" />
                 {{ organization.leader.nickName || organization.leader.userName }}
               </span>

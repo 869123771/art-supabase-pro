@@ -13,10 +13,14 @@
     }"
     @paste="handlePasteFiles"
   >
-    <div v-if="!readonly" class="art-upload-file__controls">
+    <div
+      v-if="!readonly"
+      class="art-upload-file__controls"
+      :class="{ 'has-resource-picker': canPickResource }"
+    >
       <ElUpload
-        v-if="!resourceMode || !canPickResource"
         ref="uploadRef"
+        class="art-upload-file__local"
         v-model:file-list="fileList"
         :http-request="handleUpload"
         :before-upload="beforeUpload"
@@ -49,26 +53,27 @@
           </span>
         </slot>
       </ElUpload>
-      <button
-        v-else
-        type="button"
-        class="art-upload-file__trigger"
-        :disabled="uploadDisabled || uploading || pickerAtLimit"
-        :title="pickerAtLimit ? `最多关联 ${limit} 个文件，请先移除一个` : undefined"
-        @click="resourcePickerVisible = true"
-      >
-        <ArtSvgIcon icon="ri:folder-open-line" aria-hidden="true" />
-        从资源管理器选择
-      </button>
-      <ArtTooltip v-if="canPickResource" :content="sourceTooltip">
-        <ElCheckbox
-          v-model="resourceMode"
+      <ElDropdown v-if="canPickResource" trigger="click" :disabled="uploadDisabled || uploading">
+        <button
+          type="button"
           class="art-upload-file__source-toggle"
+          aria-label="更多附件来源"
+          title="更多附件来源"
           :disabled="uploadDisabled || uploading"
-          aria-label="从资源管理器选择文件"
-          >资源库</ElCheckbox
         >
-      </ArtTooltip>
+          <ArtSvgIcon icon="ri:arrow-down-s-line" aria-hidden="true" />
+        </button>
+        <template #dropdown>
+          <ElDropdownMenu>
+            <ElDropdownItem :disabled="pickerAtLimit" @click="resourcePickerVisible = true">
+              <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                <ArtSvgIcon icon="ri:folder-open-line" aria-hidden="true" />
+                <span>从资源库选择</span>
+              </span>
+            </ElDropdownItem>
+          </ElDropdownMenu>
+        </template>
+      </ElDropdown>
     </div>
     <div v-if="!readonly && showTip" class="art-upload-file__tip">
       <slot name="tip">{{ resolvedTip }}</slot>
@@ -143,7 +148,6 @@
   import { ElMessage, genFileId } from 'element-plus'
   import { uploadAttachment } from '@/api/attachments'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import ArtTooltip from '@/components/core/feedback/art-tooltip/index.vue'
   import ArtResourcePicker from '@/components/core/forms/art-resource-picker/index.vue'
   import type { Resource } from '@/components/core/forms/art-resource-picker/type'
   import {
@@ -217,7 +221,6 @@
   const activeUploads = ref(0)
   const uploading = computed(() => activeUploads.value > 0)
   const resourcePickerVisible = ref(false)
-  const resourceMode = ref(false)
   const tenantScopeStore = useTenantScopeStore()
   const missingTenantTarget = computed(
     () => tenantScopeStore.isAllTenants && !props.resourceTenantId.trim()
@@ -228,12 +231,8 @@
   const canPickResource = computed(
     () => props.showResourcePicker && !missingTenantTarget.value && !props.disabled
   )
-  const canPaste = computed(() => !props.readonly && !uploadDisabled.value && !resourceMode.value)
+  const canPaste = computed(() => !props.readonly && !uploadDisabled.value)
   const pickerAtLimit = computed(() => props.multiple && fileList.value.length >= props.limit)
-  const sourceTooltip = computed(() =>
-    resourceMode.value ? '取消勾选后上传本地文件' : '勾选后从资源管理器选择已有文件'
-  )
-
   const resolvedTip = computed(
     () =>
       (missingTenantTarget.value && !props.uploadRequest
@@ -244,7 +243,6 @@
 
   watch(canPickResource, (allowed) => {
     if (!allowed) {
-      resourceMode.value = false
       resourcePickerVisible.value = false
     }
   })
@@ -483,50 +481,66 @@
 
     &__controls {
       display: inline-flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      gap: 0;
       align-items: center;
       max-width: 100%;
     }
 
+    &__local {
+      display: flex;
+      align-items: center;
+      width: auto !important;
+      max-width: 100%;
+    }
+
+    &__controls {
+      :deep(.el-dropdown),
+      :deep(.el-upload) {
+        display: flex;
+        align-items: center;
+      }
+    }
+
+    &__controls.has-resource-picker {
+      :deep(.art-upload-file__trigger) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+    }
+
     &__source-toggle {
+      box-sizing: border-box;
       display: inline-flex;
-      flex: 0 0 auto;
       align-items: center;
       justify-content: center;
-      width: auto;
-      min-height: 34px;
-      padding: 0 10px;
-      margin: 0;
+      width: 28px;
+      height: 34px;
+      padding: 0;
+      color: var(--el-color-primary);
       cursor: pointer;
-      background: var(--el-bg-color);
+      background: color-mix(in srgb, var(--el-color-primary) 4%, var(--el-bg-color));
       border: 1px solid color-mix(in srgb, var(--el-color-primary) 62%, transparent);
-      border-radius: var(--el-border-radius-base);
+      border-left: 0;
+      border-radius: 0 var(--el-border-radius-base) var(--el-border-radius-base) 0;
       transition: background-color 160ms ease;
 
-      &:hover,
-      &.is-checked {
-        background: color-mix(in srgb, var(--theme-color) 9%, var(--el-bg-color));
+      &:hover {
+        background: var(--el-color-primary-light-9);
       }
 
-      &:focus-within {
-        outline: 2px solid color-mix(in srgb, var(--theme-color) 36%, transparent);
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
         outline-offset: 2px;
       }
 
-      &.is-disabled {
+      &:disabled {
+        color: var(--el-text-color-disabled);
         cursor: not-allowed;
-        background: var(--el-fill-color-light);
-        border-color: var(--el-border-color-light);
-      }
-
-      :deep(.el-checkbox__inner) {
-        width: 16px;
-        height: 16px;
       }
     }
 
     &__trigger {
+      box-sizing: border-box;
       display: inline-flex;
       gap: 7px;
       align-items: center;

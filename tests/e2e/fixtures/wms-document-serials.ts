@@ -83,7 +83,7 @@ const document: WmsInitialSalesDocument = {
         auxiliaryUnitId: null,
         auxiliaryUnit2Id: null,
         unitConversions: [],
-        serialManagementEnabled: true
+        serialManagementEnabled: query.get('withoutSerial') !== 'true'
       },
       projectId: null,
       constructionNo: null,
@@ -144,6 +144,17 @@ const purchaseDocument: WmsPurchaseDocument = {
   createTime: document.createdAt,
   updateTime: document.updatedAt,
   lines: [purchaseLine]
+}
+
+if (query.get('layoutRows') === '10') {
+  purchaseDocument.lines = Array.from({ length: 10 }, (_, index) => ({
+    ...purchaseLine,
+    lineNo: (index + 1) * 10,
+    materialId: `layout-material-${index}`,
+    material: purchaseLine.material
+      ? { ...purchaseLine.material, id: `layout-material-${index}` }
+      : null
+  }))
 }
 
 const initialStockDocument: WmsInitialStockDocument = {

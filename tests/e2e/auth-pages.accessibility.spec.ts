@@ -74,12 +74,12 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth + 1)
 }
 
-test('login starts without a preset account or password', async ({ page }) => {
+test('login preserves the requested default account and password', async ({ page }) => {
   test.setTimeout(90_000)
   await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('.auth-right-wrap .form')).toBeVisible({ timeout: 60_000 })
-  await expect(page.locator('input[name="username"]')).toHaveValue('')
-  await expect(page.locator('input[name="password"]')).toHaveValue('')
+  await expect(page.locator('input[name="username"]')).toHaveValue('624944977@qq.com')
+  await expect(page.locator('input[name="password"]')).toHaveValue('123456')
   await expect(page.getByRole('checkbox', { name: '记住密码' })).toBeChecked()
   await expect(page.locator('button[type="submit"]')).toContainText('登录')
 })
@@ -91,7 +91,7 @@ test('login applies the platform default language before authentication', async 
   )
   await page.goto('#/auth/login', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('button[type="submit"]')).toContainText('Login', { timeout: 60_000 })
-  await expect(page.locator('input[name="password"]')).toHaveValue('')
+  await expect(page.locator('input[name="password"]')).toHaveValue('123456')
 })
 
 test('saved language preference takes priority over platform defaults', async ({ page }) => {

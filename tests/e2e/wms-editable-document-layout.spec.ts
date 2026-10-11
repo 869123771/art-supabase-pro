@@ -26,10 +26,15 @@ const scenarios = [
 ]
 for (const [trigger, query, label] of scenarios) {
   test(`${label}复制明细后下拉控件占满列宽`, async ({ page }, testInfo) => {
+    const uniqueReturn = ['采购-purchase_return', '采购-entrusted_processing_return'].includes(
+      label
+    )
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
-    await page.goto(`/tests/e2e/fixtures/wms-document-serials.html${query}`)
+    await page.goto(
+      `/tests/e2e/fixtures/wms-document-serials.html${query}${query ? '&' : '?'}withoutSerial=true${uniqueReturn ? '&layoutRows=10' : ''}`
+    )
     if (testInfo.project.name.includes('dark')) {
       await page.evaluate(() => document.documentElement.classList.add('dark'))
     }
@@ -41,10 +46,11 @@ for (const [trigger, query, label] of scenarios) {
     await page.getByRole('button', { name: trigger, exact: true }).click()
     const drawer = page.locator('.el-drawer:visible')
     const table = drawer.locator('.art-table.wms-editable-line-table')
-    await expect(table.locator('.el-table__body tr')).toHaveCount(1)
+    await expect(table.locator('.el-table__body tr')).toHaveCount(uniqueReturn ? 10 : 1)
     await table.getByRole('button', { name: '更多操作', exact: true }).first().click()
     await page.getByRole('menuitem', { name: '复制明细', exact: true }).click()
-    await expect(table.locator('.el-table__body tr')).toHaveCount(2)
+    await expect(table.locator('.el-table__body tr')).toHaveCount(uniqueReturn ? 10 : 2)
+    if (uniqueReturn) await expect(page.getByText('同一退货单不能重复添加物料')).toBeVisible()
     if (testInfo.project.name.includes('mobile')) {
       await expect(
         table.locator('td.el-table-fixed-column--left, td.el-table-fixed-column--right')
@@ -70,7 +76,7 @@ for (const [trigger, query, label] of scenarios) {
         })
       )
     })
-    expect(widths).toHaveLength(6)
+    expect(widths).toHaveLength(uniqueReturn ? 30 : 6)
     for (const field of widths) {
       expect(field.ratio, field.label).toBeGreaterThan(0.7)
       expect(field.width, field.label).toBeGreaterThan(100)
@@ -86,8 +92,58 @@ for (const [trigger, query, label] of scenarios) {
       path: testInfo.outputPath('wms-editor-width.png'),
       animations: 'disabled'
     })
+    const operation = table.getByRole('columnheader', { name: '操作', exact: true })
+    await expect
+      .poll(async () => (await operation.boundingBox())?.width || 0)
+      .toBeLessThanOrEqual(80)
+    const originalWidth = (await operation.boundingBox())!.width
+    for (let count = uniqueReturn ? 10 : 2; count < 10; count++) {
+      await table.getByRole('button', { name: '更多操作', exact: true }).first().click()
+      await page.getByRole('menuitem', { name: '复制明细', exact: true }).click()
+      await expect(table.locator('.el-table__body tr')).toHaveCount(count + 1)
+    }
+    for (let count = 10; count > 1; count--) {
+      await table.getByRole('button', { name: '更多操作', exact: true }).first().click()
+      await page.getByRole('menuitem', { name: '删除明细', exact: true }).click()
+      await expect(table.locator('.el-table__body tr')).toHaveCount(count - 1)
+      await expect
+        .poll(async () => (await operation.boundingBox())?.width || 0)
+        .toBeLessThanOrEqual(originalWidth + 1)
+    }
+    await page.screenshot({
+      path: testInfo.outputPath('wms-operation-after-nine-deletions.png'),
+      animations: 'disabled'
+    })
     await drawer.getByRole('button', { name: '取消', exact: true }).click()
     await expect(drawer).not.toBeVisible()
     expect(errors).toEqual([])
+  })
+}
+
+for (const [trigger, query] of [
+  ['打开销售单据', '?salesKind=return'],
+  ['打开采购单据', '?purchaseKind=purchase_inbound']
+]) {
+  test(`${trigger}序列号与更多按钮保留紧凑宽度`, async ({ page }) => {
+    await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+    await page.goto(`/tests/e2e/fixtures/wms-document-serials.html${query}&twoLines=true`)
+    await page.getByRole('button', { name: trigger, exact: true }).click()
+    const table = page.locator('.el-drawer:visible .art-table.wms-editable-line-table')
+    await expect(table.locator('.el-table__body tr')).toHaveCount(2)
+    const operation = table.getByRole('columnheader', { name: '操作', exact: true })
+    await expect
+      .poll(async () => (await operation.boundingBox())?.width || 0)
+      .toBeLessThanOrEqual(150)
+    const initialWidth = (await operation.boundingBox())!.width
+    await table.getByRole('button', { name: '更多操作', exact: true }).first().click()
+    await page.getByRole('menuitem', { name: '删除明细', exact: true }).click()
+    await expect(table.locator('.el-table__body tr')).toHaveCount(1)
+    await expect
+      .poll(async () => (await operation.boundingBox())?.width || 0)
+      .toBeLessThanOrEqual(initialWidth + 1)
+    const button = table.getByRole('button', { name: /序列号/ }).first()
+    await button.scrollIntoViewIfNeeded()
+    await expect(button).toBeInViewport()
+    await expect(table.getByRole('button', { name: '更多操作', exact: true })).toBeInViewport()
   })
 }

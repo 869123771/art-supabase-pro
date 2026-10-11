@@ -180,6 +180,39 @@ function hasStaticClass(node: TemplateNode, className: string): boolean {
   return Boolean(classAttribute?.value?.content?.split(/\s+/).some((name) => name === className))
 }
 
+function findControlIconMargins(file: string, content: string): number[] {
+  const { descriptor } = parseSfc(content, { filename: file })
+  if (!descriptor.template?.ast) return []
+  const controls = new Set([
+    'elbutton',
+    'eldropdownitem',
+    'elsegmented',
+    'elradiobutton',
+    'elcheckboxbutton',
+    'ellink',
+    'eltag'
+  ])
+  const offsets: number[] = []
+  const visit = (node: TemplateNode, inControl = false): void => {
+    const controlled = inControl || controls.has(node.tag?.toLowerCase().replaceAll('-', '') ?? '')
+    if (
+      controlled &&
+      node.tag === 'ArtSvgIcon' &&
+      node.props?.some(
+        (property) =>
+          property.type === 6 &&
+          property.name === 'class' &&
+          /(?:^|\s)(?:mr|ml)-\d+(?:\s|$)/.test(property.value?.content ?? '')
+      )
+    ) {
+      offsets.push(node.loc?.start.offset ?? 0)
+    }
+    node.children?.forEach((child) => visit(child, controlled))
+  }
+  visit(descriptor.template.ast as TemplateNode)
+  return offsets
+}
+
 function containsSectionHeading(node: TemplateNode): boolean {
   if (node.type === 1) {
     if (node.tag === 'ArtSectionTitle' || /^h[1-6]$/.test(node.tag ?? '')) return true
@@ -322,6 +355,9 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
   }
 
   if (path.extname(file) === '.vue') {
+    findControlIconMargins(file, content).forEach((offset) => {
+      addFinding(offset, 'consistency/use-control-icon-gap')
+    })
     findSelfUnmountingFocusToggles(file, content).forEach((offset) => {
       addFinding(offset, 'interaction/focus-toggle-lifecycle')
     })
@@ -341,6 +377,13 @@ function scanFile(file: string, content: string, tooltipOnly = false): Finding[]
       }
       addFinding(match.index, 'consistency/use-art-overlay-loading')
     }
+  }
+
+  for (const match of content.matchAll(
+    /<ArtSvgIcon\b[^>]*\bclass="[^"\r\n]*\b(?:mr|ml)-[^"\r\n]*"[^>]*>/g
+  )) {
+    if (match.index == null || match[0].includes('data-ui-audit-allow')) continue
+    addFinding(match.index, 'consistency/use-icon-label-gap')
   }
 
   for (const match of content.matchAll(

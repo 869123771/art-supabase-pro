@@ -15,6 +15,7 @@ import '@styles/index.scss'
 const prefixes = {
   purchase_inbound: 'WmsPurchaseInbound',
   purchase_return: 'WmsPurchaseReturn',
+  other_inbound: 'WmsOtherInbound',
   entrusted_processing_inbound: 'WmsEntrustedProcessingInbound',
   entrusted_processing_return: 'WmsEntrustedProcessingReturn'
 }

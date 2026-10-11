@@ -21,8 +21,12 @@
           </div>
           <p>{{ menuDescription }}</p>
           <div class="menu-detail__meta">
-            <span><ArtSvgIcon icon="ri:key-2-line" />{{ menu.name || '未配置权限标识' }}</span>
-            <span><ArtSvgIcon icon="ri:apps-2-line" />{{ applicationLabel }}</span>
+            <span class="art-icon-label"
+              ><ArtSvgIcon icon="ri:key-2-line" />{{ menu.name || '未配置权限标识' }}</span
+            >
+            <span class="art-icon-label"
+              ><ArtSvgIcon icon="ri:apps-2-line" />{{ applicationLabel }}</span
+            >
           </div>
           <nav class="menu-detail__breadcrumb" aria-label="菜单层级路径">
             <template v-for="(item, index) in hierarchy" :key="item.id || item.name">

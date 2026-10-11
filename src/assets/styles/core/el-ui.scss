@@ -483,6 +483,41 @@ html.dark .el-card {
 }
 
 // 原生按钮、链接和状态文本需要图文组合时复用该类，避免页面级 margin 微调。
+// 仅规范行内控件图标，不影响页面标题、指标和纯图标按钮的层级尺寸。
+.el-button > span,
+.el-dropdown-menu__item,
+.el-segmented__item-label,
+:where(.el-segmented__item-label > :has(> .art-svg-icon)),
+:where(.el-tabs__item > :has(> .art-svg-icon)),
+.el-radio-button__inner,
+.el-checkbox-button__inner,
+.el-link__inner,
+.el-tag__content,
+.art-icon-label {
+  &:has(> .art-svg-icon, > .el-icon) {
+    display: inline-flex;
+    gap: var(--art-control-icon-gap);
+    align-items: center;
+  }
+
+  > .art-svg-icon,
+  > .el-icon {
+    flex: none;
+    width: 1.1429em;
+    height: 1.1429em;
+    margin-inline: 0;
+    font-size: inherit;
+  }
+}
+
+.el-button.el-button--small > span:has(> .art-svg-icon, > .el-icon) {
+  gap: var(--art-control-icon-gap-compact);
+}
+
+.el-button.el-button--large > span:has(> .art-svg-icon, > .el-icon) {
+  gap: var(--art-control-icon-gap-spacious);
+}
+
 .art-icon-label {
   display: inline-flex;
   gap: var(--art-control-icon-gap);
@@ -497,6 +532,8 @@ html.dark .el-card {
   }
 
   &--compact {
+    --art-control-icon-gap: var(--art-control-icon-gap-compact);
+
     gap: var(--art-control-icon-gap-compact);
   }
 }
@@ -854,7 +891,7 @@ html.dark .el-card {
 }
 
 // 修改 el-select 样式
-.el-select__popper:not(.el-tree-select__popper) {
+.el-select__popper:not(.el-tree-select__popper, .art-select-rich-options) {
   .el-select-dropdown__list {
     padding: 5px !important;
 

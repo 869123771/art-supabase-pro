@@ -108,6 +108,7 @@ for (const result of [
       await expect(dialog).toBeVisible()
       await expect(summary).toHaveValue('有效测试凭证')
       await expect(page.getByText('会计凭证草稿已保存', { exact: true })).toHaveCount(0)
+      await expect(page.getByText('凭证已提交审核', { exact: true })).toHaveCount(0)
       await page.screenshot({ path: test.info().outputPath('save-retained.png') })
     }
     if (result === 'allocation-retry') {

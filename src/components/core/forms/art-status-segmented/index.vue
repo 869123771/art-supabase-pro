@@ -67,7 +67,7 @@
 
     &__option {
       display: flex;
-      gap: 7px;
+      gap: var(--art-control-icon-gap);
       align-items: center;
       justify-content: center;
       min-width: 0;
@@ -76,7 +76,7 @@
 
       .art-svg-icon {
         flex: 0 0 auto;
-        font-size: 15px;
+        font-size: 16px;
       }
     }
 

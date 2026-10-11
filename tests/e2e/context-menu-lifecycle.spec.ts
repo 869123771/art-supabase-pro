@@ -16,6 +16,24 @@ test('多实例菜单内部点击、连续开关和卸载保持正确监听', as
   await group.click()
   await expect(group).toBeVisible()
   await expect(page.getByRole('menuitem', { name: '不可用操作' })).toBeDisabled()
+  for (const item of await page.getByRole('menuitem').all()) {
+    const geometry = await item.evaluate((element) => {
+      const icon = element.querySelector('.art-svg-icon')!.getBoundingClientRect()
+      const label = element.querySelector('.menu-label')!.getBoundingClientRect()
+      return {
+        gap: label.left - icon.right,
+        center: Math.abs((icon.top + icon.bottom - label.top - label.bottom) / 2),
+        ratio: icon.width / Number.parseFloat(getComputedStyle(element).fontSize),
+        clipped:
+          element.querySelector('.menu-label')!.scrollWidth >
+          element.querySelector('.menu-label')!.clientWidth
+      }
+    })
+    expect(geometry.gap).toBeCloseTo(8, 1)
+    expect(geometry.center).toBeLessThanOrEqual(0.5)
+    expect(geometry.ratio).toBeCloseTo(16 / 14, 1)
+    expect(geometry.clipped).toBe(false)
+  }
   await page.screenshot({ path: info.outputPath('context-menu.png') })
   await page.keyboard.press('Escape')
   await advance()

@@ -60,7 +60,7 @@
           </ArtForm>
 
           <div class="form__trust">
-            <span>
+            <span class="art-icon-label">
               <ArtSvgIcon icon="ri:lock-line" />
               {{ $t('register.trust.tls') }}
             </span>

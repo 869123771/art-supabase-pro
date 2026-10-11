@@ -55,14 +55,16 @@
           @keydown.space.prevent="clickTab(item)"
           @contextmenu.prevent="(e: MouseEvent) => showMenu(e, item.path)"
         >
-          <ArtSvgIcon
-            v-show="item.icon"
-            :icon="item.icon"
-            class="text-base mr-1 group-hover:text-theme"
-            :class="item.path === activeTab ? 'text-theme' : 'text-g-600'"
-          />
-          <span class="work-tab-title" :title="item.customTitle || formatMenuTitle(item.title)">
-            {{ item.customTitle || formatMenuTitle(item.title) }}
+          <span class="art-icon-label art-icon-label--compact">
+            <ArtSvgIcon
+              v-if="item.icon"
+              :icon="item.icon"
+              class="group-hover:text-theme"
+              :class="item.path === activeTab ? 'text-theme' : 'text-g-600'"
+            />
+            <span class="work-tab-title" :title="item.customTitle || formatMenuTitle(item.title)">
+              {{ item.customTitle || formatMenuTitle(item.title) }}
+            </span>
           </span>
           <ArtIconButton
             v-if="list.length > 1 && !item.fixedTab"

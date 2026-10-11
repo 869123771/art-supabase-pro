@@ -19,9 +19,9 @@
         <h1>{{ $t('login.leftView.title') }}</h1>
         <p class="login-vision__description">{{ $t('login.leftView.subTitle') }}</p>
         <div class="login-vision__features" aria-label="平台能力">
-          <span><ArtSvgIcon icon="ri:route-line" /> 全链路追踪</span>
-          <span><ArtSvgIcon icon="ri:radar-line" /> 风险预警</span>
-          <span><ArtSvgIcon icon="ri:bar-chart-box-line" /> 经营洞察</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:route-line" /> 全链路追踪</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:radar-line" /> 风险预警</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:bar-chart-box-line" /> 经营洞察</span>
         </div>
       </div>
 
@@ -63,9 +63,9 @@
         </div>
 
         <footer class="capability-map__footer">
-          <span><ArtSvgIcon icon="ri:shield-keyhole-line" /> 权限隔离</span>
-          <span><ArtSvgIcon icon="ri:git-merge-line" /> 流程联动</span>
-          <span><ArtSvgIcon icon="ri:history-line" /> 数据可溯</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:shield-keyhole-line" /> 权限隔离</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:git-merge-line" /> 流程联动</span>
+          <span class="art-icon-label"><ArtSvgIcon icon="ri:history-line" /> 数据可溯</span>
         </footer>
       </section>
     </main>

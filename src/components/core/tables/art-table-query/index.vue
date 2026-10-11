@@ -143,77 +143,81 @@
                 aria-hidden="true"
               />
 
-              <div class="art-table-query__selection-actions">
-                <template
-                  v-for="(action, actionIndex) in visibleSelectionActions"
-                  :key="getSelectionActionKey(action, actionIndex)"
-                >
-                  <span
-                    v-auth="getHeaderActionPermission(action)"
-                    class="art-table-query__selection-action"
+              <ElConfigProvider size="small">
+                <div class="art-table-query__selection-actions">
+                  <template
+                    v-for="(action, actionIndex) in visibleSelectionActions"
+                    :key="getSelectionActionKey(action, actionIndex)"
                   >
-                    <slot
-                      v-if="action.slot"
-                      :name="action.slot"
-                      v-bind="getHeaderActionSlotProps(action, 'selection')"
-                    />
-                    <component
-                      v-else-if="action.render"
-                      :is="action.render"
-                      v-bind="getHeaderActionSlotProps(action, 'selection')"
-                    />
-                    <ArtExcelImport
-                      v-else-if="action.type === 'import'"
-                      :button-props="getSelectionActionButtonProps(action)"
-                      :disabled="isHeaderActionDisabled(action, 'selection')"
-                      :icon="getHeaderActionIcon(action)"
-                      @import-success="handleHeaderActionImportSuccess(action, $event, 'selection')"
-                      @import-error="handleHeaderActionImportError(action, $event, 'selection')"
+                    <span
+                      v-auth="getHeaderActionPermission(action)"
+                      class="art-table-query__selection-action"
                     >
-                      <component
-                        v-if="typeof getSelectionActionLabel(action) !== 'string'"
-                        :is="getSelectionActionLabel(action)"
+                      <slot
+                        v-if="action.slot"
+                        :name="action.slot"
+                        v-bind="getHeaderActionSlotProps(action, 'selection')"
                       />
-                      <span v-else>{{ getSelectionActionLabel(action) }}</span>
-                    </ArtExcelImport>
-                    <ElButton
-                      v-else
-                      v-bind="getSelectionActionButtonProps(action)"
-                      :disabled="isHeaderActionDisabled(action, 'selection')"
-                      @click="handleHeaderActionClick(action, $event, 'selection')"
-                      v-ripple
-                    >
-                      <template v-if="getHeaderActionIcon(action)" #icon>
+                      <component
+                        v-else-if="action.render"
+                        :is="action.render"
+                        v-bind="getHeaderActionSlotProps(action, 'selection')"
+                      />
+                      <ArtExcelImport
+                        v-else-if="action.type === 'import'"
+                        :button-props="getSelectionActionButtonProps(action)"
+                        :disabled="isHeaderActionDisabled(action, 'selection')"
+                        :icon="getHeaderActionIcon(action)"
+                        @import-success="
+                          handleHeaderActionImportSuccess(action, $event, 'selection')
+                        "
+                        @import-error="handleHeaderActionImportError(action, $event, 'selection')"
+                      >
                         <component
-                          v-if="typeof getHeaderActionIcon(action) !== 'string'"
-                          :is="getHeaderActionIcon(action)"
+                          v-if="typeof getSelectionActionLabel(action) !== 'string'"
+                          :is="getSelectionActionLabel(action)"
                         />
-                        <ArtSvgIcon v-else :icon="String(getHeaderActionIcon(action))" />
-                      </template>
-                      <component
-                        v-if="typeof getSelectionActionLabel(action) !== 'string'"
-                        :is="getSelectionActionLabel(action)"
-                      />
-                      <span v-else>{{ getSelectionActionLabel(action) }}</span>
-                    </ElButton>
-                  </span>
-                </template>
+                        <span v-else>{{ getSelectionActionLabel(action) }}</span>
+                      </ArtExcelImport>
+                      <ElButton
+                        v-else
+                        v-bind="getSelectionActionButtonProps(action)"
+                        :disabled="isHeaderActionDisabled(action, 'selection')"
+                        @click="handleHeaderActionClick(action, $event, 'selection')"
+                        v-ripple
+                      >
+                        <template v-if="getHeaderActionIcon(action)" #icon>
+                          <component
+                            v-if="typeof getHeaderActionIcon(action) !== 'string'"
+                            :is="getHeaderActionIcon(action)"
+                          />
+                          <ArtSvgIcon v-else :icon="String(getHeaderActionIcon(action))" />
+                        </template>
+                        <component
+                          v-if="typeof getSelectionActionLabel(action) !== 'string'"
+                          :is="getSelectionActionLabel(action)"
+                        />
+                        <span v-else>{{ getSelectionActionLabel(action) }}</span>
+                      </ElButton>
+                    </span>
+                  </template>
 
-                <span
-                  v-if="visibleSelectionActions.length"
-                  class="art-table-query__selection-divider"
-                  aria-hidden="true"
-                />
-                <ElButton
-                  class="art-table-query__selection-clear"
-                  size="small"
-                  link
-                  type="primary"
-                  @click="clearSelectedRows"
-                >
-                  取消选择
-                </ElButton>
-              </div>
+                  <span
+                    v-if="visibleSelectionActions.length"
+                    class="art-table-query__selection-divider"
+                    aria-hidden="true"
+                  />
+                  <ElButton
+                    class="art-table-query__selection-clear"
+                    size="small"
+                    link
+                    type="primary"
+                    @click="clearSelectedRows"
+                  >
+                    取消选择
+                  </ElButton>
+                </div>
+              </ElConfigProvider>
             </div>
 
             <div
@@ -281,6 +285,12 @@
   import { ElMessage } from 'element-plus'
   import { useEventListener, useRafFn, useResizeObserver } from '@vueuse/core'
   import { cloneDeep } from 'lodash-es'
+  import {
+    commandIcon,
+    isRangeAction,
+    singleActionLabel,
+    tableRowCommandsKey
+  } from './row-action-context'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -609,6 +619,8 @@
     disabled?: boolean | ((ctx: ArtTableQueryHeaderActionContext) => boolean)
     /** 是否需要选中行；delete 默认 true */
     selectionRequired?: boolean
+    /** False for commands whose business meaning requires a group rather than one record. */
+    rowAction?: boolean
     /** 是否点击前确认；delete 默认 true，其他默认 false */
     confirm?: boolean
     /** 确认框标题 */
@@ -1091,19 +1103,21 @@
   const createHeaderActionContext = (
     action: ArtTableQueryHeaderAction,
     event?: MouseEvent,
-    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default',
+    rows: TableQueryRecord[] = selectedRows.value
   ): ArtTableQueryHeaderActionContext => ({
     action,
     scope,
-    selectedRows: selectedRows.value,
-    selectedCount: selectedRows.value.length,
+    selectedRows: rows,
+    selectedCount: rows.length,
     event,
     api: headerActionApi.value
   })
 
   const isHeaderActionVisible = (
     action: ArtTableQueryHeaderAction,
-    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default',
+    rows?: TableQueryRecord[]
   ): boolean => {
     if (isCrossTenantReadOnly.value && ['add', 'delete', 'import'].includes(String(action.type))) {
       return false
@@ -1111,7 +1125,7 @@
     const permission = getHeaderActionPermission(action)
     if (permission && !hasAuth(permission)) return false
     if (typeof action.hidden === 'function') {
-      return !action.hidden(createHeaderActionContext(action, undefined, scope))
+      return !action.hidden(createHeaderActionContext(action, undefined, scope, rows))
     }
     return !action.hidden
   }
@@ -1168,7 +1182,14 @@
   const getHeaderActionIcon = (
     action: ArtTableQueryHeaderAction
   ): string | Component | undefined => {
-    return action.icon || getHeaderActionDefault(action)?.icon
+    return (
+      commandIcon(
+        getHeaderActionKey(action),
+        typeof action.label === 'string' ? action.label : ''
+      ) ||
+      action.icon ||
+      getHeaderActionDefault(action)?.icon
+    )
   }
 
   const getHeaderActionButtonProps = (action: ArtTableQueryHeaderAction) => ({
@@ -1202,15 +1223,16 @@
 
   const isHeaderActionDisabled = (
     action: ArtTableQueryHeaderAction,
-    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default',
+    rows?: TableQueryRecord[]
   ): boolean => {
-    const ctx = createHeaderActionContext(action, undefined, scope)
+    const ctx = createHeaderActionContext(action, undefined, scope, rows)
     const disabled = typeof action.disabled === 'function' ? action.disabled(ctx) : action.disabled
     return (
       !!disabled ||
       pendingActionKey.value !== null ||
       (action.type === 'import' && importPending.value) ||
-      (isHeaderActionSelectionRequired(action) && selectedRows.value.length === 0)
+      (isHeaderActionSelectionRequired(action) && ctx.selectedCount === 0)
     )
   }
 
@@ -1327,6 +1349,7 @@
       return extractTableData(adapter(response))
     }
 
+    if (scopedSelectedRows.length) return scopedSelectedRows
     if (action.exportData) return await action.exportData(ctx)
     if (scopedSelectedRows.length) return scopedSelectedRows
     if (!props.apiFn) return resolvedData.value
@@ -1443,14 +1466,21 @@
 
   const handleHeaderActionClick = async (
     action: ArtTableQueryHeaderAction,
-    event: MouseEvent,
-    scope: ArtTableQueryHeaderActionContext['scope'] = 'default'
+    event?: MouseEvent,
+    scope: ArtTableQueryHeaderActionContext['scope'] = 'default',
+    rows?: TableQueryRecord[]
   ): Promise<void> => {
-    if (isHeaderActionDisabled(action, scope)) return
+    if (!isHeaderActionVisible(action, scope, rows) || isHeaderActionDisabled(action, scope, rows))
+      return
 
     pendingActionKey.value = getHeaderActionKey(action)
     try {
-      const ctx = createHeaderActionContext(action, event, scope)
+      const ctx = createHeaderActionContext(
+        action,
+        event,
+        scope,
+        rows ? [...rows] : [...selectedRows.value]
+      )
       if (shouldConfirmHeaderAction(action)) {
         try {
           await confirmAction(
@@ -1473,7 +1503,7 @@
       } else {
         await action.onClick?.(ctx)
       }
-      if (action.type === 'delete') clearSelectedRows()
+      if (action.type === 'delete' && !rows) clearSelectedRows()
     } catch (error) {
       if (!wasErrorUserNotified(error)) {
         console.error('[ArtTableQuery] header action failed', error)
@@ -1483,6 +1513,42 @@
       pendingActionKey.value = null
     }
   }
+
+  provide(tableRowCommandsKey, {
+    items: (row) =>
+      selectionActionSource.value.flatMap((action, index) => {
+        if (
+          action.type === 'export' ||
+          action.slot ||
+          action.render ||
+          action.rowAction === false ||
+          !isHeaderActionVisible(action, 'selection', [row])
+        )
+          return []
+        const label = getSelectionActionLabel(action)
+        if (typeof label !== 'string') return []
+        if (isRangeAction(action.key ?? '', label)) return []
+        const icon = getHeaderActionIcon(action)
+        const destructive =
+          action.type === 'delete' || /delete|remove|删除|注销/.test(`${action.key}:${label}`)
+        return [
+          {
+            key: `table-selection-action:${index}`,
+            label: singleActionLabel(label),
+            icon: typeof icon === 'string' ? icon : undefined,
+            auth: getHeaderActionPermission(action),
+            disabled: isHeaderActionDisabled(action, 'selection', [row]),
+            color: destructive ? 'var(--el-color-danger)' : undefined,
+            iconColor: destructive ? 'var(--el-color-danger)' : undefined
+          }
+        ]
+      }),
+    run: async (key, row) => {
+      const index = Number(String(key).replace('table-selection-action:', ''))
+      const action = selectionActionSource.value[index]
+      if (action) await handleHeaderActionClick(action, undefined, 'selection', [row])
+    }
+  })
 
   const cloneSearchModel = (value: Record<string, unknown> | undefined) => {
     if (!value) return {}

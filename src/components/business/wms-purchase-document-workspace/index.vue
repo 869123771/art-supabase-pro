@@ -45,24 +45,52 @@
         focusable
         @selection-change="onSelectionChange"
       >
-        <template #purchase-payable-push>
+        <template #purchase-payable-push="{ selectedRows: rows }">
           <ElDropdown
             trigger="click"
-            :disabled="pushingPayable || !selectedRows.length"
-            @command="pushPayable"
+            :disabled="pushingPayable || !rows.length"
+            @command="(kind) => pushPayable(kind, rows)"
           >
             <ElButton
               v-auth="permission.Push"
               type="primary"
               plain
               :loading="pushingPayable"
-              :disabled="!selectedRows.length"
-              >下推 <ArtSvgIcon icon="ri:arrow-down-s-line"
+              :disabled="!rows.length"
+              ><ArtSvgIcon icon="ri:file-transfer-line" /> 下推
+              <ArtSvgIcon icon="ri:arrow-down-s-line"
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="estimated">暂估应付单</ElDropdownItem
-                ><ElDropdownItem command="financial">财务应付单</ElDropdownItem></ElDropdownMenu
+                ><ElDropdownItem command="estimated"
+                  ><ArtSvgIcon icon="ri:bill-line" />暂估应付单</ElDropdownItem
+                ><ElDropdownItem command="financial"
+                  ><ArtSvgIcon icon="ri:money-dollar-circle-line" />财务应付单</ElDropdownItem
+                ></ElDropdownMenu
+              ></template
+            >
+          </ElDropdown>
+        </template>
+        <template #other-return-push="{ selectedRows: rows }">
+          <ElDropdown
+            trigger="click"
+            :disabled="!canPrepareOtherReturn(rows)"
+            @command="prepareOtherReturn(rows)"
+          >
+            <ElButton
+              v-auth="permission.Push"
+              type="primary"
+              plain
+              :disabled="!canPrepareOtherReturn(rows)"
+            >
+              <ArtSvgIcon icon="ri:file-transfer-line" /> 下推
+              <ArtSvgIcon icon="ri:arrow-down-s-line" />
+            </ElButton>
+            <template #dropdown
+              ><ElDropdownMenu
+                ><ElDropdownItem command="return"
+                  ><ArtSvgIcon icon="ri:inbox-unarchive-line" />其他入库退回</ElDropdownItem
+                ></ElDropdownMenu
               ></template
             >
           </ElDropdown>
@@ -97,61 +125,6 @@
         :import-permission="permission.Import"
         @success="refresh"
       />
-      <ArtDialog
-        v-if="kind === 'other_inbound'"
-        ref="orderTargetDialogRef"
-        size="md"
-        :show-footer="false"
-        @close="closeOrderTargetPicker"
-      >
-        <ArtEntitySummary
-          icon="ri:link-m"
-          eyebrow="SOURCE DOCUMENT"
-          title="选择来源单据"
-          description="选择已下推的来源单据明细，生成其他入库草稿。"
-        />
-        <ArtAsyncState
-          :error="orderTargetError"
-          error-title="来源单据加载失败"
-          class="mt-5"
-          @retry="loadOrderTargets"
-        >
-          <div v-if="orderTargets.length" class="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div class="min-w-0 flex-1">
-              <label class="mb-2 block text-sm font-medium" for="wms-purchase-order-target"
-                >订单下推单</label
-              >
-              <ElSelect
-                id="wms-purchase-order-target"
-                v-model="selectedOrderTargetId"
-                class="w-full"
-                filterable
-                placeholder="选择订单下推单"
-              >
-                <ElOption
-                  v-for="target in orderTargets"
-                  :key="target.id"
-                  :label="`${target.documentNo} · ${target.source?.documentNo || '采购订单'} · ${target.status === 'partial' ? '部分入库' : '待入库'}`"
-                  :value="target.id"
-                />
-              </ElSelect>
-            </div>
-            <ElButton
-              type="primary"
-              :disabled="orderTargetLoading || Boolean(orderTargetError) || !selectedOrderTargetId"
-              @click="openSelectedOrderTarget"
-            >
-              生成入库草稿
-            </ElButton>
-          </div>
-          <ArtEmptyState
-            v-else
-            size="compact"
-            title="暂无订单下推单"
-            description="请先在 SCM 采购订单中审核并下推采购入库。"
-          />
-        </ArtAsyncState>
-      </ArtDialog>
       <ArtDialog ref="pushDialogRef" size="sm" :show-footer="false">
         <ArtEntitySummary
           icon="ri:file-transfer-line"
@@ -270,12 +243,10 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
-  import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
-  import ArtAsyncState from '@/components/core/feedback/art-async-state/index.vue'
-  import { useDetailRecord } from '@/hooks/core/useDetailRecord'
   import ArtTableQuery, {
     type ArtTableQueryExpose,
-    type ArtTableQueryHeaderAction
+    type ArtTableQueryHeaderAction,
+    type ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore, {
@@ -299,7 +270,6 @@
     fetchWmsPurchaseDocument,
     fetchWmsPurchasePage,
     fetchWmsPurchaseDocumentIdPage,
-    fetchWmsPurchaseOrderTargets,
     type WmsPurchaseKind,
     type WmsPurchaseListRow
   } from '@/api/wms-purchase'
@@ -398,9 +368,11 @@
   const drawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const printSheetRef = ref<InstanceType<typeof PurchasePrintSheet>>()
   const printing = ref(false)
-  async function printSelection(): Promise<void> {
+  async function printSelection({
+    selectedRows: rows
+  }: ArtTableQueryHeaderActionContext): Promise<void> {
     if (!props.permissions.Print || !hasAuth(props.permissions.Print) || printing.value) return
-    const ids = uniq(selectedRows.value.map((row) => row.documentId))
+    const ids = uniq(rows.map((row) => String(row.documentId)))
     if (!ids.length) {
       ElMessage.warning('请选择需要打印的单据或明细')
       return
@@ -417,40 +389,19 @@
   const returnDrawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const entrustedTargetDrawerRef = ref<InstanceType<typeof WmsPurchaseDocumentDrawer>>()
   const pushDialogRef = ref<ArtDialogExpose>()
-  const orderTargetDialogRef = ref<ArtDialogExpose>()
-  const orderTargetPickerActive = ref(false)
-  const {
-    detail: orderTargetRows,
-    loading: orderTargetLoading,
-    loadError: orderTargetError,
-    loadDetail: loadOrderTargetRows,
-    openDetail: resetOrderTargetRows
-  } = useDetailRecord<Awaited<ReturnType<typeof fetchWmsPurchaseOrderTargets>>>(
-    async (tenantId) => ({
-      data: await fetchWmsPurchaseOrderTargets(tenantId === '__all__' ? undefined : tenantId)
-    }),
-    '来源单据加载失败，请重新加载后再选择'
-  )
-  const orderTargets = computed(() => orderTargetRows.value ?? [])
-  watch(orderTargetLoading, (loading) => orderTargetDialogRef.value?.setLoading(loading))
-  watch(effectiveTenantId, () => {
-    selectedOrderTargetId.value = ''
-    resetOrderTargetRows('')
-    if (orderTargetPickerActive.value) void loadOrderTargets()
-  })
-  const selectedOrderTargetId = ref('')
   const workingId = ref<string>()
   const selectedRows = ref<
     Array<{ documentId: string; lineId: string | null; kind: unknown; status: unknown }>
   >([])
   const payableResultRef = ref<ArtDialogExpose>()
+  const pushSourceRows = ref<typeof selectedRows.value>([])
   const pushingPayable = ref(false)
   const generatedPayables = ref<PurchasePayableDocument[]>([])
-  async function pushPayable(kind: PurchasePayableKind): Promise<void> {
+  async function pushPayable(kind: PurchasePayableKind, rows = selectedRows.value): Promise<void> {
     if (!hasAuth(permission.value.Push) || pushingPayable.value) return
     if (
-      !selectedRows.value.length ||
-      selectedRows.value.some((row) => row.kind !== 'purchase_inbound' || row.status !== 'approved')
+      !rows.length ||
+      rows.some((row) => row.kind !== 'purchase_inbound' || row.status !== 'approved')
     ) {
       ElMessage.warning('请选择已审核的采购入库单或明细')
       return
@@ -459,7 +410,7 @@
     try {
       generatedPayables.value = await pushPurchasePayables(
         kind,
-        Object.entries(groupBy(selectedRows.value, 'documentId')).map(([documentId, rows]) => ({
+        Object.entries(groupBy(rows, 'documentId')).map(([documentId, rows]) => ({
           documentId,
           lineIds:
             displayMode.value === 'document'
@@ -480,7 +431,7 @@
   const { pushing: pushingInitialObligation, push: pushInitialObligation } =
     useWmsInitialObligationPush({
       area: 'purchase',
-      getSelection: () => selectedRows.value,
+      getSelection: () => pushSourceRows.value,
       afterPush: async () => {
         await pushDialogRef.value?.handleClose()
       }
@@ -772,44 +723,21 @@
       return false
     }
   }
-  async function loadOrderTargets(): Promise<void> {
-    if (!orderTargetPickerActive.value) return
-    selectedOrderTargetId.value = ''
-    await loadOrderTargetRows(effectiveTenantId.value ?? '__all__')
-  }
-  function closeOrderTargetPicker(): void {
-    orderTargetPickerActive.value = false
-    selectedOrderTargetId.value = ''
-    resetOrderTargetRows('')
-  }
-  onUnmounted(closeOrderTargetPicker)
-  async function openOrderTargetPicker(): Promise<void> {
-    orderTargetPickerActive.value = true
-    resetOrderTargetRows('')
-    selectedOrderTargetId.value = ''
-    await orderTargetDialogRef.value?.handleOpen(undefined, {
-      title: '选择来源单据',
-      loading: true,
-      loadingText: '正在加载来源单据…',
-      onOpen: () => {
-        void loadOrderTargets()
-      }
-    })
-  }
-  async function openSelectedOrderTarget(): Promise<void> {
-    if (
-      !orderTargetPickerActive.value ||
-      orderTargetLoading.value ||
-      orderTargetError.value ||
-      !orderTargets.value.some((row) => row.id === selectedOrderTargetId.value)
-    )
-      return
-    const targetId = selectedOrderTargetId.value
-    await orderTargetDialogRef.value?.handleClose()
-    await openOrderTarget(targetId)
+  const canPrepareOtherReturn = (rows: WmsPurchaseListRow[]): boolean =>
+    rows.length > 0 &&
+    rows.every((row) => row.status === 'approved' && row.kind === 'other_inbound')
+
+  async function prepareOtherReturn(rows: WmsPurchaseListRow[]): Promise<void> {
+    pushSourceRows.value = rows.map((row) => ({
+      documentId: row.documentId,
+      lineId: row.lineId,
+      kind: row.kind,
+      status: row.status
+    }))
+    await pushOtherInboundReturn()
   }
   async function pushOtherInboundReturn(): Promise<void> {
-    const documents = new Map(selectedRows.value.map((row) => [row.documentId, row]))
+    const documents = new Map(pushSourceRows.value.map((row) => [row.documentId, row]))
     if (documents.size !== 1) {
       ElMessage.warning('请先勾选一张已审核的其他入库单')
       return
@@ -820,13 +748,20 @@
       return
     }
     try {
-      await returnDrawerRef.value?.handleOpen({ mode: 'copy', documentId: source.documentId })
+      await returnDrawerRef.value?.handleOpen({
+        mode: 'create',
+        documentId: source.documentId,
+        sourceLineIds:
+          displayMode.value === 'line'
+            ? pushSourceRows.value.flatMap((row) => (row.lineId ? [row.lineId] : []))
+            : undefined
+      })
     } catch {
       ElMessage.error('入库退回草稿生成失败，请重试')
     }
   }
   async function pushEntrustedCounterpart(): Promise<void> {
-    const documents = new Map(selectedRows.value.map((row) => [row.documentId, row]))
+    const documents = new Map(pushSourceRows.value.map((row) => [row.documentId, row]))
     if (documents.size !== 1) {
       ElMessage.warning(`请先勾选一张已审核的${title.value}`)
       return
@@ -883,6 +818,17 @@
     deleteResourceLabel.value = row.kind === 'other_return' ? '其他入库退回单' : title.value
     workingId.value = row.documentId
     try {
+      if (action === 'submit' && ['other_inbound', 'other_return'].includes(row.kind)) {
+        const document = await fetchWmsPurchaseDocument(row.documentId)
+        if (!document.supplierId && !document.businessDepartmentId) {
+          await confirmAction('业务部门和供应商不能同时为空。', '无法提交', {
+            type: 'error',
+            showCancelButton: false,
+            confirmButtonText: '我知道了'
+          })
+          return
+        }
+      }
       if (action === 'delete' && (await inspectDeleteReferences(resources))) return
       await confirmAction(
         `${action === 'withdraw' ? '撤回后恢复暂存，可修改或删除；关联审批待办将取消。' : ''}确定${label} ${row.documentNo}？`,
@@ -920,22 +866,11 @@
           {
             key: 'batch-print',
             label: '批量打印',
+            selectionRequired: true,
             icon: 'ri:printer-line',
             permission: props.permissions.Print,
             buttonProps: { loading: printing.value },
             onClick: printSelection
-          }
-        ]
-      : []),
-    ...(props.kind === 'other_inbound'
-      ? [
-          {
-            key: 'receive-order',
-            label: '选单',
-            icon: 'ri:link-m',
-            permission: permission.value.Add,
-            buttonProps: { type: 'primary' as const, plain: true },
-            onClick: openOrderTargetPicker
           }
         ]
       : []),
@@ -996,17 +931,35 @@
     },
     {
       key: 'push',
+      selectionRequired: true,
+      rowAction: isInitial.value || isEntrustedProcessing.value,
+      disabled: (ctx) => ctx.selectedRows.some((row) => row.status !== 'approved'),
       ...(props.kind === 'purchase_inbound'
-        ? { slot: 'purchase-payable-push', selectionRequired: true }
-        : {}),
+        ? { slot: 'purchase-payable-push' }
+        : props.kind === 'other_inbound'
+          ? { slot: 'other-return-push' }
+          : {}),
       label: '下推',
       icon: 'ri:file-transfer-line',
       permission: permission.value.Push,
       buttonProps: { type: 'info', plain: true },
-      onClick: () =>
-        props.kind === 'other_inbound'
+      onClick: (ctx) => {
+        pushSourceRows.value = ctx.selectedRows.flatMap((row) =>
+          typeof row.documentId === 'string'
+            ? [
+                {
+                  documentId: row.documentId,
+                  lineId: typeof row.lineId === 'string' ? row.lineId : null,
+                  kind: row.kind,
+                  status: row.status
+                }
+              ]
+            : []
+        )
+        return props.kind === 'other_inbound'
           ? pushOtherInboundReturn()
           : pushDialogRef.value?.handleOpen(undefined, { title: '下推业务' })
+      }
     }
   ])
   function statusLabel(value: WmsPurchaseListRow['status']): string {
@@ -1016,6 +969,35 @@
   function moreActions(row: WmsPurchaseListRow): ButtonMoreItem[] {
     return [
       { key: 'copy', label: '复制单据', icon: 'ri:file-copy-line', auth: permission.value.Copy },
+      ...(props.kind === 'other_inbound'
+        ? [
+            {
+              key: 'push-other-return',
+              label: '下推其他入库退回',
+              icon: 'ri:inbox-unarchive-line',
+              auth: permission.value.Push,
+              disabled: row.status !== 'approved' || row.kind !== 'other_inbound'
+            }
+          ]
+        : []),
+      ...(props.kind === 'purchase_inbound'
+        ? [
+            {
+              key: 'push-estimated',
+              label: '下推暂估应付单',
+              icon: 'ri:bill-line',
+              auth: permission.value.Push,
+              disabled: row.status !== 'approved' || pushingPayable.value
+            },
+            {
+              key: 'push-financial',
+              label: '下推财务应付单',
+              icon: 'ri:money-dollar-circle-line',
+              auth: permission.value.Push,
+              disabled: row.status !== 'approved' || pushingPayable.value
+            }
+          ]
+        : []),
       ...(row.status === 'draft'
         ? [
             { key: 'edit', label: '编辑单据', icon: 'ri:edit-line', auth: permission.value.Edit },
@@ -1053,6 +1035,14 @@
     ]
   }
   function onMoreAction(item: ButtonMoreItem, row: WmsPurchaseListRow): void {
+    if (item.key === 'push-other-return') {
+      void prepareOtherReturn([row])
+      return
+    }
+    if (item.key === 'push-estimated' || item.key === 'push-financial') {
+      void pushPayable(item.key === 'push-estimated' ? 'estimated' : 'financial', [row])
+      return
+    }
     if (item.key === 'copy' || item.key === 'edit') {
       void openDocument(item.key, row)
     } else if (
@@ -1080,7 +1070,7 @@
           />
         )
       },
-      ...(isInitial.value ? wmsDocumentClassificationColumns<WmsPurchaseListRow>() : []),
+      ...wmsDocumentClassificationColumns<WmsPurchaseListRow>(),
       { prop: 'businessDate', label: '业务日期', minWidth: 118 },
       {
         prop: 'status',

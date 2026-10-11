@@ -113,7 +113,7 @@
 
     <template #footer="{ api }">
       <div class="recognition-runner__footer">
-        <span>
+        <span class="art-icon-label">
           <ArtSvgIcon icon="ri:lock-2-line" />
           识别结果受业务权限控制，并保留人工复核记录
         </span>

@@ -37,7 +37,7 @@
               />
             </ElSelect>
             <ElButton :loading="recommending" :disabled="!canRecommend" @click="recommend">
-              <ArtSvgIcon icon="ri:magic-line" class="mr-1" />自动选位
+              <ArtSvgIcon icon="ri:magic-line" />自动选位
             </ElButton>
           </div>
           <div v-else class="rounded-lg bg-[var(--el-fill-color-light)] px-3 py-2">

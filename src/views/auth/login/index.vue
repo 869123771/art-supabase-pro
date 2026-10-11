@@ -187,7 +187,7 @@
           />
 
           <div class="form__trust">
-            <span><ArtSvgIcon icon="ri:lock-line" /> TLS 安全连接</span>
+            <span class="art-icon-label"><ArtSvgIcon icon="ri:lock-line" /> TLS 安全连接</span>
             <i />
             <span>企业级权限隔离</span>
           </div>
@@ -281,8 +281,8 @@
   const formData = reactive({
     account: '',
     username: '',
-    identifier: rememberedIdentifier || '',
-    password: '',
+    identifier: rememberedIdentifier || '624944977@qq.com',
+    password: rememberedIdentifier && rememberedIdentifier !== '624944977@qq.com' ? '' : '123456',
     rememberPassword: rememberPasswordPreference
   })
 

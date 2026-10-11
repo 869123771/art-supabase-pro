@@ -1,5 +1,5 @@
 <template>
-  <div class="art-data-select">
+  <div v-show="showTrigger" class="art-data-select">
     <template v-if="!$slots.trigger">
       <ElInput
         v-if="!multiple"
@@ -30,7 +30,6 @@
           </ElIcon>
         </template>
       </ElInput>
-
       <ElInputTag
         v-else
         :model-value="multipleDisplayLabels"
@@ -64,6 +63,13 @@
           </ElIcon>
         </template>
       </ElInputTag>
+      <button
+        v-if="selectedReferenceError"
+        type="button"
+        class="mt-1 text-xs text-[var(--el-color-danger)] underline"
+        @click="resolveSelectedReferences"
+        >资料加载失败，点击重试</button
+      >
     </template>
 
     <slot
@@ -638,7 +644,7 @@
   const getRowLabel = (row: DataSelectRecord): string => {
     if (typeof props.labelKey === 'function') {
       const source = getSourceRow(row)
-      return source ? props.labelKey(source) : String(getRowKey(row))
+      return source ? props.labelKey(source) : String(get(row, 'label') ?? '所选资料不可用')
     }
     return String(get(row, props.labelKey) ?? '')
   }
@@ -725,6 +731,10 @@
   }
 
   const fallbackRowMarker = Symbol('unresolved-data-select-row')
+  const resolvedSelectedRows = shallowRef<T[]>([])
+  const selectedReferenceError = ref(false)
+  const resolvingSelected = ref(false)
+  let selectedReferenceGeneration = 0
 
   // Element Plus exposes dynamic rows, but real rows originate from typed data/apiFn.
   // This adapter excludes display placeholders before any business callback or event.
@@ -736,10 +746,14 @@
       return {
         [fallbackRowMarker]: true,
         [props.rowKey]: key,
-        [props.labelKey]: String(key)
+        [props.labelKey]: resolvingSelected.value ? '正在加载所选资料…' : '所选资料不可用'
       }
     }
-    return { [fallbackRowMarker]: true, id: key, label: String(key) }
+    return {
+      [fallbackRowMarker]: true,
+      id: key,
+      label: resolvingSelected.value ? '正在加载所选资料…' : '所选资料不可用'
+    }
   }
 
   const normalizeTreeRows = (rows: DataSelectRecord[]): DataSelectRecord[] =>
@@ -751,6 +765,7 @@
   const syncConfirmedFromProps = () => {
     const keys = normalizeModelKeys(props.modelValue)
     const sourceRows = [
+      ...resolvedSelectedRows.value,
       ...props.selectedData,
       ...flattenRows(props.data),
       ...flattenRows(tableRows.value)
@@ -760,6 +775,43 @@
       ...props.selectedData
     ]).filter((row) => keys.includes(getRowKey(row)))
   }
+
+  async function resolveSelectedReferences(): Promise<void> {
+    const generation = ++selectedReferenceGeneration
+    selectedReferenceError.value = false
+    resolvingSelected.value = false
+    const keys = normalizeModelKeys(props.modelValue)
+    const knownRows = [
+      ...props.selectedData,
+      ...flattenRows(props.data),
+      ...flattenRows(tableRows.value)
+    ]
+    const missingKeys = keys.filter((key) => !knownRows.some((row) => getRowKey(row) === key))
+    resolvedSelectedRows.value = []
+    if (!missingKeys.length || !props.resolveSelected) {
+      syncConfirmedFromProps()
+      return
+    }
+    resolvingSelected.value = true
+    syncConfirmedFromProps()
+    try {
+      const rows = await props.resolveSelected(missingKeys)
+      if (generation !== selectedReferenceGeneration) return
+      resolvedSelectedRows.value = rows
+    } catch (error) {
+      if (generation !== selectedReferenceGeneration) return
+      selectedReferenceError.value = true
+      emit('load-error', error)
+    } finally {
+      if (generation === selectedReferenceGeneration) {
+        resolvingSelected.value = false
+        syncConfirmedFromProps()
+      }
+    }
+  }
+  onBeforeUnmount(() => {
+    ++selectedReferenceGeneration
+  })
 
   const applyDraftToControls = async (generation = loadGeneration) => {
     await nextTick()
@@ -1079,9 +1131,9 @@
   )
 
   watch(
-    () => [props.modelValue, props.selectedData, props.data],
+    () => [props.modelValue, props.selectedData, props.data, props.resolveSelected],
     () => {
-      syncConfirmedFromProps()
+      void resolveSelectedReferences()
     },
     { deep: true, immediate: true }
   )

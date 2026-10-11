@@ -4,6 +4,22 @@ import { prepareIsolatedSession } from './support/isolated-session'
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(180_000)
 
+test('批量栏自定义下推触发器与相邻小按钮等高', async ({ page }) => {
+  await prepareIsolatedSession(page)
+  await page.goto('/tests/e2e/fixtures/date-format-reuse.html?compactActions')
+  const print = page.getByRole('button', { name: '批量打印', exact: true })
+  const push = page.getByRole('button', { name: '下推', exact: true })
+  await expect(push).toBeVisible()
+  const printBox = await print.boundingBox()
+  const pushBox = await push.boundingBox()
+  expect(printBox).not.toBeNull()
+  expect(pushBox).not.toBeNull()
+  expect(pushBox!.height).toBe(printBox!.height)
+  expect(pushBox!.height).toBe(24)
+  await push.click()
+  await expect(page.getByRole('menuitem', { name: '查看说明', exact: true })).toBeVisible()
+})
+
 for (const dark of [false, true]) {
   for (const shadow of [false, true]) {
     test(`公共更多操作适配触屏与鼠标并保留权限 dark=${dark} shadow=${shadow}`, async ({

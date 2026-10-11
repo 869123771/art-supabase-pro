@@ -18,8 +18,10 @@
           <h1>{{ displayName }}</h1>
           <p class="user-center__account-name">@{{ accountName }}</p>
           <div class="user-center__profile-tags">
-            <span><ArtSvgIcon icon="ri:shield-check-line" />当前登录</span>
-            <span><ArtSvgIcon icon="ri:building-4-line" />{{ tenantName }}</span>
+            <span class="art-icon-label"><ArtSvgIcon icon="ri:shield-check-line" />当前登录</span>
+            <span class="art-icon-label"
+              ><ArtSvgIcon icon="ri:building-4-line" />{{ tenantName }}</span
+            >
           </div>
         </div>
 

@@ -80,7 +80,7 @@
                 <span :title="formatRecordMeta(record)">
                   {{ formatRecordMeta(record) }}
                   <template v-if="group.meta.statusDictCode">
-                    ·
+                    <template v-if="formatRecordMeta(record)"> · </template>
                     <ArtDictDisplay
                       :key="inspectionSequence"
                       :dict-code="group.meta.statusDictCode"
@@ -566,7 +566,7 @@
     if (record.recordAmount !== null && record.recordAmount !== undefined) {
       parts.push(formatSensitiveNumberWithAffix(record.recordAmount, { prefix: '¥' }))
     }
-    return parts.filter(Boolean).join(' · ') || '待处理'
+    return parts.filter(Boolean).join(' · ') || (hasStatusDictionary ? '' : '待处理')
   }
 
   const toggleRecordSelection = (recordId: string, checked: boolean): void => {

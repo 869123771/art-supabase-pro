@@ -1,8 +1,10 @@
 <template>
   <ElSubMenu v-if="hasChildren" :index="item.path || item.meta.title" class="!p-0">
     <template #title>
-      <ArtSvgIcon :icon="item.meta.icon" :color="theme?.iconColor" class="mr-1 text-lg" />
-      <span class="text-md">{{ formatMenuTitle(item.meta.title) }}</span>
+      <span class="art-icon-label text-sm">
+        <ArtSvgIcon :icon="item.meta.icon" :color="theme?.iconColor" />
+        <span>{{ formatMenuTitle(item.meta.title) }}</span>
+      </span>
       <div v-if="item.meta.showBadge" class="art-badge art-badge-horizontal" />
       <div v-if="item.meta.showTextBadge" class="art-text-badge">
         {{ item.meta.showTextBadge }}
@@ -28,13 +30,10 @@
     @focusin="preloadMenuRoute(item)"
     @click="goPage(item)"
   >
-    <ArtSvgIcon
-      :icon="item.meta.icon"
-      :color="theme?.iconColor"
-      class="mr-1 text-lg"
-      :style="{ color: theme.iconColor }"
-    />
-    <span class="text-md">{{ formatMenuTitle(item.meta.title) }}</span>
+    <span class="art-icon-label text-sm">
+      <ArtSvgIcon :icon="item.meta.icon" :color="theme?.iconColor" />
+      <span>{{ formatMenuTitle(item.meta.title) }}</span>
+    </span>
     <div
       v-if="item.meta.showBadge"
       class="art-badge"

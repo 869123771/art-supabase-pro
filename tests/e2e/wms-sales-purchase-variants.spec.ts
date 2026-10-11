@@ -219,6 +219,35 @@ for (const { family, query, kind } of scenarios) {
     }))
     records.sys_dictionary = dictionaryRows
     await page.route('**/rest/v1/**', (route) => {
+      if (new URL(route.request().url()).pathname.endsWith('/rpc/wms_sales_choices_secure')) {
+        return route.fulfill({
+          json: {
+            data: records.mdm_material.map((material, index) => ({
+              id: `stock-${index}`,
+              source_document_id: null,
+              source_line_id: null,
+              material_code: `NEW-MAT-${index + 1}`,
+              material_description: `新增测试物料 ${index + 1}`,
+              deliverable_quantity: 100,
+              available_quantity: 100,
+              allocated_quantity: 0,
+              inventory_quantity: 100,
+              inventory_unit: '件',
+              serial_nos: [],
+              unit_price: 0,
+              tax_rate: 13,
+              material,
+              line: {
+                warehouse_id: '99999999-9999-4999-8999-999999999999',
+                stock_batch_id: `batch-${index}`,
+                stock_status: 'available',
+                stock_type: 'normal'
+              }
+            })),
+            total: 2
+          }
+        })
+      }
       if (route.request().method() !== 'GET') writes += 1
       if (new URL(route.request().url()).pathname.endsWith('/sys_menu')) {
         return route.fulfill({ json: { id: 'variant-menu' } })
@@ -645,10 +674,32 @@ for (const { family, query, kind } of scenarios) {
       await party.click()
       await picker.locator('.el-table__body').getByText(`测试${partyName}`, { exact: true }).click()
       await picker.getByRole('button', { name: '确定', exact: true }).click()
+      await expect(picker).toBeHidden()
+      const stockPicker = family === '销售' && ['outbound', 'other_outbound'].includes(kind)
+      if (stockPicker) {
+        await drawer.getByRole('combobox', { name: '仓库号', exact: true }).click()
+        await page.getByRole('option', { name: /测试新增仓库/ }).click()
+      }
       await drawer.getByRole('button', { name: '添加物料', exact: true }).click()
-      const materials = page.getByRole('dialog', { name: `选择${family}物料`, exact: true })
-      await expect(materials.getByText('NEW-MAT-1', { exact: true })).toBeVisible()
-      await materials.locator('.el-table__header-wrapper .el-checkbox').click()
+      const materials = page.getByRole('dialog', {
+        name: stockPicker ? '选择出库库存' : `选择${family}物料`,
+        exact: true
+      })
+      await expect(
+        materials.locator('.el-table__body').getByText('NEW-MAT-1', { exact: true })
+      ).toBeVisible()
+      await expect(materials.getByRole('button', { name: '确定', exact: true })).toBeEnabled()
+      if (stockPicker) {
+        await expect(materials.locator('.art-table')).toHaveAttribute('aria-busy', 'false')
+        await materials.locator('.el-table__body .el-checkbox__inner').nth(0).click()
+        await expect(
+          materials.locator('.el-table__body').getByRole('checkbox').nth(0)
+        ).toBeChecked()
+        await materials.locator('.el-table__body .el-checkbox__inner').nth(1).click()
+        await expect(
+          materials.getByRole('complementary').getByText('已选 2', { exact: true })
+        ).toBeVisible()
+      } else await materials.locator('.el-table__header-wrapper .el-checkbox').click()
       await materials.getByRole('button', { name: '确定', exact: true }).click()
       const rows = drawer.locator('.el-table__body tr')
       await expect(rows).toHaveCount(2)

@@ -6,6 +6,8 @@ import { store } from '@/store'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
 import { useSettingStore } from '@/store/modules/setting'
+import { initializeTheme } from '@/hooks/core/useTheme'
+import { SystemThemeEnum } from '@/enums/app-enum'
 import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import PurchasePayableWorkspace from '@/components/business/purchase-payable-workspace/index.vue'
@@ -47,6 +49,12 @@ useUserStore(store).setUserInfo({
 })
 useTenantScopeStore(store).selectedTenantId = '11111111-1111-4111-8111-111111111111'
 const setting = useSettingStore(store)
+const parameters = new URLSearchParams(location.search)
+const theme = parameters.get('theme') === 'dark' ? SystemThemeEnum.DARK : SystemThemeEnum.LIGHT
+setting.setGlobalTheme(theme, theme)
+setting.boxBorderMode = parameters.get('box') !== 'shadow-mode'
+document.documentElement.dataset.boxMode = setting.boxBorderMode ? 'border-mode' : 'shadow-mode'
+initializeTheme()
 setting.setCustomRadius(setting.customRadius)
 await router.push('/')
 await router.isReady()

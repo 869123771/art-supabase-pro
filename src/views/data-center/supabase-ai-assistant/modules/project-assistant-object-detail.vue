@@ -149,7 +149,7 @@
               :columns="fieldColumns"
               :pagination="false"
               height="100%"
-              :scrollbar-always-on="true"
+              :scrollbar-always-on="false"
               stripe
             />
           </div>

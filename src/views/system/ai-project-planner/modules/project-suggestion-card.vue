@@ -40,11 +40,11 @@
 
     <div class="ai-planner__context">
       <div class="is-opportunity">
-        <span><ArtSvgIcon icon="ri:flashlight-line" />为什么现在做</span>
+        <span class="art-icon-label"><ArtSvgIcon icon="ri:flashlight-line" />为什么现在做</span>
         <p>{{ suggestion.whyNow }}</p>
       </div>
       <div class="is-evidence">
-        <span><ArtSvgIcon icon="ri:code-box-line" />项目证据</span>
+        <span class="art-icon-label"><ArtSvgIcon icon="ri:code-box-line" />项目证据</span>
         <ul>
           <li v-for="item in suggestion.evidence" :key="`${item.path}-${item.fact}`">
             <code>{{ item.path }}</code> {{ item.fact }}
@@ -52,7 +52,7 @@
         </ul>
       </div>
       <div class="is-risk">
-        <span><ArtSvgIcon icon="ri:error-warning-line" />主要风险</span>
+        <span class="art-icon-label"><ArtSvgIcon icon="ri:error-warning-line" />主要风险</span>
         <p>{{ suggestion.risk }}</p>
       </div>
     </div>

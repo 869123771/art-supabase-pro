@@ -7,12 +7,12 @@
   >
     <template #content>
       <p>您提交的内容有如下错误：</p>
-      <p>
-        <ArtSvgIcon icon="ri:close-circle-line" class="text-red-500 mr-1" />
+      <p class="art-icon-label flex! justify-start">
+        <ArtSvgIcon icon="ri:close-circle-line" class="text-[var(--el-color-danger)]" />
         <span>您的账户已被冻结</span>
       </p>
-      <p>
-        <ArtSvgIcon icon="ri:close-circle-line" class="text-red-500 mr-1" />
+      <p class="art-icon-label flex! justify-start">
+        <ArtSvgIcon icon="ri:close-circle-line" class="text-[var(--el-color-danger)]" />
         <span>您的账户还不具备申请资格</span>
       </p>
     </template>

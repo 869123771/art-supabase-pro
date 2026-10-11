@@ -27,6 +27,11 @@
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTenantScopeAccessPolicy } from '@/hooks/core/useTenantScopeAccessPolicy'
   import { resolveBusinessButtonPermission } from '@/utils/business-permission'
+  import {
+    actionIdentity,
+    tableActionRowKey,
+    tableRowCommandsKey
+  } from '@/components/core/tables/art-table-query/row-action-context'
 
   defineOptions({ name: 'ArtButtonTable' })
 
@@ -56,6 +61,16 @@
   const props = withDefaults(defineProps<Props>(), {})
   const route = useRoute()
   const { hasAuth } = useAuth()
+  const actionRow = inject(tableActionRowKey, undefined)
+  const rowCommands = inject(tableRowCommandsKey, undefined)
+  const deleteIsInMore = computed(
+    () =>
+      props.type === 'delete' &&
+      actionRow?.value &&
+      rowCommands
+        ?.items(actionRow.value)
+        .some((item) => actionIdentity(item) === 'delete' && (!item.auth || hasAuth(item.auth)))
+  )
   const { isCrossTenantReadOnly } = useTenantScopeAccessPolicy()
 
   const resolvedPermission = computed(() =>
@@ -66,6 +81,7 @@
   )
   const canAccess = computed(
     () =>
+      !deleteIsInMore.value &&
       !(isCrossTenantReadOnly.value && isMutationAction.value) &&
       (!resolvedPermission.value || hasAuth(resolvedPermission.value))
   )

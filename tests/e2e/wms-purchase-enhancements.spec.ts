@@ -6,6 +6,7 @@ const org = '33333333-3333-4333-8333-333333333333'
 const kinds = [
   'purchase_inbound',
   'purchase_return',
+  'other_inbound',
   'entrusted_processing_inbound',
   'entrusted_processing_return'
 ] as const
@@ -13,9 +14,11 @@ for (const kind of kinds) {
   test(`${kind} 两条单据、参选、打印和暂存`, async ({ page }, info) => {
     const returned = kind.endsWith('_return')
     const entrusted = kind.startsWith('entrusted')
+    const otherInbound = kind === 'other_inbound'
     const titles = {
       purchase_inbound: '采购入库单',
       purchase_return: '采购退货单',
+      other_inbound: '其他入库单',
       entrusted_processing_inbound: '受托加工材料入库单',
       entrusted_processing_return: '受托加工材料退料单'
     }
@@ -56,8 +59,9 @@ for (const kind of kinds) {
           line_no: 10,
           material_id: materials[0].id,
           material: materials[0],
-          project_id: entrusted ? 'project' : null,
-          project: entrusted ? { id: 'project', name: '机房装修工程', code: 'PJ' } : null,
+          project_id: entrusted || otherInbound ? 'project' : null,
+          project:
+            entrusted || otherInbound ? { id: 'project', name: '机房装修工程', code: 'PJ' } : null,
           construction_no: null,
           inventory_unit_id: 'unit',
           base_unit_id: 'unit',
@@ -92,6 +96,8 @@ for (const kind of kinds) {
       line_no: 10,
       status: d.status,
       business_date: d.business_date,
+      document_type: { document_type_name: titles[kind] },
+      business_type: { business_type_name: '标准业务' },
       supplier_name: '测试供应商',
       customer_name: '项目委托客户',
       project_name: entrusted ? '机房装修工程' : null,
@@ -163,7 +169,20 @@ for (const kind of kinds) {
           menu_ids: ['menu'],
           enabled: true,
           is_default: true
-        }
+        },
+        ...(otherInbound
+          ? [
+              {
+                id: 'return-type',
+                tenant_id: tenant,
+                document_type_code: 'WE34',
+                document_type_name: '标准其他入库退回单',
+                menu_ids: ['menu'],
+                enabled: true,
+                is_default: false
+              }
+            ]
+          : [])
       ],
       mdm_business_type: [
         {
@@ -171,16 +190,38 @@ for (const kind of kinds) {
           tenant_id: tenant,
           business_type_code: 'BUS',
           business_type_name: '标准业务',
+          stock_movement: 'inbound',
           document_type_ids: ['type'],
           menu_ids: ['menu'],
           enabled: true,
           is_default: true
-        }
+        },
+        ...(otherInbound
+          ? [
+              {
+                id: 'return-business',
+                tenant_id: tenant,
+                business_type_code: 'M105',
+                business_type_name: '其他入库退回',
+                stock_movement: 'outbound',
+                document_type_ids: ['return-type'],
+                menu_ids: ['menu'],
+                enabled: true,
+                is_default: true
+              }
+            ]
+          : [])
       ],
       mdm_project_construction: [{ construction_no: 'SG-01', section_name: '机房区域' }]
     }
     const saves: Array<{
-      p_payload: { lines: Array<{ construction_no: string | null }>; warehouse_id: string }
+      p_payload: {
+        kind: string
+        document_type_id: string
+        business_type_id: string
+        lines: Array<{ construction_no: string | null; source_line_no: string | null }>
+        warehouse_id: string
+      }
     }> = []
     const stockRequests: Array<{ p_warehouse_id: string; p_kind: string }> = []
     const errors: string[] = []
@@ -302,13 +343,42 @@ for (const kind of kinds) {
     await page.goto(`/tests/e2e/fixtures/wms-purchase-enhancements.html?kind=${kind}`)
     const rows = page.locator('.el-table__body-wrapper tbody tr')
     await expect(rows).toHaveCount(2)
+    await expect(rows.first().getByRole('button', { name: '更多操作', exact: true })).toHaveCount(1)
+    await expect(rows.nth(1).getByRole('button', { name: '更多操作', exact: true })).toHaveCount(1)
+    await expect(page.getByRole('button', { name: '批量打印', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '承接订单', exact: true })).toHaveCount(0)
+    if (otherInbound)
+      await expect(page.getByRole('button', { name: '选单', exact: true })).toHaveCount(0)
+    await expect(page.locator('th').filter({ hasText: '单据类型' })).toHaveCount(1)
+    await expect(page.locator('th').filter({ hasText: '业务类型' })).toHaveCount(1)
     await page.screenshot({ path: info.outputPath(`${kind}-list.png`), fullPage: true })
     await page.getByRole('switch', { name: '进入专注模式', exact: true }).locator('..').click()
     await expect(page.getByRole('heading', { name: titles[kind], exact: true })).not.toBeVisible()
     await page.keyboard.press('Escape')
     await rows.first().getByRole('checkbox').locator('..').click()
     await expect(page.getByRole('button', { name: '批量删除', exact: true })).toBeVisible()
+    await expect(
+      page
+        .locator('.art-table-query__selection-bar')
+        .getByRole('button', { name: '批量打印', exact: true })
+    ).toBeVisible()
+    await rows.nth(1).getByRole('button', { name: '更多操作', exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: '导出当前范围', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('menuitem', { name: '打印', exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('menuitem', { name: '删除单据', exact: true }).locator('div')
+    ).toHaveAttribute('style', /color: var\(--el-color-danger\)/)
+    await page.screenshot({ path: info.outputPath(`${kind}-row-menu.png`), fullPage: true })
+    await page.evaluate(() => {
+      window.print = () => undefined
+    })
+    await page.getByRole('menuitem', { name: '打印', exact: true }).click()
+    await expect(page.locator('.wms-purchase-print-sheet')).toHaveCount(1)
+    await expect(page.locator('.wms-purchase-print-sheet')).toContainText(`QA-${kind}-2`)
+    await expect(page.locator('.wms-purchase-print-sheet')).not.toContainText(`QA-${kind}-1`)
+    await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
+    await expect(rows.first().getByRole('checkbox')).toBeChecked()
+    await expect(rows.nth(1).getByRole('checkbox')).not.toBeChecked()
     if (kind === 'purchase_inbound') {
       await page.getByRole('button', { name: '下推', exact: true }).click()
       await expect(page.getByRole('menuitem', { name: '暂估应付单', exact: true })).toBeVisible()
@@ -362,7 +432,7 @@ for (const kind of kinds) {
       expect(stockRequests[0]).toMatchObject({ p_warehouse_id: 'warehouse', p_kind: kind })
     }
     await page.screenshot({ path: info.outputPath(`${kind}-edit.png`), fullPage: true })
-    if (entrusted) {
+    if (entrusted || otherInbound) {
       const construction = drawer.getByPlaceholder('可选，允许为空').first()
       await construction.click()
       const picker = page.getByRole('dialog', { name: '选择施工号', exact: true })
@@ -372,6 +442,43 @@ for (const kind of kinds) {
       await expect.poll(() => saves.length).toBe(1)
       expect(saves[0].p_payload.lines.every((l) => !l.construction_no)).toBe(true)
     } else await drawer.getByRole('button', { name: '取消', exact: true }).click()
+    if (otherInbound) {
+      documents[0].status = 'approved'
+      documents[0].lines.push({
+        ...documents[0].lines[0],
+        id: 'second-source-line',
+        line_no: 20,
+        material_id: materials[1].id,
+        material: materials[1]
+      })
+      list[0].status = 'approved'
+      list.push({
+        ...list[0],
+        line_id: 'second-source-line',
+        line_no: 20,
+        material_code: 'MAT-2',
+        material_description: '项目物料2'
+      })
+      await page.getByRole('button', { name: '查询', exact: true }).click()
+      await expect(rows).toHaveCount(3)
+      const source = rows.filter({ hasText: 'QA-other_inbound-1' }).first()
+      await source.getByRole('button', { name: '更多操作', exact: true }).click()
+      await page.getByRole('menuitem', { name: '下推其他入库退回', exact: true }).click()
+      const returnedDrawer = page.getByRole('dialog', { name: '新增其他入库退回单', exact: true })
+      await expect(returnedDrawer).toBeVisible()
+      await expect(returnedDrawer).toContainText('标准其他入库退回单')
+      await expect(returnedDrawer).toContainText('其他入库退回')
+      await expect(returnedDrawer.locator('.el-table__body-wrapper tbody tr')).toHaveCount(1)
+      await returnedDrawer.getByRole('button', { name: '保存', exact: true }).click()
+      await expect.poll(() => saves.length).toBe(2)
+      expect(saves[1].p_payload).toMatchObject({
+        kind: 'other_return',
+        document_type_id: 'return-type',
+        business_type_id: 'return-business'
+      })
+      expect(saves[1].p_payload.lines).toHaveLength(1)
+      expect(saves[1].p_payload.lines[0].source_line_no).toBe('10')
+    }
     expect(errors).toEqual([])
   })
 }

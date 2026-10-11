@@ -1,4 +1,5 @@
 import { createApp, defineComponent, h, ref } from 'vue'
+import { ElButton, ElConfigProvider } from 'element-plus'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { store } from '@/store'
 import { setupGlobDirectives } from '@/directives'
@@ -57,6 +58,22 @@ const Preview = defineComponent({
     const removed = ref(0)
     const attachmentActions = new URLSearchParams(location.search).has('attachmentActions')
     const explicitClick = new URLSearchParams(location.search).has('click')
+    if (new URLSearchParams(location.search).has('compactActions')) {
+      return () =>
+        h(ElConfigProvider, { size: 'small' }, () =>
+          h('main', { class: 'art-icon-label' }, [
+            h(ElButton, { plain: true }, () => '批量打印'),
+            h(
+              ArtButtonMore,
+              {
+                trigger: 'click',
+                list: [{ key: 'preview', label: '查看说明', auth: 'Fixture:View' }]
+              },
+              { trigger: () => h(ElButton, { plain: true }, () => '下推') }
+            )
+          ])
+        )
+    }
     if (new URLSearchParams(location.search).has('detailLayout')) return () => h(RouterView)
     return () =>
       h('main', [

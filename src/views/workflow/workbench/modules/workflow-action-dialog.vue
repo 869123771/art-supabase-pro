@@ -88,7 +88,9 @@
 
     <template #footer="{ loading, api }">
       <div class="workflow-action__footer">
-        <span><ArtSvgIcon icon="ri:history-line" />本次决定将写入审批审计轨迹</span>
+        <span class="art-icon-label"
+          ><ArtSvgIcon icon="ri:history-line" />本次决定将写入审批审计轨迹</span
+        >
         <div>
           <ElButton :disabled="state.snapshotLoading || loading" @click="api.handleClose()"
             >取消</ElButton

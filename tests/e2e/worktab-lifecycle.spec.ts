@@ -8,13 +8,32 @@ test('溢出标签可滚动并连续关闭，卸载后无延迟错误', async ({
   await page.goto('/tests/e2e/fixtures/worktab-lifecycle.html')
   const right = page.getByRole('button', { name: '向右滚动已打开页面' })
   await expect(right).toBeVisible()
+  const geometry = await page
+    .getByRole('tab')
+    .first()
+    .locator('.art-icon-label')
+    .evaluate((element) => {
+      const icon = element.querySelector('.art-svg-icon')!.getBoundingClientRect()
+      const label = element.querySelector('.work-tab-title')!.getBoundingClientRect()
+      return {
+        gap: label.left - icon.right,
+        center: Math.abs((icon.top + icon.bottom - label.top - label.bottom) / 2),
+        ratio: icon.width / Number.parseFloat(getComputedStyle(element).fontSize)
+      }
+    })
+  expect(geometry.gap).toBeCloseTo(6, 1)
+  expect(geometry.center).toBeLessThanOrEqual(0.5)
+  expect(geometry.ratio).toBeCloseTo(16 / 14, 1)
   await right.click()
   await expect(page.getByRole('button', { name: '向左滚动已打开页面' })).toBeEnabled()
-  await page.getByRole('button', { name: '向左滚动已打开页面' }).click()
   await page.clock.runFor(300)
   await page.getByRole('button', { name: '关闭业务页面1', exact: true }).click()
+  await page.clock.runFor(300)
+  await right.click()
+  await page.clock.runFor(300)
   await page.getByRole('button', { name: '关闭业务页面2', exact: true }).click()
   await expect(page.getByTestId('tab-count')).toHaveText('10')
+  await page.getByRole('button', { name: '向左滚动已打开页面' }).click()
   await page.screenshot({ path: testInfo.outputPath('worktabs.png'), animations: 'disabled' })
   await right.click()
   await page.getByRole('button', { name: '卸载标签页' }).click()

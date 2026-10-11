@@ -59,7 +59,11 @@
       </ElAlert>
       <ArtSectionCard
         title="单据表头"
-        :subtitle="`${isEntrustedProcessing ? '客户' : '供应商'}、业务日期和库存组织是必填信息；记账日期由系统记录。`"
+        :subtitle="
+          isOtherInbound
+            ? '供应商、业务部门可参选，提交时至少填写一项；记账日期由系统记录。'
+            : `${isEntrustedProcessing ? '客户' : '供应商'}、业务日期和库存组织是必填信息；记账日期由系统记录。`
+        "
       >
         <ArtDescriptions v-if="mode === 'view'" :data="viewData" :items="viewItems" :columns="3" />
         <ArtForm
@@ -269,7 +273,7 @@
             </template>
             <template #constructionNo="{ row }">
               <ArtTableSingleSelect
-                v-if="mode !== 'view' && isEntrustedProcessing"
+                v-if="mode !== 'view' && (isEntrustedProcessing || isOtherInbound)"
                 :model-value="row.constructionNo || undefined"
                 :api-fn="(params) => constructionPickerApi(row, params)"
                 :columns="constructionColumns"
@@ -481,6 +485,9 @@
                 @visible-change="($event) => $event && loadInlineBins(row)"
                 @change="row.sourceBatchId = null"
                 ><ElOption
+                  v-if="missingSelectedBin(row)"
+                  :label="`${row.bin?.binName} · ${row.bin?.binCode}`"
+                  :value="row.binId" /><ElOption
                   v-for="bin in bins"
                   :key="bin.id"
                   :label="`${bin.binName} · ${bin.binCode}`"
@@ -652,6 +659,7 @@
     </div>
   </ArtDrawer>
   <ArtTableMultipleSelect
+    :show-trigger="false"
     ref="sourcePickerRef"
     :api-fn="sourcePickerApi"
     :columns="inboundSourceColumns"
@@ -662,7 +670,6 @@
     :title="sourcePickerKind === 'purchase_order' ? '选择采购订单明细' : '选择收料通知单明细'"
     subtitle="按表头供应商、项目筛选未全部入库的明细，支持多选和分批入库。"
     @confirm="addSourceLines"
-    ><template #trigger><span hidden /></template
   ></ArtTableMultipleSelect>
 
   <ArtDialog ref="serialEntryDialogRef" size="sm" :show-footer="mode !== 'view'">
@@ -722,6 +729,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import { fetchEnabledOrganizationTree } from '@/api/system-manage'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
@@ -790,6 +798,7 @@
     mode: OpenMode
     document?: WmsPurchaseDocument
     documentId?: string
+    sourceLineIds?: string[]
     importIntent?: boolean
     orderTargetId?: string
     orderTargets?: Array<{ targetId: string; sourceLineIds: string[] }>
@@ -826,6 +835,8 @@
   const customers = ref<WmsPurchaseOption[]>([])
   const suppliers = ref<WmsPurchaseOption[]>([])
   const projects = ref<WmsPurchaseOption[]>([])
+  const businessDepartments = ref<WmsPurchaseOption[]>([])
+  const isOtherInbound = computed(() => ['other_inbound', 'other_return'].includes(props.kind))
   const {
     options: bins,
     load: loadInlineBins,
@@ -1006,6 +1017,7 @@
     customerCode: '',
     purchaserId: null as string | null,
     purchaseDepartmentId: null as string | null,
+    businessDepartmentId: null as string | null,
     keeperId: null as string | null,
     warehouseId: null as string | null,
     status: 'draft' as WmsPurchaseDocument['status'],
@@ -1148,6 +1160,9 @@
     const data = await fetchWmsConstructionOptions(line.projectId, form.tenantId, params.keyword)
     return { data, total: data.length }
   }
+  function missingSelectedBin(line: WmsPurchaseLine): boolean {
+    return Boolean(line.binId && line.bin && !bins.value.some((bin) => bin.id === line.binId))
+  }
   function stockRowDisabled(row: WmsReturnStockRow): boolean {
     return (
       row.availableQuantity <= 0 || lines.value.some((line) => line.materialId === row.materialId)
@@ -1268,6 +1283,8 @@
     purchaseDepartment:
       organizations.value.find((item) => item.id === form.purchaseDepartmentId)?.organizationName ||
       '—',
+    businessDepartment:
+      businessDepartments.value.find((item) => item.id === form.businessDepartmentId)?.name || '—',
     purchaser:
       currentDocument.value?.purchaser?.employeeName || (form.purchaserId ? '已指定' : '未指定'),
     keeper: currentDocument.value?.keeper?.employeeName || (form.keeperId ? '已指定' : '未指定'),
@@ -1281,6 +1298,9 @@
     { key: 'organizationCode', label: '组织编码', field: 'organizationCode' },
     { key: 'documentType', label: '单据类型', field: 'documentType' },
     { key: 'businessType', label: '业务类型', field: 'businessType' },
+    ...(isOtherInbound.value
+      ? [{ key: 'businessDepartment', label: '业务部门', field: 'businessDepartment' as const }]
+      : []),
     { key: 'businessDate', label: '业务日期', field: 'businessDate' },
     { key: 'accountingDate', label: '记账日期', field: 'accountingDate' },
     ...(isEntrustedProcessing.value
@@ -1451,13 +1471,45 @@
           {
             key: 'purchaseDepartmentId',
             label: '采购部门',
-            type: 'select' as const,
-            options: organizations.value
-              .filter((item) => item.tenantId === form.tenantId)
-              .map((item) => ({ label: item.organizationName, value: item.id })),
-            props: { filterable: true, clearable: true, disabled: mode.value === 'view' }
+            type: 'treeSelect' as const,
+            api: fetchEnabledOrganizationTree,
+            params: { tenantId: form.tenantId },
+            resultField: 'data',
+            labelField: 'organizationName',
+            valueField: 'id',
+            childrenField: 'children',
+            props: {
+              filterable: true,
+              clearable: true,
+              checkStrictly: true,
+              renderAfterExpand: false,
+              disabled: mode.value === 'view'
+            }
           }
         ]),
+    ...(isOtherInbound.value
+      ? [
+          {
+            key: 'businessDepartmentId',
+            label: '业务部门',
+            type: 'treeSelect' as const,
+            api: fetchEnabledOrganizationTree,
+            params: { tenantId: form.tenantId },
+            resultField: 'data',
+            labelField: 'organizationName',
+            valueField: 'id',
+            childrenField: 'children',
+            props: {
+              filterable: true,
+              clearable: true,
+              checkStrictly: true,
+              renderAfterExpand: false,
+              disabled: mode.value === 'view',
+              placeholder: '参选业务部门'
+            }
+          }
+        ]
+      : []),
     { key: 'keeperId', label: '仓管员', type: 'input', props: { disabled: mode.value === 'view' } },
     {
       key: 'warehouseId',
@@ -1510,7 +1562,9 @@
     businessDate: [{ required: true, message: '请选择业务日期', trigger: 'change' }],
     ...(isEntrustedProcessing.value
       ? { customerId: [{ required: true, message: '请选择客户', trigger: 'change' }] }
-      : { supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }] })
+      : isOtherInbound.value
+        ? {}
+        : { supplierId: [{ required: true, message: '请选择供应商', trigger: 'change' }] })
   }))
   const partyColumns = [
     { prop: 'code', label: '编码', width: 150 },
@@ -1844,7 +1898,8 @@
       supplierRows,
       customerRows,
       menuId,
-      categories
+      categories,
+      departmentRows
     ] = await Promise.all([
       fetchWmsPurchaseUnits(tenantId),
       fetchWmsPurchaseDocumentTypes(tenantId, documentTypeMenuName.value),
@@ -1853,14 +1908,24 @@
       fetchWmsPurchaseOptions('mdm_supplier', tenantId),
       fetchWmsPurchaseOptions('mdm_customer', tenantId),
       fetchWmsPurchaseMenuId(documentTypeMenuName.value),
-      fetchWmsMaterialCategories(tenantId)
+      fetchWmsMaterialCategories(tenantId),
+      isOtherInbound.value
+        ? fetchWmsPurchaseOptions('mdm_organization', tenantId)
+        : Promise.resolve([])
     ])
     units.value = unitRows
+    const isOtherReturnType = (type: WmsPurchaseOption): boolean =>
+      type.code === 'WMS_OTHER_RETURN' ||
+      businessRows.some(
+        (business) =>
+          business.stockMovement === 'outbound' &&
+          isWmsBusinessTypeAvailable(business, type.id, menuId)
+      )
     documentTypes.value =
       props.kind === 'other_return'
-        ? documentRows.filter((item) => item.code === 'WMS_OTHER_RETURN')
+        ? documentRows.filter(isOtherReturnType)
         : props.kind === 'other_inbound'
-          ? documentRows.filter((item) => item.code !== 'WMS_OTHER_RETURN')
+          ? documentRows.filter((item) => !isOtherReturnType(item))
           : documentRows
     businessTypes.value = businessRows
     businessMenuId.value = menuId
@@ -1868,8 +1933,12 @@
     suppliers.value = supplierRows
     customers.value = customerRows
     materialCategories.value = categories
+    businessDepartments.value = departmentRows
     if (!documentTypes.value.some((item) => item.id === form.documentTypeId))
-      form.documentTypeId = documentTypes.value.find((item) => item.isDefault)?.id || ''
+      form.documentTypeId =
+        documentTypes.value.find((item) => item.isDefault)?.id ||
+        (props.kind === 'other_return' ? documentTypes.value[0]?.id : '') ||
+        ''
     onDocumentTypeChange()
   }
   function onDocumentTypeChange(): void {
@@ -1900,6 +1969,7 @@
     }
     form.purchaserId = null
     form.purchaseDepartmentId = null
+    form.businessDepartmentId = null
     form.warehouseId = null
     if (orderTarget.value) {
       lines.value.forEach((line) => {
@@ -2040,7 +2110,12 @@
           ElMessage.warning(`第 ${line.lineNo} 行批次管理物料请填写期初历史批次`)
           return false
         }
-        if (!isEntrustedProcessing.value && line.projectId && !line.constructionNo?.trim()) {
+        if (
+          !isEntrustedProcessing.value &&
+          !isOtherInbound.value &&
+          line.projectId &&
+          !line.constructionNo?.trim()
+        ) {
           ElMessage.warning(`第 ${line.lineNo} 行选择项目后请填写施工号`)
           return false
         }
@@ -2082,6 +2157,7 @@
         customerId: form.customerId,
         purchaserId: form.purchaserId,
         purchaseDepartmentId: form.purchaseDepartmentId,
+        businessDepartmentId: form.businessDepartmentId,
         keeperId: form.keeperId,
         warehouseId: form.warehouseId,
         isInitialization: isInitial.value,
@@ -2158,28 +2234,42 @@
         customerCode: source?.customer?.customerCode || '',
         purchaserId: source?.purchaserId || null,
         purchaseDepartmentId: source?.purchaseDepartmentId || null,
+        businessDepartmentId: source?.businessDepartmentId || null,
         keeperId: source?.keeperId || null,
         warehouseId: source?.warehouseId || null,
         status: data.mode === 'copy' ? 'draft' : source?.status || 'draft',
         isInitialization: isInitial.value,
         remark: source?.remark || ''
       })
-      if (data.mode === 'copy' && source?.kind !== props.kind) {
+      if (source && source.kind !== props.kind) {
         form.documentTypeId = ''
         form.businessTypeId = ''
       }
       lines.value = source ? cloneDeep(source.lines) : []
+      if (data.sourceLineIds?.length) {
+        lines.value = lines.value.filter((line) => line.id && data.sourceLineIds?.includes(line.id))
+        if (!lines.value.length) throw new Error('选中的来源明细已变化，请刷新列表后重试')
+      }
+      if (data.mode === 'create' && source && props.kind === 'other_return') {
+        form.documentNo = ''
+        form.status = 'draft'
+        lines.value.forEach((line) => {
+          line.sourceDocument = source.documentNo
+          line.sourceLineNo = String(line.lineNo)
+          line.movementId = null
+        })
+      }
       if (data.mode !== 'view') {
         for (const line of lines.value) line.quantity = Math.abs(Number(line.quantity))
       }
       selectedSupplier.value = []
       selectedHeaderCustomer.value = []
-      selectedPurchaser.value = []
-      selectedKeeper.value = []
+      selectedPurchaser.value = source?.purchaser ? [source.purchaser] : []
+      selectedKeeper.value = source?.keeper ? [source.keeper] : []
       if (
         data.mode === 'create' &&
         (data.orderTargetId || data.orderTargets?.length) &&
-        ['purchase_inbound', 'other_inbound'].includes(props.kind)
+        props.kind === 'purchase_inbound'
       ) {
         const requests = data.orderTargets ?? [{ targetId: data.orderTargetId!, sourceLineIds: [] }]
         orderTargets.value = await Promise.all(
