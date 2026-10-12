@@ -676,7 +676,9 @@
     return {
       ...tableProps,
       height: height.value,
-      scrollbarAlwaysOn: false,
+      scrollbarAlwaysOn: hasExplicitTableProp('scrollbarAlwaysOn')
+        ? props.scrollbarAlwaysOn
+        : false,
       stripe: stripe.value,
       border: border.value,
       size: size.value,

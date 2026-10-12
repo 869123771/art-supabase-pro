@@ -502,7 +502,7 @@
       p {
         margin: 0;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -563,13 +563,13 @@
 
     dt {
       font-size: 11px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
 
     dd {
       margin: 4px 0 0;
       line-height: 1.5;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
   }
 

@@ -905,7 +905,7 @@
           color-mix(in srgb, var(--theme-color) 6%, transparent),
           transparent 44%
         ),
-        var(--art-main-bg-color);
+        var(--default-box-color);
       box-shadow: var(--el-box-shadow-lighter);
 
       > div:first-child {

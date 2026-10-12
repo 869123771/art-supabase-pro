@@ -101,7 +101,7 @@
       padding: 7px 9px;
       font-size: 11px;
       line-height: 16px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
       text-align: center;
       background: var(--default-box-color);
       border-top: 1px solid var(--art-card-border);
@@ -112,7 +112,7 @@
       place-items: center;
       width: 100%;
       height: 100%;
-      color: var(--art-text-gray-400);
+      color: var(--el-text-color-secondary);
       background: var(--art-gray-50);
 
       .art-svg-icon {
@@ -157,12 +157,12 @@
       .recognition-source-gallery__count {
         flex: 0 0 auto;
         font-size: 11px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       .recognition-source-gallery__missing {
         font-size: 11px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
       }
     }
   }

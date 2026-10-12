@@ -83,6 +83,7 @@ const app = createApp({
                 columns,
                 pagination: false,
                 maxHeight: 280,
+                scrollbarAlwaysOn: true,
                 showSummary: true,
                 rowKey: 'id'
               }),

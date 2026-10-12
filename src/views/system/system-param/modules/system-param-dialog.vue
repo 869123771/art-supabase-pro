@@ -614,7 +614,7 @@
         margin: 0;
         font-size: 12px;
         line-height: 1.6;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -678,14 +678,14 @@
       dt {
         margin-bottom: 5px;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       dd {
         min-width: 0;
         margin: 0 0 12px;
         font-size: 13px;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
         overflow-wrap: anywhere;
 
         .el-tag {
@@ -719,7 +719,7 @@
         margin-bottom: 10px;
         font-size: 12px;
         line-height: 1.7;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
     }
 

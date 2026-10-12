@@ -881,7 +881,7 @@
         display: block;
         margin: 8px 0 6px;
         font-size: 16px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -939,7 +939,7 @@
       height: 34px;
       padding: 0 8px;
       font-size: 14px;
-      color: var(--art-text-gray-700);
+      color: var(--el-text-color-regular);
       text-align: left;
       cursor: pointer;
       background: transparent;
@@ -968,7 +968,7 @@
         display: block;
         margin-bottom: 8px;
         font-size: 13px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -1056,7 +1056,7 @@
         display: block;
         margin-bottom: 4px;
         font-size: 14px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -1087,7 +1087,7 @@
 
       strong {
         font-size: 14px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
     }
 
@@ -1118,7 +1118,7 @@
 
       strong {
         font-size: 15px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
     }
 

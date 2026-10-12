@@ -99,7 +99,9 @@ for (const state of ['owned', 'hover', 'no-view', 'revoked', 'failed', 'clear'])
           )
         }
       })
-      await expect(more.locator('xpath=ancestor::div[contains(@class,"art-button-more")]')).toHaveAttribute('data-trigger', 'hover')
+      await expect(
+        more.locator('xpath=ancestor::div[contains(@class,"art-button-more")]')
+      ).toHaveAttribute('data-trigger', 'hover')
       await more.hover()
       console.log(
         await more.evaluate((element) => {

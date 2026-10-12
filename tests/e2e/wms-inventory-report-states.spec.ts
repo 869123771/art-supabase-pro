@@ -4,6 +4,8 @@ import { mockApplicationMenus } from './support/menu-rpc'
 import { expectInputTextUnclipped } from './support/input-text-width'
 import { prepareAppearance } from './support/appearance'
 
+test.describe.configure({ timeout: 240_000 })
+
 const scenarios = [
   ['stock', 'stock', 'WmsStock', '即时库存'],
   ['movement', 'inventory-ledger', 'WmsInventoryLedger', '库存流水'],
@@ -101,9 +103,15 @@ for (const authority of ['super', 'ordinary'] as const) {
         inbound_quantity: 1,
         outbound_quantity: 0,
         closing_quantity: 1,
-        document_type: 'purchase_in',
+        document_type:
+          kind === 'movement' || kind === 'receipt-issue' ? 'sales_out' : 'purchase_in',
         document_status: kind === 'stock' ? null : kind === 'ledger' ? '汇总' : '已过账',
-        document_no: 'TEST-PURCHASE-001'
+        document_no:
+          kind === 'movement' || kind === 'receipt-issue' ? 'TEST-SALES-001' : 'TEST-PURCHASE-001',
+        source_document_id:
+          kind === 'movement' || kind === 'receipt-issue' ? 'sales-source-test' : null,
+        source_document_kind: kind === 'movement' || kind === 'receipt-issue' ? 'outbound' : null,
+        source_line_no: kind === 'movement' || kind === 'receipt-issue' ? 10 : null
       }
       await page.route('**/rest/v1/rpc/wms_inventory_report_secure', (route) => {
         requests.push(route.request().postDataJSON())
@@ -201,6 +209,18 @@ for (const authority of ['super', 'ordinary'] as const) {
       const header = page.locator('.business-workspace-header')
       const table = page.locator('.art-table-query')
       await expect(page.getByText('TEST-MAT', { exact: true })).toBeVisible({ timeout: 45_000 })
+      if (kind === 'movement' || kind === 'receipt-issue') {
+        const link = table.getByRole('link', { name: 'TEST-SALES-001', exact: true }).first()
+        if (authority === 'super') {
+          await expect(link).toHaveAttribute('href', /sales-outbound\?documentId=sales-source-test/)
+          await link.scrollIntoViewIfNeeded()
+          await page.screenshot({
+            path: testInfo.outputPath('report-source-link.png'),
+            animations: 'disabled'
+          })
+        } else await expect(link).toHaveCount(0)
+        await expect(table.getByText('业务明细行号', { exact: true })).toBeAttached()
+      }
       if (kind !== 'stock') {
         const status = table
           .locator('.el-table__body tr')

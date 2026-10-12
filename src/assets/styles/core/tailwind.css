@@ -20,7 +20,8 @@
   --theme-color: var(--main-color);
 
   /* Theme Colors */
-  --art-primary: #635bff;
+  --art-primary: var(--theme-color);
+  --art-primary-text: color-mix(in srgb, var(--theme-color) 65%, #000);
   --art-secondary: #0ea5e9;
 
   /* Share semantic colors with Element Plus in both light and dark themes. */
@@ -123,6 +124,7 @@
 .dark {
   /* Base Colors */
   --art-color: #000;
+  --art-primary-text: color-mix(in srgb, var(--theme-color) 70%, #fff);
 
   /* Gray Scale - Dark Mode */
   --art-gray-100: #110f0f;

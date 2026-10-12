@@ -1,5 +1,6 @@
 import { createApp, h, ref } from 'vue'
 import ArtMenuRight from '@/components/core/others/art-menu-right/index.vue'
+import 'element-plus/theme-chalk/src/index.scss'
 import '@/assets/styles/core/tailwind.css'
 import '@/assets/styles/index.scss'
 

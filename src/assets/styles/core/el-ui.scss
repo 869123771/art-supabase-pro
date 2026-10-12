@@ -4,7 +4,6 @@
   // 系统主色
   --main-color: var(--el-color-primary);
   --el-color-white: white !important;
-  --el-color-black: white !important;
   // 输入框边框颜色
   // --el-border-color: #E4E4E7 !important; // DCDFE6
   // 按钮粗度
@@ -899,22 +898,6 @@ html.dark .el-card {
       height: 34px !important;
       line-height: 34px !important;
       border-radius: 6px !important;
-
-      &.is-selected {
-        margin-bottom: 4px !important;
-        font-weight: 400 !important;
-        color: var(--art-gray-900) !important;
-        background-color: var(--art-el-active-color) !important;
-      }
-
-      &:hover {
-        background-color: var(--art-hover-color) !important;
-      }
-    }
-
-    .el-select-dropdown__item:hover ~ .is-selected,
-    .el-select-dropdown__item.is-selected:has(~ .el-select-dropdown__item:hover) {
-      background-color: transparent !important;
     }
   }
 }
@@ -979,4 +962,13 @@ html.dark .el-card {
   .el-input-number__increase {
     height: calc((var(--el-component-size) / 2)) !important;
   }
+}
+
+// 图片预览控件使用独立的深色工具表面，保持深浅主题中的图标对比度。
+.el-image-viewer__actions,
+.el-image-viewer__close,
+.el-image-viewer__prev,
+.el-image-viewer__next {
+  color: var(--el-color-white);
+  background-color: #32343a;
 }

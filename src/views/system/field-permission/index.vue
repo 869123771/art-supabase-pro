@@ -807,11 +807,7 @@
 </script>
 
 <style scoped lang="scss">
-  @use '@/assets/styles/core/ai-surface-mixins' as aiSurface;
-
   .field-permission-page {
-    @include aiSurface.text-hierarchy;
-
     gap: 14px;
     min-width: 0;
     overflow: visible;
@@ -839,7 +835,7 @@
         margin: 6px 0 0;
         font-size: 12px;
         line-height: 1.55;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -895,7 +891,7 @@
       > span {
         font-size: 12px;
         font-weight: 600;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -918,7 +914,7 @@
         > span {
           font-size: 12px;
           font-weight: 600;
-          color: var(--art-text-gray-600);
+          color: var(--el-text-color-secondary);
         }
       }
     }
@@ -954,7 +950,7 @@
       p {
         margin: 2px 0 0;
         font-size: 12px;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -962,7 +958,7 @@
       display: inline-flex;
       gap: 6px;
       align-items: center;
-      color: var(--art-text-gray-700) !important;
+      color: var(--el-text-color-regular) !important;
 
       :deep(.art-svg-icon) {
         color: var(--el-color-primary);
@@ -988,14 +984,14 @@
         display: block;
         font-size: 13px;
         font-weight: 600;
-        color: var(--art-text-gray-700);
+        color: var(--el-text-color-regular);
       }
 
       p {
         margin: 2px 0 0;
         font-size: 12px;
         line-height: 1.5;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -1025,7 +1021,7 @@
     }
 
     &__policy-level {
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       background: var(--default-box-color);
       box-shadow: inset 0 0 0 1px var(--el-border-color-lighter);
     }
@@ -1055,7 +1051,7 @@
       strong {
         font-size: 16px;
         font-weight: 650;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
 
       span {
@@ -1141,7 +1137,7 @@
         width: 30px;
         height: 30px;
         font-size: 15px;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
         background: color-mix(in srgb, var(--default-box-color) 82%, transparent);
         border-radius: 9px;
       }
@@ -1152,7 +1148,7 @@
         text-overflow: ellipsis;
         font-size: 12px;
         font-weight: 600;
-        color: var(--art-text-gray-700);
+        color: var(--el-text-color-regular);
         white-space: nowrap;
       }
 
@@ -1162,7 +1158,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 11px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -1182,7 +1178,7 @@
       span {
         font-size: 10px;
         font-weight: 700;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
         letter-spacing: 0.08em;
       }
     }
@@ -1254,7 +1250,7 @@
       strong {
         font-size: 13px;
         font-weight: 600;
-        color: var(--art-text-gray-700);
+        color: var(--el-text-color-regular);
       }
 
       code {
@@ -1263,7 +1259,7 @@
         padding: 2px 6px;
         margin-top: 4px;
         font-size: 11px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         background: color-mix(in srgb, var(--el-fill-color) 68%, transparent);
         border-radius: 5px;
       }
@@ -1314,7 +1310,7 @@
       min-height: 24px;
       padding: 2px 7px;
       font-size: 12px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
       background: color-mix(in srgb, var(--el-fill-color) 74%, transparent);
       border-radius: 999px;
     }
@@ -1341,7 +1337,7 @@
 
       > span {
         font-size: 10px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
       }
 
       b {
@@ -1394,7 +1390,7 @@
         margin: 4px 0 0;
         font-size: 12px;
         line-height: 1.55;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -1407,7 +1403,7 @@
       padding: 3px 9px;
       font-size: 12px;
       font-weight: 600;
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       white-space: nowrap;
       background: var(--art-gray-100);
       border-radius: 999px;
@@ -1435,7 +1431,7 @@
         > time {
           padding-top: 2px;
           font-size: 11px;
-          color: var(--art-text-gray-500);
+          color: var(--el-text-color-secondary);
           white-space: nowrap;
         }
       }
@@ -1465,13 +1461,13 @@
 
       strong {
         font-weight: 600;
-        color: var(--art-text-gray-700);
+        color: var(--el-text-color-regular);
       }
 
       span,
       p {
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       p {
@@ -1513,7 +1509,7 @@
       p {
         margin: 2px 0 0;
         font-size: 12px;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -1546,7 +1542,7 @@
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
 
@@ -1555,13 +1551,13 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
 
     &__readonly-state {
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       background: var(--art-gray-100);
       box-shadow: inset 0 0 0 1px var(--el-border-color-lighter);
     }

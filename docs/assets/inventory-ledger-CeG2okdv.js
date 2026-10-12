@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./inventory-report-workspace-PP1nGqPk.js";var i=t({name:`WmsInventoryLedger`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`movement`}))}});export{i as default};

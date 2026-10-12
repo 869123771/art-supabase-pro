@@ -1,4 +1,4 @@
-import { createApp, h } from 'vue'
+import { createApp, h, KeepAlive, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { store } from '@/store'
 import language from '@/locales'
@@ -17,10 +17,29 @@ const kinds: WmsInventoryReportKind[] = ['stock', 'movement', 'ledger', 'receipt
 const params = new URLSearchParams(location.search)
 const requested = params.get('kind')
 const kind = kinds.find((value) => value === requested) || 'stock'
+const cached = params.get('cached') === 'true'
+const active = ref(true)
 document.documentElement.style.setProperty('--art-full-height', 'calc(100vh - 32px)')
 const app = createApp({
   render: () =>
-    h('main', { class: 'art-page-view', style: { padding: '16px' } }, h(Workspace, { kind }))
+    h('main', { class: 'art-page-view', style: { padding: '16px' } }, [
+      ...(cached
+        ? [
+            h(
+              'button',
+              {
+                onClick: () => {
+                  active.value = !active.value
+                }
+              },
+              active.value ? '前往出库作业' : '返回库存报表'
+            )
+          ]
+        : []),
+      cached
+        ? h(KeepAlive, null, { default: () => (active.value ? h(Workspace, { kind }) : null) })
+        : h(Workspace, { kind })
+    ])
 })
 app.use(store)
 const settings = useSettingStore(store)
@@ -28,7 +47,15 @@ document.documentElement.dataset.boxMode = settings.boxBorderMode ? 'border-mode
 document.documentElement.classList.toggle('dark', settings.isDark)
 initializeTheme()
 app.use(language)
-app.use(createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: {} }] }))
+app.use(
+  createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: {} },
+      { path: '/wms/outbound-business/sales-outbound', component: {} }
+    ]
+  })
+)
 setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'inventory-report-test',

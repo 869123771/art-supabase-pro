@@ -55,7 +55,12 @@ import { useSettingStore } from '@/store/modules/setting'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
 import { h, render, type WatchSource } from 'vue'
-import { useEventListener, usePreferredReducedMotion, useResizeObserver } from '@vueuse/core'
+import {
+  useEventListener,
+  useIntersectionObserver,
+  usePreferredReducedMotion,
+  useResizeObserver
+} from '@vueuse/core'
 import { debounce } from 'lodash-es'
 import type { SeriesOption } from 'echarts'
 
@@ -126,7 +131,6 @@ export function useChart(options: UseChartOptions = {}) {
   watch(prefersReducedMotion, () => {
     if (latestOptions && !emptyStateDiv && !isDestroyed) applyChartOptions(latestOptions)
   })
-  let intersectionObserver: IntersectionObserver | null = null
   let pendingOptions: EChartsOption | null = null
   let resizeFrameId: number | null = null
   let initTimerId: number | null = null
@@ -442,51 +446,37 @@ export function useChart(options: UseChartOptions = {}) {
     }
   }
 
-  // 创建IntersectionObserver
-  const createIntersectionObserver = () => {
-    if (intersectionObserver || !chartRef.value) return
+  const intersectionObserver = useIntersectionObserver(
+    chartRef,
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && pendingOptions && !isDestroyed) {
+          // 使用 requestAnimationFrame 确保在下一帧初始化图表
+          scheduleFrame(() => {
+            if (!isDestroyed && pendingOptions) {
+              try {
+                // 元素变为可见，初始化图表
+                const visibleOptions = pendingOptions
+                performChartInit(visibleOptions)
 
-    intersectionObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && pendingOptions && !isDestroyed) {
-            // 使用 requestAnimationFrame 确保在下一帧初始化图表
-            scheduleFrame(() => {
-              if (!isDestroyed && pendingOptions) {
-                try {
-                  // 元素变为可见，初始化图表
-                  const visibleOptions = pendingOptions
-                  performChartInit(visibleOptions)
+                // 触发自定义事件，让组件处理动画逻辑
+                const event = new CustomEvent('chartVisible', {
+                  detail: { options: visibleOptions }
+                })
+                entry.target.dispatchEvent(event)
 
-                  // 触发自定义事件，让组件处理动画逻辑
-                  const event = new CustomEvent('chartVisible', {
-                    detail: { options: visibleOptions }
-                  })
-                  entry.target.dispatchEvent(event)
-
-                  pendingOptions = null
-                  cleanupIntersectionObserver()
-                } catch (error) {
-                  console.error('图表初始化失败:', error)
-                }
+                pendingOptions = null
+                intersectionObserver.pause()
+              } catch (error) {
+                console.error('图表初始化失败:', error)
               }
-            })
-          }
-        })
-      },
-      { threshold }
-    )
-
-    intersectionObserver.observe(chartRef.value)
-  }
-
-  // 清理IntersectionObserver
-  const cleanupIntersectionObserver = () => {
-    if (intersectionObserver) {
-      intersectionObserver.disconnect()
-      intersectionObserver = null
-    }
-  }
+            }
+          })
+        }
+      })
+    },
+    { threshold, immediate: false }
+  )
 
   // 检查容器是否可见
   const isContainerVisible = (element: HTMLElement): boolean => {
@@ -512,6 +502,7 @@ export function useChart(options: UseChartOptions = {}) {
   const emptyStateManager = {
     create: () => {
       pendingOptions = null
+      intersectionObserver.pause()
       if (initTimerId !== null) {
         clearTimeout(initTimerId)
         initTimerId = null
@@ -565,6 +556,7 @@ export function useChart(options: UseChartOptions = {}) {
       }
 
       if (isContainerVisible(chartRef.value)) {
+        intersectionObserver.pause()
         // 容器可见，正常初始化
         if (initDelay > 0) {
           if (initTimerId !== null) {
@@ -580,7 +572,7 @@ export function useChart(options: UseChartOptions = {}) {
       } else {
         // 容器不可见，保存选项并设置监听器
         pendingOptions = mergedOptions
-        createIntersectionObserver()
+        intersectionObserver.resume()
       }
     } catch (error) {
       console.error('图表初始化失败:', error)
@@ -632,7 +624,7 @@ export function useChart(options: UseChartOptions = {}) {
     cleanupMenuWatchers()
     cleanupThemeWatcher()
     emptyStateManager.remove()
-    cleanupIntersectionObserver()
+    intersectionObserver.stop()
     stopWindowResize()
     stopContainerResize()
     clearTimers()

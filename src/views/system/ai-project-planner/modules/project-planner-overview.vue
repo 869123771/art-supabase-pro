@@ -187,7 +187,7 @@
       padding: 18px 20px;
       background:
         radial-gradient(circle at 78% 0%, rgb(99 102 241 / 10%), transparent 34%),
-        linear-gradient(110deg, var(--el-color-primary-light-9), var(--art-main-bg-color) 46%);
+        linear-gradient(110deg, var(--el-color-primary-light-9), var(--default-box-color) 46%);
       border-color: var(--el-color-primary-light-8);
     }
 
@@ -216,7 +216,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 15px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
 
@@ -225,7 +225,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -265,12 +265,12 @@
 
       span {
         font-size: 11px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
       }
 
       strong {
         font-size: 13px;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
     }
 

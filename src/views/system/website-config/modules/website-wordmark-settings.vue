@@ -197,7 +197,7 @@
       strong {
         display: block;
         margin-bottom: var(--art-space-1);
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -288,7 +288,7 @@
 
       strong {
         font-size: 14px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       span {

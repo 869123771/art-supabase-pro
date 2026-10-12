@@ -711,13 +711,13 @@
     }
 
     strong {
-      color: var(--art-text-gray-900);
+      color: var(--el-text-color-primary);
     }
 
     code {
       margin-top: 3px;
       font-size: 11px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
   }
 
@@ -749,13 +749,13 @@
 
     small {
       margin-top: 3px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
   }
 
   :deep(.number-rule-template) {
     code {
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
 
     span {
@@ -767,7 +767,7 @@
 
   :deep(.number-rule-menu) {
     strong {
-      color: var(--art-text-gray-900);
+      color: var(--el-text-color-primary);
     }
 
     small {

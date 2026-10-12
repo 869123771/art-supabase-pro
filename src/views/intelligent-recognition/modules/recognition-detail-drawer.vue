@@ -363,7 +363,7 @@
       gap: 16px;
       align-items: center;
       padding: 16px;
-      background: color-mix(in srgb, var(--theme-color) 4%, var(--art-main-bg-color));
+      background: color-mix(in srgb, var(--theme-color) 4%, var(--default-box-color));
       border: 1px solid color-mix(in srgb, var(--theme-color) 12%, var(--art-card-border));
       border-radius: var(--custom-radius);
       animation: recognition-detail-panel-in var(--art-motion-duration-slow)
@@ -395,7 +395,7 @@
       span {
         margin-top: -13px;
         font-size: 10px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       &.is-high {
@@ -421,14 +421,14 @@
 
       h3 {
         margin: 9px 0 4px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
         margin: 0;
         font-size: 12px;
         line-height: 1.6;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -467,7 +467,7 @@
 
       span {
         font-size: 10px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       strong {
@@ -475,7 +475,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 12px;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
 
@@ -549,7 +549,7 @@
       place-items: center;
       width: 32px;
       height: 32px;
-      color: var(--art-text-gray-400);
+      color: var(--el-text-color-secondary);
       background: var(--default-box-color);
       border: 1px solid var(--art-card-border);
       border-radius: 50%;
@@ -569,7 +569,7 @@
       }
 
       .is-stopped & {
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
         background: var(--art-gray-100);
       }
     }
@@ -585,7 +585,7 @@
       strong {
         font-size: 13px;
         line-height: 18px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       span {
@@ -594,7 +594,7 @@
         text-overflow: ellipsis;
         font-size: 11px;
         line-height: 16px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -604,7 +604,7 @@
       padding: 3px 7px;
       font-size: 10px;
       line-height: 16px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
       text-align: center;
       white-space: nowrap;
       background: var(--art-gray-100);
@@ -662,20 +662,20 @@
 
       span {
         font-size: 11px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       strong {
         margin: 4px 0;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
 
       small {
         font-size: 11px;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
 
       small.is-high {

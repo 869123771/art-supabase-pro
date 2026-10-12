@@ -20,7 +20,7 @@
               <button
                 type="button"
                 role="menuitem"
-                class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
+                class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150"
                 :style="menuItemStyle"
                 :disabled="item.disabled"
                 @click="handleMenuClick(item)"
@@ -44,7 +44,7 @@
                 type="button"
                 role="menuitem"
                 aria-haspopup="menu"
-                class="menu-item submenu-title art-icon-label w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
+                class="menu-item submenu-title art-icon-label w-full c-p select-none rounded text-sm transition-colors duration-150"
                 :style="menuItemStyle"
               >
                 <ArtSvgIcon
@@ -78,7 +78,7 @@
                   <button
                     type="button"
                     role="menuitem"
-                    class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150 hover:bg-g-200"
+                    class="menu-item art-icon-label relative w-full c-p select-none rounded text-sm transition-colors duration-150"
                     :style="menuItemStyle"
                     :disabled="child.disabled"
                     @click="handleMenuClick(child)"
@@ -344,6 +344,10 @@
     text-align: left;
     background: transparent;
     border: 0;
+
+    &:hover:not(:disabled) {
+      background: var(--art-hover-color);
+    }
 
     &:focus-visible {
       color: var(--theme-color);

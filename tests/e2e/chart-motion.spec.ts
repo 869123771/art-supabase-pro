@@ -2,6 +2,52 @@ import { expect, test } from '@playwright/test'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+test('隐藏图表清空后释放可见性监听，重新加载可恢复，销毁后不再初始化', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeObserver = window.IntersectionObserver
+    const targets = new Map<IntersectionObserver, Set<Element>>()
+    const report = () => {
+      document.documentElement.dataset.intersectionTargets = String(
+        Array.from(targets.values()).reduce((count, elements) => count + elements.size, 0)
+      )
+    }
+    window.IntersectionObserver = class extends NativeObserver {
+      observe(element: Element) {
+        super.observe(element)
+        const elements = targets.get(this) ?? new Set<Element>()
+        elements.add(element)
+        targets.set(this, elements)
+        report()
+      }
+      unobserve(element: Element) {
+        super.unobserve(element)
+        targets.get(this)?.delete(element)
+        report()
+      }
+      disconnect() {
+        super.disconnect()
+        targets.delete(this)
+        report()
+      }
+    }
+  })
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/tests/e2e/fixtures/chart-motion.html?kind=hidden')
+  await expect(page.locator('html')).toHaveAttribute('data-intersection-targets', '1')
+  await page.getByRole('button', { name: '清空统计' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-intersection-targets', '0')
+  await page.getByRole('button', { name: '更新统计', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-intersection-targets', '1')
+  await page.getByRole('button', { name: '销毁图表', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-intersection-targets', '0')
+  await page.getByRole('button', { name: '显示图表' }).click()
+  await page.getByRole('button', { name: '更新统计', exact: true }).click()
+  await expect(page.locator('canvas')).toHaveCount(0)
+  await expect(page.locator('html')).toHaveAttribute('data-intersection-targets', '0')
+  expect(errors).toEqual([])
+})
+
 test('主动销毁图表同时释放窗口尺寸监听，销毁前尺寸正常更新', async ({ page }) => {
   await page.addInitScript(() => {
     const listeners = new Set<EventListenerOrEventListenerObject>()

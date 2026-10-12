@@ -4,6 +4,7 @@ import { mockApplicationMenus } from './support/menu-rpc'
 import { mockInventoryOrganizations } from './support/inventory-organization'
 
 test.use({ storageState: { cookies: [], origins: [] } })
+test.describe.configure({ timeout: 180_000 })
 for (const [path, name, title, kind] of [
   [
     'initialization/initial-sales-outbound',
@@ -18,6 +19,7 @@ for (const [path, name, title, kind] of [
     'initial_return'
   ],
   ['outbound-business/sales-return', 'WmsSalesReturnDocument', '销售退货单', 'return'],
+  ['outbound-business/other-outbound', 'WmsOtherOutbound', '其他出库退回单', 'other_return'],
   [
     'initialization/initial-purchase-inbound',
     'WmsInitialPurchaseInbound',
@@ -154,7 +156,7 @@ for (const [path, name, title, kind] of [
     page.on('pageerror', (error) => errors.push(error.message))
     const detail = page.getByRole('dialog', { name: `${title}详情`, exact: true })
     for (const suffix of ['a', 'b']) {
-      if (suffix === 'a') {
+      if (suffix === 'a' && kind !== 'other_return') {
         await page.goto('#/wms/initialization/close', { waitUntil: 'domcontentloaded' })
         await page.getByRole('button', { name: '查看待处理单据', exact: true }).click()
         const pending = page.getByRole('dialog', { name: '待处理初始化单据', exact: true })

@@ -552,13 +552,13 @@
       strong {
         margin-bottom: 2px;
         font-size: 13px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       span {
         font-size: 12px;
         line-height: 1.5;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         overflow-wrap: anywhere;
       }
 
@@ -596,11 +596,11 @@
       }
 
       span {
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
 
       small {
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -621,7 +621,7 @@
       overflow: hidden;
       -webkit-line-clamp: 2;
       line-height: 1.65;
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       overflow-wrap: anywhere;
       white-space: normal;
       -webkit-box-orient: vertical;
@@ -633,12 +633,12 @@
       strong {
         font-size: 12px;
         font-weight: 500;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
 
       small {
         display: block;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
   }

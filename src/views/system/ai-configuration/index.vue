@@ -370,7 +370,7 @@
       min-width: 0;
       min-height: 54px;
       padding: 10px 16px;
-      background: color-mix(in srgb, var(--art-main-bg-color) 96%, var(--el-color-warning));
+      background: color-mix(in srgb, var(--default-box-color) 96%, var(--el-color-warning));
 
       > div {
         gap: 12px;

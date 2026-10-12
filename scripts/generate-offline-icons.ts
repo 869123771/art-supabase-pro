@@ -64,7 +64,9 @@ const generated = `${JSON.stringify(collections, null, 2)}\n`
 
 if (process.argv.includes('--check')) {
   const current = await readFile(outputPath, 'utf8')
-  if (current !== generated) throw new Error('本地图标数据已过期，请运行 pnpm icons:generate')
+  if (current.replaceAll('\r\n', '\n') !== generated) {
+    throw new Error('本地图标数据已过期，请运行 pnpm icons:generate')
+  }
 } else {
   await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, generated)

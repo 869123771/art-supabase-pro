@@ -479,7 +479,7 @@
     gap: 12px;
     min-height: 0;
     overflow: hidden;
-    background: var(--art-main-bg-color);
+    background: var(--default-box-color);
 
     &__stats {
       padding: 7px;

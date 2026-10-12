@@ -137,7 +137,7 @@
   const themeClasses = computed(() => {
     const themeMap: Record<ThemeType, string> = {
       theme: 'text-theme/90 !border-theme/50',
-      primary: 'text-primary/90 !border-primary/50',
+      primary: 'text-[var(--art-primary-text)] !border-primary/50',
       secondary: 'text-secondary/90 !border-secondary/50',
       error: 'text-error/90 !border-error/50',
       info: 'text-info/90 !border-info/50',

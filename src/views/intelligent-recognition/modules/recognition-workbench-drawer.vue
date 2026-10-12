@@ -312,14 +312,14 @@
       h3 {
         margin: 5px 0 4px;
         font-size: 16px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
         margin: 0;
         font-size: 11px;
         line-height: 1.55;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -354,7 +354,7 @@
         }
 
         &.is-active {
-          background: color-mix(in srgb, var(--theme-color) 7%, var(--art-main-bg-color));
+          background: color-mix(in srgb, var(--theme-color) 7%, var(--default-box-color));
           border-color: color-mix(in srgb, var(--theme-color) 42%, transparent);
         }
 
@@ -371,7 +371,7 @@
       width: 36px;
       height: 36px;
       font-size: 18px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
       background: var(--art-gray-50);
       border-radius: calc(var(--el-border-radius-base) - 1px);
       transition:
@@ -391,7 +391,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 13px;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
       white-space: nowrap;
     }
 
@@ -400,14 +400,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 10px;
-      color: var(--art-text-gray-400);
+      color: var(--el-text-color-secondary);
       white-space: nowrap;
     }
 
     &__scene-state {
       justify-self: center;
       font-size: 16px;
-      color: var(--art-text-gray-400);
+      color: var(--el-text-color-secondary);
       transition:
         color var(--art-motion-duration-fast) var(--art-motion-ease-out),
         transform var(--art-motion-duration-base) var(--art-motion-ease-out);
@@ -434,7 +434,7 @@
       align-items: flex-start;
       padding: 12px;
       margin-top: auto;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
       background: var(--art-gray-50);
       border-radius: var(--el-border-radius-base);
 
@@ -453,7 +453,7 @@
       strong {
         margin-bottom: 3px;
         font-size: 11px;
-        color: var(--art-text-gray-700);
+        color: var(--el-text-color-regular);
       }
 
       span {
@@ -506,14 +506,14 @@
 
       > span {
         font-size: 10px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
       }
 
       h2 {
         margin: 2px 0 3px;
         font-size: 17px;
         line-height: 1.3;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -522,7 +522,7 @@
         text-overflow: ellipsis;
         font-size: 11px;
         line-height: 1.5;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
       }
     }
@@ -535,7 +535,7 @@
 
       small {
         font-size: 10px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -574,7 +574,7 @@
       h3 {
         margin: 4px 0 6px;
         font-size: 17px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
@@ -582,7 +582,7 @@
         margin: 0;
         font-size: 12px;
         line-height: 1.7;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -631,14 +631,14 @@
 
         strong {
           font-size: 11px;
-          color: var(--art-text-gray-700);
+          color: var(--el-text-color-regular);
         }
 
         small {
           margin-top: 4px;
           font-size: 10px;
           line-height: 1.5;
-          color: var(--art-text-gray-400);
+          color: var(--el-text-color-secondary);
         }
       }
     }
@@ -658,7 +658,7 @@
         max-width: 500px;
         font-size: 10px;
         line-height: 1.55;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
 
         svg {
           flex: 0 0 auto;
@@ -680,7 +680,7 @@
         gap: 6px;
         align-items: center;
         font-size: 11px;
-        color: var(--art-text-gray-400);
+        color: var(--el-text-color-secondary);
 
         svg {
           flex: 0 0 auto;

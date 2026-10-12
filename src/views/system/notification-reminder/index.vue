@@ -810,7 +810,7 @@
       min-height: 28px;
       padding: 4px 10px;
       font-size: 12px;
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       white-space: nowrap;
       background: var(--art-gray-100);
       border-radius: 999px;
@@ -818,7 +818,7 @@
       b {
         font-size: 14px;
         font-variant-numeric: tabular-nums;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
 
       &.is-success {
@@ -950,7 +950,7 @@
         padding: 3px 8px;
         font-size: 12px;
         font-weight: 600;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
         white-space: nowrap;
         background: var(--art-gray-100);
         border-radius: 999px;

@@ -352,7 +352,7 @@
         margin: 0;
         font-size: 12px;
         line-height: 1.6;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -371,7 +371,7 @@
         display: block;
         margin-bottom: 4px;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       strong,
@@ -380,7 +380,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-size: 13px;
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
     }
@@ -448,7 +448,7 @@
 
       dt {
         font-size: 11px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
 
       dd {
@@ -457,7 +457,7 @@
         text-overflow: ellipsis;
         font-size: 12px;
         font-weight: 600;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
         white-space: nowrap;
       }
     }
@@ -472,7 +472,7 @@
         margin-bottom: 9px;
         font-size: 12px;
         line-height: 1.65;
-        color: var(--art-text-gray-600);
+        color: var(--el-text-color-secondary);
       }
     }
   }

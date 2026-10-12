@@ -1583,7 +1583,7 @@
     }
 
     &.is-expanded {
-      background: var(--art-main-bg-color);
+      background: var(--default-box-color);
 
       .art-ai-assistant__conversation {
         max-width: 980px;

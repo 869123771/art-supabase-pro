@@ -382,14 +382,14 @@
     strong {
       font-size: 13px;
       line-height: 16px;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
 
     span {
       margin-top: 1px;
       font-size: 11px;
       line-height: 15px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
   }
 
@@ -454,14 +454,14 @@
     }
 
     strong {
-      color: var(--art-text-gray-900);
+      color: var(--el-text-color-primary);
     }
 
     small {
       max-width: 176px;
       margin-top: 2px;
       font-size: 10px;
-      color: var(--art-text-gray-400);
+      color: var(--el-text-color-secondary);
     }
   }
 
@@ -470,7 +470,7 @@
       display: block;
       margin-bottom: 5px;
       font-size: 12px;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
   }
 
@@ -487,7 +487,7 @@
       display: block;
       margin-top: 4px;
       font-size: 10px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
 
     .el-tag {
@@ -508,13 +508,13 @@
 
     strong {
       font-size: 12px;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
 
     small {
       margin-top: 3px;
       font-size: 10px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
     }
   }
 

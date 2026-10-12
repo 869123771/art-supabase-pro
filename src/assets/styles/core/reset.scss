@@ -13,7 +13,7 @@ html.dark {
 /* 滚动条整体部分,必须要设置 */
 ::-webkit-scrollbar {
   width: 8px !important;
-  height: 0 !important;
+  height: 8px !important;
 }
 
 /* 滚动条的轨道 */

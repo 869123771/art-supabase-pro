@@ -287,8 +287,16 @@
   margin: 0 !important;
   overflow: hidden;
   background-image:
-    radial-gradient(circle at 16% 8%, rgb(34 211 238 / 13%), transparent 29%),
-    radial-gradient(circle at 88% 92%, rgb(99 91 255 / 13%), transparent 32%),
+    radial-gradient(
+      circle at 16% 8%,
+      color-mix(in srgb, var(--theme-color) 13%, transparent),
+      transparent 29%
+    ),
+    radial-gradient(
+      circle at 88% 92%,
+      color-mix(in srgb, var(--theme-color) 13%, transparent),
+      transparent 32%
+    ),
     linear-gradient(145deg, rgb(255 255 255 / 42%), transparent 62%);
   isolation: isolate;
   backdrop-filter: blur(18px);
@@ -304,8 +312,15 @@
     inset: 0;
     z-index: -2;
     background-image:
-      linear-gradient(rgb(99 91 255 / 4.5%) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(99 91 255 / 4.5%) 1px, transparent 1px);
+      linear-gradient(
+        color-mix(in srgb, var(--theme-color) 4.5%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--theme-color) 4.5%, transparent) 1px,
+        transparent 1px
+      );
     background-size: 48px 48px;
     mask-image: radial-gradient(circle at center, #000 0%, transparent 70%);
   }
@@ -316,11 +331,11 @@
     z-index: -1;
     width: min(54vw, 680px);
     aspect-ratio: 1;
-    border: 1px solid rgb(99 91 255 / 7%);
+    border: 1px solid color-mix(in srgb, var(--theme-color) 7%, transparent);
     border-radius: 50%;
     box-shadow:
-      0 0 0 68px rgb(99 91 255 / 2.8%),
-      0 0 0 136px rgb(99 91 255 / 1.8%);
+      0 0 0 68px color-mix(in srgb, var(--theme-color) 2.8%, transparent),
+      0 0 0 136px color-mix(in srgb, var(--theme-color) 1.8%, transparent);
     transform: translate(-50%, -50%);
   }
 
@@ -334,9 +349,9 @@
     width: min(420px, calc(100vw - 48px));
     padding: 34px 28px 31px;
     margin: 0 !important;
-    color: #4338ca;
-    background: rgb(255 255 255 / 68%);
-    border: 1px solid rgb(99 91 255 / 11%);
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--default-box-color) 85%, transparent);
+    border: 1px solid color-mix(in srgb, var(--theme-color) 11%, transparent);
     border-radius: var(--art-feature-radius, 24px);
     box-shadow:
       0 28px 70px rgb(42 45 94 / 12%),
@@ -349,7 +364,7 @@
       margin-bottom: 18px;
       font-size: 10px;
       font-weight: 750;
-      color: #635bff;
+      color: var(--art-primary-text);
       letter-spacing: 1.8px;
       content: 'TRANSPORT OPERATIONS CLOUD';
     }
@@ -363,9 +378,9 @@
       background: linear-gradient(
         90deg,
         transparent,
-        #8b5cf6 24%,
-        #087bff 58%,
-        #22d3ee 76%,
+        var(--theme-color) 24%,
+        var(--theme-color) 58%,
+        color-mix(in srgb, var(--theme-color) 65%, var(--default-box-color)) 76%,
         transparent
       );
       background-size: 220% 100%;
@@ -378,7 +393,7 @@
     order: 1;
     width: 96px;
     height: 96px;
-    color: #635bff;
+    color: var(--theme-color);
   }
 
   .el-loading-text {
@@ -390,7 +405,7 @@
     font-size: 18px;
     font-weight: 750;
     line-height: 1.4;
-    color: #22244a;
+    color: var(--el-text-color-primary);
     text-align: center;
     white-space: nowrap;
 
@@ -400,7 +415,7 @@
       font-size: 12px;
       font-weight: 450;
       line-height: 1.6;
-      color: #7a819f;
+      color: var(--el-text-color-secondary);
       letter-spacing: 0.2px;
       content: '正在连接智慧运营中心，请稍候';
     }
@@ -409,41 +424,57 @@
 
 .dark .art-loading-fix {
   background-image:
-    radial-gradient(circle at 16% 8%, rgb(34 211 238 / 12%), transparent 30%),
-    radial-gradient(circle at 88% 92%, rgb(99 91 255 / 20%), transparent 34%),
-    linear-gradient(145deg, rgb(26 28 60 / 46%), transparent 64%);
+    radial-gradient(
+      circle at 16% 8%,
+      color-mix(in srgb, var(--theme-color) 12%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 88% 92%,
+      color-mix(in srgb, var(--theme-color) 20%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--default-box-color) 46%, transparent),
+      transparent 64%
+    );
 
   &::before {
     background-image:
-      linear-gradient(rgb(130 124 255 / 5%) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(130 124 255 / 5%) 1px, transparent 1px);
+      linear-gradient(color-mix(in srgb, var(--theme-color) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--theme-color) 5%, transparent) 1px,
+        transparent 1px
+      );
   }
 
   &::after {
-    border-color: rgb(139 92 246 / 10%);
+    border-color: color-mix(in srgb, var(--theme-color) 10%, transparent);
     box-shadow:
-      0 0 0 68px rgb(99 91 255 / 4%),
-      0 0 0 136px rgb(99 91 255 / 2.5%);
+      0 0 0 68px color-mix(in srgb, var(--theme-color) 4%, transparent),
+      0 0 0 136px color-mix(in srgb, var(--theme-color) 2.5%, transparent);
   }
 
   .el-loading-spinner {
-    color: #a5b4fc;
-    background: rgb(20 22 42 / 72%);
-    border-color: rgb(139 92 246 / 18%);
+    color: var(--theme-color);
+    background: color-mix(in srgb, var(--default-box-color) 85%, transparent);
+    border-color: color-mix(in srgb, var(--theme-color) 18%, transparent);
     box-shadow:
       0 32px 90px rgb(0 0 0 / 35%),
       inset 0 1px 0 rgb(255 255 255 / 6%);
 
     &::before {
-      color: #a5b4fc;
+      color: var(--theme-color);
     }
   }
 
   .el-loading-text {
-    color: #f5f6ff;
+    color: var(--el-text-color-primary);
 
     &::after {
-      color: #9299b7;
+      color: var(--el-text-color-secondary);
     }
   }
 }
@@ -468,8 +499,8 @@
     &::after {
       width: 86vw;
       box-shadow:
-        0 0 0 46px rgb(99 91 255 / 2.8%),
-        0 0 0 92px rgb(99 91 255 / 1.8%);
+        0 0 0 46px color-mix(in srgb, var(--theme-color) 2.8%, transparent),
+        0 0 0 92px color-mix(in srgb, var(--theme-color) 1.8%, transparent);
     }
 
     .el-loading-spinner {

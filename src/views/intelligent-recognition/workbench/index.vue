@@ -256,7 +256,7 @@
       justify-content: space-between;
       padding: 13px 16px;
       margin-bottom: 0;
-      background: color-mix(in srgb, var(--theme-color) 5%, var(--art-main-bg-color));
+      background: color-mix(in srgb, var(--theme-color) 5%, var(--default-box-color));
       border: 1px solid color-mix(in srgb, var(--theme-color) 18%, var(--art-card-border));
       border-radius: var(--custom-radius);
 
@@ -268,13 +268,13 @@
       }
 
       strong {
-        color: var(--art-text-gray-900);
+        color: var(--el-text-color-primary);
       }
 
       p {
         margin: 3px 0 0;
         font-size: 12px;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -304,7 +304,7 @@
         min-width: 0;
         padding: 17px;
         overflow: hidden;
-        background: var(--art-main-bg-color);
+        background: var(--default-box-color);
         border: 1px solid var(--art-card-border);
         border-radius: var(--custom-radius);
         transition:
@@ -322,13 +322,13 @@
             gap: 8px;
             align-items: center;
             font-size: 11px;
-            color: var(--art-text-gray-400);
+            color: var(--el-text-color-secondary);
           }
         }
 
         h3 {
           margin: 14px 0 6px;
-          color: var(--art-text-gray-900);
+          color: var(--el-text-color-primary);
         }
 
         p {
@@ -336,7 +336,7 @@
           margin: 0;
           font-size: 12px;
           line-height: 1.7;
-          color: var(--art-text-gray-500);
+          color: var(--el-text-color-secondary);
         }
 
         ul {
@@ -351,7 +351,7 @@
             gap: 4px;
             align-items: center;
             font-size: 11px;
-            color: var(--art-text-gray-500);
+            color: var(--el-text-color-secondary);
           }
 
           svg {
@@ -372,7 +372,7 @@
         > footer > span {
           display: inline-flex;
           font-size: 11px;
-          color: var(--art-text-gray-500);
+          color: var(--el-text-color-secondary);
         }
       }
     }
@@ -403,7 +403,7 @@
 
       > svg {
         flex: 0 0 auto;
-        color: var(--art-text-gray-300);
+        color: var(--el-text-color-secondary);
       }
 
       article {
@@ -432,7 +432,7 @@
 
       strong {
         font-size: 12px;
-        color: var(--art-text-gray-800);
+        color: var(--el-text-color-primary);
       }
 
       small {
@@ -440,7 +440,7 @@
         margin-top: 3px;
         font-size: 10px;
         line-height: 1.5;
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 

@@ -153,7 +153,7 @@
     margin-right: 8px;
     color: var(--art-gray-700);
     cursor: pointer;
-    background: var(--art-main-bg-color);
+    background: var(--default-box-color);
     border: 1px solid var(--art-card-border);
     border-radius: 8px;
     transition:

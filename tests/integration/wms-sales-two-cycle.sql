@@ -24,6 +24,10 @@ declare
   return_kind text;
   sn_mode integer;
   test_sn text:= 'QA-STOCK-'||gen_random_uuid()::text;
+  report jsonb;
+  report_row jsonb;
+  ledger_before jsonb;
+  report_kind text;
 begin
   select auth_user_id into strict actor from public.sys_user
     where id='93f2f1e8-a3dc-4f5a-999b-6c8c02d0c7e9';
@@ -75,6 +79,8 @@ begin
     'gift',false,'serial_nos',case when sn_mode=1 then jsonb_build_array(test_sn) else '[]'::jsonb end,'return_type',null);
   stock_choices:=public.wms_sales_choices_secure('stock',batch.tenant_id,batch.organization_id,batch.warehouse_id,null,200,0,null);
   select (x->>'available_quantity')::numeric into strict before_available from jsonb_array_elements(stock_choices->'data') x where x->>'id'=batch.id::text;
+  report:=public.wms_inventory_report_secure('ledger',p_date_start=>current_date,p_date_end=>current_date,p_tenant_id=>batch.tenant_id,p_limit=>200);
+  select x into strict ledger_before from jsonb_array_elements(report->'data') x where x->>'batch_id'=batch.id::text;
   for sample in 1..2 loop
     perform set_config('request.jwt.claims',jsonb_build_object('sub',case when sample=1 then platform_actor else actor end,'role','authenticated')::text,true);
     perform set_config('request.headers',case when sample=1 then '{}'::jsonb else jsonb_build_object('x-art-tenant-scope',other_tenant) end::text,true);
@@ -106,6 +112,16 @@ begin
     -- Match the existing purchase workflow: approval must post the stock movement.
     if (select quantity from public.wms_inventory_batch where id=batch.id)<>batch.quantity-stock_quantity
       then raise exception 'Approved sales outbound did not deduct stock'; end if;
+    foreach report_kind in array array['stock','movement','ledger','receipt-issue'] loop
+      report:=public.wms_inventory_report_secure(report_kind,p_date_start=>current_date,p_date_end=>current_date,p_tenant_id=>batch.tenant_id,p_limit=>200);
+      select x into strict report_row from jsonb_array_elements(report->'data') x
+        where x->>'batch_id'=batch.id::text and (report_kind in ('stock','ledger') or x->>'source_document_id'=outbound_id::text);
+      if report_kind='stock' and (report_row->>'inventory_quantity')::numeric<>batch.quantity-stock_quantity then raise exception 'Stock report not updated'; end if;
+      if report_kind='ledger' and ((report_row->>'closing_quantity')::numeric<>(ledger_before->>'closing_quantity')::numeric-stock_quantity
+        or (report_row->>'outbound_quantity')::numeric<>(ledger_before->>'outbound_quantity')::numeric+stock_quantity) then raise exception 'Ledger outbound or closing not updated'; end if;
+      if report_kind in ('movement','receipt-issue') and (report_row->>'direction'<>'out' or (report_row->>'outbound_quantity')::numeric<>stock_quantity
+        or (report_row->>'source_line_no')::integer<>10) then raise exception 'Outbound report lineage incorrect'; end if;
+    end loop;
     if (select area_sqm from public.wms_inventory_batch where id=batch.id)<>batch.area_sqm-stock_quantity*2 then raise exception 'Outbound area not deducted'; end if;
     if batch.display_quantity is not null and (select display_quantity from public.wms_inventory_batch where id=batch.id)<>
       batch.display_quantity-stock_quantity/app_private.wms_sales_inventory_factor(batch.material_id,batch.display_unit_id::text) then raise exception 'Display quantity not converted'; end if;
@@ -132,6 +148,16 @@ begin
     perform public.wms_change_sales_document_status_secure(return_id,'approve');
     if (select quantity from public.wms_inventory_batch where id=batch.id)<>batch.quantity
       then raise exception 'Approved sales return did not restore stock'; end if;
+    foreach report_kind in array array['stock','movement','ledger','receipt-issue'] loop
+      report:=public.wms_inventory_report_secure(report_kind,p_date_start=>current_date,p_date_end=>current_date,p_tenant_id=>batch.tenant_id,p_limit=>200);
+      select x into strict report_row from jsonb_array_elements(report->'data') x
+        where x->>'batch_id'=batch.id::text and (report_kind in ('stock','ledger') or x->>'source_document_id'=return_id::text);
+      if report_kind='stock' and (report_row->>'inventory_quantity')::numeric<>batch.quantity then raise exception 'Stock return report not restored'; end if;
+      if report_kind='ledger' and (report_row->>'closing_quantity')::numeric<>(ledger_before->>'closing_quantity')::numeric then raise exception 'Ledger return closing not restored'; end if;
+      if report_kind in ('movement','receipt-issue') and (report_row->>'direction'<>'in' or (report_row->>'inbound_quantity')::numeric<>stock_quantity) then raise exception 'Return report direction incorrect'; end if;
+    end loop;
+    report:=public.wms_inventory_report_secure('ledger',p_date_start=>current_date,p_date_end=>current_date,p_tenant_id=>batch.tenant_id,p_limit=>200);
+    select x into strict ledger_before from jsonb_array_elements(report->'data') x where x->>'batch_id'=batch.id::text;
     if (select area_sqm from public.wms_inventory_batch where id=batch.id)<>batch.area_sqm then raise exception 'Return area not restored'; end if;
     if batch.display_quantity is not null and (select display_quantity from public.wms_inventory_batch where id=batch.id)<>batch.display_quantity then raise exception 'Display quantity not restored'; end if;
     if sn_mode=1 and not exists(select 1 from public.wms_serial_number where serial_no=test_sn and status='in_stock') then raise exception 'Return SN not restored'; end if;

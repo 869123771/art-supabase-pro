@@ -114,7 +114,7 @@
 
     &__static {
       padding-inline: 0;
-      color: var(--art-text-gray-800);
+      color: var(--el-text-color-primary);
     }
 
     &__meta,

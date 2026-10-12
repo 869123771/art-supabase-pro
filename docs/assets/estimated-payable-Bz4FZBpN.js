@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-D3WzblCr.js";import{t as r}from"./purchase-payable-workspace-DUe2Zf3v.js";var i=t({name:`FinanceEstimatedPayable`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`estimated`,"view-permission":`FinanceEstimatedPayable:View`}))}});export{i as default};

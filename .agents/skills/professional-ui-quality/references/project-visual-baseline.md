@@ -40,6 +40,7 @@ The product is an enterprise logistics and operations system. It should feel cal
 
 - Use the 4/8/12/16/24/32px rhythm unless an established component owns spacing.
 - Keep a clear page identity, decision summary, main work area, and supporting evidence order.
+- Keep form placeholders visually quieter than entered or selected values. Verify empty, filled, and disabled controls together before changing shared text tokens; a contrast check of isolated text samples does not prove that these states remain distinguishable.
 - Align major edges across headers, query panels, tables, cards, and sticky action regions.
 - Prefer tonal grouping and whitespace to stacks of bordered white cards.
 - Keep one primary action per region. Secondary actions should remain available without competing for attention.

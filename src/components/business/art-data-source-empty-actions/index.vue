@@ -85,7 +85,7 @@
       margin: 0;
       font-size: 13px;
       line-height: 1.6;
-      color: var(--art-text-gray-600);
+      color: var(--el-text-color-secondary);
       text-align: left;
     }
   }

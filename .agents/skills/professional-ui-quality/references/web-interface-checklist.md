@@ -28,6 +28,7 @@ Use the relevant sections during implementation. Use every section for a formal 
 ## Forms And Feedback
 
 - Keep labels persistent and programmatically associated with fields; placeholders are examples, not labels.
+- Preserve the visual distinction between placeholders, entered/selected values, and disabled content. Do not apply a body-text contrast fix indiscriminately to hint tokens; inspect actual input, select, tree, cascader, and date controls in both themes.
 - Allow paste and browser autofill. Do not disable zoom.
 - Put validation near the field and move focus to the first invalid field when the shared form abstraction supports it.
 - Preserve entered values after a recoverable error.

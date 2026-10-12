@@ -1,5 +1,26 @@
 import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
+
+test('车辆运营时长复用统一计算并保留未来日期和无效日期展示', async ({ page }) => {
+  await prepareIsolatedSession(page)
+  await page.clock.setFixedTime(new Date('2026-10-12T00:00:00Z'))
+  for (const [start, expected] of [
+    ['2024-10-12', '2年'],
+    ['2027-10-12', '0年'],
+    ['invalid', '--']
+  ]) {
+    await page.goto(`/tests/e2e/fixtures/vehicle-summary-reuse.html?start=${start}`)
+    const label = page.locator('.el-descriptions__label').filter({ hasText: '运营时长' })
+    await expect(label).toHaveCount(1)
+    await expect
+      .poll(() =>
+        label.evaluate((element) =>
+          element.nextElementSibling?.querySelector('.art-descriptions__value')?.textContent?.trim()
+        )
+      )
+      .toBe(expected)
+  }
+})
 test('车辆摘要复用详情样式且窄屏无溢出', async ({ page }, info) => {
   await prepareIsolatedSession(page)
   await page.goto('/tests/e2e/fixtures/vehicle-summary-reuse.html')

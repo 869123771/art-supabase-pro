@@ -225,7 +225,7 @@
       }
 
       span {
-        color: var(--art-text-gray-500);
+        color: var(--el-text-color-secondary);
       }
     }
 
@@ -262,7 +262,7 @@
       min-width: 150px;
       margin-left: auto;
       font-size: 12px;
-      color: var(--art-text-gray-500);
+      color: var(--el-text-color-secondary);
 
       :deep(.el-button) {
         gap: 4px;
