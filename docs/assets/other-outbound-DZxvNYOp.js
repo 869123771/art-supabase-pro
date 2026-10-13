@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./workspace-CXT-LfcU.js";var i=t({name:`WmsOtherOutbound`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`other_outbound`}))}});export{i as default};

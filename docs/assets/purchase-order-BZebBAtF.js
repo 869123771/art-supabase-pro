@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./purchase-workspace-CTDPAkXs.js";var i=t({name:`ScmPurchaseOrder`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`purchase_order`}))}});export{i as default};

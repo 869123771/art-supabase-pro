@@ -84,7 +84,21 @@
       shadow="never"
     >
       <div v-if="hasHeaderTopContent" ref="headerTopRef" class="art-table-query__header-top">
+        <div v-if="sectionTitle" class="art-table-query__section-heading">
+          <div class="art-table-query__section-copy">
+            <ArtSectionTitle :title="sectionTitle" :show-line="false" />
+            <p v-if="sectionSubtitle" class="art-table-query__section-subtitle">
+              {{ sectionSubtitle }}
+            </p>
+          </div>
+          <div
+            v-if="hasStandaloneHeaderActions"
+            ref="sectionHeaderActionHostRef"
+            class="art-table-query__section-actions"
+          />
+        </div>
         <slot
+          v-if="$slots['table-header-top']"
           name="table-header-top"
           :selected-rows="selectedRows"
           :selected-count="selectedRows.length"
@@ -294,6 +308,7 @@
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
+  import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import type { ArtTableInstance } from '@/components/core/tables/art-table/index.vue'
   import type { ColumnOption } from '@/types'
@@ -680,8 +695,12 @@
     searchItems?: SearchFormItem[]
     /** 表格头部左侧操作按钮配置，内置 add/delete/import/export 四类预制按钮。 */
     headerActions?: ArtTableQueryHeaderAction[]
+    /** 表格工作区标题；与 subtitle、section 操作位共同形成稳定的分区层级。 */
+    sectionTitle?: string
+    /** 表格工作区说明，固定显示在 sectionTitle 下方。 */
+    sectionSubtitle?: string
     /** 普通态非批量操作的展示位置；workspace 会在专注模式下自动回到表格左侧。 */
-    headerActionsPlacement?: 'table' | 'workspace'
+    headerActionsPlacement?: 'table' | 'section' | 'workspace'
     /** 勾选数据后显示在表格上方的批量操作；未勾选时不占用空间。 */
     selectionActions?: ArtTableQueryHeaderAction[]
     /** 内管模式的数据接口。传入后 ArtTableQuery 会内部创建 useTable 并接管查询、分页、刷新。 */
@@ -769,6 +788,7 @@
   const tableRef = ref<ArtTableExpose | null>(null)
   const headerTopRef = ref<HTMLElement>()
   const tableHeaderActionHostRef = ref<HTMLElement>()
+  const sectionHeaderActionHostRef = ref<HTMLElement>()
   const workspaceHeaderActionHostRef = shallowRef<HTMLElement>()
   const headerTopHeight = ref(0)
 
@@ -984,11 +1004,19 @@
       Boolean(workspaceHeaderActionHostRef.value)
   )
 
+  const shouldRenderHeaderActionsInSection = computed(
+    () =>
+      props.headerActionsPlacement === 'section' &&
+      !focusMode.value &&
+      Boolean(sectionHeaderActionHostRef.value)
+  )
+
   const shouldRenderHeaderActionsInTable = computed(
     () =>
       hasStandaloneHeaderActions.value &&
       !showSelectionBar.value &&
-      !shouldTeleportHeaderActions.value
+      !shouldTeleportHeaderActions.value &&
+      !shouldRenderHeaderActionsInSection.value
   )
 
   const effectiveShowTableToolbar = computed(
@@ -996,9 +1024,11 @@
   )
 
   const headerActionDestination = computed<HTMLElement | undefined>(() =>
-    shouldTeleportHeaderActions.value
-      ? workspaceHeaderActionHostRef.value
-      : tableHeaderActionHostRef.value
+    shouldRenderHeaderActionsInSection.value
+      ? sectionHeaderActionHostRef.value
+      : shouldTeleportHeaderActions.value
+        ? workspaceHeaderActionHostRef.value
+        : tableHeaderActionHostRef.value
   )
 
   const shouldRenderTableHeader = computed(
@@ -1011,7 +1041,9 @@
       !!slots['header-right']
   )
 
-  const hasHeaderTopContent = computed(() => !!slots['table-header-top'])
+  const hasHeaderTopContent = computed(() =>
+    Boolean(props.sectionTitle || slots['table-header-top'])
+  )
 
   const artTableBindings = computed<ArtTableBindings>(
     () =>

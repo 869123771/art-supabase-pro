@@ -86,16 +86,12 @@ for (const theme of ['light', 'dark']) {
           ).toBeLessThanOrEqual(2)
           if (generic && (await card.locator('.art-section-card__subtitle').count())) {
             const subtitle = (await card.locator('.art-section-card__subtitle').boundingBox())!
-            const contentWidth = await header.evaluate((element) => {
-              const style = getComputedStyle(element)
-              return (
-                element.getBoundingClientRect().width -
-                Number.parseFloat(style.paddingLeft) -
-                Number.parseFloat(style.paddingRight)
-              )
-            })
-            expect(subtitle.width).toBeGreaterThanOrEqual(contentWidth - 1)
-            expect(subtitle.y).toBeGreaterThanOrEqual(actionsBox!.y + actionsBox!.height - 1)
+            const identity = (await card.locator('.art-section-card__identity').boundingBox())!
+            const title = (await card.locator('.art-section-title').boundingBox())!
+            expect(identity.width).toBeGreaterThanOrEqual(140)
+            expect(subtitle.x).toBeGreaterThanOrEqual(identity.x)
+            expect(subtitle.x + subtitle.width).toBeLessThanOrEqual(identity.x + identity.width + 1)
+            expect(subtitle.y).toBeGreaterThanOrEqual(title.y + title.height - 1)
           }
           if (!generic) {
             const identity = await card.locator('.art-section-card__identity').boundingBox()
@@ -176,4 +172,27 @@ test('生产组织树保持紧凑头部和手机说明隐藏', async ({ page }, 
   expect(Math.abs(header.x + header.width - actions.x - actions.width)).toBeLessThanOrEqual(2)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath('production-tree-header.png') })
+})
+
+test('窄卡片图标留在右上，带搜索框的操作整体换行', async ({ page }) => {
+  await prepareIsolatedSession(page)
+  await page.goto('/tests/e2e/fixtures/card-sort-layout.html?header-reflow=1')
+
+  const cards = page.locator('.art-section-card')
+  await expect(cards).toHaveCount(2)
+  const iconCard = cards.first()
+  const searchCard = cards.last()
+  const iconTitle = (await iconCard.locator('.art-section-card__identity').boundingBox())!
+  const iconActions = (await iconCard.locator('.art-section-card__actions').boundingBox())!
+  expect(Math.abs(iconTitle.y - iconActions.y)).toBeLessThanOrEqual(2)
+
+  const searchTitle = (await searchCard.locator('.art-section-card__identity').boundingBox())!
+  const searchActions = (await searchCard.locator('.art-section-card__actions').boundingBox())!
+  const searchHeading = (await searchCard.locator('.art-section-title').boundingBox())!
+  expect(searchTitle.width).toBeGreaterThanOrEqual(140)
+  expect(searchActions.y).toBeGreaterThanOrEqual(searchTitle.y + searchTitle.height - 1)
+  expect(searchHeading.height).toBeLessThanOrEqual(28)
+  expect(searchActions.x + searchActions.width).toBeLessThanOrEqual(
+    (await searchCard.boundingBox())!.x + (await searchCard.boundingBox())!.width
+  )
 })
