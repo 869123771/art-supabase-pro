@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./operational-master-pGEeQU5W.js";var i=t({name:`MdmOperationSet`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

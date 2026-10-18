@@ -1,6 +1,5 @@
-import { execFileSync } from 'node:child_process'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
-import { resolve, dirname } from 'node:path'
+import { readFile, mkdir, readdir, writeFile } from 'node:fs/promises'
+import { resolve, dirname, extname, join } from 'node:path'
 import { icons } from '@iconify-json/ri'
 import { icons as vaadinIcons } from '@iconify-json/vaadin'
 import { icons as dashicons } from '@iconify-json/dashicons'
@@ -12,28 +11,23 @@ import { icons as solarIcons } from '@iconify-json/solar'
 import { pick, uniq } from 'lodash-es'
 
 const outputPath = resolve('src/assets/icons/collections.generated.json')
-const files = execFileSync(
-  'rg',
-  [
-    '--files',
-    'src',
-    'modules',
-    '-g',
-    '*.ts',
-    '-g',
-    '*.tsx',
-    '-g',
-    '*.vue',
-    '-g',
-    '*.json',
-    '-g',
-    '!**/node_modules/**'
-  ],
-  { encoding: 'utf8' }
-)
-  .trim()
-  .split(/\r?\n/)
-  .sort()
+const sourceExtensions = new Set(['.ts', '.tsx', '.vue', '.json'])
+const ignoredDirectories = new Set(['.git', 'node_modules', 'docs', 'dist', '.artifacts'])
+
+async function collectSourceFiles(directory: string): Promise<string[]> {
+  const files: string[] = []
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory() && !ignoredDirectories.has(entry.name)) {
+      files.push(...(await collectSourceFiles(path)))
+    } else if (entry.isFile() && sourceExtensions.has(extname(entry.name))) {
+      files.push(path)
+    }
+  }
+  return files
+}
+
+const files = (await Promise.all(['src', 'modules'].map(collectSourceFiles))).flat().sort()
 const sources = await Promise.all(files.map((file) => readFile(file, 'utf8')))
 const collections = [
   icons,
