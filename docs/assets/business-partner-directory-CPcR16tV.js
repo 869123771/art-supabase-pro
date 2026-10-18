@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./catalog-CXCoQ22c.js";var i=t({name:`MdmBusinessPartnerDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

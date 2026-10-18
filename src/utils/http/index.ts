@@ -5,7 +5,7 @@
  * ## 主要功能
  *
  * - 请求/响应拦截器（自动添加 Token、统一错误处理）
- * - 401 未授权自动登出（带防抖机制）
+ * - 仅明确的会话失效才退出登录；普通 401 保留业务页面
  * - 请求失败自动重试（可配置）
  * - 统一的成功/错误消息提示
  * - 支持 GET/POST/PUT/DELETE 等常用方法
@@ -19,17 +19,18 @@ import { ApiStatus } from './status'
 import { HttpError, handleError, showError, showSuccess } from './error'
 import { $t } from '@/locales'
 import { BaseResponse } from '@/types'
+import { isSupabaseApi } from '@/config/api-provider'
+import { isSupabaseSessionFailure } from '@/utils/supabase'
+import {
+  isSupabaseSessionConfirmedExpired,
+  notifySupabaseSessionExpired,
+  refreshSupabaseSessionOnce
+} from '@/utils/supabase/session'
 
 /** 请求配置常量 */
 const REQUEST_TIMEOUT = 15000
-const LOGOUT_DELAY = 500
 const MAX_RETRIES = 0
 const RETRY_DELAY = 1000
-const UNAUTHORIZED_DEBOUNCE_TIME = 3000
-
-/** 401防抖状态 */
-let isUnauthorizedErrorShown = false
-let unauthorizedTimer: NodeJS.Timeout | null = null
 
 /** 扩展 AxiosRequestConfig */
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
@@ -37,6 +38,7 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   showSuccessMessage?: boolean
   skipAuth?: boolean
   skipResponseWrapper?: boolean
+  sessionRecoveryRetried?: boolean
 }
 
 const { VITE_API_URL, VITE_WITH_CREDENTIALS } = import.meta.env
@@ -83,18 +85,38 @@ axiosInstance.interceptors.request.use(
 )
 
 /** 响应拦截器 */
+async function retryAfterUnauthorized(
+  config: ExtendedAxiosRequestConfig
+): Promise<AxiosResponse<BaseResponse> | null> {
+  if (!isSupabaseApi || config.skipAuth) return null
+  if (!config.sessionRecoveryRetried && (await refreshSupabaseSessionOnce())) {
+    const retryConfig: ExtendedAxiosRequestConfig = { ...config, sessionRecoveryRetried: true }
+    return axiosInstance.request<BaseResponse>(retryConfig)
+  }
+  if (await isSupabaseSessionConfirmedExpired()) {
+    await notifySupabaseSessionExpired()
+  }
+  return null
+}
+
 axiosInstance.interceptors.response.use(
-  (response: AxiosResponse<BaseResponse>) => {
+  async (response: AxiosResponse<BaseResponse>) => {
     const config = response.config as ExtendedAxiosRequestConfig
     if (config.skipResponseWrapper) return response
 
     const { code, msg } = response.data
     if (code === ApiStatus.success) return response
-    if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg)
-    throw createHttpError(msg || $t('httpMsg.requestFailed'), code)
+    if (code === ApiStatus.unauthorized) {
+      const retried = await retryAfterUnauthorized(config)
+      if (retried) return retried
+    }
+    throw new HttpError(msg || $t('httpMsg.requestFailed'), code, { data: response.data })
   },
-  (error) => {
-    if (error.response?.status === ApiStatus.unauthorized) handleUnauthorizedError()
+  async (error) => {
+    if (error.response?.status === ApiStatus.unauthorized && error.config) {
+      const retried = await retryAfterUnauthorized(error.config as ExtendedAxiosRequestConfig)
+      if (retried) return retried
+    }
     return Promise.reject(handleError(error))
   }
 )
@@ -102,37 +124,6 @@ axiosInstance.interceptors.response.use(
 /** 统一创建HttpError */
 function createHttpError(message: string, code: number) {
   return new HttpError(message, code)
-}
-
-/** 处理401错误（带防抖） */
-function handleUnauthorizedError(message?: string): never {
-  const error = createHttpError(message || $t('httpMsg.unauthorized'), ApiStatus.unauthorized)
-
-  if (!isUnauthorizedErrorShown) {
-    isUnauthorizedErrorShown = true
-    logOut()
-
-    unauthorizedTimer = setTimeout(resetUnauthorizedError, UNAUTHORIZED_DEBOUNCE_TIME)
-
-    showError(error, true)
-    throw error
-  }
-
-  throw error
-}
-
-/** 重置401防抖状态 */
-function resetUnauthorizedError() {
-  isUnauthorizedErrorShown = false
-  if (unauthorizedTimer) clearTimeout(unauthorizedTimer)
-  unauthorizedTimer = null
-}
-
-/** 退出登录函数 */
-function logOut() {
-  setTimeout(() => {
-    useUserStore().logOut()
-  }, LOGOUT_DELAY)
 }
 
 /** 是否需要重试 */
@@ -194,7 +185,10 @@ async function request<T = unknown>(config: ExtendedAxiosRequestConfig): Promise
 
     return responseData.data as T
   } catch (error) {
-    if (error instanceof HttpError && error.code !== ApiStatus.unauthorized) {
+    if (
+      error instanceof HttpError &&
+      (useUserStore().isLogin || !isSupabaseSessionFailure(error.data))
+    ) {
       const showMsg = config.showErrorMessage !== false
       showError(error, showMsg)
     }

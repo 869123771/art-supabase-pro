@@ -1,0 +1,1 @@
+function e(e,t){return e?.length?[...e]:t?[t]:[]}function t(e,t,n){let r=String(e??``).split(/[,，、;；]/).map(e=>e.trim()).filter(Boolean).map(e=>{let r=t.find(t=>String(t.value)===e||t.label===e);if(!r)throw Error(`${n}包含无效选项：${e}`);return String(r.value)});return[...new Set(r)]}export{t as n,e as t};

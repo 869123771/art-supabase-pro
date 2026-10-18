@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./execution-analytics-4ObCg-39.js";var i=t({name:`MesShiftAchievement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`shift`}))}});export{i as default};

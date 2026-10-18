@@ -333,7 +333,7 @@
     () => {
       containerWidth.value = pendingContainerWidth
       const groups = containerRef.value?.querySelectorAll<HTMLElement>(
-        '.el-table__body-wrapper .business-table-row-actions'
+        '.el-table__body-wrapper td.art-table-operation-column .business-table-row-actions'
       )
       let minimumWidth = 64
       groups?.forEach((group) => {
@@ -1378,6 +1378,9 @@
     const columnProps = { ...col }
     if (isRowActionsColumn(columnProps)) {
       // 按当前可见操作测量宽度，计入单元格留白和纵向滚动条，避免按钮被遮挡。
+      columnProps.className = [columnProps.className, 'art-table-operation-column']
+        .filter(Boolean)
+        .join(' ')
       columnProps.width = rowActionsWidth.value
       columnProps.minWidth = rowActionsWidth.value
     }

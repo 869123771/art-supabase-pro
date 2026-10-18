@@ -255,14 +255,16 @@ function getFriendlyErrorMessage(error: unknown, action: string): string {
   const errorRecord = error && typeof error === 'object' ? error as Record<string, unknown> : null
   const errorMsg = typeof errorRecord?.message === 'string' ? errorRecord.message : String(error)
   const errorCode = typeof errorRecord?.code === 'string' ? errorRecord.code : ''
+  if (errorCode === '23505') {
+    if (errorMsg.includes('sys_user_active_phone_key_uniq')) return '该手机号已被其他用户使用，请更换手机号'
+    return '用户信息已存在，请检查手机号或邮箱后重试'
+  }
   const isPermissionError =
     errorMsg.toLowerCase().includes('permission denied') ||
     errorMsg.toLowerCase().includes('row-level security') ||
     errorMsg.toLowerCase().includes('policy') ||
-    errorMsg.toLowerCase().includes('violates') ||
     errorCode === '42501' ||
-    errorCode === 'PGRST301' ||
-    errorCode === 'PGRST116'
+    errorCode === 'PGRST301'
   if (isPermissionError) {
     const actionMap: Record<string, string> = {
       create: '创建',
@@ -272,7 +274,7 @@ function getFriendlyErrorMessage(error: unknown, action: string): string {
     }
     return `当前用户角色没有${actionMap[action] || action}权限，无法执行此操作`
   }
-  return errorMsg
+  return `${action === 'create' ? '创建' : action === 'update' ? '编辑' : '操作'}用户失败，请检查输入后重试`
 }
 async function insertAudit(auditId: string, requestId: string, action: string, input: unknown) {
   try {
@@ -458,7 +460,7 @@ Deno.serve(async (req: Request) => {
         await deleteAuthUser(authUserId)
         return new Response(
           JSON.stringify({ ok: false, error: getFriendlyErrorMessage(insertErr, action) }),
-          { status: 500, headers: corsHeaders(origin) }
+          { status: insertErr.code === '23505' ? 409 : 500, headers: corsHeaders(origin) }
         )
       }
       const result = { ok: true, auth_user_id: authUserId, app_user: created }
@@ -619,7 +621,7 @@ Deno.serve(async (req: Request) => {
       if (updateErr)
         return new Response(
           JSON.stringify({ ok: false, error: getFriendlyErrorMessage(updateErr, action) }),
-          { status: 500, headers: corsHeaders(origin) }
+          { status: updateErr.code === '23505' ? 409 : 500, headers: corsHeaders(origin) }
         )
       const result = { ok: true, app_user: updatedUser }
       await updateAudit(auditId, result)

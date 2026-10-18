@@ -5,8 +5,10 @@ import {
   createFriendlySupabaseFunctionError,
   formatSupabaseAuthErrorMessage,
   getFriendlySupabaseErrorMessage,
+  isSupabaseAccessFailure,
   isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
+  isSupabaseUnauthorizedResponse,
   markErrorAsUserNotified,
   wasErrorUserNotified,
   normalizeSupabaseFunctionError
@@ -67,17 +69,39 @@ test('distinguishes an expired PostgREST session from a real permission denial',
   }
 
   assert.equal(isSupabaseSessionFailure(expiredSessionError), true)
+  assert.equal(isSupabaseAccessFailure(expiredSessionError), false)
   assert.equal(getFriendlySupabaseErrorMessage(expiredSessionError), '登录状态已失效，请重新登录')
   assert.equal(isSupabaseSessionFailure(permissionError), false)
+  assert.equal(isSupabaseAccessFailure(permissionError), true)
   assert.equal(getFriendlySupabaseErrorMessage(permissionError), '当前账号没有此操作权限')
+  assert.equal(
+    isSupabaseSessionFailure({ code: '42501', status: 401, message: 'permission denied' }),
+    false
+  )
+  assert.equal(
+    getFriendlySupabaseErrorMessage({ code: '42501', status: 401, message: 'permission denied' }),
+    '当前账号没有此操作权限'
+  )
 })
 
-test('recognizes a nested 401 response from Supabase functions', () => {
+test('does not treat a bare 401 or a 500 response as an expired session', () => {
   const error = {
     context: new Response(null, { status: 401 })
   }
 
-  assert.equal(isSupabaseSessionFailure(error), true)
+  assert.equal(isSupabaseSessionFailure(error), false)
+  assert.equal(isSupabaseUnauthorizedResponse(error), true)
+  assert.equal(isSupabaseAccessFailure(error), true)
+  assert.equal(isSupabaseSessionFailure({ status: 500, message: 'Internal Server Error' }), false)
+  assert.equal(isSupabaseUnauthorizedResponse({ status: 500 }), false)
+  assert.equal(isSupabaseAccessFailure({ status: 500, message: 'Internal Server Error' }), false)
+  assert.equal(isSupabaseAccessFailure({ status: 403, message: 'Forbidden' }), true)
+  assert.equal(
+    getFriendlySupabaseErrorMessage({ status: 403, message: 'Forbidden' }),
+    '当前账号没有此操作权限'
+  )
+  assert.equal(getFriendlySupabaseErrorMessage(error), '请求未获授权，请检查账号权限或刷新后重试')
+  assert.equal(isSupabaseSessionFailure({ code: 'PGRST301', status: 401 }), true)
 })
 
 test('recognizes Supabase AbortSignal responses without confusing database cancellations', () => {

@@ -15,12 +15,14 @@ import { mittBus } from '@/utils/sys'
 import type { QueryResult } from '@/types/api/response'
 import {
   getFriendlySupabaseErrorMessage,
+  isSupabaseUnauthorizedResponse,
   isSupabaseRequestAbortFailure,
   isSupabaseSessionFailure,
   markErrorAsUserNotified,
   normalizeSupabaseFunctionError
 } from '@/utils/supabase'
 import {
+  isSupabaseSessionConfirmedExpired,
   notifySupabaseSessionExpired,
   refreshSupabaseSessionOnce,
   SUPABASE_SESSION_EXPIRED_MESSAGE
@@ -96,17 +98,23 @@ export function useSupabase() {
 
     let queryResponse = await queryFactory()
     let sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)
+    let unauthorizedResponse = isSupabaseUnauthorizedResponse(queryResponse, queryResponse.error)
     let sessionFailureHandled = false
+    let sessionConfirmedExpired = false
 
-    if (sessionFailure) {
+    if (sessionFailure || unauthorizedResponse) {
       const refreshedSession = await refreshSupabaseSessionOnce()
       if (refreshedSession) {
         queryResponse = await queryFactory()
         sessionFailure = isSupabaseSessionFailure(queryResponse, queryResponse.error)
+        unauthorizedResponse = isSupabaseUnauthorizedResponse(queryResponse, queryResponse.error)
       }
 
-      if (sessionFailure) {
-        sessionFailureHandled = await notifySupabaseSessionExpired()
+      if (sessionFailure || unauthorizedResponse) {
+        sessionConfirmedExpired = await isSupabaseSessionConfirmedExpired()
+        if (sessionConfirmedExpired) {
+          sessionFailureHandled = await notifySupabaseSessionExpired()
+        }
       }
     }
 
@@ -132,13 +140,15 @@ export function useSupabase() {
       const responseBody = responseJson ?? (normalizedError !== error ? normalizedError : undefined)
       const responseError = isPlainObjectRecord(responseBody) ? responseBody : undefined
       const queryError = isPlainObjectRecord(error) ? error : undefined
-      const message = sessionFailure
+      const message = sessionConfirmedExpired
         ? SUPABASE_SESSION_EXPIRED_MESSAGE
-        : options.formatErrorMessage?.(error, responseBody) ||
-          getFriendlySupabaseErrorMessage(
-            [responseError, queryError, normalizedError, error],
-            options.errorMessage
-          )
+        : sessionFailure
+          ? '请求未获授权，请检查账号权限或刷新后重试'
+          : options.formatErrorMessage?.(error, responseBody) ||
+            getFriendlySupabaseErrorMessage(
+              [responseError, queryError, normalizedError, error],
+              options.errorMessage
+            )
       const referenceContext = getDeleteReferenceContext(error)
       const referenceHandled = Boolean(
         options.showReferenceFeedback !== false &&

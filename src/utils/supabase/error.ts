@@ -161,7 +161,7 @@ const MESSAGE_RULES: Array<{ pattern: RegExp; message: string }> = [
 ]
 
 const STATUS_MESSAGES: Record<number, string> = {
-  401: '登录状态已失效，请重新登录',
+  401: '请求未获授权，请检查账号权限或刷新后重试',
   403: '当前账号没有此操作权限',
   404: '未找到对应数据，请刷新后重试',
   409: '数据状态已发生变化，请刷新后重试',
@@ -181,12 +181,13 @@ const STATUS_KEYS = ['status', 'statusCode', 'httpStatusCode'] as const
 const SESSION_ERROR_CODES = new Set([
   'PGRST301',
   'bad_jwt',
+  'session_expired',
   'refresh_token_already_used',
   'refresh_token_not_found',
   'session_not_found'
 ])
 const SESSION_ERROR_MESSAGE =
-  /authentication required|jwt expired|invalid jwt|missing.*jwt|token.*expired|refresh token.*not found/i
+  /authentication required|jwt (?:has )?expired|invalid jwt|missing.*jwt|token.*expired|refresh token.*not found/i
 const REQUEST_ABORT_CODES = new Set(['ABORT_ERR'])
 const REQUEST_ABORT_NAMES = new Set(['AbortError'])
 const REQUEST_ABORT_MESSAGE = /\baborterror\b|(?:operation|request|signal) (?:was |is )?aborted/i
@@ -245,15 +246,33 @@ function collectErrorDetails(value: unknown, details: ErrorDetails, depth = 0): 
   if ('response' in value) collectErrorDetails(value.response, details, depth + 1)
 }
 
-/** 精确识别登录会话失效，避免把真正的数据库 42501 权限错误误判为掉线。 */
+/** HTTP 401 本身不证明会话失效；业务权限拒绝也可能使用 401。 */
 export function isSupabaseSessionFailure(...values: unknown[]): boolean {
   const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
   values.forEach((value) => collectErrorDetails(value, details))
 
   return (
-    details.statuses.includes(401) ||
     details.codes.some((code) => SESSION_ERROR_CODES.has(code)) ||
     details.messages.some((message) => SESSION_ERROR_MESSAGE.test(message))
+  )
+}
+
+/** 无法仅凭 401 判断原因；调用方可刷新一次会话后重试并复核。 */
+export function isSupabaseUnauthorizedResponse(...values: unknown[]): boolean {
+  const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
+  values.forEach((value) => collectErrorDetails(value, details))
+  return details.statuses.includes(401)
+}
+
+/** 已登录请求的权限拒绝保留当前会话，由页面显示无权限。 */
+export function isSupabaseAccessFailure(...values: unknown[]): boolean {
+  if (isSupabaseSessionFailure(...values)) return false
+  const details: ErrorDetails = { codes: [], names: [], messages: [], statuses: [] }
+  values.forEach((value) => collectErrorDetails(value, details))
+  return (
+    details.codes.includes('42501') ||
+    details.statuses.includes(401) ||
+    details.statuses.includes(403)
   )
 }
 
@@ -340,12 +359,12 @@ export function getFriendlySupabaseErrorMessage(
   collectErrorDetails(error, details)
 
   // PostgREST may pair SQLSTATE 42501 with HTTP 401 and "Authentication required".
-  // Authentication takes precedence in that shape; a plain 42501 remains a real permission error.
+  // Only an explicit authentication marker means the login session is invalid.
   const authenticationMessage = details.messages.find((rawMessage) =>
     SESSION_ERROR_MESSAGE.test(rawMessage)
   )
-  if (details.statuses.includes(401) || authenticationMessage) {
-    return STATUS_MESSAGES[401]
+  if (details.codes.some((code) => SESSION_ERROR_CODES.has(code)) || authenticationMessage) {
+    return ERROR_CODE_MESSAGES.session_not_found
   }
 
   if (details.names.includes('DeleteReferenceBlockedError')) {

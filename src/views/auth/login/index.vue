@@ -329,7 +329,7 @@
       return false
     }
 
-    return redirect.split('?')[0] === '/403'
+    return ['/403', '/404', '/500'].includes(redirect.split('?')[0])
   }
 
   const resolvePostLoginPath = async (): Promise<string> => {
@@ -347,7 +347,7 @@
 
     const menuList = await menuProcessor.getMenuList()
     if (!menuProcessor.validateMenuList(menuList)) {
-      return redirect
+      return '/'
     }
 
     return getFirstMenuPath(menuList) || '/'

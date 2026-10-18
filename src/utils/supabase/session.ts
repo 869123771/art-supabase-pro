@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/plugins/supabase'
+import { isSupabaseSessionFailure } from './error'
 
 export const SUPABASE_SESSION_EXPIRED_MESSAGE = '登录状态已失效，请重新登录'
 
@@ -30,6 +31,21 @@ export async function refreshSupabaseSessionOnce(): Promise<Session | null> {
   }
 
   return refreshSessionPromise
+}
+
+/** 刷新失败可能是网络故障；仅在 SDK 确认无会话或凭证无效时退出。 */
+export async function isSupabaseSessionConfirmedExpired(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (error) return isSupabaseSessionFailure(error)
+    if (!data.session) return true
+
+    const claims = await supabase.auth.getClaims()
+    if (claims.error) return isSupabaseSessionFailure(claims.error)
+    return !claims.data?.claims.sub
+  } catch {
+    return false
+  }
 }
 
 /** 注册应用层的统一失效处理，低层请求工具无需反向依赖 Pinia 或路由。 */

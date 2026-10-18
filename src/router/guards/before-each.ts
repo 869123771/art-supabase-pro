@@ -50,8 +50,13 @@ import { staticRoutes } from '../routes/static-routes'
 import { loadingService } from '@/utils/ui'
 import { useCommon } from '@/hooks/core/useCommon'
 import { useWorktabStore } from '@/store/modules/worktab'
-import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
+import { isSupabaseAccessFailure, isSupabaseSessionFailure } from '@/utils/supabase'
+import { recoverCurrentAuthSession } from '@/api/auth'
+import {
+  isSupabaseSessionConfirmedExpired,
+  notifySupabaseSessionExpired
+} from '@/utils/supabase/session'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
 import TreeUtils from '@utils/tree'
 import type { AppRouteRecord } from '@/types'
@@ -347,6 +352,19 @@ async function handleDynamicRoutes(
   startRouteLoading(to, true)
 
   try {
+    // 持久化的登录标记不代表浏览器里的 Supabase 会话仍然有效。
+    // 先让 SDK 刷新并校验会话，避免失效凭证被后续资料请求误报为 500。
+    const authSession = await runRouteInitializationStage('user-profile', () =>
+      recoverCurrentAuthSession()
+    )
+    if (authSession.status === 'expired') {
+      routeInitInProgress = false
+      closeLoading()
+      await notifySupabaseSessionExpired()
+      return false
+    }
+    userStore.setToken(authSession.accessToken, authSession.refreshToken)
+
     // 1. 每次应用启动都刷新一次持久化用户资料，确保租户、角色与内置身份变更及时生效
     const hasUserProfile = await runRouteInitializationStage(
       'user-profile',
@@ -431,10 +449,10 @@ async function handleDynamicRoutes(
     // 关闭 loading
     closeLoading()
 
-    // 401 错误：axios 拦截器已处理退出登录，取消当前导航
-    if (isUnauthorizedError(error)) {
-      // 重置状态，允许重新登录后再次初始化
+    // 仅在凭证明确失效时退出；普通 401/403 权限拒绝留在当前登录态。
+    if (isSupabaseSessionFailure(error) && (await isSupabaseSessionConfirmedExpired())) {
       routeInitInProgress = false
+      await notifySupabaseSessionExpired()
       return false
     }
 
@@ -448,6 +466,17 @@ async function handleDynamicRoutes(
     }
 
     if (isRouteInitializationAccessError(error)) {
+      return {
+        name: 'Exception403',
+        query: { redirect: resolveRouteInitializationTarget(to.fullPath) },
+        replace: true
+      }
+    }
+
+    if (
+      isSupabaseAccessFailure(error) ||
+      (isHttpError(error) && (error.code === 401 || error.code === 403))
+    ) {
       return {
         name: 'Exception403',
         query: { redirect: resolveRouteInitializationTarget(to.fullPath) },
@@ -498,11 +527,4 @@ function getRootPathRedirect(to: RouteLocationNormalized): RouteLocationRaw | un
   }
 
   return undefined
-}
-
-/**
- * 判断是否为未授权错误（401）
- */
-function isUnauthorizedError(error: unknown): boolean {
-  return isHttpError(error) && error.code === ApiStatus.unauthorized
 }

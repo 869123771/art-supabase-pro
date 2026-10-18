@@ -1,5 +1,9 @@
 import { useSupabase } from '@/hooks/core/useSupabase'
-import { formatSupabaseAuthErrorMessage, getFriendlySupabaseErrorMessage } from '@/utils/supabase'
+import {
+  formatSupabaseAuthErrorMessage,
+  getFriendlySupabaseErrorMessage,
+  isSupabaseSessionFailure
+} from '@/utils/supabase'
 import type { QueryResult } from '@/types/api/response'
 import {
   isAuthError,
@@ -38,22 +42,9 @@ interface OAuthStartResponse {
   url: string | null
 }
 
-const EXPIRED_AUTH_ERROR_CODES = new Set([
-  'bad_jwt',
-  'refresh_token_already_used',
-  'refresh_token_not_found',
-  'session_not_found'
-])
-
 function isExpiredAuthSessionError(error: unknown): boolean {
   if (isAuthSessionMissingError(error)) return true
-  if (!isAuthError(error)) return false
-
-  return (
-    error.status === 401 ||
-    error.status === 403 ||
-    (typeof error.code === 'string' && EXPIRED_AUTH_ERROR_CODES.has(error.code))
-  )
+  return isAuthError(error) && isSupabaseSessionFailure(error)
 }
 
 /**
