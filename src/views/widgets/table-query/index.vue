@@ -57,16 +57,6 @@
           @pagination:size-change="(size: number) => logEvent(`managed page size -> ${size}`)"
           @pagination:current-change="(page: number) => logEvent(`managed current page -> ${page}`)"
         >
-          <template #search-priority="{ modelValue }">
-            <ElSegmented
-              class="[&_.el-segmented\_\_item]:px-0.5!"
-              :model-value="modelValue.priority"
-              :options="priorityOptions"
-              block
-              @update:model-value="modelValue.priority = $event"
-            />
-          </template>
-
           <template #custom-action="{ selectedCount, api }">
             <ElButton :disabled="!selectedCount" @click="markSelected(api)">
               标记已选 {{ selectedCount }}
@@ -326,10 +316,12 @@
     {
       label: '优先级',
       key: 'priority',
-      type: 'select',
-      help: '这里使用 #search-priority 插槽替换默认 select。',
+      type: 'segment',
+      help: '通过 SearchFormItem 配置分段选项。',
       props: {
-        options: priorityOptions
+        options: priorityOptions,
+        block: true,
+        class: '[&_.el-segmented\\_\\_item]:px-0.5!'
       }
     },
     {

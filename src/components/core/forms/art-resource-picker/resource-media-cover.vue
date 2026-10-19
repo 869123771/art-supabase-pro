@@ -18,7 +18,7 @@
         :key="props.resource.url"
         :src="props.resource.url"
         class="resource-media-cover__video"
-        preload="metadata"
+        preload="none"
         muted
         playsinline
         aria-hidden="true"
@@ -50,7 +50,7 @@
         ref="audioRef"
         :key="props.resource.url"
         :src="props.resource.url"
-        preload="metadata"
+        preload="none"
         @loadedmetadata="handleAudioMetadata"
         @play="emit('playbackStateChange', true)"
         @pause="handlePause"

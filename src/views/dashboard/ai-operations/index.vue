@@ -20,9 +20,12 @@
     >
       <template #actions>
         <ElRadioGroup v-model="overview.days" size="small" @change="loadOverview">
-          <ElRadioButton :value="7">7 天</ElRadioButton>
-          <ElRadioButton :value="30">30 天</ElRadioButton>
-          <ElRadioButton :value="90">90 天</ElRadioButton>
+          <ElRadioButton
+            v-for="option in analysisWindowOptions"
+            :key="option.value"
+            :value="option.value"
+            >{{ option.label }}</ElRadioButton
+          >
         </ElRadioGroup>
       </template>
     </BusinessWorkspaceHeader>
@@ -337,6 +340,7 @@
 
 <script setup lang="tsx">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import dayjs from 'dayjs'
   import { formatDurationMs, formatNumberValue, createDateTimeFormatter } from '@/utils/ui/format'
   import { ElMessage } from 'element-plus'
@@ -369,6 +373,10 @@
   import AiRunDetailDrawer from './modules/ai-run-detail-drawer.vue'
 
   defineOptions({ name: 'AiOperations' })
+  const configuredAnalysisWindowOptions = useDictionaryOptions('sysAiOperationsWindowDays', Number)
+  const analysisWindowOptions = computed(() =>
+    configuredAnalysisWindowOptions.filter((option) => [7, 30, 90].includes(option.value))
+  )
 
   interface DetailDrawerExpose {
     handleOpen: (data: { id: string }) => Promise<void>

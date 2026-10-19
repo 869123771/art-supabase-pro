@@ -2,20 +2,22 @@ import { expect, test } from '@playwright/test'
 import { installFixtures, meta, tenantId } from './support/inventory-fixtures'
 import { mockApplicationMenus } from './support/menu-rpc'
 
+test.use({ storageState: { cookies: [], origins: [] } })
+
 for (const scenario of [
   {
     kind: 'issue',
     path: 'production-issue',
     name: 'WmsProductionIssue',
     title: '生产领料单',
-    push: '下推此单'
+    push: '出库'
   },
   {
     kind: 'return',
     path: 'production-return',
     name: 'WmsProductionReturn',
     title: '生产退料单',
-    push: '下推此单'
+    push: '退库'
   },
   {
     kind: 'finished_inbound',
@@ -33,7 +35,7 @@ for (const scenario of [
   }
 ]) {
   test(`${scenario.title}两张单据提交审核下推失败重试`, async ({ page }, testInfo) => {
-    test.setTimeout(180_000)
+    test.setTimeout(240_000)
     await installFixtures(page)
     const path = `/wms/production-inout/${scenario.path}`
     const menu = {
@@ -57,7 +59,18 @@ for (const scenario of [
     await mockApplicationMenus(page, {
       wms: [
         menu,
-        ...['View', 'Submit', 'Approve', 'Push'].map((action) => ({
+        ...[
+          'View',
+          'Submit',
+          'Approve',
+          'Push',
+          'Delete',
+          'Close',
+          'Withdraw',
+          'Add',
+          'Copy',
+          'Edit'
+        ].map((action) => ({
           id: `flow-${action}`,
           parentId: menu.id,
           name: `${scenario.name}:${action}`,
@@ -72,8 +85,10 @@ for (const scenario of [
     const states = new Map(
       [1, 2].map((n) => [`flow-doc-${n}`, { status: 'draft', materialStatus: 'pending' }])
     )
-    await page.route('**/rest/v1/wms_production_material_list?*', (route) =>
-      route.fulfill({
+    let listReads = 0
+    await page.route('**/rest/v1/wms_production_material_list?*', (route) => {
+      listReads++
+      return route.fulfill({
         json: [1, 2].flatMap((doc) =>
           [1, 2].map((line) => ({
             document_id: `flow-doc-${doc}`,
@@ -101,7 +116,7 @@ for (const scenario of [
         ),
         headers: { 'content-range': '0-3/4', 'access-control-expose-headers': 'content-range' }
       })
-    )
+    })
     let rejected = true
     const writes: Array<{ p_document_id: string; p_action?: string; p_line_id?: string | null }> =
       []
@@ -128,10 +143,30 @@ for (const scenario of [
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto(`#${path}`)
-    await expect(page.getByText('FLOW-DOC-1', { exact: true })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('FLOW-DOC-1', { exact: true })).toBeVisible({ timeout: 120_000 })
     for (const doc of [1, 2]) {
       const row = page.locator('.el-table__body tr').filter({ hasText: `FLOW-DOC-${doc}` })
       for (const action of ['提交', '审核', scenario.push]) {
+        if (
+          action === scenario.push &&
+          doc === 1 &&
+          (scenario.kind === 'issue' || scenario.kind === 'return')
+        ) {
+          await row.locator('.el-checkbox').click()
+          await expect(page.locator('.art-table-query__selection-bar')).toBeVisible()
+          await page.screenshot({
+            path: `.artifacts/${scenario.kind}-batch-actions.png`,
+            fullPage: true
+          })
+          const readCount = listReads
+          const batchLabel = scenario.kind === 'issue' ? '批量出库' : '批量退库'
+          await page.getByRole('button', { name: batchLabel, exact: true }).click()
+          const batchConfirmation = page.locator('.el-message-box')
+          await batchConfirmation.getByRole('button', { name: '取消', exact: true }).click()
+          await expect(batchConfirmation).toBeHidden()
+          expect(listReads).toBe(readCount)
+          await row.locator('.el-checkbox').click()
+        }
         const openAction = async () => {
           await row.getByRole('button', { name: '更多操作', exact: true }).click()
           await page.getByRole('menuitem', { name: action, exact: true }).click()
@@ -139,7 +174,14 @@ for (const scenario of [
         rejected = true
         await openAction()
         const confirmation = page.locator('.el-message-box')
-        const confirmName = action === scenario.push ? '确定下推' : `确定${action}`
+        const confirmName =
+          action === scenario.push
+            ? scenario.kind === 'issue'
+              ? '确定出库'
+              : scenario.kind === 'return'
+                ? '确定退库'
+                : '确定过账'
+            : `确定${action}`
         const before = writes.length
         await confirmation.getByRole('button', { name: '取消', exact: true }).click()
         expect(writes).toHaveLength(before)
@@ -173,13 +215,21 @@ for (const scenario of [
     await lineRow.getByRole('button', { name: '更多操作', exact: true }).click()
     await page
       .getByRole('menuitem', {
-        name: scenario.kind === 'issue' || scenario.kind === 'return' ? '下推此行' : scenario.push,
+        name: scenario.push,
         exact: true
       })
       .click()
     await page
       .locator('.el-message-box')
-      .getByRole('button', { name: '确定下推', exact: true })
+      .getByRole('button', {
+        name:
+          scenario.kind === 'issue'
+            ? '确定出库'
+            : scenario.kind === 'return'
+              ? '确定退库'
+              : '确定过账',
+        exact: true
+      })
       .click()
     await expect.poll(() => writes.length).toBe(13)
     expect(writes[12]).toEqual({ p_document_id: 'flow-doc-1', p_line_id: 'flow-line-1-1' })

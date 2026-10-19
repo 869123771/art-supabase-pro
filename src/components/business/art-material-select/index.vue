@@ -136,7 +136,9 @@
     }
   ]
 
-  const navigation = computed(() => buildMaterialCategoryNavigation(props.categories))
+  const navigation = computed(() =>
+    props.categories.length ? buildMaterialCategoryNavigation(props.categories) : undefined
+  )
 
   const updateValue = (value: DataSelectKey | DataSelectKey[] | undefined): void => {
     if (props.multiple) emit('update:modelValues', normalizeStringList(value))

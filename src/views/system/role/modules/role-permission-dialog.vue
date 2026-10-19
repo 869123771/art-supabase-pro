@@ -52,11 +52,8 @@
               :height="height"
               :item-size="TREE_ROW_HEIGHT"
               :default-expanded-keys="initialExpandedKeys"
-              show-checkbox
-              check-strictly
               :filter-method="filterMenuNode"
               :props="treeProps"
-              @check-change="handleTreeCheckChange"
               @node-expand="handleNodeExpand"
               @node-collapse="handleNodeCollapse"
             >
@@ -69,6 +66,14 @@
                       : data.displayLabel
                   "
                 >
+                  <ElCheckbox
+                    :model-value="checkedKeySet.has(data.id)"
+                    :indeterminate="halfCheckedKeySet.has(data.id)"
+                    :disabled="!canEditPermissions"
+                    :aria-label="`${data.displayLabel}权限`"
+                    @click.stop
+                    @change="handleTreeCheckChange(data, $event === true)"
+                  />
                   <ArtSvgIcon
                     class="role-permission-dialog__node-icon"
                     :icon="getNodeIcon(data.type)"
@@ -205,6 +210,7 @@
   const isCascadeCheck = ref(false)
   const permissionKeyword = ref('')
   const selectedCount = ref(0)
+  const checkedKeys = ref<string[]>([])
   const initialExpandedKeys = ref<TreeKey[]>([])
   const manualExpandedKeys = new Set<TreeKey>()
   const TREE_ROW_HEIGHT = 40
@@ -228,7 +234,20 @@
       includeParentChain: true
     })
   )
-  const getCheckedKeys = (): TreeKey[] => treeRef.value?.getCheckedKeys() ?? []
+  const getCheckedKeys = (): string[] => checkedKeys.value.slice()
+  const checkedKeySet = computed(() => new Set(checkedKeys.value))
+  const halfCheckedKeySet = computed(() => {
+    const halfChecked = new Set<string>()
+    const nodes = new Map(flatMenuList.value.map((item) => [item.id, item]))
+    for (const key of checkedKeys.value) {
+      let parentId = nodes.get(key)?.parentId
+      while (parentId && nodes.has(parentId)) {
+        if (!checkedKeySet.value.has(parentId)) halfChecked.add(parentId)
+        parentId = nodes.get(parentId)?.parentId
+      }
+    }
+    return halfChecked
+  })
 
   const getNodeLabel = (data: AppRouteRecord): string =>
     formatMenuTitle(data.meta?.title ?? '') || data.name || '未命名权限'
@@ -250,13 +269,7 @@
     }
   }
 
-  const getAllMenuKeys = (): TreeKey[] => {
-    return flatMenuList.value
-      .map((item) => item.id)
-      .filter(
-        (id): id is NonNullable<typeof id> => typeof id === 'string' || typeof id === 'number'
-      )
-  }
+  const getAllMenuKeys = (): string[] => flatMenuList.value.map((item) => item.id)
 
   const getExpandableMenuKeys = (): TreeKey[] =>
     uniq(
@@ -292,7 +305,7 @@
   const resetPermission = (): void => {
     invalidatePermissionLoad()
     Object.assign(loadState, { loading: false, error: false, ready: false })
-    treeRef.value?.setCheckedKeys([])
+    checkedKeys.value = []
     roleData.value = undefined
     menuList.value = []
     isExpandAll.value = false
@@ -334,8 +347,10 @@
       initialExpandedKeys.value.forEach((key) => manualExpandedKeys.add(key))
       await nextTick()
       if (!isCurrentLoad()) return
-      const menuIds = roleMenus.map((item: { menuId: TreeKey }) => item.menuId)
-      treeRef.value?.setCheckedKeys(menuIds)
+      const availableIds = new Set(getAllMenuKeys())
+      checkedKeys.value = roleMenus
+        .map((item: { menuId: string }) => item.menuId)
+        .filter((id) => availableIds.has(id))
       await nextTick()
       if (!isCurrentLoad()) return
       handleTreeCheck()
@@ -364,7 +379,7 @@
       const menuIds = getSelectedMenuIds()
       const { error } = await saveRoleMenuList({
         p_role_id: roleId,
-        p_menu_ids: menuIds.filter((key): key is string => typeof key === 'string')
+        p_menu_ids: menuIds
       })
       if (error || sequence !== loadSequence) return false
 
@@ -395,7 +410,7 @@
     const tree = treeRef.value
     if (!tree || !canEditPermissions.value) return
 
-    tree.setCheckedKeys(isSelectAll.value ? [] : getAllMenuKeys())
+    checkedKeys.value = isSelectAll.value ? [] : getAllMenuKeys()
     await nextTick()
     handleTreeCheck()
   }
@@ -406,14 +421,13 @@
     selectedCount.value = getSelectedMenuIds().length
   }
 
-  const handleTreeCheckChange = (data: Record<string, unknown>, checked: boolean): void => {
-    const tree = treeRef.value
-    if (!tree) return
-
-    const nodeId = data.id
-    if (isCascadeCheck.value && (typeof nodeId === 'string' || typeof nodeId === 'number')) {
-      tree.setChecked(nodeId, checked, true)
-    }
+  const handleTreeCheckChange = (data: PermissionTreeNode, checked: boolean): void => {
+    const keys = isCascadeCheck.value
+      ? treeUtils.getDescendants(menuList.value, data.id, true).map((item) => item.id)
+      : [data.id]
+    const next = new Set(checkedKeys.value)
+    keys.forEach((key) => (checked ? next.add(key) : next.delete(key)))
+    checkedKeys.value = [...next]
     handleTreeCheck()
   }
 
@@ -458,7 +472,7 @@
     isExpandAll.value = false
   }
 
-  const getSelectedMenuIds = (): TreeKey[] => getCheckedKeys()
+  const getSelectedMenuIds = (): string[] => getCheckedKeys()
 
   const handleOpen = async (data: RoleListItem): Promise<void> => {
     if (permissionSaving.value) return

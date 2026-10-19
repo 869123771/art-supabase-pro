@@ -2713,7 +2713,35 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'WmsDirectTransfer',
-    buttons: [button('View', '查看')]
+    buttons: [
+      button('View', '查看'),
+      button('Create', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '删除'),
+      button('Import', '导入'),
+      button('Export', '导出'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核'),
+      button('Return', '调拨退回')
+    ]
+  },
+  {
+    menuName: 'WmsStepTransfer',
+    buttons: [
+      button('View', '查看'),
+      button('Create', '新增'),
+      button('Copy', '复制'),
+      button('Edit', '编辑'),
+      button('Delete', '批量删除'),
+      button('Export', '导出'),
+      button('Submit', '提交'),
+      button('Withdraw', '撤回'),
+      button('Approve', '审核调出'),
+      button('Receive', '转储收货'),
+      button('Return', '调出退回')
+    ]
   },
   {
     menuName: 'WmsTransfer',
@@ -2754,7 +2782,23 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看'),
       button('Create', '生成盘点方案'),
       button('Count', '录入实盘'),
-      button('Post', '确认盘盈盘亏')
+      button('Post', '确认盘盈盘亏'),
+      button('Approve', '审核盘点方案')
+    ]
+  },
+  {
+    menuName: 'WmsCountSheet',
+    buttons: [
+      button('View', '查看盘点表'),
+      button('Count', '录入初盘'),
+      button('Recount', '录入复盘'),
+      button('AddLine', '新增账外物料'),
+      button('Adjust', '选单调整'),
+      button('ImportSerial', '导入序列号'),
+      button('Submit', '提交盘点表'),
+      button('Approve', '审核盘点表'),
+      button('Return', '退回盘点表'),
+      button('Delete', '删除盘点表')
     ]
   },
   {

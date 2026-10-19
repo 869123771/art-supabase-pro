@@ -92,7 +92,8 @@ export default async ({ mode }: { mode: string }) => {
     enableFileViewerPlugin ? import('@file-viewer/vite-plugin') : undefined,
     enableBundleAnalyzer ? import('rollup-plugin-visualizer') : undefined
   ])
-  const outDir = process.env.VITE_OUT_DIR || VITE_OUT_DIR || 'dist'
+  const outDir =
+    process.env.VITE_OUT_DIR || (isE2E ? '.artifacts/e2e-build' : VITE_OUT_DIR || 'dist')
   const fileViewerAssetStageDir = path.resolve(
     root,
     'node_modules/.cache/art-supabase-pro/file-viewer-assets'

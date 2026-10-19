@@ -38,8 +38,64 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  font-style: normal;
+  font-weight: 400;
+  src: url('@/assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Regular.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+2E80-2EFF, U+3000-303F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  font-style: normal;
+  font-weight: 500;
+  src: url('@/assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Medium.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+2E80-2EFF, U+3000-303F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  font-style: normal;
+  font-weight: 600;
+  src: url('@/assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Medium.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+2E80-2EFF, U+3000-303F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  font-style: normal;
+  font-weight: 700;
+  src: url('@/assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Bold.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+2E80-2EFF, U+3000-303F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: 'HarmonyOS Sans SC';
+  font-style: normal;
+  font-weight: 800;
+  src: url('@/assets/fonts/HarmonyOS_Sans_SC/HarmonyOS_Sans_SC_Bold.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+2E80-2EFF, U+3000-303F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
 body {
   font-family:
+    'HarmonyOS Sans SC',
     'HarmonyOS Sans',
     'PingFang SC',
     'Microsoft YaHei',

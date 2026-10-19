@@ -218,6 +218,7 @@
   import ArtTurnstileCaptcha from '@/components/core/forms/art-turnstile-captcha/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import FeishuQrLogin from './modules/feishu-qr-login.vue'
+
   import {
     isAbsoluteApplicationRedirect,
     resolveSafePostLoginRedirect

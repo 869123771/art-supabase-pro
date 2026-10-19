@@ -349,4 +349,6 @@ art-supabase-pro/
 
 项目采用 [木兰宽松许可证第 2 版（MulanPSL-2.0）](LICENSE) 开源。欢迎提交 Issue、Pull Request，也欢迎分享你的 Supabase、TMS、车辆管理和 AI 业务实践。
 
+界面使用 HarmonyOS Sans 字体，版权 © Huawei Device Co., Ltd.；字体文件遵循单独的 [HarmonyOS Sans Fonts License Agreement](public/fonts/HarmonyOS-Sans-LICENSE.txt)。
+
 感谢开源社区对基础界面能力的贡献。

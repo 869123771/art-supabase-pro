@@ -50,7 +50,13 @@ const warehouseDocumentRoutes = {
     finished_inbound: 'WmsFinishedInbound',
     finished_return: 'WmsFinishedReturn'
   },
-  wms_count_adjustment_document: { gain: 'WmsCountGain', loss: 'WmsCountLoss' }
+  wms_count_adjustment_document: { gain: 'WmsCountGain', loss: 'WmsCountLoss' },
+  wms_transfer_business_document: {
+    direct: 'WmsDirectTransfer',
+    direct_return: 'WmsDirectTransfer',
+    step: 'WmsStepTransfer',
+    step_return: 'WmsStepTransfer'
+  }
 } satisfies Record<Parameters<typeof fetchWmsDocumentDeleteDestination>[0], Record<string, string>>
 
 export function createRecordReferenceNavigation(
@@ -73,7 +79,10 @@ export function createRecordReferenceNavigation(
             ? (routes as Record<string, string>)[destination.kind]
             : undefined
           return name && hasAuth(`${name}:View`) ? name : null
-        }
+        },
+        ...(table === 'wms_transfer_business_document'
+          ? { routeQuery: (record: { targetId: string }) => ({ openDocument: record.targetId }) }
+          : {})
       }
     ])
   )
@@ -117,8 +126,9 @@ export function createRecordReferenceNavigation(
     },
     wms_transfer_request_document: { routeName: 'WmsTransfer', ...permitted('WmsTransfer:View') },
     wms_transfer_document: {
-      routeName: 'WmsDirectTransfer',
-      ...permitted('WmsDirectTransfer:View')
+      routeName: 'WmsStepTransfer',
+      routeQuery: { tab: 'history' },
+      ...permitted('WmsStepTransfer:View')
     },
     wms_issue_request: {
       routeName: 'WmsIssueRequest',

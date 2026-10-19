@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
+import { installDictionaryOptions } from './support/dictionary-options'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 for (const viewport of [
@@ -34,6 +35,15 @@ for (const viewport of [
           : []
       })
     )
+    await installDictionaryOptions(page, {
+      hrSkillMatrixFilter: [
+        { value: 'all', label: '全部' },
+        { value: 'gap', label: '有缺口' },
+        { value: 'ready', label: '已就绪' },
+        { value: 'unassessed', label: '待评估' },
+        { value: 'unmodelled', label: '未建模' }
+      ]
+    })
     await page.goto('/tests/e2e/fixtures/hr-talent-inventory.html?page=skills')
     const workspace = page.locator('.skill-matrix-page__employees')
     await expect(workspace.getByText('测试员工0', { exact: true })).toBeVisible()

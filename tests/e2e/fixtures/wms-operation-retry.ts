@@ -23,6 +23,7 @@ import IssueCreateDialog from '../../../modules/art-supabase-wms/src/views/outbo
 import ProductionDrawer from '../../../modules/art-supabase-wms/src/views/production-inout/shared/production-material-drawer.vue'
 import CountAdjustmentDrawer from '../../../modules/art-supabase-wms/src/views/count-business/modules/count-adjustment-drawer.vue'
 import TransferRequestDrawer from '../../../modules/art-supabase-wms/src/views/transfer-business/transfer-request/modules/transfer-request-drawer.vue'
+import TransferBusinessDrawer from '../../../modules/art-supabase-wms/src/views/transfer-business/shared/transfer-business-drawer.vue'
 import IssuePostDialog from '../../../modules/art-supabase-wms/src/views/outbound-business/outbound-request/modules/issue-request-post-dialog.vue'
 import ProjectTransferDialog from '../../../modules/art-supabase-wms/src/views/inventory-trace/stock/modules/project-transfer-dialog.vue'
 import { useUserStore } from '@/store/modules/user'
@@ -150,6 +151,7 @@ const app = createApp(
       const production = ref<InstanceType<typeof ProductionDrawer>>()
       const countAdjustment = ref<InstanceType<typeof CountAdjustmentDrawer>>()
       const transferRequest = ref<InstanceType<typeof TransferRequestDrawer>>()
+      const transferBusiness = ref<InstanceType<typeof TransferBusinessDrawer>>()
       const issuePost = ref<InstanceType<typeof IssuePostDialog>>()
       const projectTransfer = ref<InstanceType<typeof ProjectTransferDialog>>()
       const context = {
@@ -357,6 +359,19 @@ const app = createApp(
                     onClick: () =>
                       countCreate.value?.handleOpen({
                         ...context,
+                        organizations: [
+                          {
+                            id: 'org-test',
+                            tenantId: 'tenant-test',
+                            organizationCode: 'ORG-TEST',
+                            organizationName: '测试库存组织',
+                            organizationType: 'company',
+                            status: '1',
+                            enabledOn: '2026-10-01',
+                            isDefault: true,
+                            initializationClosedAt: null
+                          }
+                        ],
                         warehouses: new URLSearchParams(location.search).has('countScope')
                           ? ['first', 'second'].map((name) => ({
                               id: `warehouse-${name}`,
@@ -417,6 +432,58 @@ const app = createApp(
                     onClick: () => transferRequest.value?.handleOpen({ ...context, mode: 'create' })
                   },
                   '测试调拨申请创建'
+                ),
+                h(
+                  'button',
+                  {
+                    onClick: () =>
+                      transferBusiness.value?.handleOpen({
+                        tenantId: context.tenantId,
+                        mode: 'create',
+                        kind: 'direct'
+                      })
+                  },
+                  '测试直接调拨单创建'
+                ),
+                h(
+                  'button',
+                  {
+                    onClick: () =>
+                      transferBusiness.value?.handleOpen({
+                        tenantId: context.tenantId,
+                        mode: 'create',
+                        kind: 'step'
+                      })
+                  },
+                  '测试分步调拨单创建'
+                ),
+                ...(['direct', 'step'] as const).map((kind) =>
+                  h(
+                    'button',
+                    {
+                      onClick: () =>
+                        transferBusiness.value?.handleOpen({
+                          tenantId: context.tenantId,
+                          mode: 'view',
+                          kind,
+                          documentId: 'transfer-document-test'
+                        })
+                    },
+                    `测试${kind === 'direct' ? '直接' : '分步'}调拨单查看`
+                  )
+                ),
+                h(
+                  'button',
+                  {
+                    onClick: () =>
+                      transferBusiness.value?.handleOpen({
+                        tenantId: context.tenantId,
+                        mode: 'edit',
+                        kind: 'step_receipt',
+                        documentId: 'receipt-document-test'
+                      })
+                  },
+                  '测试分步调拨收货单编辑'
                 ),
                 h(
                   'button',
@@ -535,7 +602,8 @@ const app = createApp(
                       ? 'loss'
                       : 'gain'
                 }),
-                h(TransferRequestDrawer, { ref: transferRequest })
+                h(TransferRequestDrawer, { ref: transferRequest }),
+                h(TransferBusinessDrawer, { ref: transferBusiness })
               ])
           }
         )

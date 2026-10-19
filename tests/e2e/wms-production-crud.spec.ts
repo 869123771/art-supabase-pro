@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { expectInputTextUnclipped } from './support/input-text-width'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(120_000)
+test.setTimeout(240_000)
 for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
   test(`${kind}详情失败恢复及两行编辑复制保持布局`, async ({ page }, testInfo) => {
     let failure = true

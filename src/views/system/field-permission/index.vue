@@ -415,10 +415,13 @@
   const permissionDraft = ref<Record<string, PermissionSelection>>({})
   const savedDraft = shallowRef<Record<string, PermissionSelection>>({})
 
-  const subjectTypeOptions = [
-    { label: '按角色授权', value: 'role' },
-    { label: '按人员例外', value: 'user' }
-  ]
+  const configuredSubjectTypeOptions = useDictionaryOptions('sysFieldPermissionSubjectType')
+  const subjectTypeOptions = computed(() =>
+    configuredSubjectTypeOptions.filter(
+      (option): option is { label: string; value: SubjectType } =>
+        option.value === 'role' || option.value === 'user'
+    )
+  )
 
   const dictionaryAccessOptions = useDictionaryOptions('sysFieldAccessLevel')
   const allowedAccessValues = new Set<AccessLevel>(['hidden', 'masked', 'read', 'edit'])

@@ -11,10 +11,16 @@ test('生产单据仓库范围与扩展字段复用公共字典', async ({ page 
     const url = new URL(route.request().url())
     return route.fulfill({
       json: url.pathname.endsWith('/sys_dictionary')
-        ? [
-            { label: '', name: '公共选项名称', value: 'number', status: '1' },
-            { label: '停用选项', value: 'inactive', status: '0' }
-          ]
+        ? url.searchParams.get('dict_type_table.code') === 'eq.mdmProductionReportControl'
+          ? [
+              { label: '不控制', value: 'none', status: '1' },
+              { label: '警告', value: 'warning', status: '1' },
+              { label: '严格控制', value: 'strict', status: '1' }
+            ]
+          : [
+              { label: '', name: '公共选项名称', value: 'number', status: '1' },
+              { label: '停用选项', value: 'inactive', status: '0' }
+            ]
         : []
     })
   })
@@ -30,6 +36,13 @@ test('生产单据仓库范围与扩展字段复用公共字典', async ({ page 
   await expect(page.getByRole('option', { name: '停用选项', exact: true })).toHaveCount(0)
   await page.getByRole('option', { name: '公共选项名称', exact: true }).click()
   await page.keyboard.press('Escape')
+  const reportControl = dialog.locator('.el-form-item').filter({ hasText: '完工入库报工控制' })
+  await expect(reportControl).toContainText('不控制')
+  await reportControl.locator('.el-select').click()
+  await expect(page.getByRole('option', { name: '警告', exact: true })).toBeVisible()
+  await expect(page.getByRole('option', { name: '严格控制', exact: true })).toBeVisible()
+  await page.getByRole('option', { name: '警告', exact: true }).click()
+  await expect(reportControl).toContainText('警告')
   await dialog.screenshot({ path: info.outputPath('production-warehouse.png') })
   await dialog
     .locator('.el-form-item')

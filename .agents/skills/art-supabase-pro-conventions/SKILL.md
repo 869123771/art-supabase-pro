@@ -50,6 +50,8 @@ Do not grant newly introduced business buttons to roles that lack the parent pag
 
 ## Choose Project Components First
 
+For query forms, express each ordinary control through its `SearchFormItem` type and options. Use an existing `ArtForm` control such as `radioGroup` before writing a `#search-*` slot. If a generally useful Element Plus form control is missing, extend `ArtForm` and its item types, then use that shared type in business pages. Reserve search slots for interactions that the metadata contract cannot express. Do not add a placeholder `type: 'text'` item solely to mount a standard control in a slot. Persisted or reusable option sets, including list display modes, must come from the appropriate `sys_dictionary` through `useDictionaryOptions`; keep their labels and order configurable instead of duplicating literal options across pages.
+
 Use these components before assembling equivalent Element Plus plumbing:
 
 | Need | Preferred component |

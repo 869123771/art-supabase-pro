@@ -131,6 +131,9 @@ export default defineConfig({
             }
           : {}),
         url: baseURL,
+        ...(!useDevServer
+          ? { env: { VITE_OUT_DIR: process.env.VITE_OUT_DIR || '.artifacts/e2e-build' } }
+          : {}),
         reuseExistingServer: !process.env.CI && !process.env.E2E_SERVER_PORT,
         timeout: useDevServer ? 300_000 : 120_000
       }

@@ -18,6 +18,7 @@
 - Search keeps the tree mounted so selected permissions survive no-match results. Clearing search restores manual expansion. Bulk expansion is unavailable during search; bulk selection explicitly affects all permissions, not just matches.
 - “全部收起” collapses all nodes. Search/reset and reopen reset scroll position without changing the draft unexpectedly.
 - “父级联动下级” is an action aid, not a selection-normalization mode. Enabling or disabling it preserves the exact current draft. While enabled, a subsequent user check or uncheck on a parent applies only that action to its descendants; unrelated interactions must not recalculate historical grants.
+- A checked descendant renders unselected ancestors as half checked. Half-checked ancestors are navigation paths, not direct role grants, and must not be added to the save payload. A directly checked parent stays checked even when some descendants are unchecked.
 - Long role identities and permission codes retain full text through titles; narrow screens move the selected-count summary to its own row.
 
 ## Verification

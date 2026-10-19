@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { mockApplicationMenus } from './menu-rpc'
+import { prepareIsolatedSession } from './isolated-session'
 
 const tenantId = '7529f951-938e-4e2c-ac0d-316c136ae1f9'
 const warehouseId = 'd97f5bc1-73c4-4617-9225-b0af0327875f'
@@ -23,6 +23,29 @@ const pages = [
 
 const meta = (title: string) => ({ title, roles: ['R_SUPER'], is_enable: true, is_hide: false })
 const dictionaryItems: Record<string, [string, string, string][]> = {
+  wmsCountSheetStatus: [
+    ['draft', '草稿', 'info'],
+    ['submitted', '待审核', 'warning'],
+    ['approved', '已审核', 'success'],
+    ['cancelled', '已取消', 'info']
+  ],
+  wmsCountBackupCondition: [
+    ['immediate', '即时库存', 'primary'],
+    ['cutoff', '截止日期库存', 'info']
+  ],
+  wmsCountMethod: [
+    ['regular', '定期盘点', 'primary'],
+    ['cycle', '循环盘点', 'info'],
+    ['spot', '抽盘', 'warning']
+  ],
+  wmsCountQuantityDefault: [
+    ['zero', '0', 'info'],
+    ['book', '账存数量', 'primary']
+  ],
+  wmsCountCompletionStatus: [
+    ['pending', '未完成', 'warning'],
+    ['completed', '已完成', 'success']
+  ],
   mdmStockMovementDirection: [
     ['inbound', '入库', 'success'],
     ['outbound', '出库', 'warning'],
@@ -31,6 +54,15 @@ const dictionaryItems: Record<string, [string, string, string][]> = {
   commonBoolean: [
     ['false', '否', 'info'],
     ['true', '是', 'success']
+  ],
+  commonDocumentReviewStatus: [
+    ['draft', '草稿', 'info'],
+    ['submitted', '已提交', 'warning'],
+    ['approved', '已审核', 'success']
+  ],
+  commonDocumentDisplayMode: [
+    ['document', '按单据', 'primary'],
+    ['line', '按明细', 'info']
   ],
   mdmWarehouseType: [
     ['raw_material', '原料仓', 'primary'],
@@ -331,31 +363,7 @@ function inventoryMenu() {
 }
 
 async function installFixtures(page: Page): Promise<void> {
-  const state = JSON.parse(readFileSync('playwright/.auth/user.json', 'utf8')) as {
-    origins: { localStorage: { name: string; value: string }[] }[]
-  }
-  const entries = state.origins.flatMap((origin) => origin.localStorage)
-  await page.addInitScript((entries) => {
-    for (const entry of entries) localStorage.setItem(entry.name, entry.value)
-    for (const key of Object.keys(localStorage)) {
-      if (!/^sb-.*-auth-token$/.test(key)) continue
-      const session = JSON.parse(localStorage.getItem(key) || '{}')
-      session.expires_at = Math.floor(Date.now() / 1000) + 3600
-      session.expires_in = 3600
-      const [header, payload, signature] = String(session.access_token || '').split('.')
-      if (header && payload && signature) {
-        const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
-        claims.iat = Math.floor(Date.now() / 1000)
-        claims.exp = claims.iat + 3600
-        const freshPayload = btoa(JSON.stringify(claims))
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=+$/, '')
-        session.access_token = `${header}.${freshPayload}.${signature}`
-      }
-      localStorage.setItem(key, JSON.stringify(session))
-    }
-  }, entries)
+  await prepareIsolatedSession(page)
   const tenant = { id: tenantId, tenant_code: 'DEMO', tenant_name: '示例工厂' }
   const menu = inventoryMenu()
   const flat: object[] = []

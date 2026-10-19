@@ -15,12 +15,14 @@
           :model-value="period"
           size="small"
           aria-label="趋势统计周期"
-          @update:model-value="emit('update:period', $event as DashboardTrendPeriod)"
+          @update:model-value="onPeriodChange"
         >
-          <ElRadioButton value="today">当天</ElRadioButton>
-          <ElRadioButton value="week">本周</ElRadioButton>
-          <ElRadioButton value="month">本月</ElRadioButton>
-          <ElRadioButton value="year">本年</ElRadioButton>
+          <ElRadioButton
+            v-for="option in periodOptions"
+            :key="option.value"
+            :value="option.value"
+            >{{ option.label }}</ElRadioButton
+          >
         </ElRadioGroup>
       </header>
     </template>
@@ -47,6 +49,7 @@
 
 <script setup lang="ts">
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
+  import { useDictionaryOptions } from '@/hooks/core/useDictionaryOptions'
   import type { DashboardTrendPeriod } from '@/api/dashboard'
   import { formatCurrencyValue } from '@/utils/ui'
   import type { DashboardTrendData } from './types'
@@ -57,6 +60,16 @@
     loading: boolean
   }>()
   const emit = defineEmits<{ 'update:period': [period: DashboardTrendPeriod] }>()
+  const configuredPeriodOptions = useDictionaryOptions('commonDashboardTrendPeriod')
+  const periodOptions = computed(() =>
+    configuredPeriodOptions.filter((option) =>
+      ['today', 'week', 'month', 'year'].includes(option.value)
+    )
+  )
+  function onPeriodChange(value: unknown): void {
+    if (value === 'today' || value === 'week' || value === 'month' || value === 'year')
+      emit('update:period', value)
+  }
 </script>
 
 <style scoped lang="scss">

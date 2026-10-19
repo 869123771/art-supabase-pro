@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { prepareIsolatedSession } from './support/isolated-session'
+import { installDictionaryOptions } from './support/dictionary-options'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 for (const viewport of [
@@ -31,6 +32,14 @@ for (const viewport of [
           : []
       })
     )
+    await installDictionaryOptions(page, {
+      hrTalentInventoryFilter: [
+        { value: 'all', label: '全部' },
+        { value: 'gap', label: '存在缺口' },
+        { value: 'high', label: '高绩效' },
+        { value: 'unassessed', label: '待评估' }
+      ]
+    })
     await page.goto('/tests/e2e/fixtures/hr-talent-inventory.html')
     const workspace = page.locator('.talent-inventory-page__workspace')
     await expect(workspace.getByText('测试员工0', { exact: true })).toBeVisible()

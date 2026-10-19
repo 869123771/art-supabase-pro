@@ -113,7 +113,8 @@ export async function fetchWmsDocumentDeleteDestination(
     | 'wms_purchase_document'
     | 'wms_sales_document'
     | 'wms_production_material_document'
-    | 'wms_count_adjustment_document',
+    | 'wms_count_adjustment_document'
+    | 'wms_transfer_business_document',
   documentId: string
 ): Promise<{ kind: string } | null> {
   const { data } = await responseHandle<{ kind: string }>(

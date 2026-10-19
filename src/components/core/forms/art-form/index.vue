@@ -1413,6 +1413,7 @@
 
   defineExpose({
     ref: formInstance,
+    controlsReady: formControlsReady,
     validate: async (...args: Parameters<FormInstance['validate']>) => {
       if (hasBlockingFields.value) {
         const invalidFields = Object.fromEntries(

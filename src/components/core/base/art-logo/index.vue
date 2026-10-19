@@ -126,7 +126,8 @@
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-family: 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-family:
+        'HarmonyOS Sans SC', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
       font-weight: 800;
       line-height: 1.08;
       color: #08275d;

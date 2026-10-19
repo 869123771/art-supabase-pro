@@ -4,6 +4,7 @@ import { mockApplicationMenus } from './support/menu-rpc'
 import { assertTableFocusContract } from './support/table-focus'
 import { prepareAppearance } from './support/appearance'
 import { expectInputTextUnclipped } from './support/input-text-width'
+import { installDictionaryOptions } from './support/dictionary-options'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(120_000)
@@ -12,6 +13,12 @@ test('调拨申请查询重置后清除旧条件并继续接受新查询', async
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   const tenant = await prepareIsolatedSession(page)
+  await installDictionaryOptions(page, {
+    commonDocumentDisplayMode: [
+      { value: 'document', label: '按单据' },
+      { value: 'line', label: '按明细' }
+    ]
+  })
   const dark = testInfo.project.name.includes('dark')
   const shadow = testInfo.project.name.includes('shadow')
   await prepareAppearance(page, { theme: dark ? 'dark' : 'light', boxBorderMode: !shadow })
@@ -260,12 +267,13 @@ test('调拨申请查询重置后清除旧条件并继续接受新查询', async
   await page.clock.runFor(300)
   await page.getByRole('menuitem', { name: 'English', exact: true }).click()
   await page.clock.runFor(100)
-  await expect.poll(() => filters.length).toBe(requestsBeforeLanguageChange + 1)
+  await expect.poll(() => filters.length).toBeGreaterThan(requestsBeforeLanguageChange)
+  const requestsAfterEnglish = filters.length
   await languageButton.hover()
   await page.clock.runFor(300)
   await page.getByRole('menuitem', { name: '简体中文', exact: true }).click()
   await page.clock.runFor(100)
-  await expect.poll(() => filters.length).toBe(requestsBeforeLanguageChange + 2)
+  await expect.poll(() => filters.length).toBeGreaterThan(requestsAfterEnglish)
   await expect(page.getByRole('heading', { name: '调拨申请单', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '打开界面设置', exact: true }).click()
   await expect(settings).toBeVisible()

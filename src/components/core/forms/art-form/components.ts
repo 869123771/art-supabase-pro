@@ -24,6 +24,7 @@ import ArtIconPicker from '@/components/core/forms/art-icon-picker/index.vue'
 import ArtTagStyleSelect from '@/components/core/forms/art-tag-style-select/index.vue'
 import ArtDataSelect from '@/components/core/forms/art-data-select/index.vue'
 import ArtUserSelect from '@/components/core/forms/art-user-select/index.vue'
+import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
 import ArtUploadFile from '@/components/core/forms/art-upload-file/index.vue'
 import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
 
@@ -58,6 +59,7 @@ const componentMap = {
   iconPicker: ArtIconPicker,
   dataSelect: ArtDataSelect,
   userSelect: ArtUserSelect,
+  employeeSelect: ArtEmployeeSelect,
   uploadFile: ArtUploadFile,
   uploadImage: ArtUploadImage
 }

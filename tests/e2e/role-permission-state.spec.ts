@@ -109,6 +109,22 @@ async function prepare(page: Page, initialMenuIds: string[] = [menuId(0)]) {
   return { dialog, openButtons, save, selected, search, savedPayloads, pageErrors }
 }
 
+test('a selected child shows its ancestor as half checked without granting it on save', async ({
+  page
+}) => {
+  const { dialog, openButtons, save, selected, savedPayloads, pageErrors } = await prepare(page)
+  await openButtons.first().click()
+  await expect(save).toBeEnabled({ timeout: 60_000 })
+  await expect(selected).toHaveText('已选 1 / 1601 项')
+
+  const rootCheckbox = dialog.locator('.el-tree-node').first().locator('label.el-checkbox')
+  await expect(rootCheckbox.locator('.el-checkbox__input')).toHaveClass(/is-indeterminate/)
+  await save.click()
+  await expect.poll(() => savedPayloads.length).toBe(1)
+  expect(savedPayloads[0].p_menu_ids).toEqual([menuId(0)])
+  expect(pageErrors).toEqual([])
+})
+
 test('parent cascade changes only later parent actions and never normalizes loaded grants', async ({
   page
 }) => {

@@ -194,10 +194,12 @@ async function createExactWordmarkMask(siteName: string): Promise<HTMLCanvasElem
   const context = canvas.getContext('2d')
   if (!context) throw new Error('当前浏览器无法排版品牌字图')
 
-  const fontFamily = '"HarmonyOS Sans", "PingFang SC", "Microsoft YaHei", sans-serif'
+  const fontFamily =
+    '"HarmonyOS Sans SC", "HarmonyOS Sans", "PingFang SC", "Microsoft YaHei", sans-serif'
   const maxWidth = WORDMARK_IMAGE_WIDTH - 72
   const maxHeight = WORDMARK_IMAGE_HEIGHT - 28
   let fontSize = 204
+  await document.fonts?.load(`800 ${fontSize}px "HarmonyOS Sans SC"`, text)
   await document.fonts?.load(`800 ${fontSize}px "HarmonyOS Sans"`, text)
 
   const applyFont = (): void => {

@@ -194,7 +194,9 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   wms_serial_number: { label: '序列号台账' },
   wms_transfer_document: { label: '库存调拨单' },
   wms_transfer_request_line: { label: '调拨申请明细' },
-  wms_transfer_request_document: { label: '调拨申请单' }
+  wms_transfer_request_document: { label: '调拨申请单' },
+  wms_transfer_business_line: { label: '调拨单明细' },
+  wms_transfer_business_document: { label: '直接／分步调拨单' }
 }
 
 export function getRecordReferenceMeta(table: string): RecordReferenceMeta {

@@ -160,4 +160,6 @@ pnpm build
 
 Yiqi Workshop is released under the [Mulan Permissive Software License, Version 2 (MulanPSL-2.0)](LICENSE).
 
+The interface uses HarmonyOS Sans Fonts, copyright © Huawei Device Co., Ltd. The fonts are distributed under the separate [HarmonyOS Sans Fonts License Agreement](public/fonts/HarmonyOS-Sans-LICENSE.txt).
+
 Thanks to the open-source community for its contributions to the interface foundations.

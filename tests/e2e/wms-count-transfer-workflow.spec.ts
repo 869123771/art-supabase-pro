@@ -187,7 +187,35 @@ for (const permission of [
             type: 'button',
             sort: 1,
             meta: meta(action)
-          }))
+          })),
+          ...(permission === 'push'
+            ? (['direct', 'step'] as const).flatMap((targetKind) => {
+                const targetName = targetKind === 'direct' ? 'WmsDirectTransfer' : 'WmsStepTransfer'
+                const targetPath = `transfer-business/${targetKind}-transfer`
+                return [
+                  {
+                    id: `flow-${targetName}`,
+                    parentId: null,
+                    name: targetName,
+                    path: `/wms/${targetPath}`,
+                    component: `/wms/${targetPath}`,
+                    type: 'menu' as const,
+                    sort: 2,
+                    meta: meta(targetName)
+                  },
+                  ...(['View', 'Create'] as const).map((action) => ({
+                    id: `flow-${targetName}-${action}`,
+                    parentId: `flow-${targetName}`,
+                    name: `${targetName}:${action}`,
+                    path: '',
+                    component: '',
+                    type: 'button' as const,
+                    sort: 1,
+                    meta: meta(action)
+                  }))
+                ]
+              })
+            : [])
         ]
       })
       const states = new Map(
@@ -221,6 +249,7 @@ for (const permission of [
             status: states.get(`flow-doc-${n}`),
             material_status: 'pending',
             pushed_at: pushed.has(`flow-doc-${n}`) ? '2026-10-06T00:00:00Z' : null,
+            pushed_document_id: pushed.has(`flow-doc-${n}`) ? `target-doc-${n}` : null,
             business_date: '2026-10-06',
             kind,
             line_no: 10,
@@ -247,22 +276,99 @@ for (const permission of [
         return route.fulfill({ json: null })
       })
       const pushed = new Set<string>()
-      const pushWrites: Array<{ p_document_id: string; p_mode: string }> = []
+      const pushWrites: Array<{ p_request_id: string; p_kind: string; p_line_ids: string[] }> = []
       let releasePush: (() => void) | undefined
       let pushFailed = true
       let holdPush = true
-      await page.route('**/rpc/wms_push_transfer_request_secure', async (route) => {
-        const payload = route.request().postDataJSON()
-        pushWrites.push(payload)
-        if (holdPush)
-          await new Promise<void>((resolve) => {
-            releasePush = resolve
+      await page.route(
+        '**/rpc/wms_create_transfer_business_grouped_from_request_secure',
+        async (route) => {
+          const payload = route.request().postDataJSON()
+          pushWrites.push(payload)
+          if (holdPush)
+            await new Promise<void>((resolve) => {
+              releasePush = resolve
+            })
+          if (pushFailed)
+            return route.fulfill({ status: 400, json: { code: 'P0001', message: '测试下推失败' } })
+          pushed.add(payload.p_request_id)
+          const suffix = payload.p_request_id.slice(-1)
+          return route.fulfill({
+            json: [
+              ...(suffix === '2'
+                ? [
+                    {
+                      id: 'target-doc-2a',
+                      documentNo: 'TARGET-DOC-2A',
+                      sourceOrganizationName: '来源组织',
+                      targetOrganizationName: '同组织目标',
+                      lineCount: 1
+                    }
+                  ]
+                : []),
+              {
+                id: `target-doc-${suffix}`,
+                documentNo: `TARGET-DOC-${suffix}`,
+                sourceOrganizationName: '来源组织',
+                targetOrganizationName: suffix === '2' ? '跨组织目标' : '目标组织',
+                lineCount: 1
+              }
+            ]
           })
-        if (pushFailed)
-          return route.fulfill({ status: 400, json: { code: 'P0001', message: '测试下推失败' } })
-        pushed.add(payload.p_document_id)
-        return route.fulfill({ json: null })
-      })
+        }
+      )
+      if (permission === 'push') {
+        await page.route('**/rest/v1/sys_menu?*', (route) =>
+          route.fulfill({ json: { id: 'flow-menu' } })
+        )
+        await page.route('**/rest/v1/wms_transfer_business_list?*', (route) => {
+          const filter = new URL(route.request().url()).searchParams.get('document_id')
+          const id = filter?.replace('eq.', '')
+          const n = id?.slice(-1)
+          if (!id || !n) return route.fulfill({ json: [] })
+          return route.fulfill({
+            json: [
+              {
+                id,
+                document_id: id,
+                line_id: `target-line-${n}`,
+                tenant_id: tenantId,
+                kind: n === '1' ? 'direct' : 'step',
+                document_no: `TARGET-DOC-${n}`,
+                document_type_id: 'flow-type',
+                business_type_id: 'flow-business',
+                business_date: '2026-10-15',
+                source_organization_id: 'flow-org',
+                target_organization_id: 'flow-org',
+                status: 'draft',
+                line: {
+                  id: `target-line-${n}`,
+                  line_no: 10,
+                  material_id: 'flow-material',
+                  source_batch_id: null,
+                  quantity: 2,
+                  inventory_unit_id: 'flow-unit',
+                  source_organization_id: 'flow-org',
+                  source_warehouse_id: 'flow-source-warehouse',
+                  target_organization_id: 'flow-org',
+                  target_warehouse_id: 'flow-target-warehouse',
+                  owner_type: 'self',
+                  stock_type: 'normal',
+                  stock_status: 'available',
+                  serial_ids: [],
+                  returned_quantity: 0
+                },
+                material_code: 'FLOW-MAT',
+                material_description: '流程测试物料',
+                source_warehouse_name: '来源仓库',
+                target_warehouse_name: '目标仓库',
+                document_type_name: '标准调拨',
+                business_type_name: '转储'
+              }
+            ]
+          })
+        })
+      }
       const errors: string[] = []
       page.on('pageerror', (error) => errors.push(error.message))
       await page.goto(`#/wms/${path}`, { waitUntil: 'domcontentloaded' })
@@ -319,6 +425,14 @@ for (const permission of [
         return
       }
       if (permission === 'push') {
+        await page.getByText('按明细', { exact: true }).click()
+        const firstLine = page.locator('.el-table__body tr').filter({ hasText: 'FLOW-DOC-1' })
+        await firstLine.locator('.el-checkbox').first().click()
+        await page.getByRole('button', { name: '下推所选明细', exact: true }).click()
+        const selectedDialog = page.getByRole('dialog', { name: '下推调拨申请', exact: true })
+        await expect(selectedDialog).toContainText('已选 1 行')
+        await selectedDialog.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+        await page.getByText('按单据', { exact: true }).click()
         for (const [n, mode, label] of [
           [1, 'direct', '直接调拨'],
           [2, 'in_transit', '调出在途']
@@ -352,10 +466,49 @@ for (const permission of [
           holdPush = false
           await dialog.getByRole('button', { name: label, exact: true }).click()
           await expect(dialog).toBeHidden()
+          if (n === 2) {
+            const resultDialog = page.getByRole('dialog', { name: '已生成调拨单', exact: true })
+            await expect(resultDialog).toContainText('生成 2 张暂存单')
+            await expect(resultDialog).toContainText('TARGET-DOC-2A')
+            await expect(resultDialog).toContainText('同组织目标')
+            await expect(resultDialog).toContainText('TARGET-DOC-2')
+            await expect(resultDialog).toContainText('跨组织目标')
+            await page.screenshot({
+              path: testInfo.outputPath('push-step-grouped-result.png'),
+              animations: 'disabled'
+            })
+            await resultDialog
+              .getByText('TARGET-DOC-2', { exact: true })
+              .locator('../..')
+              .getByRole('button', { name: '打开单据' })
+              .click()
+          }
           await expect.poll(() => pushWrites.length).toBe(n * 2)
           expect(pushWrites[n * 2 - 1]).toEqual(pushWrites[n * 2 - 2])
-          expect(pushWrites[n * 2 - 1]).toEqual({ p_document_id: `flow-doc-${n}`, p_mode: mode })
-          await expect(row.getByRole('button', { name: '更多操作', exact: true })).toHaveCount(0)
+          expect(pushWrites[n * 2 - 1]).toEqual({
+            p_request_id: `flow-doc-${n}`,
+            p_kind: mode === 'direct' ? 'direct' : 'step',
+            p_line_ids: []
+          })
+          await expect(page).toHaveURL(
+            new RegExp(
+              `transfer-business/${mode === 'direct' ? 'direct-transfer' : 'step-transfer'}`
+            )
+          )
+          const targetDrawer = page.getByRole('dialog', {
+            name: n === 1 ? '编辑直接调拨单' : '编辑分步调拨单',
+            exact: true
+          })
+          await expect(targetDrawer).toBeVisible()
+          await expect(targetDrawer.getByText('流程测试物料', { exact: true })).toBeVisible()
+          await targetDrawer.getByRole('button', { name: '取消', exact: true }).click()
+          await page.goto(`#/wms/${path}`, { waitUntil: 'domcontentloaded' })
+          await expect(row.getByRole('button', { name: '更多操作', exact: true })).toBeVisible()
+          await row.getByRole('button', { name: '更多操作', exact: true }).click()
+          await expect(
+            page.getByRole('menuitem', { name: '下推（明细已处理）', exact: true })
+          ).toBeDisabled()
+          await page.keyboard.press('Escape')
         }
         expect(errors).toEqual([])
         return

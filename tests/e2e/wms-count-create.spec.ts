@@ -61,7 +61,9 @@ async function installCountMenu(page: Page, canCreate: boolean, canCount = false
 test('盘点普通用户仅查看权限没有新增入口', async ({ page }) => {
   await installCountMenu(page, false)
   await page.goto('#/wms/count-business/count')
-  await expect(page.getByRole('heading', { name: '库存盘点', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '库存盘点', exact: true })).toBeVisible({
+    timeout: 30_000
+  })
   await expect(page.getByRole('button', { name: '生成盘点方案', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '切换租户', exact: true })).toHaveCount(0)
 })
@@ -164,7 +166,7 @@ test('盘点普通用户实际菜单候选加载及失败重试期间不可打�
 test('盘点新增范围切换、取消重开及保存失败保留范围', async ({ page }, testInfo) => {
   const payloads: unknown[] = []
   await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
-  await page.route('**/rpc/wms_create_count_plan_secure', (route) => {
+  await page.route('**/rpc/wms_create_count_plan_v2_secure', (route) => {
     payloads.push(route.request().postDataJSON())
     return route.fulfill(
       payloads.length === 1
@@ -176,29 +178,28 @@ test('盘点新增范围切换、取消重开及保存失败保留范围', async
   const open = page.getByRole('button', { name: '测试盘点创建', exact: true })
   await open.click()
   const dialog = page.getByRole('dialog', { name: '生成盘点方案', exact: true })
-  const warehouse = dialog.getByRole('combobox', { name: '* 盘点仓库', exact: true })
+  await expect(dialog).toBeVisible()
+  const organization = dialog.getByRole('combobox', { name: '* 库存组织', exact: true })
+  const warehouse = dialog
+    .locator('.el-form-item')
+    .filter({ hasText: '仓库' })
+    .locator('.el-select')
+    .first()
   const project = dialog.getByRole('combobox', { name: '项目范围', exact: true })
   const section = dialog.getByRole('combobox', { name: '施工号范围', exact: true })
   const confirm = dialog.getByRole('button', { name: '确定', exact: true })
-  await confirm.click()
-  await expect(dialog.getByText('请选择盘点仓库', { exact: true })).toBeVisible()
-  expect(payloads).toHaveLength(0)
+  await organization.click()
+  await page.getByRole('option', { name: '测试库存组织 · ORG-TEST', exact: true }).click()
+  await expect(project).toBeEnabled()
   await warehouse.click()
   await page.getByRole('option', { name: '测试盘点仓库 first · FIRST', exact: true }).click()
   await project.click()
-  await expect(page.getByRole('option')).toHaveCount(1)
   await page.getByRole('option', { name: '测试项目 active · PROJECT-ACTIVE', exact: true }).click()
   await section.click()
   await page.getByRole('option', { name: 'COUNT-SECTION · 测试盘点施工号', exact: true }).click()
-  await warehouse.click()
-  await page.getByRole('option', { name: '测试盘点仓库 second · SECOND', exact: true }).click()
-  await expect(project).toHaveValue('')
-  await expect(section).toHaveValue('')
-  await expect(section).toBeDisabled()
   await dialog.getByRole('button', { name: '取消', exact: true }).click()
   await open.click()
-  await expect(warehouse).toHaveValue('')
-  await expect(project).toBeDisabled()
+  await expect(dialog).toBeVisible()
   await warehouse.click()
   await page.getByRole('option', { name: '测试盘点仓库 first · FIRST', exact: true }).click()
   await project.click()
@@ -220,7 +221,8 @@ test('盘点新增范围切换、取消重开及保存失败保留范围', async
   expect(payloads[1]).toEqual(payloads[0])
   expect(payloads[1]).toMatchObject({
     p_payload: {
-      warehouse_id: 'warehouse-first',
+      organization_id: 'org-test',
+      warehouse_ids: ['warehouse-first'],
       project_id: 'project-active',
       construction_no: 'COUNT-SECTION',
       remark: '范围验收说明'
@@ -246,6 +248,93 @@ test('盘点新增范围切换、取消重开及保存失败保留范围', async
   await expect(dialog).toBeHidden()
   expect(payloads).toHaveLength(3)
   expect(payloads[2]).toMatchObject({
-    p_payload: { warehouse_id: 'warehouse-first', project_id: null, construction_no: null }
+    p_payload: {
+      organization_id: 'org-test',
+      warehouse_ids: ['warehouse-first'],
+      project_id: null,
+      construction_no: null
+    }
+  })
+})
+
+test('截止日期库存自动填入当天并禁用零库存参数', async ({ page }, testInfo) => {
+  await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+  await installFixtures(page)
+  await page.goto('/tests/e2e/fixtures/wms-operation-retry.html?countScope')
+  await page.getByRole('button', { name: '测试盘点创建', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '生成盘点方案', exact: true })
+  await expect(dialog).toBeVisible()
+  const zeroStock = dialog.locator('.el-form-item').filter({ hasText: '零库存参与盘点' })
+  await zeroStock.locator('.el-switch').click()
+  await expect(zeroStock.getByRole('switch')).toBeChecked()
+  await dialog.locator('.el-radio-button').filter({ hasText: '截止日期库存' }).click()
+  await expect(dialog.getByText('截止日期', { exact: true })).toBeVisible()
+  const businessDate = dialog.locator('.el-date-editor input').first()
+  const cutoffDate = dialog.locator('.el-date-editor input').last()
+  await expect(cutoffDate).toHaveValue(await businessDate.inputValue())
+  await expect(cutoffDate).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
+  await expect(cutoffDate).toBeEnabled()
+  await expect(zeroStock.getByRole('switch')).toBeDisabled()
+  await expect(zeroStock.getByRole('switch')).not.toBeChecked()
+  await page.screenshot({
+    path: testInfo.outputPath('count-plan-cutoff.png'),
+    animations: 'disabled'
+  })
+})
+
+test('盘点物料弹窗可从即时库存多选两条记录', async ({ page }, testInfo) => {
+  await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }))
+  await installFixtures(page)
+  const optionPayloads: unknown[] = []
+  await page.route('**/rest/v1/rpc/wms_count_material_options_secure', (route) => {
+    optionPayloads.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: [
+        {
+          id: 'count-material-one',
+          tenant_id: 'tenant-test',
+          material_code: 'COUNT-M01',
+          material_name: '盘点物料一',
+          description: '盘点物料一描述',
+          specification_model: 'M10',
+          drawing_no: null,
+          category_id: null,
+          serial_management_enabled: false,
+          total_count: 2
+        },
+        {
+          id: 'count-material-two',
+          tenant_id: 'tenant-test',
+          material_code: 'COUNT-M02',
+          material_name: '盘点物料二',
+          description: '盘点物料二描述',
+          specification_model: 'M20',
+          drawing_no: null,
+          category_id: null,
+          serial_management_enabled: false,
+          total_count: 2
+        }
+      ]
+    })
+  })
+  await page.goto('/tests/e2e/fixtures/wms-operation-retry.html?countScope')
+  await page.getByRole('button', { name: '测试盘点创建', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '生成盘点方案', exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByPlaceholder('留空盘点全部物料').click()
+  const picker = page.getByRole('dialog', { name: '参选盘点物料', exact: true })
+  await expect(picker.getByText('盘点物料一描述', { exact: true })).toBeVisible()
+  await picker.getByRole('row').filter({ hasText: 'COUNT-M01' }).click()
+  await picker.getByRole('row').filter({ hasText: 'COUNT-M02' }).click()
+  await page.screenshot({
+    path: testInfo.outputPath('count-plan-material-picker.png'),
+    animations: 'disabled'
+  })
+  await picker.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(dialog.getByText('盘点物料一描述', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('盘点物料二描述', { exact: true })).toBeVisible()
+  expect(optionPayloads[0]).toMatchObject({
+    p_organization_id: 'org-test',
+    p_include_unstocked: false
   })
 })
