@@ -1,6 +1,15 @@
 <!-- 设置操作按钮 -->
 <template>
   <div class="setting-actions">
+    <ElButton
+      v-if="canSaveAppearance"
+      type="primary"
+      :loading="savingAppearance"
+      @click="handleSaveAppearance"
+    >
+      <ArtSvgIcon icon="ri:save-line" />
+      保存到参数配置
+    </ElButton>
     <ElButton type="primary" @click="handleCopyConfig">
       <ArtSvgIcon icon="ri:file-copy-line" />
       {{ $t('setting.actions.copyConfig') }}
@@ -20,12 +29,30 @@
   import { useI18n } from 'vue-i18n'
   import { MenuThemeEnum } from '@/enums/app-enum'
   import { useTheme } from '@/hooks/core/useTheme'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { saveAppearanceConfig } from '@/hooks/core/useAppearanceConfig'
+  import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
 
   defineOptions({ name: 'SettingActions' })
 
   const { t } = useI18n()
   const settingStore = useSettingStore()
   const { switchThemeStyles } = useTheme()
+  const { hasAuth } = useAuth()
+  const canSaveAppearance = computed(() => hasAuth('System:SystemParam:Edit'))
+  const savingAppearance = ref(false)
+  const handleSaveAppearance = async () => {
+    if (savingAppearance.value) return
+    savingAppearance.value = true
+    try {
+      await saveAppearanceConfig()
+      ElMessage.success('外观设置已保存到参数配置')
+    } catch (error) {
+      notifyFriendlyError(error, '外观设置保存失败，请稍后重试')
+    } finally {
+      savingAppearance.value = false
+    }
+  }
 
   /** 枚举映射表 */
   const ENUM_MAPS = {

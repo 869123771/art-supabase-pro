@@ -73,6 +73,7 @@
     fetchSystemParamStats
   } from '@/api/system-manage/system-param'
   import { clearSystemParamCache } from '@/hooks/core/system-param/read-system-param'
+  import { loadAppearanceConfig } from '@/hooks/core/useAppearanceConfig'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useUserStore } from '@/store/modules/user'
   import { buildSupabasePageRange } from '@/utils/supabase/pagination'
@@ -430,6 +431,7 @@
 
   const handleSaveSuccess = (type: DialogType): void => {
     clearSystemParamCache()
+    void loadAppearanceConfig()
     void Promise.all([
       type === 'add' ? tableQueryRef.value?.refreshCreate() : tableQueryRef.value?.refreshUpdate(),
       loadStats()

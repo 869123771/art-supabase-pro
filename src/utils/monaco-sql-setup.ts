@@ -1,8 +1,4 @@
-import * as monaco from 'monaco-editor/editor/editor.api'
-import { loader } from '@guolao/vue-monaco-editor'
-import editorWorker from 'monaco-editor/editor/editor.worker?worker'
-import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
-import 'monaco-editor/language/json/monaco.contribution'
+import { monaco } from './monaco-runtime'
 import {
   conf as pgsqlConfiguration,
   language as pgsqlLanguage
@@ -15,8 +11,6 @@ import {
   getSqlCompletionContext,
   resolveTableRef
 } from './sql-workbench'
-
-loader.config({ monaco })
 
 const PGSQL_LANGUAGE_ID = 'pgsql'
 
@@ -35,14 +29,6 @@ const pgsqlKeywords = Array.isArray(pgsqlLanguage.keywords)
       (keyword: unknown): keyword is string => typeof keyword === 'string'
     )
   : []
-
-// SQL 诊断由服务端返回并映射到编辑器标记；浏览器端只需要编辑器与 JSON worker。
-self.MonacoEnvironment = {
-  getWorker(_workerId: string, label: string) {
-    if (label === 'json') return new jsonWorker()
-    return new editorWorker()
-  }
-}
 
 let dbMetadata: Api.DataCenter.SqlConsole.DatabaseMetadata = {
   schemas: [],

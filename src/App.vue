@@ -28,6 +28,7 @@
   import { useWebsiteConfig } from './hooks/core/useWebsiteConfig'
   import i18n, { getPreferredLanguage } from './locales'
   import { fetchLoginDefaultLanguage } from '@/api/system-manage/system-param'
+  import { loadAppearanceConfig } from '@/hooks/core/useAppearanceConfig'
   import { LanguageEnum } from './enums/app-enum'
 
   const userStore = useUserStore()
@@ -79,6 +80,7 @@
   })
 
   onMounted(() => {
+    void loadAppearanceConfig()
     void Promise.all([loadWebsiteConfig(), fetchLoginDefaultLanguage()]).then(
       ([config, policy]) => {
         if (!userStore.isLogin && !preferredLanguage && language.value === initialLanguage) {
@@ -101,6 +103,12 @@
     toggleTransition(false)
     systemUpgrade()
   })
+  watch(
+    () => userStore.isLogin,
+    (loggedIn) => {
+      if (loggedIn) void loadAppearanceConfig()
+    }
+  )
 </script>
 
 <style>

@@ -5,6 +5,8 @@
     :show-footer="false"
     append-to-body
     class="cell-content-drawer"
+    @opened="editorVisible = true"
+    @closed="editorVisible = false"
   >
     <template #header>
       <div class="flex items-center">
@@ -14,7 +16,12 @@
     </template>
 
     <div class="cell-content-view__editor">
-      <Editor v-model="formattedContent" :language="language" :read-only="true" />
+      <Editor
+        v-if="editorVisible"
+        v-model="formattedContent"
+        :language="language"
+        :read-only="true"
+      />
     </div>
   </ArtDrawer>
 </template>
@@ -38,17 +45,25 @@
   const columnName = ref('')
   const language = ref('text')
   const formattedContent = ref('')
+  const editorVisible = ref(false)
 
-  const resolveContentLanguage = (content: string) => {
+  const resolveContentLanguage = (content: string, column: string) => {
     try {
-      const json = JSON.parse(content)
-      if (json && typeof json === 'object') {
-        return 'json'
-      }
+      JSON.parse(content)
+      return 'json'
     } catch {
-      // Plain text content is expected for most table cells.
+      // Most scalar cells are plain text.
     }
-    return 'text'
+    const trimmed = content.trim()
+    if (/^<\?xml\b/i.test(trimmed)) return 'xml'
+    if (/^<!doctype html\b|^<html\b/i.test(trimmed)) return 'html'
+    if (
+      /\b(sql|query)\b/i.test(column) &&
+      /^(select|with|insert|update|delete|create)\b/i.test(trimmed)
+    ) {
+      return 'pgsql'
+    }
+    return 'plaintext'
   }
 
   const formatContent = (content: string) => {
@@ -62,7 +77,7 @@
 
   const handleOpen = async (data: CellContentOpenData) => {
     columnName.value = data.columnName
-    language.value = resolveContentLanguage(data.content)
+    language.value = resolveContentLanguage(data.content, data.columnName)
     formattedContent.value = formatContent(data.content)
 
     await drawerRef.value?.handleOpen(data, {
@@ -76,7 +91,7 @@
 </script>
 
 <style scoped lang="scss">
-  :deep(.cell-content-drawer) {
+  :global(.cell-content-drawer) {
     display: flex;
     flex-direction: column;
 
@@ -96,6 +111,8 @@
       overflow: hidden;
     }
 
+    .el-scrollbar,
+    .el-scrollbar__wrap,
     .el-scrollbar__view {
       height: 100%;
       min-height: 0;
@@ -111,8 +128,8 @@
   }
 
   .cell-content-view__editor {
-    flex: 1;
-    height: 100%;
-    min-height: 0;
+    width: 100%;
+    height: calc(100dvh - 90px);
+    min-height: 360px;
   }
 </style>

@@ -108,7 +108,7 @@
                     placement="top"
                   >
                     <ArtIconButton
-                      class="size-6.5! text-base!"
+                      size="small"
                       icon="ri:add-line"
                       :label="`在${data.name}下新增`"
                       @click="handleAdd(data)"
@@ -116,7 +116,7 @@
                   </ArtTooltip>
                   <ArtTooltip content="编辑" placement="top">
                     <ArtIconButton
-                      class="size-6.5! text-base!"
+                      size="small"
                       icon="ri:pencil-line"
                       :label="`编辑${data.name}`"
                       @click="handleEdit(data)"
@@ -124,7 +124,7 @@
                   </ArtTooltip>
                   <ArtTooltip content="删除" placement="top">
                     <ArtIconButton
-                      class="size-6.5! text-base!"
+                      size="small"
                       icon="ri:delete-bin-5-line"
                       tone="danger"
                       :label="`删除${data.name}`"

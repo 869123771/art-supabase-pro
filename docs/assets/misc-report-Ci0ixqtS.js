@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./execution-event-workspace-CQWcCW_Y.js";var i=t({name:`MesMiscReport`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`misc_report`}))}});export{i as default};

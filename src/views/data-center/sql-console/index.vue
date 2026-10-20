@@ -36,6 +36,7 @@
                 </div>
                 <ArtTooltip content="AI 写 SQL (Ctrl/Cmd + I)" placement="top" :offset="8">
                   <ArtIconButton
+                    size="small"
                     @click="openAiDialog(aiErrorContext ? 'fix' : 'generate')"
                     label="AI 写 SQL"
                   >
@@ -50,28 +51,33 @@
                   placement="top"
                   :offset="8"
                 >
-                  <ArtIconButton @click="() => handleExecute()" label="执行 SQL">
+                  <ArtIconButton size="small" @click="() => handleExecute()" label="执行 SQL">
                     <template #icon
                       ><ElIcon aria-hidden="true"><VideoPlay /></ElIcon
                     ></template>
                   </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip v-else content="执行中" placement="top" :offset="8">
-                  <ArtIconButton @click="() => handleExecute()" label="执行中" :loading="executing">
+                  <ArtIconButton
+                    size="small"
+                    @click="() => handleExecute()"
+                    label="执行中"
+                    :loading="executing"
+                  >
                     <template #icon
                       ><ElIcon aria-hidden="true"><Loading /></ElIcon
                     ></template>
                   </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip content="格式化 SQL (Ctrl/Cmd + Shift + F)" placement="top" :offset="8">
-                  <ArtIconButton @click="handleFormat" label="格式化 SQL">
+                  <ArtIconButton size="small" @click="handleFormat" label="格式化 SQL">
                     <template #icon
                       ><ElIcon aria-hidden="true"><MagicStick /></ElIcon
                     ></template>
                   </ArtIconButton>
                 </ArtTooltip>
                 <ArtTooltip content="清空" placement="top" :offset="8">
-                  <ArtIconButton @click="handleClear" label="清空 SQL">
+                  <ArtIconButton size="small" @click="handleClear" label="清空 SQL">
                     <template #icon
                       ><ElIcon aria-hidden="true"><Close /></ElIcon
                     ></template>

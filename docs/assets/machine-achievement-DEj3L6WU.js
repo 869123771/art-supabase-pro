@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./execution-analytics-CTC_6nzK.js";var i=t({name:`MesMachineAchievement`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`machine`}))}});export{i as default};

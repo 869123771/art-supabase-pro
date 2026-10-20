@@ -28,9 +28,28 @@
             :show-submit="false"
             :validate-on-rule-change="false"
           >
+            <template #defaultValue v-if="formState.model.paramType === 'json'">
+              <button
+                type="button"
+                class="system-param-dialog__json-trigger"
+                @click="openJsonEditor('defaultValue', '默认值')"
+              >
+                <span>{{ formState.model.defaultValue || '点击编辑 JSON 默认值' }}</span>
+                <ArtSvgIcon icon="ri:code-s-slash-line" />
+              </button>
+            </template>
             <template #paramValue>
+              <button
+                v-if="formState.model.paramType === 'json'"
+                type="button"
+                class="system-param-dialog__json-trigger"
+                @click="openJsonEditor('paramValue', '参数值')"
+              >
+                <span>{{ formState.model.paramValue || '点击编辑 JSON 参数值' }}</span>
+                <ArtSvgIcon icon="ri:code-s-slash-line" />
+              </button>
               <ElSelect
-                v-if="isRegistrationRoleParam"
+                v-else-if="isRegistrationRoleParam"
                 v-model="formState.model.paramValue"
                 class="system-param-dialog__full-control"
                 filterable
@@ -84,15 +103,16 @@
                   :value="String(option.value)"
                 />
               </ElSelect>
-              <ElInput
-                v-else
-                v-model="formState.model.paramValue"
-                type="textarea"
-                :rows="5"
-                maxlength="5000"
-                show-word-limit
-                placeholder='请输入合法 JSON，例如：{"enabled": true}'
-              />
+            </template>
+            <template #extendConfigText v-if="formState.model.paramType === 'json'">
+              <button
+                type="button"
+                class="system-param-dialog__json-trigger"
+                @click="openJsonEditor('extendConfigText', '扩展配置')"
+              >
+                <span>{{ formState.model.extendConfigText || '点击编辑 JSON 扩展配置' }}</span>
+                <ArtSvgIcon icon="ri:code-s-slash-line" />
+              </button>
             </template>
           </ArtForm>
         </div>
@@ -152,6 +172,7 @@
         </ArtSectionCard>
       </aside>
     </div>
+    <JsonValueDrawer ref="jsonDrawerRef" />
   </ArtDialog>
 </template>
 <script setup lang="ts">
@@ -165,6 +186,8 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtSectionTitle from '@/components/core/surfaces/art-section-title/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import JsonValueDrawer from './json-value-drawer.vue'
   import {
     addSystemParam,
     editSystemParam,
@@ -197,6 +220,7 @@
 
   const dialogRef = ref<ArtDialogExpose<SystemParam | undefined>>()
   const formRef = ref<ArtFormExpose>()
+  const jsonDrawerRef = ref<InstanceType<typeof JsonValueDrawer>>()
   const registrationRoleLoading = ref(false)
   const registrationRoleOptions = shallowRef<Api.SystemManage.RegistrationRoleOption[]>([])
   const userStore = useUserStore()
@@ -221,6 +245,22 @@
   const groupOptions = computed(() => getDictMap.value.systemParamGroup ?? [])
   const typeOptions = computed(() => getDictMap.value.systemParamType ?? [])
   const booleanOptions = computed(() => getDictMap.value.commonBoolean ?? [])
+
+  const openJsonEditor = (
+    key: 'defaultValue' | 'paramValue' | 'extendConfigText',
+    label: string
+  ) => {
+    void jsonDrawerRef.value?.handleOpen({
+      label,
+      paramKey: formModel.paramKey,
+      fieldKey: key,
+      value: formModel[key] ?? '',
+      onApply: (value) => {
+        formModel[key] = value
+        void nextTick(() => formRef.value?.clearValidate())
+      }
+    })
+  }
 
   const formModel = reactive<SystemParamForm>(createInitialForm())
   const isRegistrationRoleParam = computed(
@@ -391,6 +431,7 @@
         { required: true, message: '请输入参数值', trigger: 'blur' },
         { validator: validateParamValue, trigger: 'blur' }
       ],
+      defaultValue: [{ validator: validateDefaultValue, trigger: 'change' }],
       extendConfigText: [{ validator: validateExtendConfig, trigger: 'blur' }]
     }))
   }
@@ -467,6 +508,24 @@
     }
 
     callback()
+  }
+
+  const validateDefaultValue = (
+    _rule: unknown,
+    value: string,
+    callback: (error?: Error) => void
+  ) => {
+    if (formState.model.paramType !== 'json' || !value) return callback()
+    try {
+      const parsed: unknown = JSON.parse(value)
+      callback(
+        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? undefined
+          : new Error('默认值必须是 JSON 对象')
+      )
+    } catch {
+      callback(new Error('默认值不是合法 JSON'))
+    }
   }
 
   const validateExtendConfig = (
@@ -637,6 +696,32 @@
 
     &__full-control {
       width: 100%;
+    }
+
+    &__json-trigger {
+      display: flex;
+      width: 100%;
+      min-height: 40px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      border: 1px solid var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
+      background: var(--el-fill-color-blank);
+      color: var(--el-text-color-regular);
+      text-align: left;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
+        outline-offset: 2px;
+      }
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
 
     &__role-option {

@@ -3,10 +3,11 @@
   <button
     v-auth="permission"
     type="button"
-    class="art-icon-button size-8.5 inline-flex flex-cc c-p border-0 bg-transparent text-g-600 dark:text-g-800 text-xl rounded tad-300 hover:bg-hover-color"
+    class="art-icon-button inline-flex flex-cc c-p border-0 bg-transparent text-g-600 dark:text-g-800 rounded tad-300 hover:bg-hover-color"
     :class="[
       `art-icon-button--${tone}`,
       `art-icon-button--${variant}`,
+      size === 'small' ? 'size-6.5 text-base' : 'size-8.5 text-xl',
       { 'art-icon-button--loading': loading }
     ]"
     :disabled="disabled || loading"
@@ -32,6 +33,8 @@
     loading?: boolean
     tone?: 'theme' | 'danger'
     variant?: 'ghost' | 'solid'
+    /** 按钮尺寸；small 为 26px，默认保持 34px */
+    size?: 'default' | 'small'
     permission?: string
     /** 按钮动作名称，用于无障碍文本和悬停提示 */
     label: string
@@ -39,7 +42,8 @@
 
   const props = withDefaults(defineProps<Props>(), {
     tone: 'theme',
-    variant: 'ghost'
+    variant: 'ghost',
+    size: 'default'
   })
 
   const emit = defineEmits<{

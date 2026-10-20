@@ -5,6 +5,7 @@
     :show-arrow="false"
     :transition="TOOLTIP_TRANSITION"
     :popper-class="mergedPopperClass"
+    :popper-options="boundedPopperOptions"
   >
     <slot />
     <template v-if="$slots.content" #content>
@@ -31,6 +32,24 @@
   const mergedPopperClass = computed(() =>
     ['art-tooltip', props.popperClass].filter(Boolean).join(' ')
   )
+  const boundedPopperOptions = computed(() => ({
+    ...props.popperOptions,
+    modifiers: [
+      ...(props.popperOptions.modifiers ?? []),
+      {
+        name: 'preventOverflow' as const,
+        options: {
+          rootBoundary: 'viewport' as const,
+          padding: 12,
+          altAxis: true
+        }
+      },
+      {
+        name: 'flip' as const,
+        options: { padding: 12 }
+      }
+    ]
+  }))
 
   defineExpose({
     hide: () => tooltipRef.value?.hide(),
@@ -41,6 +60,11 @@
 </script>
 
 <style lang="scss">
+  .art-tooltip {
+    max-width: calc(100vw - 24px);
+    overflow-wrap: anywhere;
+  }
+
   .art-tooltip-motion-enter-active,
   .art-tooltip-motion-leave-active {
     will-change: opacity, translate, scale;

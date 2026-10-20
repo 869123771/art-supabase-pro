@@ -5,6 +5,7 @@
 - tooltip arrows are always disabled;
 - the arrowless surface uses a compact `6px` default offset;
 - enter and leave motion uses the project motion tokens and respects reduced-motion preferences.
+- poppers shift or flip within a 12px viewport inset so edge triggers do not create page scrollbars.
 
 Use it instead of `ElTooltip` in pages and shared components. The default trigger slot and named `content` slot are supported, and any `popper-class` is merged with the shared `art-tooltip` class.
 
