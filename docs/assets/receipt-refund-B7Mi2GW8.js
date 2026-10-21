@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./finance-planned-page-DZPmJV1N.js";var i=t({name:`FinanceReceiptRefund`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{title:`收款退款单`,area:`应收款管理`,description:`处理已收款项的退款。`,icon:`ri:refund-2-line`}))}});export{i as default};

@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./finance-planned-page-DZPmJV1N.js";var i=t({name:`FinanceFinancialReceivable`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{title:`财务应收单`,area:`应收款管理`,description:`查看和处理财务应收。`,icon:`ri:file-text-line`}))}});export{i as default};

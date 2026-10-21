@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import test from 'node:test'
 
-test('standalone module builds include the platform region data and document examples', () => {
+test('standalone module builds include the platform region data and font license', () => {
   const projectRoot = fileURLToPath(new URL('../..', import.meta.url))
   const artifactRoot = resolve(projectRoot, '.artifacts')
   mkdirSync(artifactRoot, { recursive: true })
@@ -43,8 +43,7 @@ test('standalone module builds include the platform region data and document exa
           console.info('Module public assets built')
           for (const asset of [
             'data/pca-code.json',
-            'data/equipment-accessory-demo/safety-valve-photo.png',
-            'data/equipment-accessory-demo/pressure-gauge-use-registration-sample.pdf'
+            'fonts/HarmonyOS-Sans-LICENSE.txt'
           ]) {
             assert.deepEqual(
               await readFile(path.join(root, 'dist', asset)),

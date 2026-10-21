@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./inventory-report-workspace-B2J9h4MD.js";var i=t({name:`WmsStock`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`stock`}))}});export{i as default};

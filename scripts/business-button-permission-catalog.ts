@@ -2988,6 +2988,38 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   { menuName: 'FinanceExpenseItem', buttons: [...crud(), button('AddChild', '新增下级')] },
   {
+    menuName: 'FinancePayeeInformation',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Get', '一键获取员工')
+    ]
+  },
+  {
+    menuName: 'FinanceTravelApplication',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('DeleteLine', '删除行程')
+    ]
+  },
+  {
+    menuName: 'FinanceLoanApplication',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('DeleteItem', '删除借款明细'),
+      button('DeletePayee', '删除收款明细'),
+      button('CopyItem', '复制借款明细'),
+      button('CopyPayee', '复制收款明细')
+    ]
+  },
+  {
     menuName: 'FinanceWaybillProfit',
     buttons: [button('AiProfitAnalysis', 'AI 利润诊断'), button('Export', '导出')]
   },

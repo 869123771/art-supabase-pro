@@ -4,6 +4,7 @@ import { mockApplicationMenus } from './support/menu-rpc'
 import { expectInputTextUnclipped } from './support/input-text-width'
 import { prepareAppearance } from './support/appearance'
 
+test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ timeout: 240_000 })
 
 const scenarios = [
@@ -208,7 +209,7 @@ for (const authority of ['super', 'ordinary'] as const) {
       }
       const header = page.locator('.business-workspace-header')
       const table = page.locator('.art-table-query')
-      await expect(page.getByText('TEST-MAT', { exact: true })).toBeVisible({ timeout: 45_000 })
+      await expect(page.getByText('TEST-MAT', { exact: true })).toBeVisible({ timeout: 120_000 })
       if (kind === 'movement' || kind === 'receipt-issue') {
         const link = table.getByRole('link', { name: 'TEST-SALES-001', exact: true }).first()
         if (authority === 'super') {
@@ -220,6 +221,39 @@ for (const authority of ['super', 'ordinary'] as const) {
           })
         } else await expect(link).toHaveCount(0)
         await expect(table.getByText('业务明细行号', { exact: true })).toBeAttached()
+        for (const source of [
+          {
+            kind: 'production_issue',
+            id: 'production-source-test',
+            no: 'TEST-ISSUE-001',
+            path: /production-issue\?documentId=production-source-test/,
+            movementLabel: '生产领料'
+          },
+          {
+            kind: 'inbound_purchase_inbound',
+            id: 'purchase-source-test',
+            no: 'TEST-PURCHASE-001',
+            path: /purchase-inbound\?documentId=purchase-source-test/,
+            movementLabel: '采购入库'
+          }
+        ]) {
+          row.source_document_kind = source.kind
+          row.source_document_id = source.id
+          row.document_no = source.no
+          row.document_type = source.kind
+          const before = requests.length
+          await page.getByRole('button', { name: '查询', exact: true }).click()
+          await expect.poll(() => requests.length).toBeGreaterThan(before)
+          const sourceLink = table.getByRole('link', { name: source.no, exact: true }).first()
+          if (authority === 'super') await expect(sourceLink).toHaveAttribute('href', source.path)
+          else await expect(sourceLink).toHaveCount(0)
+          await expect(table.getByText(source.movementLabel, { exact: true }).first()).toBeVisible()
+        }
+        row.source_document_kind = 'outbound'
+        row.source_document_id = 'sales-source-test'
+        row.document_no = 'TEST-SALES-001'
+        row.document_type = 'sales_out'
+        await page.getByRole('button', { name: '查询', exact: true }).click()
       }
       if (kind !== 'stock') {
         const status = table

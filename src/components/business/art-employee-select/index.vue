@@ -120,7 +120,7 @@
   )
   const selectedReferenceLoader = computed(() => {
     const tenantId = resolvedTenantId.value
-    return !props.apiFn && tenantId
+    return tenantId
       ? (keys: DataSelectKey[]) => fetchEmployeeReferencesByIds(tenantId, normalizeStringList(keys))
       : undefined
   })

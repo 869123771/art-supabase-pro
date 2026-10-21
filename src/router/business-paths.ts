@@ -1,6 +1,7 @@
 export const FMS_ROOT_PATH = '/fms'
 export const TMS_ROOT_PATH = '/tms'
 export const VMS_ROOT_PATH = '/vms'
+export const WMS_FINISHED_INBOUND_PATH = '/wms/production-inout/finished-inbound'
 
 const LEGACY_FMS_ROOT_PATH = '/finance'
 const LEGACY_TMS_ROOT_PATH = '/tms-transportation'
@@ -16,7 +17,20 @@ export const financePaths = {
   cashTransaction: `${FMS_ROOT_PATH}/settlement/cash-transaction`,
   invoiceManagement: `${FMS_ROOT_PATH}/settlement/invoice-management`,
   waybillCost: `${FMS_ROOT_PATH}/settlement/waybill-cost`,
-  expenseReimbursement: `${FMS_ROOT_PATH}/settlement/expense-reimbursement`,
+  everyoneExpense: `${FMS_ROOT_PATH}/everyone-expense`,
+  payeeInformation: `${FMS_ROOT_PATH}/everyone-expense/payee-information`,
+  travelApplication: `${FMS_ROOT_PATH}/everyone-expense/travel-application`,
+  loanApplication: `${FMS_ROOT_PATH}/everyone-expense/loan-application`,
+  expenseReimbursement: `${FMS_ROOT_PATH}/everyone-expense/expense-reimbursement`,
+  repayment: `${FMS_ROOT_PATH}/everyone-expense/repayment`,
+  accountsReceivable: `${FMS_ROOT_PATH}/accounts-receivable`,
+  estimatedReceivable: `${FMS_ROOT_PATH}/accounts-receivable/estimated-receivable`,
+  financialReceivable: `${FMS_ROOT_PATH}/accounts-receivable/financial-receivable`,
+  receipt: `${FMS_ROOT_PATH}/accounts-receivable/receipt`,
+  receiptRefund: `${FMS_ROOT_PATH}/accounts-receivable/receipt-refund`,
+  receiptWriteoff: `${FMS_ROOT_PATH}/accounts-receivable/receipt-writeoff`,
+  accountsPayable: `${FMS_ROOT_PATH}/accounts-payable`,
+  estimatedPayable: `${FMS_ROOT_PATH}/accounts-payable/estimated-payable`,
   waybillProfit: `${FMS_ROOT_PATH}/settlement/waybill-profit`,
   expenseItem: `${FMS_ROOT_PATH}/settlement/expense-item`,
   assetPayable: `${FMS_ROOT_PATH}/settlement/asset-payable`,
@@ -149,6 +163,14 @@ export function resolveLegacyBusinessPath(path: string): string | undefined {
 
   const financeRoots = [FMS_ROOT_PATH, LEGACY_FMS_ROOT_PATH, LEGACY_TMS_FINANCE_ROOT_PATH]
   const mappings = [
+    {
+      legacyRoot: `${FMS_ROOT_PATH}/settlement/expense-reimbursement`,
+      currentRoot: financePaths.expenseReimbursement
+    },
+    {
+      legacyRoot: `${FMS_ROOT_PATH}/settlement/estimated-payable`,
+      currentRoot: financePaths.estimatedPayable
+    },
     ...wmsLeafMappings.map(([legacyLeaf, currentLeaf]) => ({
       legacyRoot: `/wms/${legacyLeaf}`,
       currentRoot: `/wms/${currentLeaf}`

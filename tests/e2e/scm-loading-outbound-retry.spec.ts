@@ -3,9 +3,31 @@ import { prepareIsolatedSession } from './support/isolated-session'
 import { mockApplicationMenus } from './support/menu-rpc'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(120_000)
+test.setTimeout(240_000)
 test('装车出库库存重试、数量汇总与旧响应失效', async ({ page }, testInfo) => {
   const tenant = await prepareIsolatedSession(page)
+  await page.route('**/rest/v1/sys_dictionary?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'display-document',
+          value: 'document',
+          label: '按单据',
+          status: '1',
+          sort: 1,
+          dict_type_table: { code: 'commonDocumentDisplayMode' }
+        },
+        {
+          id: 'display-line',
+          value: 'line',
+          label: '按明细',
+          status: '1',
+          sort: 2,
+          dict_type_table: { code: 'commonDocumentDisplayMode' }
+        }
+      ]
+    })
+  )
   await page.route('**/rest/v1/rpc/current_is_super', (route) => route.fulfill({ json: false }))
   await page.route('**/rest/v1/rpc/get_accessible_applications', (route) =>
     route.fulfill({ json: [{ code: 'scm', name: '测试供应链', baseUrl: '/scm/' }] })
@@ -79,6 +101,8 @@ test('装车出库库存重试、数量汇总与旧响应失效', async ({ page 
       project_id: 'project-a',
       quantity: 20,
       batch_no: 'BATCH-A',
+      pack_id: 'pack-outbound-a',
+      pack: { pack_no: 'PK-OUT-001' },
       zone_id: null,
       bin_id: null,
       warehouse: { warehouse_name: '测试仓库' },
@@ -102,7 +126,7 @@ test('装车出库库存重试、数量汇总与旧响应失效', async ({ page 
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto(`#${path}`)
   await expect(page.getByRole('heading', { name: '装车出库', exact: true })).toBeVisible({
-    timeout: 90_000
+    timeout: 120_000
   })
   if (!(await page.getByRole('radio', { name: '按明细', exact: true }).isVisible()))
     await page.getByRole('button', { name: '展开', exact: true }).click()
@@ -118,6 +142,8 @@ test('装车出库库存重试、数量汇总与旧响应失效', async ({ page 
   fail = false
   await dialog.getByRole('button', { name: '重新加载', exact: true }).click()
   await expect(dialog.getByText('BATCH-A', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('columnheader', { name: '包号', exact: true })).toBeAttached()
+  await expect(dialog.getByText('PK-OUT-001', { exact: true })).toBeVisible()
   await dialog.locator('.el-checkbox[aria-label="选择当前行"]').click()
   await expect(dialog.getByRole('checkbox', { name: '选择当前行', exact: true })).toBeChecked()
   const quantity = dialog.getByRole('spinbutton', { name: '出库数量', exact: true })

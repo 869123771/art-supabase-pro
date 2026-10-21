@@ -690,4 +690,4 @@ async function installFixtures(page: Page): Promise<void> {
   )
 }
 
-export { tenantId, zoneId, materialId, pages, meta, bin, material, installFixtures }
+export { tenantId, warehouseId, zoneId, materialId, pages, meta, bin, material, installFixtures }

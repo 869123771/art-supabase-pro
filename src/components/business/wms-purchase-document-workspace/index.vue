@@ -786,14 +786,19 @@
   }
   useRouteDocumentDrawer({
     routeName: () => permission.value.View.split(':')[0],
-    canOpen: () => props.kind.startsWith('initial_') && hasAuth(permission.value.View),
+    canOpen: () => hasAuth(permission.value.View),
     fetchDocument: async (id) => {
       const document = await fetchWmsPurchaseDocument(id)
-      if (document.kind !== props.kind) throw new Error('单据类型不匹配')
+      if (
+        document.kind !== props.kind &&
+        !(props.kind === 'other_inbound' && document.kind === 'other_return')
+      )
+        throw new Error('单据类型不匹配')
       return document
     },
     openDocument: async (document) => {
-      await drawerRef.value?.handleOpen({ mode: 'view', document })
+      const target = document.kind === 'other_return' ? returnDrawerRef.value : drawerRef.value
+      await target?.handleOpen({ mode: 'view', document })
     },
     onError: () => ElMessage.error(`${title.value}加载失败，请刷新后重试`)
   })

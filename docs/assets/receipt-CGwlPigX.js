@@ -1,0 +1,1 @@
+import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./finance-planned-page-DZPmJV1N.js";var i=t({name:`FinanceReceipt`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{title:`收款单`,area:`应收款管理`,description:`登记与核对收款单。`,icon:`ri:money-cny-circle-line`}))}});export{i as default};

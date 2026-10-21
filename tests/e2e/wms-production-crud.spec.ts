@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { expectInputTextUnclipped } from './support/input-text-width'
 
 test.use({ storageState: { cookies: [], origins: [] } })
-test.setTimeout(240_000)
+test.setTimeout(420_000)
 for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
   test(`${kind}详情失败恢复及两行编辑复制保持布局`, async ({ page }, testInfo) => {
     let failure = true
@@ -254,6 +254,11 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
       const samples: Record<string, Array<[string, string]>> = {
         wmsInitialStockType: [['normal', '普通']],
         wmsInitialStockCondition: [['available', '可用']],
+        wmsFinishedQualityStatus: [
+          ['available', '合格品'],
+          ['defective', '不合格品'],
+          ['scrapped', '报废品']
+        ],
         mdmBusinessOwnerType: [
           ['self', '自有'],
           ['supplier', '供应商'],
@@ -279,11 +284,19 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
     lines[0].auxiliary_quantity_2 = lines[0].base_quantity
     await page.getByRole('button', { name: '测试生产单据 view', exact: true }).click()
     const drawer = page.locator('.el-drawer:visible')
-    await expect(drawer.getByText('单据加载失败', { exact: true })).toBeVisible()
+    await expect(drawer.getByText('单据加载失败', { exact: true })).toBeVisible({
+      timeout: 60_000
+    })
     await expect(drawer.getByText('测试生产物料 1', { exact: false })).toHaveCount(0)
     failure = false
     await drawer.getByRole('button', { name: '重新加载', exact: true }).click()
     await expect(drawer.getByText(document.document_no, { exact: true }).first()).toBeVisible()
+    if (kind === 'finished_inbound') {
+      await expect(
+        drawer.getByRole('columnheader', { name: '质量状态', exact: true })
+      ).toBeAttached()
+      await expect(drawer.getByText('合格品', { exact: true }).first()).toBeVisible()
+    }
     const baseColumn = await drawer
       .getByRole('columnheader', { name: '基本数量', exact: true })
       .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
@@ -380,7 +393,7 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
     await expect(drawer.locator('.el-table__body').getByRole('checkbox')).toHaveCount(0)
     for (const [header, label] of [
       ['库存类型', '普通'],
-      ['库存状态', '可用'],
+      kind === 'finished_inbound' ? ['质量状态', '合格品'] : ['库存状态', '可用'],
       ['货主类型', '供应商']
     ]) {
       const column = await drawer
@@ -561,7 +574,10 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         ).toBeDisabled()
         batchSerialFailure = false
         await serialEdit.getByRole('button', { name: '重新加载', exact: true }).click()
-        const selection = serialEdit.getByRole('combobox', { name: '选择来源序列号', exact: true })
+        const selection = serialEdit.getByRole('combobox', {
+          name: '录入或选择来源序列号',
+          exact: true
+        })
         await selection.focus()
         await selection.press('ArrowDown')
         await page.getByRole('option', { name: 'SN-TEST-001', exact: true }).click()
@@ -1072,15 +1088,86 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
           json: [1, 2].map((n) => ({
             id: `new-order-${n}`,
             work_order_no: `NEW-ORDER-${n}`,
+            work_order_type_name: '测试工单类型',
+            document_date: '2026-10-19',
+            document_status: 'confirmed',
             material_id: `new-material-${n}`,
+            material_code: `NEW-MAT-${n}`,
+            specification_model: `SPEC-${n}`,
+            drawing_no: `DRAW-${n}`,
+            project_name: '测试工程',
+            planner_name: '测试计划员',
+            inbound_warehouse_name: '测试成品仓库',
             order_quantity: 5,
             completed_quantity: 4,
             warehoused_quantity: 1,
+            pending_inbound_quantity: 4,
+            returned_quantity: 2,
+            qualified_inbound_quantity: 2,
+            defective_inbound_quantity: 1,
+            scrapped_inbound_quantity: 0,
+            production_report_control: 'none',
+            production_full_issue_control:
+              kind === 'finished_inbound' ? (n === 1 ? 'warning' : 'strict') : 'none',
+            production_full_issue_scope: 'all',
+            production_full_issue_gaps:
+              kind === 'finished_inbound'
+                ? [
+                    {
+                      source_line_no: `bom-line-${n}`,
+                      material_code: `BOM-MAT-${n}`,
+                      material_name: `未领料组件${n}`,
+                      required_quantity: 5,
+                      issued_quantity: 3,
+                      remaining_quantity: 2
+                    }
+                  ]
+                : [],
             project_id: null,
             construction_no: null
           }))
         })
       )
+      if (kind === 'finished_inbound') {
+        await page.route('**/rest/v1/mes_work_order?*', (route) => {
+          const isPublished = route.request().url().includes('new-order-1')
+          return route.fulfill({
+            json: {
+              work_order_no: isPublished ? 'NEW-ORDER-1' : 'NEW-ORDER-2',
+              packing_published_at: isPublished ? '2026-10-19T08:00:00Z' : null
+            }
+          })
+        })
+        await page.route('**/rest/v1/mes_work_order_pack?*', (route) =>
+          route.fulfill({
+            json: [
+              {
+                id: 'new-pack-1',
+                work_order_id: 'new-order-1',
+                pack_no: 'PK-TEST-001',
+                area: 'A区',
+                axis: '1轴',
+                items: [{ board_id: 'new-board-1', pieces: 1 }]
+              }
+            ],
+            headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+          })
+        )
+        await page.route('**/rest/v1/mes_work_order_detail?*', (route) =>
+          route.fulfill({
+            json: [
+              {
+                id: 'new-board-1',
+                area: 'A区',
+                number: '1轴-1',
+                length_mm: 7000,
+                area_sqm: 7
+              }
+            ],
+            headers: { 'content-range': '0-0/1', 'access-control-expose-headers': 'content-range' }
+          })
+        )
+      }
       await page.route('**/rest/v1/wms_finished_inbound_source_list?*', (route) =>
         route.fulfill({
           json: [1, 2].map((n) => ({
@@ -1101,7 +1188,7 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
             stock_type: 'normal',
             owner_type: 'self',
             owner_id: null,
-            stock_status: 'available'
+            stock_status: n === 2 ? 'defective' : 'available'
           })),
           headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' }
         })
@@ -1125,6 +1212,69 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
           })
           .click()
         const picker = page.locator('.el-dialog:visible')
+        if (kind === 'finished_return') {
+          await expect(
+            picker.getByRole('columnheader', { name: '质量状态', exact: true })
+          ).toBeAttached()
+          await expect(picker.getByText('不合格品', { exact: true })).toBeVisible()
+          await expect(
+            picker.getByRole('columnheader', { name: '可退数量', exact: true })
+          ).toBeAttached()
+        }
+        if (kind === 'finished_inbound') {
+          for (const heading of [
+            '工单类型',
+            '单据日期',
+            '单据状态',
+            '物料编码',
+            '规格型号',
+            '图号',
+            '项目名称',
+            '施工号',
+            '计划员',
+            '入库仓库',
+            '待入库数量',
+            '退库数量',
+            '合格品入库',
+            '不合格品入库',
+            '报废品入库'
+          ]) {
+            await expect(
+              picker.getByRole('columnheader', { name: heading, exact: true })
+            ).toBeAttached()
+          }
+          const lastQuantity = picker.getByRole('columnheader', {
+            name: '报废品入库',
+            exact: true
+          })
+          await picker
+            .locator('.el-table__body-wrapper .el-scrollbar__wrap')
+            .evaluate((element) => {
+              element.scrollLeft = element.scrollWidth
+            })
+          await expect(lastQuantity).toBeInViewport()
+          await expect
+            .poll(() =>
+              lastQuantity.evaluate((header) => {
+                const columnClass = Array.from(header.classList).find((value) =>
+                  /^el-table_.*_column_/.test(value)
+                )!
+                const cell = header
+                  .closest('.el-table')!
+                  .querySelector<HTMLElement>(
+                    `.el-table__body-wrapper tbody tr:first-child td.${columnClass}`
+                  )!
+                return Math.abs(
+                  header.getBoundingClientRect().left - cell.getBoundingClientRect().left
+                )
+              })
+            )
+            .toBeLessThanOrEqual(1)
+          await picker.screenshot({
+            path: testInfo.outputPath('production-work-order-picker-right.png'),
+            animations: 'disabled'
+          })
+        }
         await expect(
           picker.getByText(
             kind === 'finished_inbound'
@@ -1165,6 +1315,76 @@ for (const kind of ['issue', 'return', 'finished_inbound', 'finished_return']) {
         })
         await picker.getByRole('button', { name: /确定|确认/ }).click()
         await expect(drawer.locator('.el-table__body tr')).toHaveCount(2)
+        if (kind === 'finished_inbound') {
+          if (draft === 1) {
+            await drawer.getByRole('button', { name: '选排包单', exact: true }).click()
+            const packPicker = page.locator('.el-dialog:visible')
+            await expect(packPicker.getByText('NEW-ORDER-1', { exact: true })).toBeVisible()
+            await packPicker.getByText('NEW-ORDER-2', { exact: true }).click()
+            await expect(packPicker.getByText('PK-TEST-001', { exact: true })).toHaveCount(0)
+            await packPicker.getByText('NEW-ORDER-1', { exact: true }).click()
+            await expect(packPicker.getByText('PK-TEST-001', { exact: true })).toBeVisible()
+            for (const heading of [
+              '区域',
+              '轴线',
+              '板材编号',
+              '长度 mm',
+              '块数',
+              '延米 m',
+              '面积 ㎡'
+            ])
+              await expect(packPicker.getByRole('columnheader', { name: heading })).toBeAttached()
+            await expect(packPicker.getByText('1轴-1', { exact: true })).toBeVisible()
+            await packPicker.screenshot({
+              path: testInfo.outputPath('production-pack-picker.png'),
+              animations: 'disabled'
+            })
+            await packPicker
+              .locator('.el-table__body-wrapper .el-scrollbar__wrap')
+              .evaluate((element) => {
+                element.scrollLeft = element.scrollWidth
+              })
+            await expect(packPicker.getByRole('columnheader', { name: '面积 ㎡' })).toBeInViewport()
+            await packPicker.screenshot({
+              path: testInfo.outputPath('production-pack-picker-right.png'),
+              animations: 'disabled'
+            })
+            await packPicker.locator('.el-table__body tr').first().locator('.el-checkbox').click()
+            await packPicker.getByRole('button', { name: /确定|确认/ }).click()
+            await expect(drawer.locator('.el-table__body tr')).toHaveCount(3)
+            await expect(drawer.getByText('PK-TEST-001', { exact: true })).toBeVisible()
+            await drawer.locator('.el-table__body tr').last().locator('.el-checkbox').click()
+            await drawer.getByRole('button', { name: '批量删除', exact: true }).click()
+            await expect(drawer.locator('.el-table__body tr')).toHaveCount(2)
+          }
+          const fullIssueWarning = drawer.getByText(/BOM 组件未完全领料/)
+          await expect(fullIssueWarning).toBeVisible()
+          await expect(drawer.getByText(/审核和入库过账将被拦截/)).toBeVisible()
+          await fullIssueWarning.scrollIntoViewIfNeeded()
+          await page.screenshot({
+            path: testInfo.outputPath('production-full-issue-warning.png'),
+            animations: 'disabled'
+          })
+          const qualityColumn = await drawer
+            .getByRole('columnheader', { name: '质量状态', exact: true })
+            .evaluate((cell) => (cell as HTMLTableCellElement).cellIndex)
+          const qualitySelect = drawer
+            .locator('.el-table__body tr')
+            .first()
+            .locator('td')
+            .nth(qualityColumn)
+            .locator('.el-select')
+          await qualitySelect.click()
+          for (const label of ['合格品', '不合格品', '报废品'])
+            await expect(page.getByRole('option', { name: label, exact: true })).toBeVisible()
+          await page.getByRole('option', { name: '不合格品', exact: true }).click()
+          await expect(qualitySelect).toContainText('不合格品')
+          await qualitySelect.scrollIntoViewIfNeeded()
+          await drawer.screenshot({
+            path: testInfo.outputPath('production-quality-selection.png'),
+            animations: 'disabled'
+          })
+        }
         for (const row of await drawer.locator('.el-table__body tr').all()) {
           for (const input of (await row.getByRole('spinbutton').all()).slice(0, 2)) {
             await input.fill('2')

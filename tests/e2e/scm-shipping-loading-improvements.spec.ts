@@ -7,6 +7,28 @@ test.setTimeout(180_000)
 
 test('发货通知明细下推、联系信息和单位带入、装车逐行删除', async ({ page }, testInfo) => {
   const tenant = await prepareIsolatedSession(page)
+  await page.route('**/rest/v1/sys_dictionary?*', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'display-document',
+          value: 'document',
+          label: '按单据',
+          status: '1',
+          sort: 1,
+          dict_type_table: { code: 'commonDocumentDisplayMode' }
+        },
+        {
+          id: 'display-line',
+          value: 'line',
+          label: '按明细',
+          status: '1',
+          sort: 2,
+          dict_type_table: { code: 'commonDocumentDisplayMode' }
+        }
+      ]
+    })
+  )
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   const contractPath = '/scm/sales-management/shipping-notice'
@@ -291,6 +313,8 @@ test('发货通知明细下推、联系信息和单位带入、装车逐行删�
         project_id: 'project',
         quantity: 100,
         batch_no: `BATCH-${index}`,
+        pack_id: index === 0 ? 'pack-loading-1' : null,
+        pack: index === 0 ? { pack_no: 'PK-LOAD-001' } : null,
         warehouse: { warehouse_name: '测试仓库' },
         material: { serial_management_enabled: false }
       }))
@@ -411,6 +435,10 @@ test('发货通知明细下推、联系信息和单位带入、装车逐行删�
   await expect(picker.getByRole('columnheader', { name: '可装车数量', exact: true })).toBeVisible()
   await expect(picker.getByRole('columnheader', { name: '可用库存', exact: true })).toBeVisible()
   await expect(picker.getByText('BATCH-0', { exact: true })).toBeVisible()
+  await expect(picker.getByRole('columnheader', { name: '包号', exact: true })).toBeAttached()
+  const packNumber = picker.getByText('PK-LOAD-001', { exact: true })
+  await packNumber.scrollIntoViewIfNeeded()
+  await expect(packNumber).toBeInViewport()
   await page.screenshot({
     path: testInfo.outputPath('loading-stock-picker.png'),
     animations: 'disabled'

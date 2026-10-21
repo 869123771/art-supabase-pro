@@ -69,7 +69,7 @@
 
     <div class="user-organization-filter__section-title">
       <span>组织结构</span>
-      <small>{{ assignedScopeCount }} {{ scopeCopy.assignedSuffix }}</small>
+      <small v-if="hasScopeCounts">{{ assignedScopeCount }} {{ scopeCopy.assignedSuffix }}</small>
     </div>
 
     <div class="user-organization-filter__tree-area">
@@ -259,6 +259,11 @@
 
   const flatOrganizations = computed(() => treeUtils.treeToList(props.data))
   const organizationCount = computed(() => flatOrganizations.value.length)
+  const hasScopeCounts = computed(() =>
+    flatOrganizations.value.some(
+      (item) => item.scopeCount !== null && item.scopeCount !== undefined
+    )
+  )
   const assignedScopeCount = computed(() =>
     flatOrganizations.value.reduce((total, item) => total + (item.scopeCount ?? 0), 0)
   )
@@ -277,6 +282,7 @@
     return selectedNode.value?.organizationName ?? scopeCopy.value.allLabel
   })
   const selectedScopeCount = computed<number | null>(() => {
+    if (!hasScopeCounts.value) return null
     if (props.selectedKey === UNASSIGNED_ORGANIZATION_KEY) return null
     if (props.scopeType === 'position' && props.selectedKey === ALL_ORGANIZATIONS_KEY) return null
     if (props.selectedKey === ALL_ORGANIZATIONS_KEY) return assignedScopeCount.value

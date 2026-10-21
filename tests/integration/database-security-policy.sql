@@ -282,9 +282,24 @@ begin
       select 1 from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = v_function_name
-        and pg_get_functiondef(p.oid) like '%document_type_ids%'
-        and pg_get_functiondef(p.oid) like '%menu_ids%'
-        and pg_get_functiondef(p.oid) like '%wms_inventory_initialization%'
+        and (
+          (
+            pg_get_functiondef(p.oid) like '%document_type_ids%'
+            and pg_get_functiondef(p.oid) like '%menu_ids%'
+            and pg_get_functiondef(p.oid) like '%wms_inventory_initialization%'
+          )
+          or exists (
+            select 1 from pg_proc internal
+            join pg_namespace private_ns on private_ns.oid = internal.pronamespace
+            where private_ns.nspname = 'app_private'
+              and internal.proname = regexp_replace(v_function_name, '_secure$', '_internal')
+              and pg_get_functiondef(p.oid) like '%' || internal.proname || '%'
+              and pg_get_functiondef(internal.oid) like '%document_type_ids%'
+              and pg_get_functiondef(internal.oid) like '%menu_ids%'
+              and pg_get_functiondef(internal.oid) like '%wms_inventory_initialization%'
+              and not has_function_privilege('authenticated', internal.oid, 'EXECUTE')
+          )
+        )
     ) then
       raise exception 'WMS special workflow master-data validation missing in %', v_function_name;
     end if;
