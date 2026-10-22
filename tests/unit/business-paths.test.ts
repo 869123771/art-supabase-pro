@@ -18,6 +18,7 @@ test('exposes finance routes from the standalone root', () => {
   assert.equal(financePaths.receivableAging, '/fms/settlement/receivable-aging')
   assert.equal(financePaths.cashForecast, '/fms/treasury/cash-forecast')
   assert.equal(financePaths.estimatedPayable, '/fms/accounts-payable/estimated-payable')
+  assert.equal(financePaths.financialPayable, '/fms/accounts-payable/purchase-payable')
   assert.equal(
     getWaybillCostDetailPath('waybill-1'),
     '/fms/settlement/waybill-cost/detail/waybill-1'
@@ -31,6 +32,10 @@ test('exposes finance routes from the standalone root', () => {
 })
 
 test('redirects legacy finance bookmarks without changing their suffix', () => {
+  assert.equal(
+    resolveLegacyBusinessPath('/fms/settlement/purchase-payable'),
+    '/fms/accounts-payable/purchase-payable'
+  )
   assert.equal(resolveLegacyBusinessPath('/tms-transportation/finance-center'), '/fms')
   assert.equal(
     resolveLegacyBusinessPath(

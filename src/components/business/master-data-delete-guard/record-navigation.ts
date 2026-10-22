@@ -6,6 +6,7 @@ import {
 } from '@/api/master-data-delete'
 import type { MasterDataDeleteDependencyMeta } from './index.vue'
 import { fetchPurchasePayableDeleteDestination } from '@/api/purchase-payable'
+import { fetchSettlementDeleteDestination } from '@/api/payable-settlement'
 
 const purchaseReferenceRoutes: Record<string, string> = {
   initial_inbound: 'WmsInitialPurchaseInbound',
@@ -88,6 +89,61 @@ export function createRecordReferenceNavigation(
   )
   return {
     ...warehouseReferences,
+    fms_payable_settlement_document: {
+      routeNames: ['FinancePayableApplication', 'FinancePayablePayment'],
+      canNavigate: () =>
+        hasAuth('FinancePayableApplication:View') || hasAuth('FinancePayablePayment:View'),
+      resolveRouteName: async (record) => {
+        const kind = await fetchSettlementDeleteDestination(record.targetId)
+        const name =
+          kind === 'application'
+            ? 'FinancePayableApplication'
+            : kind === 'payment'
+              ? 'FinancePayablePayment'
+              : null
+        return name && hasAuth(`${name}:View`) ? name : null
+      }
+    },
+    tms_expense_reimbursement: {
+      routeName: 'FinanceExpenseReimbursementDetail',
+      ...permitted('FinanceExpenseReimbursement:View'),
+      routeParams: (record) => ({ id: record.targetId })
+    },
+    tms_expense_payment: {
+      routeName: 'FinanceExpenseReimbursementDetail',
+      ...permitted('FinanceExpenseReimbursement:View'),
+      routeParams: (record) => ({ id: record.targetId })
+    },
+    fms_travel_loan: {
+      routeName: 'FinanceLoanApplication',
+      ...permitted('FinanceLoanApplication:View'),
+      routeQuery: (record) => ({ loanId: record.targetId })
+    },
+    fms_travel_application: {
+      routeName: 'FinanceTravelApplication',
+      ...permitted('FinanceTravelApplication:View'),
+      routeQuery: (record) => ({ applicationId: record.targetId })
+    },
+    fms_travel_loan_payment: {
+      routeName: 'FinanceLoanApplication',
+      ...permitted('FinanceLoanApplication:View'),
+      routeQuery: (record) => ({ loanId: record.targetId })
+    },
+    fms_travel_repayment: {
+      routeName: 'FinanceRepayment',
+      ...permitted('FinanceRepayment:View'),
+      routeQuery: (record) => ({ openRepayment: record.targetId })
+    },
+    fms_travel_repayment_receipt: {
+      routeName: 'FinanceRepayment',
+      ...permitted('FinanceRepayment:View'),
+      routeQuery: (record) => ({ openRepayment: record.targetId })
+    },
+    wf_instance: {
+      routeName: 'WorkflowWorkbench',
+      ...permitted('WorkflowWorkbench:View'),
+      routeQuery: (record) => ({ instanceId: record.targetId })
+    },
     mdm_stock_movement_type: {
       routeName: 'MdmStockMovementType',
       ...permitted('MdmStockMovementType:View')

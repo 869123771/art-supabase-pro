@@ -10,23 +10,27 @@ export interface RecordDeleteDependency extends Omit<
   createdAt: string | null
 }
 
+const scopedDeleteReaders: Partial<Record<string, string>> = {
+  fms_travel_application: 'get_fms_travel_application_delete_dependencies_secure',
+  fms_travel_loan: 'get_fms_travel_loan_delete_dependencies_secure',
+  tms_expense_reimbursement: 'get_fms_reimbursement_delete_dependencies_secure',
+  fms_payee_information: 'get_fms_payee_delete_dependencies_secure',
+  fms_travel_repayment: 'get_fms_repayment_delete_dependencies_secure',
+  mdm_position: 'hr_get_position_delete_dependencies_secure'
+}
+
 export async function fetchRecordDeleteDependencies(
   context: DeleteReferenceContext
 ): Promise<RecordDeleteDependency[]> {
   const { data, error } = await fetchAllRangePages<RecordDeleteDependency>(({ from, to }) =>
     responseHandle<RecordDeleteDependency[]>(
       () => {
-        const query =
-          context.table === 'mdm_position'
-            ? supabase.rpc('hr_get_position_delete_dependencies_secure', {
-                p_ids: context.ids,
-                p_constraint: context.constraint ?? null
-              })
-            : supabase.rpc('get_record_delete_dependency_details', {
-                p_table: context.table,
-                p_ids: context.ids,
-                p_constraint: context.constraint ?? null
-              })
+        const reader = scopedDeleteReaders[context.table]
+        const query = supabase.rpc(reader ?? 'get_record_delete_dependency_details', {
+          ...(reader ? {} : { p_table: context.table }),
+          p_ids: context.ids,
+          p_constraint: context.constraint ?? null
+        })
         return query.range(from, to)
       },
       { breakReturn: true, showErrorMessage: false, errorMessage: '关联记录检查失败，请重试' }

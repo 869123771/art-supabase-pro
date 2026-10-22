@@ -367,6 +367,7 @@ const load = () => {
 | `header-left` | 工具栏左侧扩展，渲染在 `headerActions` 后面。 |
 | `header-right` | 工具栏右侧扩展。 |
 | `selection-bar` | 勾选后的命令栏左侧内容；传入后替换 `selectionActions` 默认外观，并提供 `selectedRows`、`selectedCount`、`clearSelection`。 |
+| `selection-details` | 默认批量命令栏中补充选中金额等信息，提供 `selectedRows`、`selectedCount`；保留默认数量与操作按钮。需要独占一行时在内容根节点使用 `w-full`。 |
 | `table-header-top` | 工具栏上方扩展区，高度会自动计入表格布局。 |
 | `default` | 透传给 `ArtTable` 的默认插槽。 |
 | 表格列 slot | 除保留插槽外，其它插槽会透传给 `ArtTable`。例如列 `prop: 'status'` 可写 `#status`。 |
@@ -377,6 +378,7 @@ const load = () => {
 - `header-left`
 - `header-right`
 - `selection-bar`
+- `selection-details`
 - `table-header-top`
 - `default`
 - `search-*`

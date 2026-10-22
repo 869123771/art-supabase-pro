@@ -87,21 +87,23 @@ export function useRecordDeleteGuard(
     resources: MasterDataDeleteResource[],
     tableName: string,
     label: string,
-    constraint?: string
+    constraint?: string,
+    resolveResources?: () => Promise<MasterDataDeleteResource[]>
   ) => {
     if (!deleteGuardRef.value) {
       ElMessage.error('关联校验尚未就绪，请刷新页面后重试删除')
       return Promise.resolve(true)
     }
-    return deleteGuardRef.value.inspect(
-      recordDeleteGuardOptions(
+    return deleteGuardRef.value.inspect({
+      ...recordDeleteGuardOptions(
         { table: tableName, ids: resources.map((row) => row.id), constraint },
         label,
         resources,
         referenceMeta,
         fetchAdditionalDependencies
-      )
-    )
+      ),
+      resolveResources
+    })
   }
   const inspectDeleteReferences = (resources: MasterDataDeleteResource[], constraint?: string) =>
     inspectResolvedReferences(resources, toValue(table), toValue(resourceLabel), constraint)
@@ -113,6 +115,8 @@ export function useRecordDeleteGuard(
     onDeleted?: () => Promise<unknown>
     confirmMessage?: string
     failureMessage?: string
+    successMessage?: string
+    resolveResources?: () => Promise<MasterDataDeleteResource[]>
     /** Preserve domain-specific reference checks while sharing submission safeguards. */
     inspectReferences?: (resources: MasterDataDeleteResource[]) => Promise<boolean>
   }): Promise<void> => {
@@ -136,10 +140,23 @@ export function useRecordDeleteGuard(
     const assertScope = createTenantScopeReadGuard()
     const label = options.resourceLabel ?? toValue(resourceLabel)
     const tableName = toValue(table)
+    const resolveResources = options.resolveResources
     const inspect = (constraint?: string) =>
       options.inspectReferences
         ? options.inspectReferences(resources)
-        : inspectResolvedReferences(resources, tableName, label, constraint)
+        : inspectResolvedReferences(
+            resources,
+            tableName,
+            label,
+            constraint,
+            resolveResources
+              ? async () => {
+                  const resolved = await resolveResources()
+                  assertScope()
+                  return resolved
+                }
+              : undefined
+          )
     try {
       if (await inspect()) return
       assertScope()
@@ -161,7 +178,12 @@ export function useRecordDeleteGuard(
         if (await inspect(getDeleteReferenceContext(error)?.constraint)) return
         throw error
       }
-      await options.onDeleted?.()
+      if (options.successMessage) ElMessage.success(options.successMessage)
+      try {
+        await options.onDeleted?.()
+      } catch (error) {
+        notifyFriendlyError(error, `${label}已删除，但列表刷新失败，请重新查询`)
+      }
     } catch (error) {
       if (error !== 'cancel' && error !== 'close')
         notifyFriendlyError(error, options.failureMessage ?? `${label}删除失败，请刷新列表后重试`)

@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./material-reference-Cy_ZUu8b.js";var i=t({name:`MdmMaterialCodeRule`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

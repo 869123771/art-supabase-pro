@@ -488,6 +488,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'TmsLoadedWaybillList',
     buttons: [
       button('View', '查看'),
+      button('GenerateReceivable', '生成暂估应收'),
       button('Export', '导出'),
       button('Print', '打印'),
       button('Accept', '确认接单', 'TmsWaybill:Accept'),
@@ -2466,8 +2467,202 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
     menuName: 'FinanceAssetPayable',
     buttons: [button('View', '查看'), button('Approve', '审核应付')]
   },
-  { menuName: 'FinanceEstimatedPayable', buttons: [button('View', '查看')] },
-  { menuName: 'FinancePurchasePayable', buttons: [button('View', '查看')] },
+  ...['FinanceEstimatedReceivable', 'FinanceFinancialReceivable'].map((menuName) => ({
+    menuName,
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Push', '下推'),
+      button('VoucherPreview', '预览凭证'),
+      button('VoucherGenerate', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出'),
+      ...(menuName === 'FinanceFinancialReceivable'
+        ? [
+            button('Writeoff', '应收核销'),
+            button('Adjust', '应收调整'),
+            button('AdjustApprove', '审核应收调整'),
+            button('Match', '先开票后续勾稽')
+          ]
+        : [])
+    ]
+  })),
+  {
+    menuName: 'FinanceReceipt',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Confirm', '确认收款'),
+      button('Delete', '删除'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinanceReceiptRefund',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Pay', '确认付款'),
+      button('Delete', '删除'),
+      button('PaymentRequest', '生成付款申请'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinanceReceivablePaymentRequest',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Pay', '确认付款'),
+      button('Delete', '删除'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinanceRevenueCost',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '下推'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('RefreshCost', '刷新实际成本'),
+      button('VoucherPreview', '预览凭证'),
+      button('VoucherGenerate', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinanceReceiptWriteoff',
+    buttons: [
+      button('View', '查看'),
+      button('Check', '单据查验'),
+      button('Writeoff', '核销'),
+      button('Special', '特殊核销'),
+      button('Reverse', '反核销'),
+      button('CrossCustomer', '跨往来核销'),
+      button('CrossCurrency', '异币核销'),
+      button('Scheme', '维护核销方案'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'MdmReceiptCondition',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Delete', '删除')
+    ]
+  },
+  {
+    menuName: 'FinanceReceivableReport',
+    buttons: [button('View', '查看'), button('Export', '导出')]
+  },
+  {
+    menuName: 'FinanceEstimatedPayable',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Import', '导入TMS'),
+      button('Push', '下推'),
+      button('Voucher', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinancePurchasePayable',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Import', '导入TMS'),
+      button('Push', '下推'),
+      button('Voucher', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出'),
+      button('Freeze', '冻结/解冻')
+    ]
+  },
+  {
+    menuName: 'MdmPaymentTerm',
+    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+  },
+  {
+    menuName: 'FinancePayableApplication',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Push', '下推'),
+      button('Freeze', '冻结/解冻'),
+      button('Close', '关闭'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinancePayablePayment',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Confirm', '确认/取消付款'),
+      button('Void', '作废未付款单'),
+      button('Voucher', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinancePayableWriteoff',
+    buttons: [
+      button('View', '查看'),
+      button('Writeoff', '核销'),
+      button('AutoWriteoff', '按方案自动核销'),
+      button('Reverse', '反核销'),
+      button('Scheme', '维护核销方案'),
+      button('Voucher', '生成凭证')
+    ]
+  },
+  {
+    menuName: 'MdmPaymentPurpose',
+    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+  },
+  {
+    menuName: 'MdmSettlementMethod',
+    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+  },
   {
     menuName: 'WmsInventoryEnable',
     buttons: [button('View', '查看'), button('Enable', '启用'), button('Disable', '反启用')]
@@ -2988,6 +3183,22 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   { menuName: 'FinanceExpenseItem', buttons: [...crud(), button('AddChild', '新增下级')] },
   {
+    menuName: 'FinanceExpenseReimbursement',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Print', '批量打印'),
+      button('Submit', '提交审批'),
+      button('DeleteLine', '删除费用明细'),
+      button('DeletePayee', '删除收款明细'),
+      button('Pay', '登记付款'),
+      button('SimulatePayment', '模拟付款')
+    ]
+  },
+  {
     menuName: 'FinancePayeeInformation',
     buttons: [
       button('View', '查看'),
@@ -3004,6 +3215,9 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看'),
       button('Add', '新增'),
       button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Print', '打印'),
       button('DeleteLine', '删除行程')
     ]
   },
@@ -3013,10 +3227,33 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('View', '查看'),
       button('Add', '新增'),
       button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Print', '批量打印'),
+      button('PushReimbursement', '下推差旅报销'),
+      button('PushRepayment', '下推还款单'),
       button('DeleteItem', '删除借款明细'),
       button('DeletePayee', '删除收款明细'),
       button('CopyItem', '复制借款明细'),
-      button('CopyPayee', '复制收款明细')
+      button('CopyPayee', '复制收款明细'),
+      button('Submit', '提交审批'),
+      button('Pay', '登记付款'),
+      button('SimulatePayment', '模拟付款')
+    ]
+  },
+  {
+    menuName: 'FinanceRepayment',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Copy', '复制'),
+      button('Delete', '删除'),
+      button('Submit', '提交审批'),
+      button('Print', '批量打印'),
+      button('Collect', '确认收款'),
+      button('CopyItem', '复制还款明细'),
+      button('DeleteItem', '删除还款明细')
     ]
   },
   {
@@ -3118,6 +3355,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Submit', '提交'),
       button('Withdraw', '撤回'),
       button('Approve', '审核'),
+      button('Push', '下推预付款申请'),
       button('Activate', '生效'),
       button('Expire', '失效')
     ]

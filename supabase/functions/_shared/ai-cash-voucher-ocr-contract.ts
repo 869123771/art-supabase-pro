@@ -1,4 +1,4 @@
-import { normalizeOcrRawText } from 'https://raw.githubusercontent.com/869123771/art-supabase-pro/e1297b558a4856b89910d9991d397e22fb7a992a/supabase/functions/_shared/ai-ocr-text.ts'
+import { normalizeOcrRawText } from 'https://raw.githubusercontent.com/art-si/art-supabase-pro/e1297b558a4856b89910d9991d397e22fb7a992a/supabase/functions/_shared/ai-ocr-text.ts'
 import {
   isOcrRecord as isRecord,
   normalizeOcrConfidence as confidenceValue,

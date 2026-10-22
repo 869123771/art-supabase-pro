@@ -5,6 +5,39 @@ interface RecordReferenceMeta {
 }
 
 const recordReferences: Record<string, RecordReferenceMeta> = {
+  fms_payable_settlement_document: { label: '付款申请 / 付款单' },
+  fms_payable_settlement_line: { label: '付款业务明细' },
+  tms_expense_reimbursement: {
+    label: '费用报销单',
+    routeName: 'FinanceExpenseReimbursementDetail',
+    statusDictCode: 'tmsReimbursementApprovalStatus'
+  },
+  fms_travel_loan: {
+    label: '借款单',
+    routeName: 'FinanceLoanApplication',
+    statusDictCode: 'fmsExpenseDocumentStatus'
+  },
+  fms_travel_application: {
+    label: '出差申请单',
+    routeName: 'FinanceTravelApplication',
+    statusDictCode: 'fmsExpenseDocumentStatus'
+  },
+  fms_travel_loan_payment: {
+    label: '借款付款记录',
+    routeName: 'FinanceLoanApplication',
+    statusDictCode: 'fmsExpenseDocumentStatus'
+  },
+  fms_travel_repayment: {
+    label: '还款单',
+    routeName: 'FinanceRepayment',
+    statusDictCode: 'fmsRepaymentStatus'
+  },
+  fms_travel_repayment_receipt: { label: '还款收款记录', statusDictCode: 'fmsRepaymentStatus' },
+  wf_instance: {
+    label: '审批流程实例',
+    routeName: 'WorkflowWorkbench',
+    statusDictCode: 'workflowInstanceStatus'
+  },
   mdm_part_category: { label: '子类别', statusDictCode: 'status' },
   vehicle_part_usage: { label: '零部件使用记录', statusDictCode: 'vehiclePartUsageStatus' },
   hr_employee_contract: { label: '劳动合同', routeName: 'HrCompliance' },
@@ -123,13 +156,13 @@ const recordReferences: Record<string, RecordReferenceMeta> = {
   fms_voucher_template: { label: '凭证模板', routeName: 'FinanceVoucherTemplate' },
   fms_voucher_template_line: { label: '凭证模板分录' },
   tms_cash_transaction: { label: '收付款记录', routeName: 'FinanceCashTransaction' },
-  tms_expense_payment: { label: '运单费用付款记录' },
+  tms_expense_payment: { label: '费用报销付款记录' },
   mdm_material: { label: '物料编码' },
   mdm_equipment: { label: '设备档案' },
   smis_equipment_inspection: { label: '设备检验记录' },
   wms_purchase_document: { label: '仓库采购单据' },
-  fms_purchase_payable_document: { label: '采购应付单据' },
-  fms_purchase_payable_line: { label: '采购应付明细' },
+  fms_purchase_payable_document: { label: '应付单据' },
+  fms_purchase_payable_line: { label: '应付明细' },
   scm_receipt_target_document: { label: '供应链收货单据' },
   scm_order_target_document: { label: '供应链订单' },
   scm_purchase_document: { label: '供应链采购单据' },

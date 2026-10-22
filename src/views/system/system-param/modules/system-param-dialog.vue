@@ -700,23 +700,24 @@
 
     &__json-trigger {
       display: flex;
-      width: 100%;
-      min-height: 40px;
+      gap: 12px;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      width: 100%;
+      min-height: 40px;
       padding: 8px 12px;
-      border: 1px solid var(--el-border-color);
-      border-radius: var(--el-border-radius-base);
-      background: var(--el-fill-color-blank);
       color: var(--el-text-color-regular);
       text-align: left;
       cursor: pointer;
+      background: var(--el-fill-color-blank);
+      border: 1px solid var(--el-border-color);
+      border-radius: var(--el-border-radius-base);
 
       &:focus-visible {
         outline: 2px solid var(--el-color-primary);
         outline-offset: 2px;
       }
+
       span {
         overflow: hidden;
         text-overflow: ellipsis;

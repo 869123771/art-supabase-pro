@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./catalog-q7_fJPuj.js";var i=t({name:`MdmOrganizationDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

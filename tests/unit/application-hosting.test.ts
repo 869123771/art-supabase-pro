@@ -41,9 +41,9 @@ test('independent deployments navigate through the configured application base U
 
 test('GitHub Pages deployments retain the application-specific deployment path', () => {
   const target = resolveApplicationBaseUrl('hr', 'https://hr.example.com/', {
-    hostname: 'wangyanghub.github.io',
-    origin: 'https://wangyanghub.github.io'
+    hostname: 'art-si.github.io',
+    origin: 'https://art-si.github.io'
   })
 
-  assert.equal(target.toString(), 'https://wangyanghub.github.io/art-supabase-hr/')
+  assert.equal(target.toString(), 'https://art-si.github.io/art-supabase-hr/')
 })

@@ -5,8 +5,19 @@ import {
   createErrorHandler,
   createSmartDebounce,
   defaultResponseAdapter,
-  loadTableExportRows
+  loadTableExportRows,
+  updatePaginationFromResponse
 } from '../../src/utils/table/table-utils'
+
+test('pagination uses the server page size before clamping the current page', () => {
+  const pagination = { current: 8, size: 10, total: 100 }
+  updatePaginationFromResponse(pagination, { current: 8, size: 25, total: 100 })
+  assert.deepEqual(pagination, { current: 4, size: 25, total: 100 })
+  updatePaginationFromResponse(pagination, { current: 2, size: 5, total: 12 })
+  assert.deepEqual(pagination, { current: 2, size: 5, total: 12 })
+  updatePaginationFromResponse(pagination, { total: 0 })
+  assert.deepEqual(pagination, { current: 1, size: 5, total: 0 })
+})
 
 test('table exports page complete filtered results using custom pagination keys', async () => {
   const query = { keyword: '原筛选', range: ['2026-01-01', '2026-02-01'] }

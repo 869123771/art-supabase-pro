@@ -63,7 +63,9 @@
           @update:model-value="emit('update:object-type', $event as ProjectObjectType)"
           @change="emit('filter')"
         >
-          <template #prefix><ArtSvgIcon :icon="getObjectIcon(filters.objectType)" /></template>
+          <template #prefix
+            ><ArtSvgIcon :icon="getProjectObjectIcon(filters.objectType)"
+          /></template>
           <ElOption
             v-for="option in objectTypeOptions"
             :key="option.value"
@@ -71,7 +73,7 @@
             :value="option.value"
           >
             <span class="project-assistant-object-browser__option">
-              <ArtSvgIcon :icon="getObjectIcon(option.value)" />{{ option.label }}
+              <ArtSvgIcon :icon="getProjectObjectIcon(option.value)" />{{ option.label }}
             </span>
           </ElOption>
         </ElSelect>
@@ -99,7 +101,7 @@
           @click="emit('select', item)"
         >
           <span class="project-assistant-object-browser__icon">
-            <ArtSvgIcon :icon="getObjectIcon(item.objectType)" />
+            <ArtSvgIcon :icon="getProjectObjectIcon(item.objectType)" />
           </span>
           <span>
             <strong>{{ item.objectName }}</strong>
@@ -115,6 +117,7 @@
 
 <script setup lang="ts">
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { getProjectObjectIcon } from './project-assistant-presenter'
   import type { ProjectDatabaseObject, ProjectObjectType } from '@/types/supabase-ai-assistant'
 
   defineOptions({ name: 'ProjectAssistantObjectBrowser' })
@@ -149,19 +152,6 @@
     { label: 'RLS 策略', value: 'policy' },
     { label: '索引', value: 'index' }
   ]
-
-  function getObjectIcon(type: ProjectObjectType): string {
-    return {
-      table: 'ri:table-2',
-      view: 'ri:layout-grid-line',
-      materialized_view: 'ri:layout-grid-line',
-      function: 'ri:function-line',
-      trigger: 'ri:flashlight-line',
-      policy: 'ri:shield-keyhole-line',
-      index: 'ri:list-ordered-2',
-      all: 'ri:database-2-line'
-    }[type]
-  }
 
   function isSelected(item: ProjectDatabaseObject): boolean {
     return (

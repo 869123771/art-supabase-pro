@@ -29,8 +29,15 @@ export const financePaths = {
   receipt: `${FMS_ROOT_PATH}/accounts-receivable/receipt`,
   receiptRefund: `${FMS_ROOT_PATH}/accounts-receivable/receipt-refund`,
   receiptWriteoff: `${FMS_ROOT_PATH}/accounts-receivable/receipt-writeoff`,
+  revenueCost: `${FMS_ROOT_PATH}/accounts-receivable/revenue-cost`,
+  receivableReport: `${FMS_ROOT_PATH}/accounts-receivable/receivable-report`,
+  receivablePaymentRequest: `${FMS_ROOT_PATH}/accounts-receivable/payment-request`,
   accountsPayable: `${FMS_ROOT_PATH}/accounts-payable`,
   estimatedPayable: `${FMS_ROOT_PATH}/accounts-payable/estimated-payable`,
+  financialPayable: `${FMS_ROOT_PATH}/accounts-payable/purchase-payable`,
+  payableApplication: `${FMS_ROOT_PATH}/accounts-payable/payment-application`,
+  payablePayment: `${FMS_ROOT_PATH}/accounts-payable/payment`,
+  payableWriteoff: `${FMS_ROOT_PATH}/accounts-payable/writeoff`,
   waybillProfit: `${FMS_ROOT_PATH}/settlement/waybill-profit`,
   expenseItem: `${FMS_ROOT_PATH}/settlement/expense-item`,
   assetPayable: `${FMS_ROOT_PATH}/settlement/asset-payable`,
@@ -163,6 +170,10 @@ export function resolveLegacyBusinessPath(path: string): string | undefined {
 
   const financeRoots = [FMS_ROOT_PATH, LEGACY_FMS_ROOT_PATH, LEGACY_TMS_FINANCE_ROOT_PATH]
   const mappings = [
+    {
+      legacyRoot: `${FMS_ROOT_PATH}/settlement/purchase-payable`,
+      currentRoot: financePaths.financialPayable
+    },
     {
       legacyRoot: `${FMS_ROOT_PATH}/settlement/expense-reimbursement`,
       currentRoot: financePaths.expenseReimbursement

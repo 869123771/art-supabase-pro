@@ -23,10 +23,15 @@ test('生产单据仓库范围与扩展字段复用公共字典', async ({ page 
               { label: '非倒冲物料', value: 'non_backflush', status: '1' },
               { label: '关键物料', value: 'key', status: '1' }
             ]
-          : [
-              { label: '', name: '公共选项名称', value: 'number', status: '1' },
-              { label: '停用选项', value: 'inactive', status: '0' }
-            ]
+          : dictionaryType === 'eq.mdmProductionWipDeductionTiming'
+            ? [
+                { label: '完工入库审核时扣减', value: 'inbound_approval', status: '1' },
+                { label: '不扣减', value: 'none', status: '1' }
+              ]
+            : [
+                { label: '', name: '公共选项名称', value: 'number', status: '1' },
+                { label: '停用选项', value: 'inactive', status: '0' }
+              ]
     return route.fulfill({
       json: url.pathname.endsWith('/sys_dictionary') ? dictionaryRows : []
     })
@@ -65,7 +70,16 @@ test('生产单据仓库范围与扩展字段复用公共字典', async ({ page 
   await expect(page.getByRole('option', { name: '关键物料', exact: true })).toBeVisible()
   await page.getByRole('option', { name: '非倒冲物料', exact: true }).click()
   await expect(fullIssueScope).toContainText('非倒冲物料')
-  await dialog.screenshot({ path: info.outputPath('production-warehouse.png') })
+  const wipTiming = dialog.locator('.el-form-item').filter({ hasText: '在制材料扣减时机' })
+  await expect(wipTiming).toContainText('完工入库审核时扣减')
+  await wipTiming.locator('.el-select').click()
+  await expect(page.getByRole('option', { name: '不扣减', exact: true })).toBeVisible()
+  await page.getByRole('option', { name: '不扣减', exact: true }).click()
+  await expect(wipTiming).toContainText('不扣减')
+  await page.screenshot({
+    path: info.outputPath('production-warehouse.png'),
+    animations: 'disabled'
+  })
   await dialog
     .locator('.el-form-item')
     .filter({ has: page.getByText('需要排包', { exact: true }) })
@@ -80,7 +94,10 @@ test('生产单据仓库范围与扩展字段复用公共字典', async ({ page 
   await expect(page.getByRole('option', { name: '公共选项名称', exact: true })).toBeVisible()
   await expect(page.getByRole('option', { name: '停用选项', exact: true })).toHaveCount(0)
   await page.getByRole('option', { name: '公共选项名称', exact: true }).click()
-  await dialog.screenshot({ path: info.outputPath('production-extension.png') })
+  await page.screenshot({
+    path: info.outputPath('production-extension.png'),
+    animations: 'disabled'
+  })
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
   ).toBeLessThanOrEqual(1)

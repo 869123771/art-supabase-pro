@@ -35,25 +35,26 @@ export function setupRouteErrorRecovery(router: Router): void {
     }
     sessionStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(recoveryState))
 
-    // The loader clears its rejected promise, so a transient chunk failure can
-    // succeed on the next navigation without replacing the URL or old view.
-    if (recoveryState.attempts === 1) {
-      void router.replace(to.fullPath).catch((retryError: unknown) => {
-        console.error('[RouteRecovery] 页面重试失败:', retryError)
-        redirectToFailurePage(router, to.fullPath)
-      })
-      return
-    }
-
+    // 浏览器会缓存失败的模块导入及其依赖图；重走同一路由无法清除这个缓存。
+    // 用完整文档加载恢复模块图，同时跨刷新保留次数上限，避免永久故障刷新死循环。
     reloadAtRoute(to.fullPath)
   })
 
-  router.afterEach((_to, _from, failure) => {
+  router.afterEach((to, _from, failure) => {
     if (failure) return
 
-    sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
+    // 打开 500 页不代表原页面已恢复，不能因此重置自动刷新的次数上限。
+    if (readRecoveryState()?.path === to.fullPath) {
+      sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
+    }
     removeRecoveryQuery()
   })
+}
+
+/** 用户主动重试时重新加载文档，清除失败模块缓存并开启一次新的恢复周期。 */
+export function retryRouteWithFreshDocument(path: string): void {
+  sessionStorage.removeItem(RECOVERY_STORAGE_KEY)
+  reloadAtRoute(path)
 }
 
 function redirectToFailurePage(router: Router, targetPath: string): void {

@@ -151,12 +151,6 @@
                 >
               </div>
 
-              <span
-                v-if="visibleSelectionActions.length"
-                class="art-table-query__selection-divider"
-                aria-hidden="true"
-              />
-
               <ElConfigProvider size="small">
                 <div class="art-table-query__selection-actions">
                   <template
@@ -232,6 +226,11 @@
                   </ElButton>
                 </div>
               </ElConfigProvider>
+              <slot
+                name="selection-details"
+                :selected-rows="selectedRows"
+                :selected-count="selectedRows.length"
+              />
             </div>
 
             <div
@@ -843,6 +842,8 @@
     'header-right'?: () => VNodeChild
     /** 勾选后批量操作条；传入后替换 selectionActions 的默认外观。 */
     'selection-bar'?: (props: ArtTableQuerySelectionBarSlotProps) => VNodeChild
+    /** 默认批量命令栏中的补充信息，如选中行金额汇总。 */
+    'selection-details'?: (props: ArtTableQueryHeaderLeftSlotProps) => VNodeChild
     /** 透传给 ArtTable 的默认插槽 */
     default?: () => VNodeChild
     /** 动态表格列插槽和 search-{key} 查询项插槽 */
@@ -1074,6 +1075,7 @@
     'header-left',
     'header-right',
     'selection-bar',
+    'selection-details',
     'table-header-top',
     'default'
   ])
@@ -1234,8 +1236,15 @@
   })
 
   const getSelectionActionButtonProps = (action: ArtTableQueryHeaderAction) => {
+    const destructive =
+      action.type === 'delete' ||
+      /delete|remove|删除|清理/i.test(`${getHeaderActionKey(action)}:${String(action.label ?? '')}`)
     const contextualButtonProps =
-      action.type === 'export' ? { type: 'primary' as const, plain: true } : {}
+      action.type === 'export'
+        ? { type: 'primary' as const, plain: true }
+        : destructive
+          ? { type: 'danger' as const, plain: true }
+          : {}
 
     return {
       size: 'small' as const,

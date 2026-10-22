@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./finance-planned-page-DZPmJV1N.js";var i=t({name:`FinanceReceiptWriteoff`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{title:`收款核销工作台`,area:`应收款管理`,description:`核对收款与应收单据。`,icon:`ri:checkbox-circle-line`}))}});export{i as default};

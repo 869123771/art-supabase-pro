@@ -56,6 +56,7 @@
   import { ElMessage } from 'element-plus'
   import { debounce, isNil, trim } from 'lodash-es'
   import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
+  import { stripRegionPrefix } from '../address'
   import type { AddressMapPickResult } from '../types'
 
   defineOptions({ name: 'ArtAddressMap' })
@@ -299,21 +300,6 @@
       normalizeCityName(params.city),
       String(params.district ?? '')
     ].filter(Boolean)
-
-  const stripRegionPrefix = (address: string, path: string[]): string => {
-    const normalizedAddress = trim(address)
-    if (!normalizedAddress || !path.length) return normalizedAddress
-    const prefixes = path
-      .filter(Boolean)
-      .reduce<string[]>((result, item) => {
-        const previous = result.at(-1) ?? ''
-        result.push(`${previous}${item}`)
-        return result
-      }, [])
-      .sort((first, second) => second.length - first.length)
-    const matchedPrefix = prefixes.find((prefix) => normalizedAddress.startsWith(prefix))
-    return trim(matchedPrefix ? normalizedAddress.slice(matchedPrefix.length) : normalizedAddress)
-  }
 
   const getPoiDistrict = (poi: Partial<AMapPoi>): string =>
     trim(String(poi.district || poi.adname || ''))

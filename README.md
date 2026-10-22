@@ -5,11 +5,11 @@
   <p>统一平台底座，组合运输、车辆、财务、人力、安全生产、司机协同与可治理 AI。</p>
 
   <p>
-    <a href="https://gitee.com/wangyanghub/art-supabase-pro">Gitee</a>
+    <a href="https://gitee.com/art-si/art-supabase-pro">Gitee</a>
     ·
-    <a href="https://github.com/869123771/art-supabase-pro">GitHub</a>
+    <a href="https://github.com/art-si/art-supabase-pro">GitHub</a>
     ·
-    <a href="https://869123771.github.io/art-supabase-pro/">在线演示</a>
+    <a href="https://art-si.github.io/art-supabase-pro/">在线演示</a>
     ·
     <a href="./README.en.md">English</a>
   </p>
@@ -46,16 +46,16 @@
 
 | 仓库 | 定位 | 独立开发端口 |
 | --- | --- | --: |
-| [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro) | 平台宿主、公共运行时、审批、数据中心与 AI 治理 | `3006` |
-| [`art-supabase-tms`](https://gitee.com/wangyanghub/art-supabase-tms) | TMS 智慧运输与履约协同 | `3016` |
-| [`art-supabase-vms`](https://gitee.com/wangyanghub/art-supabase-vms) | VMS 车辆全生命周期管理 | `3015` |
-| [`art-supabase-fms`](https://gitee.com/wangyanghub/art-supabase-fms) | FMS 运输财务与企业核算 | `3012` |
-| [`art-supabase-hr`](https://gitee.com/wangyanghub/art-supabase-hr) | HR 人力资源与人才运营 | `3013` |
-| [`art-supabase-smis`](https://gitee.com/wangyanghub/art-supabase-smis) | SMIS 安全生产与设备治理 | `3014` |
-| [`art-supabase-scm`](https://gitee.com/wangyanghub/art-supabase-scm) | SCM供应链管理：报价、合同、订单与发运 | `3021` |
-| [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | 面向司机的 H5 / 微信小程序运输执行端 | — |
-| [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | 使用、开发、部署与运维文档站 | `5173` |
-| [`art-supabase-site`](https://gitee.com/wangyanghub/art-supabase-site) | 亿企工场独立官网与产品矩阵 | `3022` |
+| [`art-supabase-pro`](https://gitee.com/art-si/art-supabase-pro) | 平台宿主、公共运行时、审批、数据中心与 AI 治理 | `3006` |
+| [`art-supabase-tms`](https://gitee.com/art-si/art-supabase-tms) | TMS 智慧运输与履约协同 | `3016` |
+| [`art-supabase-vms`](https://gitee.com/art-si/art-supabase-vms) | VMS 车辆全生命周期管理 | `3015` |
+| [`art-supabase-fms`](https://gitee.com/art-si/art-supabase-fms) | FMS 运输财务与企业核算 | `3012` |
+| [`art-supabase-hr`](https://gitee.com/art-si/art-supabase-hr) | HR 人力资源与人才运营 | `3013` |
+| [`art-supabase-smis`](https://gitee.com/art-si/art-supabase-smis) | SMIS 安全生产与设备治理 | `3014` |
+| [`art-supabase-scm`](https://gitee.com/art-si/art-supabase-scm) | SCM供应链管理：报价、合同、订单与发运 | `3021` |
+| [`supabase-mobile-tms-driver`](https://gitee.com/art-si/supabase-mobile-tms-driver) | 面向司机的 H5 / 微信小程序运输执行端 | — |
+| [`art-supabase-doc`](https://gitee.com/art-si/art-supabase-doc) | 使用、开发、部署与运维文档站 | `5173` |
+| [`art-supabase-site`](https://gitee.com/art-si/art-supabase-site) | 亿企工场独立官网与产品矩阵 | `3022` |
 
 主仓通过 Git submodule 固定各业务应用的提交，统一装载认证、租户、菜单、权限、布局、公共组件和 Supabase 客户端。业务仓保留领域页面、API、类型与规则的所有权；司机端通过受控服务端契约与 TMS 共享同一条运单履约链路。
 
@@ -247,7 +247,7 @@ Vue 3 + TypeScript + Element Plus
 ### 1. 获取代码
 
 ```bash
-git clone --recurse-submodules https://gitee.com/wangyanghub/art-supabase-pro.git
+git clone --recurse-submodules https://gitee.com/art-si/art-supabase-pro.git
 cd art-supabase-pro
 pnpm install
 ```

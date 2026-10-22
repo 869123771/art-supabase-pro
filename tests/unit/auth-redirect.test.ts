@@ -5,16 +5,13 @@ import {
   resolveSafePostLoginRedirect
 } from '../../src/utils/auth-redirect'
 
-const platformOrigin = 'https://869123771.github.io'
+const platformOrigin = 'https://art-si.github.io'
 
 test('accepts platform routes and same-origin child application URLs', () => {
   assert.equal(resolveSafePostLoginRedirect('/dashboard', platformOrigin), '/dashboard')
   assert.equal(
-    resolveSafePostLoginRedirect(
-      'https://869123771.github.io/art-supabase-vms/#/vms',
-      platformOrigin
-    ),
-    'https://869123771.github.io/art-supabase-vms/#/vms'
+    resolveSafePostLoginRedirect('https://art-si.github.io/art-supabase-vms/#/vms', platformOrigin),
+    'https://art-si.github.io/art-supabase-vms/#/vms'
   )
 })
 
@@ -29,5 +26,5 @@ test('rejects protocol-relative and cross-origin redirects', () => {
 
 test('identifies full application redirects', () => {
   assert.equal(isAbsoluteApplicationRedirect('/dashboard'), false)
-  assert.equal(isAbsoluteApplicationRedirect('https://869123771.github.io/app/'), true)
+  assert.equal(isAbsoluteApplicationRedirect('https://art-si.github.io/app/'), true)
 })

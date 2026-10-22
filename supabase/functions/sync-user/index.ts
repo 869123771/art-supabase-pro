@@ -91,20 +91,6 @@ function cleanAppUserData(appUserData: unknown): Record<string, unknown> {
   }
   return cleaned
 }
-function parseJWT(token: string): { userId: string | null; email: string | null } {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return { userId: null, email: null }
-    const payload = JSON.parse(atob(parts[1]))
-    return {
-      userId: payload.sub || null,
-      email: (payload.email || '').toLowerCase().trim() || null
-    }
-  } catch (e) {
-    console.error('parseJWT error', e)
-    return { userId: null, email: null }
-  }
-}
 function createClientWithToken(token: string) {
   return createClient(SUPABASE_URL, ANON_KEY, {
     auth: { persistSession: false },
@@ -324,12 +310,9 @@ Deno.serve(async (req: Request) => {
   let callerEmail: string | null = null
   let callerSupabase: ReturnType<typeof createClient> | null = null
   if (bearer) {
-    const parsed = parseJWT(bearer)
-    callerAuthUserId = parsed.userId
-    callerEmail = parsed.email
     callerSupabase = createClientWithToken(bearer)
     try {
-      const { data: user, error: userErr } = await callerSupabase.auth.getUser()
+      const { data: user, error: userErr } = await callerSupabase.auth.getUser(bearer)
       if (!userErr && user?.user) {
         callerAuthUserId = user.user.id
         callerEmail = (user.user.email || '').toLowerCase().trim() || null

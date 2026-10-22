@@ -392,6 +392,99 @@ begin
     end if;
   end loop;
 
+  -- Scrapped finished goods use the same guarded return path as defective goods.
+  insert into public.wms_production_material_document (
+    tenant_id,kind,document_no,document_type_id,business_type_id,organization_id,
+    warehouse_id,work_order_id,project_id,status,created_by
+  ) values (
+    work_order.tenant_id,'finished_inbound','QA-SCRAPPED-IN-' || gen_random_uuid(),
+    receipt_type.document_type_id,receipt_type.business_type_id,work_order.organization_id,
+    work_order.inbound_warehouse_id,work_order.id,work_order.project_id,'submitted',actor
+  ) returning id into receipt_document_id;
+  insert into public.wms_production_material_line (
+    tenant_id,document_id,line_no,material_id,inventory_unit_id,requested_quantity,
+    actual_quantity,warehouse_id,bin_id,stock_type,stock_status,
+    work_order_id,project_id,construction_no,batch_no
+  ) values (
+    work_order.tenant_id,receipt_document_id,10,work_order.material_id,material_unit_id,1,
+    1,work_order.inbound_warehouse_id,bin_id,'normal','scrapped',work_order.id,
+    work_order.project_id,work_order.construction_no,'QA-SCRAPPED-ROLLBACK'
+  );
+  perform public.wms_change_production_material_status_secure(receipt_document_id,'approve');
+  perform public.wms_push_production_material_secure(receipt_document_id,null);
+  select line.id,line.movement_id,movement.target_batch_id
+    into strict receipt_line_id,posted_movement_id,posted_batch_id
+  from public.wms_production_material_line line
+  join public.wms_inventory_movement movement on movement.id=line.movement_id
+  where line.document_id=receipt_document_id;
+  if not exists (select 1 from public.wms_inventory_batch
+    where id=posted_batch_id and tenant_id=work_order.tenant_id
+      and status='scrapped' and quantity=1)
+    or not exists (select 1 from public.wms_finished_inbound_source_list
+      where id=receipt_line_id and source_batch_id=posted_batch_id
+        and stock_status='scrapped' and available_quantity>=1) then
+    raise exception 'Scrapped receipt was not selectable for a guarded return';
+  end if;
+  insert into public.wms_production_material_document (
+    tenant_id,kind,document_no,document_type_id,business_type_id,organization_id,
+    warehouse_id,work_order_id,project_id,status,created_by
+  ) values (
+    work_order.tenant_id,'finished_return','QA-SCRAPPED-RETURN-' || gen_random_uuid(),
+    return_type.document_type_id,return_type.business_type_id,work_order.organization_id,
+    work_order.inbound_warehouse_id,work_order.id,work_order.project_id,'submitted',actor
+  ) returning id into return_document_id;
+  insert into public.wms_production_material_line (
+    tenant_id,document_id,line_no,material_id,inventory_unit_id,requested_quantity,
+    actual_quantity,warehouse_id,bin_id,stock_type,stock_status,source_batch_id,
+    source_line_id,work_order_id,project_id,construction_no,batch_no
+  ) values (
+    work_order.tenant_id,return_document_id,10,work_order.material_id,material_unit_id,-1,
+    -1,work_order.inbound_warehouse_id,bin_id,'normal','scrapped',posted_batch_id,
+    receipt_line_id,work_order.id,work_order.project_id,work_order.construction_no,
+    'QA-SCRAPPED-ROLLBACK'
+  );
+  perform public.wms_change_production_material_status_secure(return_document_id,'approve');
+  perform public.wms_push_production_material_secure(return_document_id,null);
+  select movement_id into strict return_movement_id
+  from public.wms_production_material_line where document_id=return_document_id;
+  if exists (select 1 from public.wms_inventory_batch
+      where id=posted_batch_id and quantity<>0)
+    or exists (select 1 from public.wms_finished_inbound_source_list
+      where id=receipt_line_id)
+    or (select warehoused_quantity from public.mes_work_order
+      where id=work_order.id and tenant_id=work_order.tenant_id)<>0 then
+    raise exception 'Scrapped finished return failed to reverse stock or work order';
+  end if;
+  for report_kind in select unnest(array['stock','movement','ledger','receipt-issue']) loop
+    report:=public.wms_inventory_report_secure(
+      report_kind,p_batch_no=>'QA-SCRAPPED-ROLLBACK',
+      p_tenant_id=>work_order.tenant_id,p_limit=>200
+    );
+    if report_kind='stock' then
+      if exists(select 1 from jsonb_array_elements(report->'data') item
+        where item->>'id'=posted_batch_id::text) then
+        raise exception 'Fully returned scrapped stock appears in on-hand inventory';
+      end if;
+    elsif report_kind='ledger' then
+      if not exists(select 1 from jsonb_array_elements(report->'data') item
+        where item->>'id'=posted_batch_id::text
+          and (item->>'closing_quantity')::numeric=0) then
+        raise exception 'Scrapped return did not reconcile the inventory ledger';
+      end if;
+    elsif report_kind in ('movement','receipt-issue') then
+      if not exists(select 1 from jsonb_array_elements(report->'data') item
+        where item->>'id'=posted_movement_id::text||':in'
+          and item->>'source_document_id'=receipt_document_id::text
+          and item->>'source_document_kind'='finished_inbound')
+        or not exists(select 1 from jsonb_array_elements(report->'data') item
+          where item->>'id'=return_movement_id::text||':out'
+            and item->>'source_document_id'=return_document_id::text
+            and item->>'source_document_kind'='finished_return') then
+        raise exception 'Scrapped receipt or return missing from report %',report_kind;
+      end if;
+    end if;
+  end loop;
+
   payload := jsonb_build_object(
     'movement_type','production_in','material_id',work_order.material_id,
     'warehouse_id',work_order.inbound_warehouse_id,'bin_id',bin_id,
@@ -562,5 +655,5 @@ begin
     if not rejected then raise exception 'MES view permission was not enforced'; end if;
   end if;
 end $test$;
-select 'strict rejected approval and posting; defective receipt and return reconciled across four reports; non-backflush and key scopes filtered; published pack enforced and linked to receipt detail' as result;
+select 'strict rejected approval and posting; defective and scrapped receipts and returns reconciled across four reports; non-backflush and key scopes filtered; published pack enforced and linked to receipt detail' as result;
 rollback;

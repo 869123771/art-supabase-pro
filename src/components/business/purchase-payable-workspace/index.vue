@@ -1,10 +1,13 @@
 <template>
-  <ArtPermissionGuard :permission="viewPermission" :resource-name="title">
+  <ArtPermissionGuard :permission="permissions.View" :resource-name="title">
     <div class="business-workspace-page art-full-height min-w-0">
       <BusinessWorkspaceHeader
         :title="title"
-        eyebrow="PURCHASE PAYABLES"
-        description="由已审核采购入库明细生成应付草稿，保留入库来源、项目和金额。"
+        :description="
+          kind === 'estimated'
+            ? '统一采购与运输暂估，按来源跟踪关联、到票冲回及剩余暂估。'
+            : '收到发票确认应付，审核时冲回同源暂估，按付款计划跟踪余额与冻结。'
+        "
         icon="ri:bill-line"
         density="compact"
       >
@@ -16,167 +19,783 @@
         :api-fn="fetchRows"
         :search-items="searchItems"
         :columns-factory="columnsFactory"
+        :columns-context-key="search.viewMode"
+        :header-actions="headerActions"
+        header-actions-placement="workspace"
         :table-props="{
-          rowKey: 'id',
+          rowKey: 'recordKey',
           emptyText: '暂无应付单',
-          emptyDescription: '在采购入库单勾选已审核单据或明细，通过下推生成。'
+          emptyDescription: '新建应付单，或从已审核采购入库单下推、导入已确认的TMS承运结算。'
         }"
         focusable
-      />
-      <ArtDrawer ref="drawerRef" size="xl" :show-footer="false">
-        <template v-if="current">
-          <ArtEntitySummary
-            icon="ri:bill-line"
-            :title="current.documentNo"
-            :description="`来源采购入库单：${current.sourceDocumentNo}`"
-          />
-          <ArtDescriptions class="mt-4" :data="current" :items="descriptionItems" />
-          <ArtSectionCard class="mt-4" title="应付明细" :subtitle="`共 ${current.lines.length} 行`">
-            <ArtTable
-              :data="current.lines"
-              :columns="lineColumns"
-              :pagination="false"
-              row-key="id"
-            />
-          </ArtSectionCard>
+      >
+        <template #payable-push="{ selectedRows }">
+          <ElDropdown
+            trigger="click"
+            :disabled="busy || selectedRows.length !== 1"
+            @command="(command) => push(selectedRows[0]?.id, command)"
+          >
+            <ElButton :disabled="busy || selectedRows.length !== 1" :loading="busy" plain
+              ><ArtSvgIcon icon="ri:file-transfer-line" />下推<ArtSvgIcon
+                icon="ri:arrow-down-s-line"
+            /></ElButton>
+            <template #dropdown
+              ><ElDropdownMenu
+                ><ElDropdownItem v-if="kind === 'estimated'" command="financial"
+                  >财务应付</ElDropdownItem
+                >
+                <ElDropdownItem
+                  v-if="
+                    kind === 'financial' &&
+                    hasAuth('FinancePayableApplication:Add') &&
+                    hasAuth('FinancePayableApplication:View')
+                  "
+                  command="application"
+                  >付款申请</ElDropdownItem
+                >
+                <ElDropdownItem
+                  v-if="
+                    kind === 'financial' &&
+                    hasAuth('FinancePayablePayment:Add') &&
+                    hasAuth('FinancePayablePayment:View')
+                  "
+                  command="payment"
+                  >付款单</ElDropdownItem
+                ></ElDropdownMenu
+              ></template
+            >
+          </ElDropdown>
         </template>
-      </ArtDrawer>
+        <template #payable-voucher="{ selectedRows }">
+          <ElDropdown
+            trigger="click"
+            :disabled="busy || selectedRows.length !== 1"
+            @command="(command) => voucher(selectedRows[0]?.id, command)"
+          >
+            <ElButton :disabled="busy || selectedRows.length !== 1" :loading="busy" plain
+              ><ArtSvgIcon icon="ri:file-list-3-line" />生成凭证<ArtSvgIcon
+                icon="ri:arrow-down-s-line"
+            /></ElButton>
+            <template #dropdown
+              ><ElDropdownMenu
+                ><ElDropdownItem command="preview">预览凭证</ElDropdownItem
+                ><ElDropdownItem command="generate">生成凭证</ElDropdownItem></ElDropdownMenu
+              ></template
+            >
+          </ElDropdown>
+        </template>
+      </ArtTableQuery>
+      <PayableDocumentDrawer ref="drawerRef" :kind="kind" @success="tableRef?.refreshData()" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
+      <ArtTableSingleSelect
+        ref="carrierPickerRef"
+        :show-trigger="false"
+        :api-fn="carrierOptions"
+        :columns="[
+          { prop: 'name', label: '结算单号', minWidth: 180 },
+          { prop: 'description', label: '承运商', minWidth: 200 }
+        ]"
+        row-key="id"
+        label-key="name"
+        title="导入TMS承运结算"
+        subtitle="同一结算单每类应付只允许导入一次，保留既有付款与核销记录。"
+        @confirm="(_key, rows) => importCarrier(rows)"
+      />
+      <ArtDialog ref="freezeDialogRef" size="sm" confirm-text="保存冻结状态">
+        <ArtForm
+          v-model="freezeForm"
+          :items="freezeItems"
+          :show-submit="false"
+          :show-reset="false"
+          label-position="top"
+        />
+      </ArtDialog>
+      <FinanceVoucherPreview ref="voucherDialogRef" :result="voucherPreview" />
     </div>
   </ArtPermissionGuard>
 </template>
 <script setup lang="tsx">
+  import FinanceVoucherPreview from '@/components/business/finance-voucher-preview/index.vue'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import { formatTenantLabel } from '@/utils/tenant-display'
+  import { pushPayableSettlement } from '@/api/payable-settlement'
+  import { ElMessage, ElTag } from 'element-plus'
+  import { uniq, escape } from 'lodash-es'
   import {
     fetchPurchasePayables,
+    actPurchasePayable,
+    fetchPayableDeleteDependencies,
+    pushEstimatedPayable,
+    fetchPayableOptions,
+    importCarrierPayable,
+    generatePayableVoucher,
+    previewPayableVoucher,
     type PurchasePayableDocument,
     type PurchasePayableKind,
-    type PurchasePayableLine
+    type PayableSearch,
+    type PayableAction,
+    type PayableOption,
+    type PayableVoucherPreview,
+    type PayablePermissions
   } from '@/api/purchase-payable'
-  import ArtTableQuery from '@/components/core/tables/art-table-query/index.vue'
-  import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
-  import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
+  import ArtTableQuery, {
+    type ArtTableQueryHeaderAction
+  } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
-  import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
-  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
+  import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
+  import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
+  import ArtTableSingleSelect from '@/components/core/forms/art-data-select/table-single.vue'
+  import type { ArtDataSelectExpose } from '@/components/core/forms/art-data-select/types'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import PayableDocumentDrawer from './modules/payable-document-drawer.vue'
+  import { formatCurrencyValue } from '@/utils/ui/format'
+  import { payableStatusLabels } from '@/utils/finance/payable'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
+  import { printHtmlDocument } from '@/utils/file/print-document'
+  import { financePaths } from '@/router/business-paths'
   import type { ColumnOption } from '@/types'
   import type { SearchFormItem } from '@/components/core/forms/art-search-bar/index.vue'
-  import type { ArtDescriptionItem } from '@/components/core/base/art-descriptions/types'
-  import { formatCurrencyValue } from '@/utils/ui/format'
-  const props = defineProps<{ kind: PurchasePayableKind; viewPermission: string }>()
+
+  const props = defineProps<{ kind: PurchasePayableKind; permissions: PayablePermissions }>()
   const route = useRoute()
+  const tenantScope = useTenantScopeStore()
+  const router = useRouter()
+  const { hasAuth } = useAuth()
+  const { confirmDelete } = useArtFeedback()
   const title = computed(() => (props.kind === 'estimated' ? '暂估应付单' : '财务应付单'))
+  const permission = (action: keyof PayablePermissions) => props.permissions[action] || ''
   const tableRef = ref<InstanceType<typeof ArtTableQuery>>()
-  const drawerRef = ref<ArtDrawerExpose>()
-  const current = ref<PurchasePayableDocument>()
-  const search = reactive({ keyword: '' })
-  const searchItems: SearchFormItem[] = [
+  const drawerRef = ref<InstanceType<typeof PayableDocumentDrawer>>()
+  const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
+  const carrierPickerRef = ref<ArtDataSelectExpose>()
+  const freezeDialogRef = ref<ArtDialogExpose>()
+  const voucherDialogRef = ref<InstanceType<typeof FinanceVoucherPreview>>()
+  const voucherPreview = ref<PayableVoucherPreview>()
+  const busy = ref(false)
+  const search = reactive({
+    keyword: '',
+    status: '',
+    organizationId: '',
+    documentTypeId: '',
+    businessDateRange: [],
+    viewMode: 'document',
+    freezeStatus: '',
+    matchingStatus: '',
+    writeoffStatus: ''
+  })
+  const selectItems = (labels: string[], values: string[]) =>
+    labels.map((label, index) => ({ label, value: values[index] }))
+  const partialValues = ['none', 'partial', 'full']
+  const searchItems = computed<SearchFormItem[]>(() => [
     {
       key: 'keyword',
       label: '组合查询',
       type: 'input',
-      props: { placeholder: '应付单号、来源入库单号', clearable: true }
-    }
-  ]
-  function fetchRows(query: { current: number; size: number; keyword?: string }) {
-    return fetchPurchasePayables(props.kind, {
+      props: { placeholder: '单据编号、来源单号', clearable: true }
+    },
+    {
+      key: 'status',
+      label: '单据状态',
+      type: 'select',
+      props: {
+        clearable: true,
+        options: selectItems(['暂存', '已提交', '已审核'], ['draft', 'submitted', 'approved'])
+      }
+    },
+    {
+      key: 'businessDateRange',
+      label: '业务日期',
+      type: 'daterange',
+      props: { valueFormat: 'YYYY-MM-DD' }
+    },
+    {
+      key: 'viewMode',
+      label: '查询范围',
+      type: 'select',
+      props: {
+        options: [
+          { label: '按单据', value: 'document' },
+          { label: '按明细', value: 'line' }
+        ]
+      }
+    },
+    {
+      key: 'organizationId',
+      label: '结算组织',
+      type: 'select',
+      api: async () =>
+        (await fetchPayableOptions('organization')).map((item) => ({
+          label: item.name,
+          value: item.id
+        })),
+      props: { clearable: true }
+    },
+    {
+      key: 'documentTypeId',
+      label: '单据类型',
+      type: 'select',
+      api: async () =>
+        (await fetchPayableOptions(`${props.kind}_type`)).map((item) => ({
+          label: item.name,
+          value: item.id
+        })),
+      props: { clearable: true }
+    },
+    ...(props.kind === 'financial'
+      ? [
+          {
+            key: 'matchingStatus',
+            label: '勾稽状态',
+            type: 'select',
+            props: {
+              clearable: true,
+              options: selectItems(['未勾稽', '部分勾稽', '全部勾稽'], partialValues)
+            }
+          },
+          {
+            key: 'writeoffStatus',
+            label: '核销状态',
+            type: 'select',
+            props: {
+              clearable: true,
+              options: selectItems(['未核销', '部分核销', '全部核销'], partialValues)
+            }
+          },
+          {
+            key: 'freezeStatus',
+            label: '冻结状态',
+            type: 'select',
+            props: {
+              clearable: true,
+              options: selectItems(['未冻结', '部分冻结', '已冻结'], partialValues)
+            }
+          }
+        ]
+      : [])
+  ])
+  type ListRow = PurchasePayableDocument & { recordKey: string }
+  async function fetchRows(query: PayableSearch) {
+    const result = await fetchPurchasePayables(props.kind, {
       ...query,
       id: typeof route.query.recordId === 'string' ? route.query.recordId : undefined
     })
+    return {
+      ...result,
+      data: result.data.map((row) => ({
+        ...row,
+        recordKey: query.viewMode === 'line' ? `${row.id}:${row.lines[0]?.id}` : row.id
+      }))
+    }
   }
-  function open(row: PurchasePayableDocument): void {
-    current.value = row
-    drawerRef.value?.handleOpen(undefined, { title: `${title.value}详情`, showFooter: false })
+  async function reloadDocument(id: string): Promise<PurchasePayableDocument> {
+    const result = await fetchPurchasePayables(props.kind, { current: 1, size: 1, id })
+    if (!result.data[0]) throw new Error('单据已变更或不可查看，请刷新列表')
+    return result.data[0]
   }
-  const columnsFactory = (): ColumnOption<PurchasePayableDocument>[] => [
-    { prop: 'documentNo', label: '应付单号', minWidth: 200 },
-    { prop: 'sourceDocumentNo', label: '来源入库单', minWidth: 190 },
+  async function run(operation: () => Promise<void>): Promise<void> {
+    if (busy.value) return
+    busy.value = true
+    try {
+      await operation()
+    } catch (error) {
+      notifyFriendlyError(error, '操作未完成，请刷新核对单据状态后重试')
+    } finally {
+      busy.value = false
+    }
+  }
+  async function open(row: PurchasePayableDocument, edit = false): Promise<void> {
+    await run(async () => {
+      await drawerRef.value?.open(await reloadDocument(row.id), edit)
+    })
+  }
+  async function act(ids: string[], action: PayableAction): Promise<void> {
+    await run(async () => {
+      await actPurchasePayable(uniq(ids), action)
+      ElMessage.success('操作成功')
+      await tableRef.value?.refreshData()
+    })
+  }
+  async function remove(ids: string[]): Promise<void> {
+    await run(async () => {
+      const documents = await Promise.all(uniq(ids).map(reloadDocument))
+      const guard = deleteGuardRef.value
+      if (!guard) throw new Error('关联检查尚未就绪，请刷新后重试')
+      const inspect = () =>
+        guard.inspect({
+          resourceLabel: title.value,
+          resources: documents.map((row) => ({ id: row.id, label: row.documentNo })),
+          fetchDependencies: fetchPayableDeleteDependencies,
+          dependencyMeta: {
+            payable: {
+              label: '单据状态限制',
+              unit: '张',
+              description: '已提交、已审核及冲回单不能删除。',
+              actionLabel: '查看单据',
+              order: 1
+            },
+            estimated_payable: {
+              label: '关联暂估冲回',
+              unit: '张',
+              description: '系统冲回单保留原暂估和财务应付的业务关系。',
+              actionLabel: '查看暂估冲回',
+              order: 3,
+              routePath: financePaths.estimatedPayable,
+              routeQuery: (record) => ({ recordId: record.targetId }),
+              canNavigate: () => hasAuth('FinanceEstimatedPayable:View')
+            },
+            financial_payable: {
+              label: '关联财务应付',
+              unit: '张',
+              description: '请先核对关联单据，不可删除经营历史。',
+              actionLabel: '查看关联应付',
+              order: 2,
+              routePath: financePaths.financialPayable,
+              routeQuery: (record) => ({ recordId: record.targetId }),
+              canNavigate: () => hasAuth('FinancePurchasePayable:View')
+            },
+            payment_application: {
+              label: '关联付款申请',
+              unit: '张',
+              description: '请核对已下推付款申请及其额度占用。',
+              actionLabel: '查看申请',
+              order: 4,
+              routePath: financePaths.payableApplication,
+              routeQuery: (record) => ({ recordId: record.targetId }),
+              canNavigate: () => hasAuth('FinancePayableApplication:View')
+            },
+            payment: {
+              label: '关联付款单',
+              unit: '张',
+              description: '已下推付款单保留来源关系，不能删除源应付。',
+              actionLabel: '查看付款',
+              order: 5,
+              routePath: financePaths.payablePayment,
+              routeQuery: (record) => ({ recordId: record.targetId }),
+              canNavigate: () => hasAuth('FinancePayablePayment:View')
+            }
+          }
+        })
+      if (await inspect()) return
+      try {
+        await confirmDelete(`确认删除 ${documents.length} 张无关联的暂存应付单？`)
+      } catch {
+        return
+      }
+      try {
+        await actPurchasePayable(
+          documents.map((row) => row.id),
+          'delete'
+        )
+      } catch (error) {
+        if (await inspect()) return
+        throw error
+      }
+      ElMessage.success('应付单已删除')
+      tableRef.value?.clearSelection()
+      await tableRef.value?.refreshData()
+    })
+  }
+  async function push(id: string, command: string): Promise<void> {
+    await run(async () => {
+      if (props.kind === 'financial') {
+        if (command !== 'application' && command !== 'payment') return
+        const source = await reloadDocument(id)
+        if (
+          (source.currencyCode || 'CNY') !== 'CNY' ||
+          (source.baseCurrencyCode || 'CNY') !== 'CNY'
+        ) {
+          ElMessage.warning('外币付款与核销链路仍在接通中，不能按人民币金额下推付款')
+          return
+        }
+        const created = await pushPayableSettlement(id, command)
+        ElMessage.success(`已生成 ${created.documentNo}`)
+        await tableRef.value?.refreshData()
+        await router.push({
+          path:
+            command === 'application'
+              ? financePaths.payableApplication
+              : financePaths.payablePayment,
+          query: { recordId: created.id }
+        })
+        return
+      }
+      const created = await pushEstimatedPayable(id)
+      ElMessage.success(`已生成 ${created.documentNo}`)
+      await tableRef.value?.refreshData()
+      await router.push({ path: financePaths.financialPayable, query: { recordId: created.id } })
+    })
+  }
+  async function carrierOptions(): Promise<PayableOption[]> {
+    return fetchPayableOptions('carrier_statement')
+  }
+  async function importCarrier(rows: PayableOption[]): Promise<void> {
+    if (!rows[0]) return
+    await run(async () => {
+      await importCarrierPayable(props.kind, rows[0].id)
+      ElMessage.success('已导入TMS应付')
+      await tableRef.value?.refreshData()
+    })
+  }
+  const freezeForm = reactive({ amount: 0, reason: '' })
+  const freezeItems: FormItem[] = [
+    {
+      key: 'amount',
+      label: '冻结金额(原币)',
+      type: 'number',
+      span: 24,
+      props: { min: 0, precision: 2 }
+    },
+    {
+      key: 'reason',
+      label: '冻结/解冻原因',
+      type: 'textarea',
+      span: 24,
+      props: { maxlength: 500, rows: 3 }
+    }
+  ]
+  async function freeze(id: string, unfreeze: boolean): Promise<void> {
+    await run(async () => {
+      const row = await reloadDocument(id)
+      freezeForm.amount = unfreeze ? 0 : (row.unpaidAmount ?? row.totalAmount)
+      freezeForm.reason = ''
+      await freezeDialogRef.value?.handleOpen(undefined, {
+        title: `${unfreeze ? '解冻财务应付' : '冻结财务应付'} · ${row.currencyCode || 'CNY'}`,
+        onConfirm: async () => {
+          if (!freezeForm.reason.trim()) {
+            ElMessage.warning('请填写原因')
+            return false
+          }
+          try {
+            await actPurchasePayable(
+              [id],
+              unfreeze ? 'unfreeze' : 'freeze',
+              freezeForm.reason,
+              freezeForm.amount
+            )
+            ElMessage.success('冻结状态已更新')
+            await tableRef.value?.refreshData()
+            return true
+          } catch (error) {
+            notifyFriendlyError(error, '冻结状态未更新，请重试')
+            return false
+          }
+        }
+      })
+    })
+  }
+  async function voucher(id: string, command: string): Promise<void> {
+    await run(async () => {
+      if (command === 'preview') {
+        voucherPreview.value = await previewPayableVoucher(id)
+        await voucherDialogRef.value?.handleOpen()
+        return
+      }
+      const result = await generatePayableVoucher(id)
+      if (result.voucherId) {
+        ElMessage.success('记账凭证已生成')
+        await router.push({
+          path: financePaths.voucherCenter,
+          query: { recordId: result.voucherId }
+        })
+      } else ElMessage.warning(result.message)
+      await tableRef.value?.refreshData()
+    })
+  }
+  async function print(ids: string[]): Promise<void> {
+    await run(async () => {
+      const records = await Promise.all(uniq(ids).map(reloadDocument))
+      const body = records
+        .map(
+          (record) =>
+            `<section><h1>${escape(title.value)} ${escape(record.documentNo)}</h1><p>${escape(record.supplierName || '')} · ${escape(record.businessDate)} · ${escape(record.currencyCode || 'CNY')} · 记账汇率 ${record.exchangeRate ?? 1}</p><table><thead><tr><th>行号</th><th>物料描述</th><th>数量</th><th>金额</th><th>税额</th><th>价税合计</th></tr></thead><tbody>${record.lines.map((line) => `<tr><td>${line.lineNo}</td><td>${escape(line.materialDescription || '')}</td><td>${line.quantity}</td><td>${formatCurrencyValue(line.amount, record.currencyCode || 'CNY')}</td><td>${formatCurrencyValue(line.taxAmount, record.currencyCode || 'CNY')}</td><td>${formatCurrencyValue(line.totalAmount, record.currencyCode || 'CNY')}</td></tr>`).join('')}</tbody></table><p>合计 ${formatCurrencyValue(record.totalAmount, record.currencyCode || 'CNY')}</p></section>`
+        )
+        .join('')
+      if (
+        !printHtmlDocument(
+          `<html><head><title>${escape(title.value)}</title><style>body{font:14px sans-serif;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #888;padding:8px;text-align:left}section{break-after:page}</style></head><body>${body}</body></html>`
+        )
+      )
+        ElMessage.warning('请允许弹出打印窗口后重试')
+    })
+  }
+  const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
+    {
+      type: 'add',
+      permission: permission('Add'),
+      onClick: () => drawerRef.value?.open(undefined, true)
+    },
+    {
+      key: 'import-tms',
+      label: '导入TMS',
+      permission: permission('Import'),
+      disabled: busy.value,
+      onClick: () => carrierPickerRef.value?.open()
+    },
+    {
+      key: 'submit',
+      label: '提交',
+      permission: permission('Submit'),
+      selectionRequired: true,
+      disabled: busy.value,
+      onClick: ({ selectedRows }) =>
+        act(
+          selectedRows.map((row) => String(row.id)),
+          'submit'
+        )
+    },
+    {
+      key: 'approve',
+      label: '审核',
+      permission: permission('Approve'),
+      selectionRequired: true,
+      disabled: busy.value,
+      onClick: ({ selectedRows }) =>
+        act(
+          selectedRows.map((row) => String(row.id)),
+          'approve'
+        )
+    },
+    {
+      key: 'remove',
+      label: '删除',
+      permission: permission('Delete'),
+      selectionRequired: true,
+      disabled: busy.value,
+      onClick: ({ selectedRows }) => remove(selectedRows.map((row) => String(row.id)))
+    },
+    ...[
+      {
+        key: 'push',
+        slot: 'payable-push',
+        permission: permission('Push'),
+        selectionRequired: true
+      }
+    ],
+    {
+      key: 'voucher',
+      slot: 'payable-voucher',
+      permission: permission('Voucher'),
+      selectionRequired: true
+    },
+    {
+      key: 'print',
+      label: '打印',
+      permission: permission('Print'),
+      selectionRequired: true,
+      onClick: ({ selectedRows }) => print(selectedRows.map((row) => String(row.id)))
+    },
+    {
+      type: 'export',
+      permission: permission('Export'),
+      exportFilename: title.value,
+      exportColumns: [
+        { key: 'documentNo', title: '单据编号' },
+        { key: 'currencyCode', title: '结算币种' },
+        { key: 'exchangeRate', title: '记账汇率' },
+        { key: 'baseCurrencyCode', title: '本位币' },
+        { key: 'baseTotalAmount', title: '价税合计(本位币)' },
+        { key: 'supplierName', title: '往来单位' },
+        { key: 'businessDate', title: '业务日期' },
+        { key: 'amount', title: '金额(原币)' },
+        { key: 'taxAmount', title: '税额(原币)' },
+        { key: 'totalAmount', title: '价税合计(原币)' }
+      ],
+      exportApi: async ({ searchParams, maxRows }) =>
+        fetchRows({ ...searchParams, current: 1, size: maxRows })
+    }
+  ])
+  const moneyColumn = (
+    prop: keyof PurchasePayableDocument,
+    label: string
+  ): ColumnOption<ListRow> => ({
+    prop,
+    label,
+    minWidth: 155,
+    align: 'right',
+    formatter: (row) => formatCurrencyValue(Number(row[prop] || 0), row.currencyCode || 'CNY')
+  })
+  const columnsFactory = (): ColumnOption<ListRow>[] => [
+    { type: 'selection', width: 46 },
+    ...(tenantScope.isAllTenants
+      ? [
+          {
+            prop: 'tenant',
+            label: '所属租户',
+            minWidth: 190,
+            formatter: (row: ListRow) => formatTenantLabel(row)
+          }
+        ]
+      : []),
+    { prop: 'documentNo', label: '单据编号', minWidth: 215, fixed: 'left' },
+    { prop: 'supplierName', label: '往来单位', minWidth: 180 },
+    {
+      prop: 'status',
+      label: '单据状态',
+      width: 110,
+      formatter: (row) => (
+        <ElTag type={row.status === 'approved' ? 'success' : 'info'}>
+          {payableStatusLabels[row.status]}
+        </ElTag>
+      )
+    },
+    { prop: 'documentTypeName', label: '单据类型', minWidth: 155 },
     { prop: 'businessDate', label: '业务日期', width: 120 },
-    { prop: 'supplierName', label: '供应商全称', minWidth: 180 },
-    { prop: 'status', label: '状态', width: 100, formatter: () => '暂存' },
     {
-      prop: 'amount',
-      label: '金额(元)',
-      minWidth: 130,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.amount)
+      prop: 'currencyCode',
+      label: '结算币种',
+      width: 100,
+      formatter: (row) => row.currencyCode || 'CNY'
     },
     {
-      prop: 'taxAmount',
-      label: '税额(元)',
-      minWidth: 120,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.taxAmount)
+      prop: 'exchangeRate',
+      label: '记账汇率',
+      width: 130,
+      formatter: (row) => row.exchangeRate ?? 1
     },
     {
-      prop: 'totalAmount',
-      label: '价税合计(元)',
+      prop: 'baseTotalAmount',
+      label: '价税合计(本位币)',
+      minWidth: 175,
+      align: 'right',
+      formatter: (row) =>
+        formatCurrencyValue(row.baseTotalAmount ?? row.totalAmount, row.baseCurrencyCode || 'CNY')
+    },
+    ...(search.viewMode === 'line'
+      ? [
+          {
+            prop: 'materialDescription',
+            label: '物料描述',
+            minWidth: 180,
+            formatter: (row: ListRow) => row.lines[0]?.materialDescription
+          },
+          {
+            prop: 'lineNo',
+            label: '源行号',
+            width: 90,
+            formatter: (row: ListRow) => row.lines[0]?.sourceLineNo || row.lines[0]?.lineNo
+          }
+        ]
+      : []),
+    {
+      prop: 'taxExcludedFromCost',
+      label: '税额不计入成本',
+      width: 145,
+      formatter: (row) => (row.taxExcludedFromCost === false ? '否' : '是')
+    },
+    moneyColumn('amount', '金额(原币)'),
+    moneyColumn('taxAmount', '税额(原币)'),
+    moneyColumn('totalAmount', '价税合计(原币)'),
+    ...(props.kind === 'estimated'
+      ? [
+          moneyColumn('unreversedAmount', '未冲回价税合计(原币)'),
+          moneyColumn('linkedAmount', '已关联财务应付金额(原币)'),
+          moneyColumn('unlinkedAmount', '未关联财务应付金额(原币)'),
+          {
+            prop: 'isReversal',
+            label: '冲回单',
+            width: 90,
+            formatter: (row: ListRow) => (row.isReversal ? '是' : '否')
+          }
+        ]
+      : [
+          moneyColumn('writtenOffAmount', '已核销金额(原币)'),
+          moneyColumn('unpaidAmount', '未核销金额(原币)'),
+          moneyColumn('matchedAmount', '已勾稽金额(原币)'),
+          moneyColumn('unmatchedAmount', '未勾稽金额(原币)'),
+          {
+            prop: 'matchingStatus',
+            label: '勾稽状态',
+            width: 115,
+            formatter: (row: ListRow) =>
+              row.matchingStatus === 'full'
+                ? '全部勾稽'
+                : row.matchingStatus === 'partial'
+                  ? '部分勾稽'
+                  : '未勾稽'
+          },
+          {
+            prop: 'writeoffStatus',
+            label: '核销状态',
+            width: 115,
+            formatter: (row: ListRow) =>
+              row.writeoffStatus === 'full'
+                ? '全部核销'
+                : row.writeoffStatus === 'partial'
+                  ? '部分核销'
+                  : '未核销'
+          },
+          moneyColumn('frozenAmount', '冻结金额(原币)'),
+          {
+            prop: 'freezeStatus',
+            label: '冻结状态',
+            width: 115,
+            formatter: (row: ListRow) =>
+              row.freezeStatus === 'full'
+                ? '已冻结'
+                : row.freezeStatus === 'partial'
+                  ? '部分冻结'
+                  : '未冻结'
+          }
+        ]),
+    { prop: 'organizationName', label: '结算组织', minWidth: 160 },
+    {
+      prop: 'sourceType',
+      label: '源单类型',
       minWidth: 150,
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.totalAmount)
+      formatter: (row) =>
+        row.sourceType === 'carrier_statement'
+          ? '承运商对账单'
+          : row.sourceType === 'purchase_inbound'
+            ? '采购入库单'
+            : '手工录入'
     },
+    { prop: 'sourceDocumentNo', label: '源单据号', minWidth: 190 },
+    { prop: 'invoiceNo', label: '发票号码', minWidth: 160 },
+    { prop: 'remark', label: '备注', minWidth: 180 },
+    { prop: 'voucherNo', label: '凭证号', minWidth: 150 },
+    {
+      prop: 'voucherGenerated',
+      label: '已生成凭证',
+      width: 120,
+      formatter: (row) => (row.voucherId ? '是' : '否')
+    },
+    { prop: 'createdBy', label: '创建人', minWidth: 140 },
     {
       prop: 'operation',
       label: '操作',
-      width: 90,
+      width: props.kind === 'financial' ? 150 : 100,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>
           <ArtButtonTable
             type="view"
-            permission={props.viewPermission}
+            permission={props.permissions.View}
             label="查看"
             onClick={() => open(row)}
           />
+          {row.status === 'draft' && !row.isReversal && row.sourceType !== 'carrier_statement' && (
+            <ArtButtonTable
+              type="edit"
+              permission={permission('Edit')}
+              label="编辑"
+              onClick={() => open(row, true)}
+            />
+          )}
+          {props.kind === 'financial' && row.status === 'approved' && (
+            <ArtButtonTable
+              icon={row.frozenAmount ? 'ri:lock-unlock-line' : 'ri:lock-line'}
+              permission={permission('Freeze')}
+              label={row.frozenAmount ? '解冻' : '冻结'}
+              onClick={() => freeze(row.id, Boolean(row.frozenAmount))}
+            />
+          )}
         </BusinessTableRowActions>
       )
-    }
-  ]
-  const descriptionItems: ArtDescriptionItem<PurchasePayableDocument>[] = [
-    { key: 'sourceDocumentNo', label: '来源入库单', field: 'sourceDocumentNo' },
-    { key: 'supplierName', label: '供应商', field: 'supplierName' },
-    { key: 'businessDate', label: '业务日期', field: 'businessDate' },
-    {
-      key: 'totalAmount',
-      label: '价税合计',
-      field: 'totalAmount',
-      formatter: (value) => formatCurrencyValue(Number(value))
-    }
-  ]
-  const lineColumns: ColumnOption<PurchasePayableLine>[] = [
-    { prop: 'lineNo', label: '源行号', width: 80 },
-    { prop: 'materialCode', label: '物料编码', minWidth: 140 },
-    { prop: 'materialDescription', label: '物料描述', minWidth: 190 },
-    { prop: 'projectName', label: '项目名称', minWidth: 160 },
-    { prop: 'constructionNo', label: '施工号', width: 140 },
-    { prop: 'unitName', label: '单位', width: 90 },
-    { prop: 'quantity', label: '数量', width: 120 },
-    {
-      prop: 'unitPrice',
-      label: '单价(元)',
-      width: 130,
-      formatter: (row) => formatCurrencyValue(row.unitPrice)
-    },
-    {
-      prop: 'amount',
-      label: '金额(元)',
-      width: 130,
-      formatter: (row) => formatCurrencyValue(row.amount)
-    },
-    {
-      prop: 'taxAmount',
-      label: '税额(元)',
-      width: 120,
-      formatter: (row) => formatCurrencyValue(row.taxAmount)
-    },
-    {
-      prop: 'totalAmount',
-      label: '价税合计(元)',
-      width: 150,
-      formatter: (row) => formatCurrencyValue(row.totalAmount)
     }
   ]
 </script>

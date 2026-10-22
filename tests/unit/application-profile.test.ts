@@ -24,22 +24,22 @@ test('falls back to the platform for missing or invalid application codes', () =
 
 test('resolves every GitHub Pages application from the current account domain', () => {
   const location = {
-    hostname: '869123771.github.io',
-    origin: 'https://869123771.github.io'
+    hostname: 'art-si.github.io',
+    origin: 'https://art-si.github.io'
   }
 
   const expectedUrls = {
-    platform: 'https://869123771.github.io/art-supabase-pro/',
-    fms: 'https://869123771.github.io/art-supabase-fms/',
-    hr: 'https://869123771.github.io/art-supabase-hr/',
-    mdm: 'https://869123771.github.io/art-supabase-mdm/',
-    mes: 'https://869123771.github.io/art-supabase-mes/',
-    pmis: 'https://869123771.github.io/art-supabase-pmis/',
-    scm: 'https://869123771.github.io/art-supabase-scm/',
-    smis: 'https://869123771.github.io/art-supabase-smis/',
-    tms: 'https://869123771.github.io/art-supabase-tms/',
-    vms: 'https://869123771.github.io/art-supabase-vms/',
-    wms: 'https://869123771.github.io/art-supabase-wms/'
+    platform: 'https://art-si.github.io/art-supabase-pro/',
+    fms: 'https://art-si.github.io/art-supabase-fms/',
+    hr: 'https://art-si.github.io/art-supabase-hr/',
+    mdm: 'https://art-si.github.io/art-supabase-mdm/',
+    mes: 'https://art-si.github.io/art-supabase-mes/',
+    pmis: 'https://art-si.github.io/art-supabase-pmis/',
+    scm: 'https://art-si.github.io/art-supabase-scm/',
+    smis: 'https://art-si.github.io/art-supabase-smis/',
+    tms: 'https://art-si.github.io/art-supabase-tms/',
+    vms: 'https://art-si.github.io/art-supabase-vms/',
+    wms: 'https://art-si.github.io/art-supabase-wms/'
   } as const
 
   for (const code of APPLICATION_CODES) {

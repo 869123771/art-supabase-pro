@@ -183,6 +183,10 @@ export const updatePaginationFromResponse = <T>(
     pagination.current = response.current
   }
 
+  if (response.size !== undefined) {
+    pagination.size = response.size
+  }
+
   const maxPage = Math.max(1, Math.ceil(pagination.total / (pagination.size || 1)))
   if (pagination.current > maxPage) {
     pagination.current = maxPage

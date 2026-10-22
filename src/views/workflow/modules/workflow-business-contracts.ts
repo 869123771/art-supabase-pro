@@ -106,6 +106,36 @@ const contracts: Record<string, WorkflowBusinessContract> = {
     ],
     routePath: getExpenseReimbursementDetailPath
   },
+  fms_travel_loan: {
+    businessType: 'fms_travel_loan',
+    label: '借款单',
+    menuName: 'FinanceLoanApplication',
+    domain: 'finance',
+    riskLevel: 'high',
+    owner: '财务审批',
+    fields: [
+      { key: 'amount', label: '借款金额', valueType: 'number' },
+      { key: 'loanNo', label: '借款单号', valueType: 'text' },
+      { key: 'itemCount', label: '借款明细笔数', valueType: 'number' },
+      { key: 'payeeCount', label: '收款明细笔数', valueType: 'number' }
+    ],
+    routePath: () => financePaths.loanApplication
+  },
+  fms_travel_repayment: {
+    businessType: 'fms_travel_repayment',
+    label: '还款单',
+    menuName: 'FinanceRepayment',
+    domain: 'finance',
+    riskLevel: 'high',
+    owner: '财务审批',
+    fields: [
+      { key: 'amount', label: '还款金额', valueType: 'number' },
+      { key: 'repaymentNo', label: '还款单号', valueType: 'text' },
+      { key: 'loanId', label: '关联借款', valueType: 'text', referenceType: 'business' },
+      { key: 'itemCount', label: '还款明细笔数', valueType: 'number' }
+    ],
+    routePath: () => financePaths.repayment
+  },
   tms_invoice: {
     businessType: 'tms_invoice',
     label: '发票',

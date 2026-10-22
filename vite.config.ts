@@ -74,11 +74,6 @@ export default async ({ mode }: { mode: string }) => {
     env
   const isProduction = mode === 'production'
   const isE2E = mode === 'e2e'
-  const e2eServerPort = Number(process.env.E2E_SERVER_PORT)
-  const cacheNamespace =
-    isE2E && Number.isInteger(e2eServerPort) && e2eServerPort > 0 && e2eServerPort <= 65535
-      ? `${mode}-${e2eServerPort}`
-      : mode
   const enableGeneratedDeclarations = !isProduction && !isE2E
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
   const enableBundleAnalyzer =
@@ -126,8 +121,7 @@ export default async ({ mode }: { mode: string }) => {
   console.log(`[vite] outDir=${outDir}`)
 
   return defineConfig({
-    // 区分开发模式与并行验证服务，避免重优化时清理其他服务正在使用的缓存。
-    cacheDir: path.resolve(root, 'node_modules/.vite', cacheNamespace),
+    cacheDir: path.resolve(root, 'node_modules/.vite', mode),
     define: {
       __APP_VERSION__: JSON.stringify(VITE_VERSION)
     },
@@ -271,6 +265,26 @@ export default async ({ mode }: { mode: string }) => {
       }
     },
     plugins: [
+      {
+        name: 'isolate-dev-server-cache',
+        apply: 'serve',
+        config(config) {
+          // config 钩子能读取 CLI 合并后的监听地址和端口。
+          // IPv4 / IPv6 服务即使共用端口也不能覆盖彼此的依赖预构建产物。
+          const host = config.server?.host
+          const cacheHost = (typeof host === 'string' ? host : host ? 'all' : 'localhost').replace(
+            /[^a-z0-9.-]/gi,
+            '_'
+          )
+          return {
+            cacheDir: path.resolve(
+              root,
+              'node_modules/.vite',
+              `${mode}-${cacheHost}-${config.server?.port ?? 5173}`
+            )
+          }
+        }
+      },
       vue({ ...templateCompilerOptions }),
       vueJsx(),
       tailwindcss(),
@@ -341,8 +355,8 @@ export default async ({ mode }: { mode: string }) => {
     ],
     // 依赖预构建：避免运行时重复请求与转换，提升首次加载速度
     optimizeDeps: {
-      // 路由 glob 包含全部业务模块；启动时不递归扫描所有页面，保留按需发现。
-      entries: [],
+      // 只从真实应用入口发现依赖，避免扫描历史构建和预览 HTML。
+      entries: ['index.html'],
       // Element Plus 的按需样式入口会导入 Sass 源码。让 Vite 直接按需处理它们，
       // 避免懒加载页面首次访问时触发依赖重优化和整页刷新。
       exclude: elementPlusStyleDeps,
@@ -370,6 +384,8 @@ export default async ({ mode }: { mode: string }) => {
         'ohash',
         'vue-img-cutter',
         'element-plus/es',
+        // 表格虚拟滚动入口由懒加载页面引入；提前预构建，避免运行时重优化使 Vue 依赖失效。
+        'element-plus/es/components/table-v2/index.mjs',
         // 预构建 Monaco 主线程入口；?worker 由 Vite worker 管线独立编译。
         '@guolao/vue-monaco-editor',
         'sql-formatter',

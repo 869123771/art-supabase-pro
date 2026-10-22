@@ -192,7 +192,13 @@ export async function createModuleViteConfig({
     optimizeDeps: {
       entries: ['index.html', 'src/views/**/*.vue'],
       exclude: getElementPlusStyleDeps(applicationRoot),
-      include: ['vue', 'vue-router', 'pinia', 'element-plus/es']
+      include: [
+        'vue',
+        'vue-router',
+        'pinia',
+        'element-plus/es',
+        'element-plus/es/components/table-v2/index.mjs'
+      ]
     }
   }
 }

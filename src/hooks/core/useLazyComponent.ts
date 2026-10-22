@@ -13,9 +13,19 @@ export function useLazyComponent(
   loader: () => Promise<{ default: Component }>
 ): LazyComponentController {
   const component = shallowRef<Component>()
+  let pendingLoad: Promise<void> | undefined
 
   const load = async (): Promise<void> => {
-    if (!component.value) component.value = (await loader()).default
+    if (!component.value) {
+      pendingLoad ??= loader().then(({ default: loaded }) => {
+        component.value = loaded
+      })
+      try {
+        await pendingLoad
+      } finally {
+        pendingLoad = undefined
+      }
+    }
     await nextTick()
   }
 

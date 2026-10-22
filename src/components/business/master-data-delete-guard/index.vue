@@ -13,7 +13,10 @@
     <div v-else class="master-delete-guard">
       <div class="master-delete-guard__lead">
         <div>
-          <p>
+          <p v-if="blockingResources.length">
+            {{ resourceTitle }}包含不满足删除条件的记录，请核对单据状态与下方原因后处理。
+          </p>
+          <p v-else>
             {{ resourceTitle }}仍被以下业务资料引用。<template v-if="safeRecordCount">{{
               cleanupAll
                 ? '可一键清理安全项，业务历史请进入对应页面处理。'
@@ -26,10 +29,54 @@
           >
           <span v-else>系统不会自动删除或解除关联业务记录。</span>
         </div>
-        <ElTag type="warning" effect="light">共 {{ dependencies.length }} 条关联</ElTag>
+        <ElTag type="warning" effect="light">
+          <template v-if="blockingResources.length"
+            >{{ blockingResources.length }} 条不可删除 ·
+          </template>
+          {{ dependencies.length }} 条关联
+        </ElTag>
       </div>
 
       <div class="master-delete-guard__groups">
+        <section v-if="blockingResources.length" class="master-delete-guard__group">
+          <header class="master-delete-guard__group-header">
+            <div class="master-delete-guard__group-title"
+              ><span>!</span><strong>单据删除条件</strong></div
+            >
+          </header>
+          <p class="master-delete-guard__group-help"
+            >本次选择将整体停止删除，符合条件的记录也会保留。</p
+          >
+          <div class="master-delete-guard__records">
+            <div
+              v-for="resource in blockingResources"
+              :key="resource.id"
+              class="master-delete-guard__record"
+            >
+              <span class="master-delete-guard__record-spacer" aria-hidden="true" />
+              <div class="master-delete-guard__record-copy">
+                <strong :title="resource.label">{{ resource.label }}</strong>
+                <span :title="resource.blockReason">{{ resource.blockReason }}</span>
+                <ArtDictDisplay
+                  v-if="resource.status && resource.statusDictCode"
+                  :dict-code="resource.statusDictCode"
+                  :value="resource.status"
+                  display="text"
+                />
+              </div>
+              <div class="master-delete-guard__record-actions">
+                <ElTag type="info" effect="light" size="small">不可删除</ElTag>
+                <ElButton
+                  v-if="resource.to"
+                  type="primary"
+                  link
+                  @click="viewBlockedResource(resource)"
+                  >查看单据</ElButton
+                >
+              </div>
+            </div>
+          </div>
+        </section>
         <section
           v-for="(group, index) in dependencyGroups"
           :key="group.code"
@@ -177,6 +224,7 @@
 </template>
 
 <script setup lang="ts">
+  import type { RouteLocationRaw } from 'vue-router'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { formatSensitiveNumberWithAffix } from '@/utils/field-permission'
   import { formatReferenceStatus } from './record-meta'
@@ -200,6 +248,10 @@
   export interface MasterDataDeleteResource {
     id: string
     label: string
+    blockReason?: string
+    status?: string
+    statusDictCode?: string
+    to?: RouteLocationRaw
   }
 
   export interface MasterDataDeleteDependencyMeta {
@@ -511,6 +563,18 @@
   }
 
   const resourceIds = computed(() => currentOptions.value?.resources.map((item) => item.id) ?? [])
+  const blockingResources = computed(
+    () => currentOptions.value?.resources.filter((item) => item.blockReason) ?? []
+  )
+  const viewBlockedResource = async (resource: MasterDataDeleteResource): Promise<void> => {
+    if (!resource.to) return
+    try {
+      await dialogRef.value?.handleClose(true)
+      await router.push(resource.to)
+    } catch (error) {
+      ElMessage.error(getFriendlySupabaseErrorMessage(error, '单据定位失败，请返回对应列表查询'))
+    }
+  }
   const canCleanup = computed(() =>
     Boolean(currentOptions.value?.resourceType || currentOptions.value?.cleanup)
   )
@@ -655,7 +719,7 @@
       await loadDependencies()
       if (sequence !== inspectionSequence || (hadDialog && !unref(dialogRef.value?.visible)))
         return true
-      if (dependencies.value.length) {
+      if (dependencies.value.length || blockingResources.value.length) {
         await showResult()
         return true
       }

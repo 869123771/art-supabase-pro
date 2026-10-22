@@ -1,1 +1,0 @@
-import{$t as e,zn as t}from"./framework-BkJq9R7c.js";function n(n){let r=t();return{component:r,load:async()=>{r.value||(r.value=(await n()).default),await e()}}}export{n as t};

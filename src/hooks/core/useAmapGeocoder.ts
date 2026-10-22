@@ -31,6 +31,8 @@ export interface AmapGeocodeLocation {
   latitude: number
 }
 
+const GEOCODE_TIMEOUT_MS = 10_000
+
 /**
  * Converts a text address to a GCJ-02 coordinate through the AMap browser SDK.
  * An empty/no-result address resolves to null; SDK configuration and load errors reject.
@@ -52,27 +54,39 @@ export function useAmapGeocoder() {
     const AMap = await loadAmap()
     const geocoder = new AMap.Geocoder({ city: trim(city) || '全国' })
 
-    return new Promise((resolve) => {
-      geocoder.getLocation(normalizedAddress, (status, result) => {
-        if (status !== 'complete') {
-          resolve(null)
-          return
-        }
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(
+        () => reject(new Error('地址解析超时，请稍后重试')),
+        GEOCODE_TIMEOUT_MS
+      )
+      try {
+        geocoder.getLocation(normalizedAddress, (status, result) => {
+          window.clearTimeout(timeout)
+          if (status !== 'complete') {
+            resolve(null)
+            return
+          }
 
-        const location = result?.geocodes?.[0]?.location
-        const longitude = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
-        const latitude = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
-        const pair = normalizeCoordinatePair(longitude, latitude)
-        if (!pair) {
-          resolve(null)
-          return
-        }
+          const location = result?.geocodes?.[0]?.location
+          const longitude =
+            typeof location?.getLng === 'function' ? location.getLng() : location?.lng
+          const latitude =
+            typeof location?.getLat === 'function' ? location.getLat() : location?.lat
+          const pair = normalizeCoordinatePair(longitude, latitude)
+          if (!pair) {
+            resolve(null)
+            return
+          }
 
-        resolve({
-          longitude: round(pair.longitude, 6),
-          latitude: round(pair.latitude, 6)
+          resolve({
+            longitude: round(pair.longitude, 6),
+            latitude: round(pair.latitude, 6)
+          })
         })
-      })
+      } catch (error) {
+        window.clearTimeout(timeout)
+        reject(error)
+      }
     })
   }
 

@@ -96,6 +96,19 @@ const dictionaryItems: Record<string, [string, string, string][]> = {
   ],
   mdmInventorySerialStatus: [['in_stock', '在库', 'success']],
   mesWorkOrderStatus: [['released', '已下达', 'primary']],
+  mdmProductionWipDeductionTiming: [
+    ['inbound_approval', '完工入库审核时扣减', 'primary'],
+    ['none', '不扣减', 'info']
+  ],
+  wmsProductionWipEventKind: [
+    ['inbound_approved', '完工入库审核', 'primary'],
+    ['inbound_void', '完工入库作废', 'info'],
+    ['inbound_closed', '完工入库关闭', 'info'],
+    ['issue_posted', '生产领料过账', 'success'],
+    ['material_return_posted', '生产退料过账', 'warning'],
+    ['finished_return_posted', '完工退库过账', 'warning'],
+    ['order_quantity_changed', '工单数量调整', 'info']
+  ],
   mdmMaterialSource: [['purchase', '采购', 'primary']]
 }
 const dictionaryRows = Object.entries(dictionaryItems).flatMap(([type, values]) =>

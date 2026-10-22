@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./finance-planned-page-DZPmJV1N.js";var i=t({name:`FinanceRepayment`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{title:`还款单`,area:`人人费用`,description:`登记并核对借款归还。`,icon:`ri:refund-line`}))}});export{i as default};

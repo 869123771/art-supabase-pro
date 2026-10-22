@@ -1,1 +1,0 @@
-import{Nt as e,Ut as t,ln as n}from"./framework-BkJq9R7c.js";import{t as r}from"./operational-master-BMran6tA.js";var i=t({name:`MdmBusinessType`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

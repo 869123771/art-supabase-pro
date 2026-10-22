@@ -15,6 +15,7 @@ export function useRouteDocumentDrawer<T>(options: {
   canOpen: () => boolean
   fetchDocument: (id: string) => Promise<T>
   openDocument: (document: T) => Promise<void>
+  onOpened?: () => Promise<unknown>
   onError?: () => void
   queryKey?: string
   clearQueryOnOpen?: boolean
@@ -55,6 +56,12 @@ export function useRouteDocumentDrawer<T>(options: {
         options.canOpen()
       )
         await router.replace({ path: route.path, query: { ...route.query, [queryKey]: undefined } })
+      if (
+        route.name === toValue(options.routeName) &&
+        options.canOpen() &&
+        (route.query[queryKey] === undefined || route.query[queryKey] === documentId)
+      )
+        await options.onOpened?.()
     } catch {
       if (
         requestVersion === version &&

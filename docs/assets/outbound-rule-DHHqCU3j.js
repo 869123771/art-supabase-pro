@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./inventory-configuration-DT0epRsG.js";var i=t({name:`MdmOutboundRule`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

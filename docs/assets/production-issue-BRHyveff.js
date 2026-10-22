@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./production-material-workspace-en1BqoqB.js";var i=t({name:`WmsProductionIssue`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`issue`}))}});export{i as default};

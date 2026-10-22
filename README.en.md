@@ -5,11 +5,11 @@
   <p>One shared platform for transportation, fleet, finance, HR, safety, driver operations, workflows, and governed AI.</p>
 
   <p>
-    <a href="https://gitee.com/wangyanghub/art-supabase-pro">Gitee</a>
+    <a href="https://gitee.com/art-si/art-supabase-pro">Gitee</a>
     ·
-    <a href="https://github.com/869123771/art-supabase-pro">GitHub</a>
+    <a href="https://github.com/art-si/art-supabase-pro">GitHub</a>
     ·
-    <a href="https://869123771.github.io/art-supabase-pro/">Live Demo</a>
+    <a href="https://art-si.github.io/art-supabase-pro/">Live Demo</a>
     ·
     <a href="./README.md">简体中文</a>
   </p>
@@ -38,15 +38,15 @@ The project currently includes:
 
 | Repository | Responsibility | Dev port |
 | --- | --- | --: |
-| [`art-supabase-pro`](https://gitee.com/wangyanghub/art-supabase-pro) | Platform host, shared runtime, workflows, data center, and AI governance | `3006` |
-| [`art-supabase-tms`](https://gitee.com/wangyanghub/art-supabase-tms) | Transportation management and execution | `3016` |
-| [`art-supabase-vms`](https://gitee.com/wangyanghub/art-supabase-vms) | Vehicle lifecycle management | `3015` |
-| [`art-supabase-fms`](https://gitee.com/wangyanghub/art-supabase-fms) | Transportation finance and enterprise accounting | `3012` |
-| [`art-supabase-hr`](https://gitee.com/wangyanghub/art-supabase-hr) | Human resources and talent operations | `3013` |
-| [`art-supabase-smis`](https://gitee.com/wangyanghub/art-supabase-smis) | Safety management and equipment governance | `3014` |
-| [`supabase-mobile-tms-driver`](https://gitee.com/wangyanghub/supabase-mobile-tms-driver) | Driver-facing H5 and WeChat Mini Program | — |
-| [`art-supabase-doc`](https://gitee.com/wangyanghub/art-supabase-doc) | Product, development, deployment, and operations documentation | `5173` |
-| [`art-supabase-site`](https://gitee.com/wangyanghub/art-supabase-site) | Independent official website and product ecosystem | `3022` |
+| [`art-supabase-pro`](https://gitee.com/art-si/art-supabase-pro) | Platform host, shared runtime, workflows, data center, and AI governance | `3006` |
+| [`art-supabase-tms`](https://gitee.com/art-si/art-supabase-tms) | Transportation management and execution | `3016` |
+| [`art-supabase-vms`](https://gitee.com/art-si/art-supabase-vms) | Vehicle lifecycle management | `3015` |
+| [`art-supabase-fms`](https://gitee.com/art-si/art-supabase-fms) | Transportation finance and enterprise accounting | `3012` |
+| [`art-supabase-hr`](https://gitee.com/art-si/art-supabase-hr) | Human resources and talent operations | `3013` |
+| [`art-supabase-smis`](https://gitee.com/art-si/art-supabase-smis) | Safety management and equipment governance | `3014` |
+| [`supabase-mobile-tms-driver`](https://gitee.com/art-si/supabase-mobile-tms-driver) | Driver-facing H5 and WeChat Mini Program | — |
+| [`art-supabase-doc`](https://gitee.com/art-si/art-supabase-doc) | Product, development, deployment, and operations documentation | `5173` |
+| [`art-supabase-site`](https://gitee.com/art-si/art-supabase-site) | Independent official website and product ecosystem | `3022` |
 
 The main repository pins domain applications with Git submodules and supplies authentication, tenancy, navigation, permissions, layout, shared components, and the Supabase client. Domain repositories own their pages, APIs, types, and business rules. The driver app joins the same TMS execution lifecycle through controlled server contracts.
 
@@ -125,7 +125,7 @@ Requirements:
 - A Supabase project
 
 ```bash
-git clone --recurse-submodules https://gitee.com/wangyanghub/art-supabase-pro.git
+git clone --recurse-submodules https://gitee.com/art-si/art-supabase-pro.git
 cd art-supabase-pro
 pnpm install
 ```

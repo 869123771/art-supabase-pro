@@ -1,0 +1,1 @@
+import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./execution-analytics-CARMuANp.js";var i=t({name:`MesLaborEfficiency`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{mode:`person`}))}});export{i as default};

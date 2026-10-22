@@ -1,6 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { resolveAiProviderEndpoints } from 'https://raw.githubusercontent.com/869123771/art-supabase-pro/e1297b558a4856b89910d9991d397e22fb7a992a/supabase/functions/_shared/ai-provider-endpoints.ts'
+import { resolveAiProviderEndpoints } from 'https://raw.githubusercontent.com/art-si/art-supabase-pro/e1297b558a4856b89910d9991d397e22fb7a992a/supabase/functions/_shared/ai-provider-endpoints.ts'
 import {
   inferAiBankBatchMapping,
   normalizeAiBankBatchRows,
