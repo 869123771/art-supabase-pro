@@ -54,7 +54,20 @@ const run = (command: string, args: string[], environment: NodeJS.ProcessEnv) =>
     child.on('error', reject)
     child.on('close', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(stderr.trim() || `Upload command exited with ${code}`))
+      else {
+        let message = stderr.trim()
+        try {
+          const payload = JSON.parse(stdout) as {
+            error?: { code?: string; message?: string }
+          }
+          if (payload.error?.code || payload.error?.message) {
+            message = `${payload.error.code ?? 'UPLOAD_FAILED'}: ${payload.error.message ?? 'Upload failed'}`
+          }
+        } catch {
+          // Non-JSON CLI output is summarized without echoing object paths or credentials.
+        }
+        reject(new Error(message || `Upload command exited with ${code}`))
+      }
     })
   })
 

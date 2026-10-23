@@ -142,6 +142,9 @@ begin
   if jsonb_array_length(result->'data')<>1 then raise exception 'Refund public list did not return the confirmed refund';end if;
   result:=public.fms_payable_settlement_voucher_secure(refund_id,'refund',true);
   if result->>'status' not in('pending_configuration','generated') then raise exception 'Refund voucher preview did not return a truthful posting result';end if;
+  result:=public.fms_payable_settlement_voucher_secure(refund_id,'refund',false);
+  if exists(select 1 from public.fms_posting_event event join public.fms_payable_payment_execution execution on execution.id=event.source_id where execution.document_id=refund_id and event.source_type='system' and event.event_code='ap_payment_refund_received' and event.account_set_id is distinct from book)
+   or(select count(*) from public.fms_posting_event event join public.fms_payable_payment_execution execution on execution.id=event.source_id where execution.document_id=refund_id and event.source_type='system' and event.event_code='ap_payment_refund_received')<>2 then raise exception 'Refund voucher event lost the actual receipt accounting book or split executions';end if;
   result:=app_private.payable_settlement_json(refund_id);
   if result->>'payment_status'<>'full' or (result->>'paid_amount')::numeric<>total_value
    or (select count(*) from public.fms_payable_payment_execution where document_id=refund_id and status='posted')<>2
@@ -150,6 +153,9 @@ begin
   if (state->>'confirmed_refund_cash')::numeric<>total_value or (state->>'expired_discount')::numeric<>expiry_value then raise exception 'Split receipt double-counted source cash or discount expiry';end if;
   if case_number=2 and ((state->>'available_settlement_discount')::numeric<>0 or (state->>'written_off_amount')::numeric<>0) then raise exception 'Full refund treated expired unearned discount as reusable credit or realized writeoff';end if;
   perform public.fms_act_payable_settlement_secure(array[refund_id],'cancel_payment','拆分账户退款收回冲回验收');
+  for result in select to_jsonb(event) from public.fms_posting_event event join public.fms_payable_payment_execution execution on execution.id=event.source_id where execution.document_id=refund_id and event.event_code='ap_payment_refund_received' loop
+   if (app_private.process_fms_posting_event((result->>'id')::uuid,true)).status<>'ignored' then raise exception 'Cancelled refund receipt was reposted by force';end if;
+  end loop;
   perform public.fms_act_payable_settlement_secure(array[refund_id],'void','已取消到账，作废退款占用');
   result:=public.fms_payable_settlement_options_secure('refund',tenant);
   if exists(select 1 from jsonb_array_elements(result->'purpose') item where item->>'business_type' not in('purchase_refund','advance_refund','other_refund'))

@@ -117,6 +117,7 @@
     ]
   },
   "dependencies": {
+    "@cloudbase/js-sdk": "3.10.3",
     "@element-plus/icons-vue": "^2.3.2",
     "@file-viewer/preset-all": "3.1.2",
     "@file-viewer/renderer-image": "3.1.2",

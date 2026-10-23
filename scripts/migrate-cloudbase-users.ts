@@ -141,6 +141,10 @@ order by auth_user.id
   const migrated = new Set(state.migratedUids)
 
   for (const sourceUser of sourceUsers) {
+    if (existingUids.has(sourceUser.uid)) migrated.add(sourceUser.uid)
+  }
+
+  for (const sourceUser of sourceUsers) {
     if (existingUids.has(sourceUser.uid) || migrated.has(sourceUser.uid)) continue
     const name = normalizeCloudBaseUserName(sourceUser.user_name, sourceUser.uid, usedNames)
     const nickname = (sourceUser.nick_name?.trim() || name).slice(0, 64)
@@ -177,8 +181,12 @@ order by auth_user.id
     )
   }
 
+  state.migratedUids = [...migrated].sort()
+  state.updatedAt = new Date().toISOString()
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+
   process.stdout.write(
-    `${JSON.stringify({ sourceUsers: sourceUsers.length, migratedUsers: migrated.size, existingUsers: existingUids.size })}\n`
+    `${JSON.stringify({ sourceUsers: sourceUsers.length, coveredSourceUsers: migrated.size, targetUsersBeforeRun: existingUids.size })}\n`
   )
 }
 

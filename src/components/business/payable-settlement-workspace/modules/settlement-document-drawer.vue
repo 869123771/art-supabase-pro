@@ -161,8 +161,19 @@
               @change="(value) => selectRefundSource(row, value)"
             >
               <ElOption
+                v-if="
+                  row.refundPaymentLineId &&
+                  !options?.refundSource?.some(
+                    (source) => source.refundPaymentLineId === row.refundPaymentLineId
+                  )
+                "
+                :value="row.refundPaymentLineId"
+                :label="row.refundPaymentDocumentNo || row.sourceDocumentNo || '原付款明细'"
+                disabled
+              />
+              <ElOption
                 v-for="source in options?.refundSource || []"
-                :key="source.refundPaymentLineId"
+                :key="source.refundPaymentLineId || source.id || source.lineNo"
                 :value="source.refundPaymentLineId || ''"
                 :label="`${source.refundPaymentDocumentNo} / ${source.lineNo} · ${source.supplierName || '承运商'} · 可退 ${formatCurrencyValue(source.availableRefundAmount || 0)}`"
               />
@@ -207,7 +218,7 @@
           </template>
           <template #employee="{ row }">
             <ArtEmployeeSelect
-              v-if="editable"
+              v-if="editable && kind !== 'refund'"
               :model-value="row.details.employeeId || undefined"
               :api-fn="fetchPayableEmployeeSelector"
               :selected-data="selectedEmployee(row)"
@@ -225,7 +236,7 @@
           </template>
           <template #expense="{ row }">
             <ElSelect
-              v-if="editable"
+              v-if="editable && kind !== 'refund'"
               v-model="row.details.expenseItemId"
               aria-label="费用项目"
               filterable
@@ -243,7 +254,7 @@
           </template>
           <template #sourceLineNo="{ row }"
             ><ElInput
-              v-if="editable"
+              v-if="editable && kind !== 'refund'"
               v-model="row.details.sourceLineNo"
               aria-label="源行号"
               maxlength="80"
@@ -388,7 +399,7 @@
   const referenceLabels: Record<ReferenceField, string> = {
     purposeId: props.kind === 'refund' ? '退款用途' : '付款用途',
     supplierId: '往来单位',
-    payeeSupplierId: '收款单位',
+    payeeSupplierId: props.kind === 'refund' ? '原收款单位' : '收款单位',
     projectId: '项目名称',
     contractId: '合同',
     departmentId: '费用承担部门',
@@ -427,19 +438,23 @@
     taxRate: '税率',
     expiredDiscountAmount: '失效折扣'
   }
-  const textFields = [
-    'bankAccount',
-    'bankAccountName',
-    'bankName',
-    'bankReference',
-    'fundPurpose',
-    'remark'
-  ] as const
+  const textFields = computed(() =>
+    props.kind === 'refund'
+      ? (['bankReference', 'fundPurpose', 'remark'] as const)
+      : ([
+          'bankAccount',
+          'bankAccountName',
+          'bankName',
+          'bankReference',
+          'fundPurpose',
+          'remark'
+        ] as const)
+  )
   const textLabels = {
     bankAccount: '对方银行账号',
     bankAccountName: '对方账号名称',
     bankName: '对方账户开户行',
-    bankReference: '转账附言',
+    bankReference: props.kind === 'refund' ? '到账流水号 / 附言' : '转账附言',
     fundPurpose: '资金用途',
     remark: '备注'
   }
@@ -524,7 +539,11 @@
     { key: 'documentTypeName', field: 'documentTypeName', label: '单据类型' },
     { key: 'businessDate', field: 'businessDate', label: '业务日期' },
     { key: 'postingDate', field: 'postingDate', label: '记账日期' },
-    { key: 'organizationName', field: 'organizationName', label: '付款组织' },
+    {
+      key: 'organizationName',
+      field: 'organizationName',
+      label: props.kind === 'refund' ? '退款组织' : '付款组织'
+    },
     { key: 'applicantName', field: 'applicantName', label: '申请人' },
     { key: 'currencyCode', field: 'currencyCode', label: '结算币种' },
     { key: 'reason', field: 'reason', label: '请款事由 / 摘要', span: 3 },
@@ -558,14 +577,14 @@
     })),
     {
       prop: 'paidAmount',
-      label: '已付款金额(元)',
+      label: props.kind === 'refund' ? '已到账金额(元)' : '已付款金额(元)',
       width: 160,
       formatter: (row) => formatCurrencyValue(row.paidAmount || 0)
     },
     { prop: 'expense', label: '费用项目', width: 190, useSlot: true },
     { prop: 'employee', label: '采购员', width: 220, useSlot: true },
     { prop: 'sourceLineNo', label: '源行号', width: 130, useSlot: true },
-    ...textFields.map((field) => ({
+    ...textFields.value.map((field) => ({
       prop: field,
       label: textLabels[field],
       width: 200,
@@ -834,6 +853,9 @@
     }
   }
   async function open(value?: PayableSettlementDocument, edit = false): Promise<void> {
+    requestVersion += 1
+    loading.value = false
+    error.value = ''
     editable.value = edit
     options.value = undefined
     document.value = value ? cloneDeep(value) : newPayableSettlement(props.kind)
@@ -872,7 +894,7 @@
         }
       }
     })
-    await loadOptions()
+    if (edit || props.kind !== 'refund') await loadOptions()
   }
   defineExpose({ open })
   watch(

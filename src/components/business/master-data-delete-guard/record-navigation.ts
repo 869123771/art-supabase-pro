@@ -92,7 +92,9 @@ export function createRecordReferenceNavigation(
     fms_payable_settlement_document: {
       routeNames: ['FinancePayableApplication', 'FinancePayablePayment', 'FinancePayableRefund'],
       canNavigate: () =>
-        hasAuth('FinancePayableApplication:View') || hasAuth('FinancePayablePayment:View') || hasAuth('FinancePayableRefund:View'),
+        hasAuth('FinancePayableApplication:View') ||
+        hasAuth('FinancePayablePayment:View') ||
+        hasAuth('FinancePayableRefund:View'),
       resolveRouteName: async (record) => {
         const kind = await fetchSettlementDeleteDestination(record.targetId)
         const name =
