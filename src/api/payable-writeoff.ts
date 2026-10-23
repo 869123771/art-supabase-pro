@@ -2,17 +2,26 @@ import { useSupabase } from '@/hooks/core/useSupabase'
 import type { PayableReference, PayableMatchRule } from '@/api/payable-reference'
 import type { PayableSettlementOption } from '@/api/payable-settlement.types'
 import type { PayableVoucherPreview } from '@/api/purchase-payable'
-export type PayableWriteoffRelation = 'payable_payment' | 'payment_refund'
+export type PayableWriteoffRelation = 'payable_payment' | 'payment_refund' | 'payable_receivable'
 export interface PayableWriteoffQuery {
   organizationId?: string
   supplierId?: string
   keyword?: string
   relation?: PayableWriteoffRelation
   documentIds?: string[]
+  counterpartyKey?: string
+  allowCrossParty?: boolean
 }
 export type PayableManualWriteoffItem =
   | { payableId: string; paymentLineId: string; amount: number }
   | { relation: 'payment_refund'; paymentLineId: string; refundLineId: string; amount: number }
+  | {
+      relation: 'payable_receivable'
+      payableId: string
+      receivableLineId: string
+      amount: number
+      allowCrossParty?: boolean
+    }
 export interface PayableWriteoffCandidate {
   id: string
   tenantId: string
@@ -22,6 +31,8 @@ export interface PayableWriteoffCandidate {
   documentTypeName?: string
   supplierId: string
   supplierName: string
+  counterpartyKey?: string
+  lineNo?: number
   purposeName?: string
   currencyCode: string
   projectName?: string
@@ -39,7 +50,11 @@ export interface PayableWriteoffRecord {
   relation?: PayableWriteoffRelation
   payableId?: string | null
   refundLineId?: string | null
-  paymentLineId: string
+  paymentLineId?: string | null
+  receivableLineId?: string | null
+  receivableAmount?: number
+  counterpartyKey?: string
+  counterpartyName?: string
   payableNo: string
   paymentNo: string
   supplierName: string
@@ -71,7 +86,8 @@ export interface PayableAutomaticWriteoffItem {
   relation?: PayableWriteoffRelation
   payableId?: string
   refundLineId?: string
-  paymentLineId: string
+  paymentLineId?: string
+  receivableLineId?: string
   payableNo: string
   paymentNo: string
   supplierName: string

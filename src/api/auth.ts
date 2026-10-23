@@ -258,20 +258,27 @@ export async function prepareFeishuQrLogin(
     throw new Error('当前渠道不支持飞书扫码登录')
   }
   const authorizationUrl = await createAuthChannelAuthorizationUrl(channel, redirectTo)
-  const projectUrl = import.meta.env.VITE_SUPABASE_URL
+  const projectUrl = isCloudBaseBaas
+    ? import.meta.env.VITE_CLOUDBASE_EDGE_ORIGIN
+    : import.meta.env.VITE_SUPABASE_URL
   if (!projectUrl) throw new Error('飞书扫码登录服务尚未配置')
 
   let response: Response
   try {
-    response = await fetch(
-      new URL('/functions/v1/oauth-provider-bridge/feishu/qr-prepare', projectUrl),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authorizationUrl }),
-        credentials: 'omit'
-      }
-    )
+    const requestUrl = isCloudBaseBaas
+      ? `${projectUrl}?function=oauth-provider-bridge&path=${encodeURIComponent('/feishu/qr-prepare')}`
+      : new URL('/functions/v1/oauth-provider-bridge/feishu/qr-prepare', projectUrl).toString()
+    response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(isCloudBaseBaas && import.meta.env.VITE_CLOUDBASE_PUBLISHABLE_KEY
+          ? { Authorization: `Bearer ${import.meta.env.VITE_CLOUDBASE_PUBLISHABLE_KEY}` }
+          : {})
+      },
+      body: JSON.stringify({ authorizationUrl }),
+      credentials: 'omit'
+    })
   } catch (error) {
     throw new Error('飞书二维码加载失败，请稍后重试', { cause: error })
   }

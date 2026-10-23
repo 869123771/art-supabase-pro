@@ -1,3 +1,29 @@
+import type { PayableReference } from '@/api/payable-reference'
+import type { PayableWriteoffRelation } from '@/api/payable-writeoff'
+
+export function preferredPayableWriteoffScheme(
+  schemes: PayableReference[],
+  relation: PayableWriteoffRelation,
+  tenantId?: string
+): string {
+  const eligible = schemes.filter(
+    (scheme) =>
+      scheme.id &&
+      scheme.enabled &&
+      !scheme.automatic &&
+      (!tenantId || scheme.tenantId === tenantId)
+  )
+  const code = relation === 'payable_receivable' ? 'AP-AR-MANUAL' : 'AP-MANUAL'
+  return (
+    eligible.find((scheme) => scheme.code === code)?.id ||
+    eligible.find((scheme) => {
+      const governed = scheme.rules?.some((rule) => rule.primaryField === 'counterparty_id')
+      return relation === 'payable_receivable' ? governed : !governed
+    })?.id ||
+    ''
+  )
+}
+
 export interface WriteoffAmountRow {
   id: string
   availableAmount: number

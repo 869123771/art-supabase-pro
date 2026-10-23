@@ -10,6 +10,7 @@ export const payableMatchFields: Array<{
   type: 'reference' | 'text' | 'date' | 'number'
 }> = [
   { value: 'supplier_id', label: '往来单位', type: 'reference' },
+  { value: 'counterparty_id', label: '统一往来单位（主数据已确认）', type: 'reference' },
   { value: 'currency_code', label: '币种', type: 'text' },
   { value: 'project_id', label: '项目', type: 'reference' },
   { value: 'source_id', label: '关联财务应付标识', type: 'reference' },

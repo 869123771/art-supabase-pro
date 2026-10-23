@@ -1,0 +1,1 @@
+import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./6do1E526.js";var i=n({name:`PmisInspectionPlan`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{kind:`inspection`}))}});export{i as default};

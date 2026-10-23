@@ -4,6 +4,9 @@ import { expect, test, type Page } from '@playwright/test'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   assertPayableAcceptanceSession,
+  acceptanceRows as rows,
+  acceptanceIdentifier as identifier,
+  acceptanceRpc as rpc,
   payableAcceptanceTenantId
 } from './support/payable-live-session'
 import { captureBusinessEvidence } from './support/capture-business-evidence'
@@ -20,17 +23,6 @@ test.use({
 test.skip(!enabled, '仅显式运行独立验收租户真实退款测试')
 test.setTimeout(360_000)
 
-function rows(value: unknown): Array<Record<string, unknown>> {
-  assert.ok(Array.isArray(value))
-  return value.map((item: unknown) => {
-    assert.ok(item && typeof item === 'object' && !Array.isArray(item))
-    return Object.fromEntries(Object.entries(item))
-  })
-}
-function identifier(row: Record<string, unknown> | undefined): string {
-  assert.ok(row && typeof row.id === 'string')
-  return row.id
-}
 function documentIdentity(value: unknown): { id: string; documentNo: string } {
   assert.ok(
     value &&
@@ -41,15 +33,6 @@ function documentIdentity(value: unknown): { id: string; documentNo: string } {
       typeof value.document_no === 'string'
   )
   return { id: value.id, documentNo: value.document_no }
-}
-async function rpc(
-  client: SupabaseClient,
-  name: string,
-  payload: Record<string, unknown>
-): Promise<unknown> {
-  const response = await client.rpc(name, payload)
-  expect(response.error).toBeNull()
-  return response.data
 }
 async function resumeSource(client: SupabaseClient, id: string) {
   const response = await client
@@ -595,8 +578,15 @@ test('真实付款冲退款记录的主题窄屏、金额可见与无加载刷�
       response.request().postDataJSON()?.p_query?.relation === 'payment_refund'
   )
   await page.getByRole('radio', { name: '付款冲退款', exact: true }).locator('..').click()
-  expect((await loaded).ok()).toBe(true)
+  const relationResponse = await loaded
+  expect(relationResponse.ok()).toBe(true)
+  const relationData = rows([await relationResponse.json()])[0]
+  const manualScheme = rows(relationData.schemes).find((scheme) => scheme.code === 'AP-MANUAL')
+  assert.ok(manualScheme && typeof manualScheme.name === 'string')
   await expect(page.getByRole('button', { name: '查询', exact: true })).toBeEnabled()
+  await expect(
+    page.locator('.el-form-item').filter({ has: page.getByText('核销方案', { exact: true }) })
+  ).toContainText(manualScheme.name)
   await page.getByRole('tab', { name: /^核销记录/ }).click()
   const panel = page.getByRole('tabpanel', { name: /^核销记录/ })
   for (const record of rows(stored.data)) {

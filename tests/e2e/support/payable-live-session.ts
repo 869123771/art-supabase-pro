@@ -1,8 +1,38 @@
+import assert from 'node:assert/strict'
 import { expect, type BrowserContext } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { loadEnv } from 'vite'
 
 export const payableAcceptanceTenantId = '111e83d3-190e-4405-84c8-440d484d13a6'
+
+export function acceptanceRows(value: unknown): Array<Record<string, unknown>> {
+  assert.ok(Array.isArray(value))
+  return value.map((item: unknown) => {
+    assert.ok(item && typeof item === 'object' && !Array.isArray(item))
+    return Object.fromEntries(Object.entries(item))
+  })
+}
+
+export function acceptanceIdentifier(row: Record<string, unknown> | undefined): string {
+  assert.ok(row && typeof row.id === 'string')
+  return row.id
+}
+
+export function acceptanceRecord(value: unknown): Record<string, unknown> {
+  const records = acceptanceRows(Array.isArray(value) ? value : [value])
+  assert.equal(records.length, 1)
+  return records[0]
+}
+
+export async function acceptanceRpc(
+  client: SupabaseClient,
+  name: string,
+  payload: Record<string, unknown>
+): Promise<unknown> {
+  const response = await client.rpc(name, payload)
+  expect(response.error).toBeNull()
+  return response.data
+}
 
 export async function assertPayableAcceptanceSession(
   context: BrowserContext

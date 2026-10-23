@@ -65,6 +65,7 @@ const createCloudBaseClient = (): SupabaseClient => {
   const httpOrigin = import.meta.env.VITE_CLOUDBASE_HTTP_ORIGIN?.trim().replace(/\/+$/u, '')
   const edgeOrigin = import.meta.env.VITE_CLOUDBASE_EDGE_ORIGIN?.trim()
   if (!environmentId) throw new Error('Missing VITE_CLOUDBASE_ENV_ID')
+  if (!accessKey) throw new Error('Missing VITE_CLOUDBASE_PUBLISHABLE_KEY')
   if (!httpOrigin) throw new Error('Missing VITE_CLOUDBASE_HTTP_ORIGIN')
   if (!edgeOrigin) throw new Error('Missing VITE_CLOUDBASE_EDGE_ORIGIN')
 
@@ -74,6 +75,7 @@ const createCloudBaseClient = (): SupabaseClient => {
     ...(accessKey ? { accessKey } : {}),
     auth: { detectSessionInUrl: true }
   })
+  const auth = typeof app.auth === 'function' ? app.auth({ persistence: 'local' }) : app.auth
 
   const requestApp = app as typeof app & { request: ICloudbaseRequest }
   const cloudBaseFetch = requestApp.request.fetch.bind(requestApp.request)
@@ -109,10 +111,25 @@ const createCloudBaseClient = (): SupabaseClient => {
     })
   }
 
-  // CloudBase PostgreSQL follows the PostgREST/Supabase query contract. Keep the assertion at this
-  // provider boundary so every API caller retains its existing generated Supabase types.
-  const database = (app.rdb as unknown as () => object)()
-  const auth = typeof app.auth === 'function' ? app.auth({ persistence: 'local' }) : app.auth
+  const gatewayOrigin = `https://${environmentId}.api.tcloudbasegateway.com`
+  const cloudBasePostgrestFetch: typeof fetch = async (input, init) => {
+    const requestUrl = new URL(input instanceof Request ? input.url : String(input))
+    if (requestUrl.pathname === '/rest/v1' || requestUrl.pathname.startsWith('/rest/v1/')) {
+      requestUrl.pathname = `/v1/rdb/rest${requestUrl.pathname.slice('/rest/v1'.length)}`
+    }
+    const headers = new Headers(input instanceof Request ? input.headers : undefined)
+    new Headers(init?.headers).forEach((value, key) => headers.set(key, value))
+    const session = await auth.getSession()
+    headers.set('apikey', accessKey)
+    headers.set('Authorization', `Bearer ${session.data?.session?.access_token || accessKey}`)
+    const rewrittenInput =
+      input instanceof Request ? new Request(requestUrl, input) : requestUrl.toString()
+    return tenantScopeFetch(rewrittenInput, { ...init, headers })
+  }
+  const database = createClient(gatewayOrigin, accessKey, {
+    global: { fetch: cloudBasePostgrestFetch },
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+  })
   let realtime: ReturnType<typeof app.realtime> | null = null
   const getRealtime = () => (realtime ??= app.realtime())
   const functions = {

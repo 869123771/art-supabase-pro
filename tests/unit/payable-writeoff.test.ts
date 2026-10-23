@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { allocateWriteoffAmounts } from '../../src/utils/finance/payable-writeoff'
+import {
+  allocateWriteoffAmounts,
+  preferredPayableWriteoffScheme
+} from '../../src/utils/finance/payable-writeoff'
+import type { PayableReference } from '../../src/api/payable-reference'
 import {
   newPayableSettlementLine,
   validateSettlementAmounts,
@@ -8,6 +12,29 @@ import {
 } from '../../src/utils/finance/payable-settlement'
 
 describe('payable writeoff allocation', () => {
+  it('keeps default schemes aligned with relation and selected tenant', () => {
+    const schemes: PayableReference[] = [
+      { id: 'ar', tenantId: 'one', code: 'AP-AR-MANUAL', name: '应付冲应收', enabled: true },
+      { id: 'legacy', tenantId: 'one', code: 'AP-MANUAL', name: '付款核销', enabled: true },
+      {
+        id: 'automatic',
+        tenantId: 'two',
+        code: 'AP-AR-AUTO',
+        name: '自动方案',
+        enabled: true,
+        automatic: true
+      },
+      { id: 'disabled', tenantId: 'two', code: 'AP-MANUAL', name: '停用方案', enabled: false }
+    ]
+    assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_payment', 'one'), 'legacy')
+    assert.equal(preferredPayableWriteoffScheme(schemes, 'payment_refund', 'one'), 'legacy')
+    assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_receivable', 'one'), 'ar')
+    assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_receivable', 'two'), '')
+    assert.deepEqual(
+      schemes.map((scheme) => scheme.id),
+      ['ar', 'legacy', 'automatic', 'disabled']
+    )
+  })
   it('keeps payment and symmetric refund business types distinct', () => {
     const labels = Object.fromEntries(
       payablePurposeBusinessTypeOptions.map(({ value, label }) => [value, label])

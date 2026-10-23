@@ -28,6 +28,9 @@ async function main() {
   const credentials = JSON.parse(
     await readFile(path.join(artifacts, 'credentials.json'), 'utf8')
   ) as { publishableKey?: string; serverApiKey?: string }
+  const sourceSecrets = JSON.parse(
+    await readFile(path.join(artifacts, 'source-function-secrets.json'), 'utf8')
+  ) as Record<string, string | null>
   if (!credentials.publishableKey || !credentials.serverApiKey) {
     throw new Error('CloudBase publishable and server API keys are required')
   }
@@ -81,8 +84,15 @@ child.on('exit', (code) => {
         installDependency: false,
         envVariables: {
           SUPABASE_URL: `https://${ENVIRONMENT_ID}.api.tcloudbasegateway.com`,
+          CLOUDBASE_CLIENT_ID: ENVIRONMENT_ID,
           SUPABASE_ANON_KEY: credentials.publishableKey,
-          SUPABASE_SERVICE_ROLE_KEY: credentials.serverApiKey
+          SUPABASE_SERVICE_ROLE_KEY: credentials.serverApiKey,
+          ...Object.fromEntries(
+            Object.entries(sourceSecrets).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === 'string' && entry[1].length > 0
+            )
+          )
         }
       }
     ]

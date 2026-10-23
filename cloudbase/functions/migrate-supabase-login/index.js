@@ -2,7 +2,6 @@
 
 const http = require('node:http')
 const managerPackage = require('@cloudbase/manager-node')
-const { createClient } = require('@supabase/supabase-js')
 
 const CloudBase = managerPackage.CloudBase || managerPackage.default || managerPackage
 
@@ -41,31 +40,52 @@ const migrateLogin = async (event) => {
     return fail('server_misconfigured', '登录迁移服务尚未配置')
   }
 
-  const source = createClient(SOURCE_URL, SOURCE_ANON_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
-  })
   let sourceUserId
   if (identifier.includes('@')) {
-    const { data, error } = await source.auth.signInWithPassword({
-      email: identifier.toLowerCase(),
-      password,
-      options: { captchaToken }
+    const sourceLogin = await fetch(`${SOURCE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        apikey: SOURCE_ANON_KEY,
+        Authorization: `Bearer ${SOURCE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: identifier.toLowerCase(),
+        password,
+        ...(captchaToken ? { gotrue_meta_security: { captcha_token: captchaToken } } : {})
+      })
     })
-    if (error || !data.user?.id) return fail('invalid_credentials', '账号或密码错误')
-    sourceUserId = data.user.id
+    const sourcePayload = await sourceLogin.json().catch(() => null)
+    if (!sourceLogin.ok || typeof sourcePayload?.user?.id !== 'string') {
+      return fail('invalid_credentials', '账号或密码错误')
+    }
+    sourceUserId = sourcePayload.user.id
   } else {
-    const { data, error } = await source.functions.invoke('login-with-phone', {
-      body: { phone: identifier, password, captchaToken }
+    const phoneLogin = await fetch(`${SOURCE_URL}/functions/v1/login-with-phone`, {
+      method: 'POST',
+      headers: {
+        apikey: SOURCE_ANON_KEY,
+        Authorization: `Bearer ${SOURCE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ phone: identifier, password, captchaToken })
     })
-    const accessToken = data?.session?.accessToken
-    if (error || typeof accessToken !== 'string') {
+    const phonePayload = await phoneLogin.json().catch(() => null)
+    const accessToken = phonePayload?.session?.accessToken
+    if (!phoneLogin.ok || typeof accessToken !== 'string') {
       return fail('invalid_credentials', '账号或密码错误')
     }
-    const userResult = await source.auth.getUser(accessToken)
-    if (userResult.error || !userResult.data.user?.id) {
+    const sourceUser = await fetch(`${SOURCE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: SOURCE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+    const sourceUserPayload = await sourceUser.json().catch(() => null)
+    if (!sourceUser.ok || typeof sourceUserPayload?.id !== 'string') {
       return fail('invalid_credentials', '账号或密码错误')
     }
-    sourceUserId = userResult.data.user.id
+    sourceUserId = sourceUserPayload.id
   }
 
   try {
@@ -92,8 +112,6 @@ const migrateLogin = async (event) => {
       return fail('password_policy_rejected', '原密码不符合新平台规则，请联系管理员处理')
     }
     return fail('password_migration_failed', '原密码迁移失败，请稍后重试')
-  } finally {
-    await source.auth.signOut().catch(() => undefined)
   }
 }
 

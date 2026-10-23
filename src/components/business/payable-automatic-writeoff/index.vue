@@ -86,7 +86,12 @@
     { prop: 'supplierName', label: '主方往来单位', minWidth: 180 },
     {
       prop: 'paymentNo',
-      label: request.value?.query.relation === 'payment_refund' ? '付款退款单' : '付款单',
+      label:
+        request.value?.query.relation === 'payable_receivable'
+          ? '财务应收单'
+          : request.value?.query.relation === 'payment_refund'
+            ? '付款退款单'
+            : '付款单',
       minWidth: 215
     },
     { prop: 'paymentSupplierName', label: '辅方往来单位', minWidth: 180 },

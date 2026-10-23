@@ -1,7 +1,7 @@
 begin;
 do $test$
 declare
- actor uuid;account_set public.fms_account_set;posting_date date;supplier uuid;material uuid;unit_id uuid;document_type uuid;currency_ident uuid;debit_subject uuid;credit_subject uuid;rule_id uuid;source_kind text;
+ actor uuid;subject_actor uuid;subject_suffix text:=to_char(clock_timestamp(),'YYYYMMDDHH24MISSMS');account_set public.fms_account_set;posting_date date;supplier uuid;material uuid;unit_id uuid;document_type uuid;currency_ident uuid;debit_subject uuid;credit_subject uuid;rule_id uuid;source_kind text;
  estimate jsonb;finance jsonb;result jsonb;reversal jsonb;context jsonb;estimate_id uuid;finance_id uuid;reversal_id uuid;generated_voucher_id uuid;blocked boolean;index_value integer;estimate_rate numeric;finance_rate numeric;estimate_price numeric;finance_price numeric;original_total numeric;expected_cost numeric;
 begin
  select auth_user_id into actor from public.sys_user where user_roles @>array['R_SUPER'] and auth_user_id is not null limit 1;
@@ -14,10 +14,14 @@ begin
  select id into document_type from public.mdm_document_type where tenant_id=account_set.tenant_id and document_type_code='AP_EST_OTHER';
  insert into public.fms_currency(tenant_id,account_set_id,currency_code,currency_name,symbol,is_enabled) values(account_set.tenant_id,account_set.id,'USD','美元','$',true) on conflict(account_set_id,currency_code) do update set is_enabled=true returning id into currency_ident;
  insert into public.fms_exchange_rate(tenant_id,account_set_id,currency_id,rate_date,rate_type,direct_rate) values(account_set.tenant_id,account_set.id,currency_ident,posting_date,'spot',7) on conflict(account_set_id,currency_id,rate_date,rate_type) do update set direct_rate=7;
- select id into debit_subject from public.fms_subject subject where account_set_id=account_set.id and is_enabled and not cash_flow_required and not exists(select 1 from public.fms_subject child where child.parent_id=subject.id) and not exists(select 1 from public.fms_subject_auxiliary_type binding where binding.subject_id=subject.id and binding.is_required) order by subject_code limit 1;
- select id into credit_subject from public.fms_subject subject where account_set_id=account_set.id and id<>debit_subject and is_enabled and not cash_flow_required and not exists(select 1 from public.fms_subject child where child.parent_id=subject.id) and not exists(select 1 from public.fms_subject_auxiliary_type binding where binding.subject_id=subject.id and binding.is_required) order by subject_code limit 1;
- if credit_subject is null then raise exception 'Missing foreign voucher subjects';end if;
- update public.fms_subject set allow_foreign_currency=(id=credit_subject) where id in(debit_subject,credit_subject);
+ select auth_user_id into subject_actor from public.sys_user where tenant_id=account_set.tenant_id and auth_user_id is not null and status='1' order by (id=account_set.created_by_user_id) desc,id limit 1;
+ if subject_actor is null then raise exception 'Missing tenant-owned accounting fixture actor';end if;
+ perform set_config('request.jwt.claim.sub',subject_actor::text,true);
+ insert into public.fms_subject(tenant_id,account_set_id,subject_code,subject_name,category,balance_direction,allow_foreign_currency)
+ values(account_set.tenant_id,account_set.id,'991'||subject_suffix,'外币采购成本回滚科目','asset','debit',false) returning id into debit_subject;
+ insert into public.fms_subject(tenant_id,account_set_id,subject_code,subject_name,category,balance_direction,allow_foreign_currency)
+ values(account_set.tenant_id,account_set.id,'992'||subject_suffix,'外币采购应付回滚科目','liability','credit',true) returning id into credit_subject;
+ perform set_config('request.jwt.claim.sub',actor::text,true);
  foreach source_kind in array array['estimated_payable','financial_payable'] loop
   insert into public.fms_posting_rule(tenant_id,account_set_id,rule_code,rule_name,source_type,event_code,priority,submission_mode) values(account_set.tenant_id,account_set.id,'FX_'||upper(left(gen_random_uuid()::text,8)),'外币应付回滚规则',source_kind,'approved',999999,'draft') returning id into rule_id;
   insert into public.fms_posting_rule_line(tenant_id,account_set_id,rule_id,line_no,subject_id,direction,amount_key) values(account_set.tenant_id,account_set.id,rule_id,1,debit_subject,'debit','gross_amount'),(account_set.tenant_id,account_set.id,rule_id,2,credit_subject,'credit','gross_amount');

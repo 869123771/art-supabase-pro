@@ -4,7 +4,8 @@ declare actor uuid;ordinary uuid;t uuid;foreign_tenant uuid;role_id uuid;credit_
 begin
  select u.auth_user_id into actor from public.sys_user u join public.sys_tenant tenant on tenant.id=u.tenant_id where u.system_protected and tenant.builtin_type='platform' and u.auth_user_id is not null limit 1;
  select u.auth_user_id,u.tenant_id into ordinary,t from public.sys_user u where u.auth_user_id is not null and u.status='1' and not u.system_protected
- and exists(select 1 from public.fms_receivable_document d where d.tenant_id=u.tenant_id) limit 1;
+ and exists(select 1 from public.fms_receivable_document d where d.tenant_id=u.tenant_id and d.kind='financial' and d.status='approved' and not d.is_credit)
+ and exists(select 1 from public.fms_receivable_document d where d.tenant_id=u.tenant_id and d.kind='financial' and d.status='approved' and d.is_credit) order by u.id limit 1;
  if ordinary is null then raise exception 'Ordinary AR security fixture required';end if;
  select * into sample from public.fms_receivable_document where tenant_id=t and kind='financial' and not is_credit and status='approved' order by created_at,id limit 1;
  select id into credit_id from public.fms_receivable_document where tenant_id=t and kind='financial' and is_credit and status='approved' order by created_at,id limit 1;

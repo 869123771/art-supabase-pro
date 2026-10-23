@@ -2,6 +2,7 @@ import { useSupabase } from '@/hooks/core/useSupabase'
 export type PayableReferenceKind = 'purpose' | 'method' | 'scheme'
 export type PayableMatchField =
   | 'supplier_id'
+  | 'counterparty_id'
   | 'currency_code'
   | 'project_id'
   | 'source_id'

@@ -26,6 +26,13 @@ test('different text fields can match and date fields have ordering operators', 
   assert.ok(allowedPayableMatchOperators(newPayableMatchRule('amount')).includes('gt'))
 })
 
+test('governed counterparty identities use reference equality rather than name matching', () => {
+  const rule = newPayableMatchRule('counterparty_id')
+  assert.equal(validatePayableMatchRules([rule]), '')
+  assert.deepEqual(allowedPayableMatchOperators(rule), ['eq', 'ne'])
+  assert.match(validatePayableMatchRules([{ ...rule, operator: 'contains' }]), /不兼容/)
+})
+
 test('incompatible types, reference ordering, empty and oversized rules fail validation', () => {
   assert.match(
     validatePayableMatchRules([
