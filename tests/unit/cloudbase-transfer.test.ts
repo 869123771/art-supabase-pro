@@ -35,6 +35,7 @@ $$ LANGUAGE sql;
 ALTER FUNCTION "app_private"."notify"() OWNER TO "postgres";
 ALTER TABLE ONLY "public"."example"
   ADD CONSTRAINT "example_user_fkey" FOREIGN KEY ("auth_user_id") REFERENCES "auth"."users"("id");
+CREATE TRIGGER "sys_user_after_delete_sync_auth_user" AFTER DELETE ON "public"."sys_user" FOR EACH ROW EXECUTE FUNCTION "app_private"."sync_delete_auth_user_on_app_delete"();
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."example";
 SET SESSION AUTHORIZATION "postgres";
 RESET SESSION AUTHORIZATION;
@@ -45,10 +46,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT SELECT ON 
   assert.doesNotMatch(result.sql, /CREATE EXTENSION/u)
   assert.doesNotMatch(result.sql, /net\.http_post/u)
   assert.doesNotMatch(result.sql, /REFERENCES "auth"\."users"/u)
+  assert.doesNotMatch(result.sql, /sys_user_after_delete_sync_auth_user/u)
   assert.doesNotMatch(result.sql, /ALTER PUBLICATION/u)
   assert.doesNotMatch(result.sql, /SESSION AUTHORIZATION/u)
   assert.doesNotMatch(result.sql, /ALTER DEFAULT PRIVILEGES/u)
   assert.equal(result.report.skippedAuthForeignKeys, 1)
+  assert.equal(result.report.skippedAuthDeleteTriggers, 1)
   assert.equal(result.report.skippedRealtimeStatements, 1)
   assert.equal(result.report.skippedSessionAuthorizationStatements, 2)
   assert.equal(result.report.skippedDefaultPrivilegeStatements, 1)

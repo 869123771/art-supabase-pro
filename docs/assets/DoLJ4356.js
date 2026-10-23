@@ -1,0 +1,1 @@
+import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./DAk94JAL.js";var i=n({name:`WmsInitialSalesOutbound`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{kind:`initial_outbound`}))}});export{i as default};

@@ -39,6 +39,12 @@ const TABLES_WITH_EXPLICIT_TENANT_READ_FILTERS = new Set([
   'wms_purchase_document_list'
 ])
 
+const DATA_API_PREFIXES = ['/rest/v1', '/v1/rdb/rest'] as const
+
+const resolveDataApiPrefix = (pathname: string): string | null =>
+  DATA_API_PREFIXES.find((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ??
+  null
+
 const tenantIdFromRecord = (value: unknown): string | null => {
   if (!isPlainObjectRecord(value)) return null
   const candidates = [
@@ -72,7 +78,7 @@ export const readMutationTenantScopeId = (body: BodyInit | null | undefined): st
 export const shouldAttachTenantScopeHeader = (requestUrl: string): boolean => {
   try {
     const { pathname } = new URL(requestUrl, 'http://localhost')
-    return pathname === '/rest/v1' || pathname.startsWith('/rest/v1/')
+    return Boolean(resolveDataApiPrefix(pathname))
   } catch {
     return false
   }
@@ -106,7 +112,8 @@ export const readPlatformTenantScopeActive = (): boolean => {
 export const normalizePlatformTenantReadUrl = (requestUrl: string): string => {
   try {
     const url = new URL(requestUrl)
-    if (!url.pathname.startsWith('/rest/v1/') || url.pathname.startsWith('/rest/v1/rpc/')) {
+    const dataApiPrefix = resolveDataApiPrefix(url.pathname)
+    if (!dataApiPrefix || url.pathname.startsWith(`${dataApiPrefix}/rpc/`)) {
       return requestUrl
     }
 

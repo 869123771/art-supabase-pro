@@ -10,6 +10,7 @@ interface TransferReport {
     skippedExtensions: string[]
     skippedFunctions: string[]
     skippedAuthForeignKeys: number
+    skippedAuthDeleteTriggers: number
     skippedOwnerStatements: number
     skippedRealtimeStatements: number
     skippedSessionAuthorizationStatements: number
@@ -165,6 +166,7 @@ export function transformSchema(source: string): {
   const skippedFunctions = new Set<string>()
   const skippedExtensions: string[] = []
   let skippedAuthForeignKeys = 0
+  let skippedAuthDeleteTriggers = 0
   let skippedOwnerStatements = 0
   let skippedRealtimeStatements = 0
   let skippedSessionAuthorizationStatements = 0
@@ -193,6 +195,14 @@ export function transformSchema(source: string): {
     if (/\b(?:GRANT|REVOKE)\b[\s\S]*\b"postgres"\b/iu.test(statement)) continue
     if (/REFERENCES\s+"auth"\."users"/iu.test(statement)) {
       skippedAuthForeignKeys += 1
+      continue
+    }
+    if (
+      /CREATE\s+TRIGGER\s+"?sys_user_after_delete_sync_auth_user"?[\s\S]*sync_delete_auth_user_on_app_delete/iu.test(
+        statement
+      )
+    ) {
+      skippedAuthDeleteTriggers += 1
       continue
     }
     if (/\b(?:CREATE|ALTER)\s+PUBLICATION\s+"supabase_realtime"/iu.test(statement)) {
@@ -234,6 +244,7 @@ export function transformSchema(source: string): {
       skippedExtensions: [...new Set(skippedExtensions)].sort(),
       skippedFunctions: [...skippedFunctions].sort(),
       skippedAuthForeignKeys,
+      skippedAuthDeleteTriggers,
       skippedOwnerStatements,
       skippedRealtimeStatements,
       skippedSessionAuthorizationStatements,

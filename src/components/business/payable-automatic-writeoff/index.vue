@@ -76,10 +76,19 @@
   const confirmDisabled = computed(
     () => loading.value || executing.value || !!loadError.value || !plan.value?.items.length
   )
-  const columns: ColumnOption<PayableAutomaticWriteoffItem>[] = [
-    { prop: 'payableNo', label: '财务应付单', minWidth: 215, fixed: 'left' },
+  const columns = computed<ColumnOption<PayableAutomaticWriteoffItem>[]>(() => [
+    {
+      prop: 'payableNo',
+      label: request.value?.query.relation === 'payment_refund' ? '付款单' : '财务应付单',
+      minWidth: 215,
+      fixed: 'left'
+    },
     { prop: 'supplierName', label: '主方往来单位', minWidth: 180 },
-    { prop: 'paymentNo', label: '付款单', minWidth: 215 },
+    {
+      prop: 'paymentNo',
+      label: request.value?.query.relation === 'payment_refund' ? '付款退款单' : '付款单',
+      minWidth: 215
+    },
     { prop: 'paymentSupplierName', label: '辅方往来单位', minWidth: 180 },
     {
       prop: 'needsVoucher',
@@ -95,7 +104,7 @@
       align: 'right',
       formatter: (row) => formatCurrencyValue(row.amount)
     }
-  ]
+  ])
   async function load(): Promise<void> {
     if (!request.value || executing.value) return
     const current = ++version

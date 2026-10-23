@@ -2642,9 +2642,26 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Submit', '提交'),
       button('Approve', '审核'),
       button('Delete', '删除'),
+      button('Push', '下推付款退款'),
       button('Confirm', '确认/取消付款'),
       button('Void', '作废未付款单'),
       button('Voucher', '生成凭证'),
+      button('Print', '打印'),
+      button('Export', '导出')
+    ]
+  },
+  {
+    menuName: 'FinancePayableRefund',
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Submit', '提交'),
+      button('Approve', '审核'),
+      button('Delete', '删除'),
+      button('Confirm', '确认/取消到账'),
+      button('Void', '作废未到账退款'),
+      button('Voucher', '预览/生成凭证'),
       button('Print', '打印'),
       button('Export', '导出')
     ]

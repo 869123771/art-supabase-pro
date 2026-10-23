@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { allocatePayableWriteoff } from '../../src/utils/finance/payable-writeoff'
+import { allocateWriteoffAmounts } from '../../src/utils/finance/payable-writeoff'
 import {
   newPayableSettlementLine,
   validateSettlementAmounts,
@@ -27,18 +27,18 @@ describe('payable writeoff allocation', () => {
       { id: 'pay1', availableAmount: 0.15 },
       { id: 'pay2', availableAmount: 0.15 }
     ]
-    assert.deepEqual(allocatePayableWriteoff(primary, secondary), [
-      { payableId: 'ap1', paymentLineId: 'pay1', amount: 0.1 },
-      { payableId: 'ap2', paymentLineId: 'pay1', amount: 0.05 },
-      { payableId: 'ap2', paymentLineId: 'pay2', amount: 0.15 }
+    assert.deepEqual(allocateWriteoffAmounts(primary, secondary), [
+      { primaryId: 'ap1', secondaryId: 'pay1', amount: 0.1 },
+      { primaryId: 'ap2', secondaryId: 'pay1', amount: 0.05 },
+      { primaryId: 'ap2', secondaryId: 'pay2', amount: 0.15 }
     ])
     assert.equal(primary[0].availableAmount, 0.1)
   })
   it('rejects missing sides, excess, invalid amounts and unequal totals', () => {
-    assert.throws(() => allocatePayableWriteoff([], []), /分别选择/)
+    assert.throws(() => allocateWriteoffAmounts([], []), /分别选择/)
     assert.throws(
       () =>
-        allocatePayableWriteoff(
+        allocateWriteoffAmounts(
           [{ id: 'ap', availableAmount: 100, writeoffAmount: 101 }],
           [{ id: 'pay', availableAmount: 101 }]
         ),
@@ -46,7 +46,7 @@ describe('payable writeoff allocation', () => {
     )
     assert.throws(
       () =>
-        allocatePayableWriteoff(
+        allocateWriteoffAmounts(
           [{ id: 'ap', availableAmount: 100, writeoffAmount: NaN }],
           [{ id: 'pay', availableAmount: 100 }]
         ),
@@ -54,7 +54,7 @@ describe('payable writeoff allocation', () => {
     )
     assert.throws(
       () =>
-        allocatePayableWriteoff(
+        allocateWriteoffAmounts(
           [{ id: 'ap', availableAmount: 100 }],
           [{ id: 'pay', availableAmount: 99.99 }]
         ),

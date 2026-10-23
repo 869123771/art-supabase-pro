@@ -355,6 +355,13 @@ test('tenant scope header is attached only to Supabase Data API requests', () =>
     true
   )
   assert.equal(shouldAttachTenantScopeHeader('/rest/v1/sys_tenant'), true)
+  assert.equal(
+    shouldAttachTenantScopeHeader(
+      'https://example.api.tcloudbasegateway.com/v1/rdb/rest/sys_tenant?select=*'
+    ),
+    true
+  )
+  assert.equal(shouldAttachTenantScopeHeader('/v1/rdb/rest/rpc/get_current_user'), true)
 
   assert.equal(
     shouldAttachTenantScopeHeader('https://example.supabase.co/functions/v1/check_user_status'),
@@ -371,6 +378,15 @@ test('tenant scope header is attached only to Supabase Data API requests', () =>
     false
   )
   assert.equal(shouldAttachTenantScopeHeader('not a Supabase request'), false)
+})
+
+test('platform read normalization supports CloudBase PostgreSQL Data API paths', () => {
+  const normalized = normalizePlatformTenantReadUrl(
+    'https://example.api.tcloudbasegateway.com/v1/rdb/rest/mdm_material?select=*&tenant_id=eq.tenant-a&status=eq.enabled'
+  )
+  const url = new URL(normalized)
+  assert.equal(url.searchParams.has('tenant_id'), false)
+  assert.equal(url.searchParams.get('status'), 'eq.enabled')
 })
 
 test('mutation tenant scope is read only from explicit table and supported RPC payloads', () => {

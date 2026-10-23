@@ -2,6 +2,17 @@ import { useSupabase } from '@/hooks/core/useSupabase'
 import type { PayableReference, PayableMatchRule } from '@/api/payable-reference'
 import type { PayableSettlementOption } from '@/api/payable-settlement.types'
 import type { PayableVoucherPreview } from '@/api/purchase-payable'
+export type PayableWriteoffRelation = 'payable_payment' | 'payment_refund'
+export interface PayableWriteoffQuery {
+  organizationId?: string
+  supplierId?: string
+  keyword?: string
+  relation?: PayableWriteoffRelation
+  documentIds?: string[]
+}
+export type PayableManualWriteoffItem =
+  | { payableId: string; paymentLineId: string; amount: number }
+  | { relation: 'payment_refund'; paymentLineId: string; refundLineId: string; amount: number }
 export interface PayableWriteoffCandidate {
   id: string
   tenantId: string
@@ -25,7 +36,9 @@ export interface PayableWriteoffRecord {
   supplierId: string
   recordNo: string
   documentNo?: string | null
-  payableId: string
+  relation?: PayableWriteoffRelation
+  payableId?: string | null
+  refundLineId?: string | null
   paymentLineId: string
   payableNo: string
   paymentNo: string
@@ -55,7 +68,9 @@ export interface PayableVoucherResult {
   lines?: PayableVoucherPreview['lines']
 }
 export interface PayableAutomaticWriteoffItem {
-  payableId: string
+  relation?: PayableWriteoffRelation
+  payableId?: string
+  refundLineId?: string
   paymentLineId: string
   payableNo: string
   paymentNo: string
@@ -77,7 +92,7 @@ export interface PayableAutomaticWriteoffPlan {
 export interface PayableAutomaticWriteoffRequest {
   schemeId: string
   date: string
-  query: { organizationId?: string; supplierId?: string; keyword?: string }
+  query: PayableWriteoffQuery
 }
 const { supabase, responseHandle, keysToSnakeDeep } = useSupabase()
 const options = {
@@ -85,11 +100,9 @@ const options = {
   showErrorMessage: false,
   errorMessage: '应付核销操作失败，请重试'
 }
-export async function fetchPayableWriteoffWorkspace(query: {
-  organizationId?: string
-  supplierId?: string
-  keyword?: string
-}): Promise<PayableWriteoffWorkspace> {
+export async function fetchPayableWriteoffWorkspace(
+  query: PayableWriteoffQuery
+): Promise<PayableWriteoffWorkspace> {
   const { data } = await responseHandle<PayableWriteoffWorkspace>(
     () =>
       supabase.rpc('fms_payable_writeoff_workspace_secure', { p_query: keysToSnakeDeep(query) }),
@@ -105,7 +118,7 @@ export async function fetchPayableWriteoffWorkspace(query: {
   return data
 }
 export async function executePayableWriteoff(
-  items: Array<{ payableId: string; paymentLineId: string; amount: number }>,
+  items: PayableManualWriteoffItem[],
   schemeId: string,
   date: string,
   remark: string

@@ -1,0 +1,1 @@
+import"./sCcJMmlm.js";import{M as e}from"./BxBRK5N-.js";export{e as createArchitectureServices};

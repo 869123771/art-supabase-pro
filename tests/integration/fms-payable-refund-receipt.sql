@@ -2,7 +2,7 @@ begin;
 
 do $test$
 declare
- actor uuid;foreign_tenant uuid;statement record;finance jsonb;payment jsonb;source_line public.fms_payable_settlement_line;
+ actor uuid;ordinary uuid;ordinary_profile uuid;fixture_role uuid;fixture_code text;refund_purpose uuid;match_scheme uuid;matching jsonb;foreign_tenant uuid;statement record;finance jsonb;payment jsonb;source_line public.fms_payable_settlement_line;
  fund uuid;cash uuid;allocation uuid;amount_value numeric;refund_amount numeric;remaining_amount numeric;fee_value numeric;
  refund_document uuid;refund_line uuid;receipt_execution uuid;receipt_ledger uuid;refund_match uuid;voucher uuid;period record;
  detail jsonb;listing jsonb;blocked boolean;case_count integer:=0;cash_count bigint;
@@ -33,8 +33,10 @@ begin
   refund_amount:=round(amount_value/2,2);remaining_amount:=amount_value-refund_amount;
   insert into public.fms_payable_settlement_document(tenant_id,kind,document_no,business_date,amount,created_by_user_id,account_set_id)
   values(statement.tenant_id,'refund','QA-RFR-'||upper(left(gen_random_uuid()::text,8)),app_private.payable_business_date(),refund_amount,actor,(finance->>'account_set_id')::uuid) returning id into refund_document;
+  select id into refund_purpose from public.mdm_payment_purpose where tenant_id=statement.tenant_id and business_type='purchase_refund' and payable_writeoff and enabled order by code limit 1;
+  if refund_purpose is null then raise exception 'Transport refund needs a symmetric refund purpose';end if;
   insert into public.fms_payable_settlement_line(tenant_id,document_id,line_no,purpose_id,carrier_id,payable_id,settlement_method_id,fund_account_id,amount,approved_amount,planned_amount,refund_payment_line_id)
-  values(statement.tenant_id,refund_document,10,source_line.purpose_id,source_line.carrier_id,source_line.payable_id,source_line.settlement_method_id,fund,refund_amount,refund_amount,refund_amount,source_line.id) returning id into refund_line;
+  values(statement.tenant_id,refund_document,10,refund_purpose,source_line.carrier_id,source_line.payable_id,source_line.settlement_method_id,fund,refund_amount,refund_amount,refund_amount,source_line.id) returning id into refund_line;
   blocked:=false;
   begin perform public.allocate_tms_carrier_payment_secure(cash,jsonb_build_array(jsonb_build_object('statement_id',statement.id,'amount',amount_value)));
   exception when others then if sqlerrm like '%未核销余额%' then blocked:=true;else raise;end if;end;
@@ -65,6 +67,44 @@ begin
   if not app_private.payable_refund_receipt_valid(refund_line) or (public.tms_get_cash_transaction_secure(cash)->>'allocatable_amount')::numeric<>0 then raise exception 'Actual receipt released already returned transport cash';end if;
   insert into public.fms_payable_writeoff_record(tenant_id,record_no,payment_line_id,refund_line_id,relation,amount,payment_amount,refund_amount,cash_discount_amount,writeoff_date,actor)
   values(statement.tenant_id,'QA-RFR-HX-'||upper(left(gen_random_uuid()::text,8)),source_line.id,refund_line,'payment_refund',refund_amount,refund_amount,refund_amount,0,app_private.payable_business_date(),actor) returning id into refund_match;
+
+  select auth_user_id,id into ordinary,ordinary_profile from public.sys_user where tenant_id=statement.tenant_id and auth_user_id is not null and status='1' and not user_roles @>array['R_SUPER'] order by id limit 1;
+  if ordinary is null then raise exception 'Transport refund permission regression needs an ordinary user';end if;
+  fixture_code:='QA_RRF_ACCESS_'||upper(left(gen_random_uuid()::text,8));
+  insert into public.sys_role(tenant_id,role_code,role_name,enabled) values(statement.tenant_id,fixture_code,'运输退款核销金额权限回归',true) returning id into fixture_role;
+  insert into public.sys_role_menu(role_id,menu_id,tenant_id) select fixture_role,id,statement.tenant_id from public.sys_menu where name in('FinancePayableWriteoff:View','FinancePayableWriteoff:Writeoff','FinancePayableWriteoff:Reverse','FinancePayableWriteoff:AutoWriteoff','FinancePayableWriteoff:Voucher');
+  update public.sys_user set user_roles=array[fixture_code] where id=ordinary_profile;
+  insert into public.sys_user_field_permission(tenant_id,user_id,resource_id,field_id,access_level)
+  select statement.tenant_id,ordinary_profile,resource.id,field.id,'hidden' from public.sys_permission_resource resource join public.sys_permission_field field on field.resource_id=resource.id and field.tenant_id=resource.tenant_id
+   where resource.tenant_id=statement.tenant_id and((resource.resource_key='tms.cash_transaction' and field.field_key='transactionAmounts') or(resource.resource_key='tms.carrier_statement' and field.field_key='settlementAmounts'))
+  on conflict(tenant_id,user_id,resource_id,field_id) do update set access_level=excluded.access_level;
+  perform set_config('request.jwt.claim.sub',ordinary::text,true);perform set_config('request.headers',jsonb_build_object('x-art-tenant-scope',foreign_tenant)::text,true);
+  if app_private.payable_settlement_line_amount_access(source_line.id,false) or app_private.payable_settlement_line_amount_access(source_line.id,true) then raise exception 'Hidden transport cash field became readable or writable through refund matching';end if;
+  matching:=public.fms_payable_writeoff_workspace_secure(jsonb_build_object('relation','payment_refund','document_ids',jsonb_build_array(payment->>'id',refund_document)));
+  if exists(select 1 from jsonb_array_elements(matching->'primary') candidate where candidate->>'id'=source_line.id::text)
+   or exists(select 1 from jsonb_array_elements(matching->'secondary') candidate where candidate->>'id'=refund_line::text)
+   or exists(select 1 from jsonb_array_elements(matching->'history') candidate where candidate->>'id'=refund_match::text) then raise exception 'Refund workbench exposed hidden transport principal';end if;
+  blocked:=false;begin perform public.fms_reverse_payable_writeoff_secure(refund_match,'无运输金额权限的反核销阻断');exception when insufficient_privilege then blocked:=true;end;
+  if not blocked then raise exception 'Refund unmatching bypassed transport allocation or field edit permissions';end if;
+  execute 'set local role authenticated';
+  if exists(select 1 from public.fms_payable_writeoff_record where id=refund_match) then raise exception 'Direct writeoff RLS exposed hidden transport amounts';end if;
+  execute 'reset role';
+  update public.sys_user_field_permission set access_level='read' where tenant_id=statement.tenant_id and user_id=ordinary_profile and field_id in(select field.id from public.sys_permission_field field join public.sys_permission_resource resource on resource.id=field.resource_id where resource.tenant_id=statement.tenant_id and resource.resource_key in('tms.cash_transaction','tms.carrier_statement'));
+  if app_private.payable_settlement_line_amount_access(source_line.id,false) is distinct from true or app_private.payable_settlement_line_amount_access(source_line.id,true) then raise exception 'Read-only transport permission did not remain read-only';end if;
+  execute 'set local role authenticated';
+  if not exists(select 1 from public.fms_payable_writeoff_record where id=refund_match) then raise exception 'Authorized direct transport writeoff read lost its own record';end if;
+  execute 'reset role';
+  insert into public.sys_role_menu(role_id,menu_id,tenant_id) select fixture_role,id,statement.tenant_id from public.sys_menu where name='FinanceCashTransaction:Allocate';
+  if app_private.payable_settlement_line_amount_access(source_line.id,true) then raise exception 'Allocate permission bypassed a read-only transport field';end if;
+  update public.sys_user_field_permission set access_level='edit' where tenant_id=statement.tenant_id and user_id=ordinary_profile and field_id in(select field.id from public.sys_permission_field field join public.sys_permission_resource resource on resource.id=field.resource_id where resource.tenant_id=statement.tenant_id and resource.resource_key in('tms.cash_transaction','tms.carrier_statement'));
+  if app_private.payable_settlement_line_amount_access(source_line.id,true) is distinct from true then raise exception 'Authorized ordinary transport refund matching remained blocked';end if;
+  perform public.fms_reverse_payable_writeoff_secure(refund_match,'合法运输退款核销回归');
+  select id into match_scheme from public.fms_payable_writeoff_scheme where tenant_id=statement.tenant_id and code='AP-SAME-SOURCE' and enabled;
+  matching:=public.fms_payable_writeoff_secure(jsonb_build_array(jsonb_build_object('relation','payment_refund','payment_line_id',source_line.id,'refund_line_id',refund_line,'amount',refund_amount)),match_scheme,app_private.payable_business_date(),'普通用户合法运输付款冲退款');
+  refund_match:=(matching->>0)::uuid;
+  if not exists(select 1 from public.fms_payable_writeoff_record where id=refund_match and relation='payment_refund' and status='active' and amount=round(amount_value/2,2)) then raise exception 'Ordinary transport refund matching did not persist its exact principal';end if;
+  perform set_config('request.jwt.claim.sub',actor::text,true);perform set_config('request.headers',jsonb_build_object('x-art-tenant-scope',statement.tenant_id)::text,true);
+
   select * into period from public.fms_accounting_period where account_set_id=(finance->>'account_set_id')::uuid and status='open' order by start_date desc limit 1;
   if period.id is null then raise exception 'Refund receipt test needs an open accounting period';end if;
   insert into public.fms_voucher(tenant_id,account_set_id,accounting_period_id,voucher_no,voucher_date,fiscal_year,period_no,source_type,source_id,summary)
