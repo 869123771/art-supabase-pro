@@ -1,17 +1,11 @@
 import { round, trim } from 'lodash-es'
-import { normalizeCoordinatePair } from '@/utils/geo'
+import { normalizeAmapCoordinate } from '@/utils/amap'
+import { withTimeout } from '@/utils/async'
 import { useAmapSdk } from './useAmapSdk'
-
-interface AMapLngLatLike {
-  lng?: number
-  lat?: number
-  getLng?: () => number
-  getLat?: () => number
-}
 
 interface AMapGeocodeResult {
   geocodes?: Array<{
-    location?: AMapLngLatLike
+    location?: unknown
   }>
 }
 
@@ -54,25 +48,16 @@ export function useAmapGeocoder() {
     const AMap = await loadAmap()
     const geocoder = new AMap.Geocoder({ city: trim(city) || '全国' })
 
-    return new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(
-        () => reject(new Error('地址解析超时，请稍后重试')),
-        GEOCODE_TIMEOUT_MS
-      )
-      try {
+    return withTimeout(
+      new Promise<AmapGeocodeLocation | null>((resolve) => {
         geocoder.getLocation(normalizedAddress, (status, result) => {
-          window.clearTimeout(timeout)
           if (status !== 'complete') {
             resolve(null)
             return
           }
 
           const location = result?.geocodes?.[0]?.location
-          const longitude =
-            typeof location?.getLng === 'function' ? location.getLng() : location?.lng
-          const latitude =
-            typeof location?.getLat === 'function' ? location.getLat() : location?.lat
-          const pair = normalizeCoordinatePair(longitude, latitude)
+          const pair = normalizeAmapCoordinate(location)
           if (!pair) {
             resolve(null)
             return
@@ -83,11 +68,10 @@ export function useAmapGeocoder() {
             latitude: round(pair.latitude, 6)
           })
         })
-      } catch (error) {
-        window.clearTimeout(timeout)
-        reject(error)
-      }
-    })
+      }),
+      GEOCODE_TIMEOUT_MS,
+      '地址解析超时，请稍后重试'
+    )
   }
 
   return { geocodeAddress }

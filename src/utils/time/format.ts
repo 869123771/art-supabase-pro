@@ -5,6 +5,9 @@ import timezone from 'dayjs/plugin/timezone'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
+const clockTimePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/
+const timeOnlyPattern = /^\d{2}:\d{2}(?::\d{2})?$/
+
 /** Format a date/time value using dayjs.
  *  value can be:
  *   - full ISO timestamp string
@@ -21,14 +24,15 @@ export function formatWithDayjs(
   if (value == null) return null
 
   // If it's time-only (HH:mm or HH:mm:ss), attach today's date
-  if (typeof value === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
-    const today = dayjs()
+  if (typeof value === 'string' && timeOnlyPattern.test(value)) {
+    if (!clockTimePattern.test(value)) return value
+    const today = timezone ? dayjs().tz(timezone) : dayjs()
     const datePart = today.format('YYYY-MM-DD')
     const composed = `${datePart} ${value}`
     return timezone ? dayjs.tz(composed, timezone).format(format) : dayjs(composed).format(format)
   }
 
-  const d = typeof value === 'string' ? dayjs(value) : dayjs(value)
+  const d = dayjs(value)
   if (!d.isValid()) return String(value)
   return timezone ? d.tz(timezone).format(format) : d.format(format)
 }
@@ -39,7 +43,9 @@ export function isValidDateTimeValue(
   allowTimeOnly = true
 ): boolean {
   if (value == null || value === '') return false
-  if (typeof value === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(value)) return allowTimeOnly
+  if (typeof value === 'string' && timeOnlyPattern.test(value)) {
+    return allowTimeOnly && clockTimePattern.test(value)
+  }
   return dayjs(value).isValid()
 }
 

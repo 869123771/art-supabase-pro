@@ -34,6 +34,8 @@
 import { ref, computed, watch, type ComputedRef, type Ref } from 'vue'
 import { $t } from '@/locales'
 import type { ColumnOption } from '@/types/component'
+import { useConfiguredTableColumns } from './useConfiguredTableColumns'
+import { getColumnKey } from '@/utils/table/column-profile'
 
 /**
  * 特殊列类型
@@ -48,11 +50,6 @@ const SPECIAL_COLUMNS: Record<string, { prop: string; labelKey: string }> = {
 /**
  * 获取列的唯一标识
  */
-export const getColumnKey = <T>(col: ColumnOption<T>) =>
-  SPECIAL_COLUMNS[col.type as keyof typeof SPECIAL_COLUMNS]?.prop ??
-  col.prop ??
-  (col.children?.length ? `__group__${col.label ?? ''}` : '')
-
 /**
  * 获取列的显示状态
  * 优先使用 visible 字段，如果不存在则使用 checked 字段
@@ -141,17 +138,25 @@ export interface DynamicColumnConfig<T = unknown> {
 }
 
 export function useTableColumns<T = unknown>(
-  columnsFactory: () => ColumnOption<T>[]
+  sourceFactory: () => ColumnOption<T>[]
 ): {
   columns: ComputedRef<ColumnOption<T>[]>
   columnChecks: Ref<ColumnOption<T>[]>
 } & DynamicColumnConfig<T> {
+  const configured = useConfiguredTableColumns(sourceFactory)
+  const columnsFactory = configured.factory
   const dynamicColumns = ref<ColumnOption<T>[]>(columnsFactory())
   const columnChecks = ref<ColumnOption<T>[]>(getColumnChecks(dynamicColumns.value))
   let factoryOrder = dynamicColumns.value.map(getColumnKey)
 
   // 权限、字典等异步数据改变列工厂依赖时重新生成列；下方 watcher 保留用户的列显隐设置。
-  watch(columnsFactory, (columns) => {
+  watch([columnsFactory, configured.revision], ([columns, revision], [, previousRevision]) => {
+    if (revision !== previousRevision) {
+      columnChecks.value = getColumnChecks(columns)
+      factoryOrder = columns.map(getColumnKey)
+      dynamicColumns.value = columns
+      return
+    }
     const currentOrder = columnChecks.value.map(getColumnKey)
     const hasCustomOrder = currentOrder.some((key, index) => key !== factoryOrder[index])
     const orderMap = new Map(currentOrder.map((key, index) => [key, index]))

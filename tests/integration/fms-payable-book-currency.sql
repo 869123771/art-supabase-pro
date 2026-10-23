@@ -11,7 +11,7 @@ begin
  perform set_config('request.jwt.claim.sub',actor::text,true);perform set_config('request.headers','{}',true);
  select id into supplier from public.mdm_supplier where tenant_id=account_set.tenant_id limit 1;
  select id,inventory_unit_id into material,unit_id from public.mdm_material where tenant_id=account_set.tenant_id and inventory_unit_id is not null limit 1;
- select id into document_type from public.mdm_document_type where tenant_id=account_set.tenant_id and document_type_code='AP_EST_STANDARD';
+ select id into document_type from public.mdm_document_type where tenant_id=account_set.tenant_id and document_type_code='AP_EST_OTHER';
  insert into public.fms_currency(tenant_id,account_set_id,currency_code,currency_name,symbol,is_enabled) values(account_set.tenant_id,account_set.id,'USD','美元','$',true) on conflict(account_set_id,currency_code) do update set is_enabled=true returning id into currency_ident;
  insert into public.fms_exchange_rate(tenant_id,account_set_id,currency_id,rate_date,rate_type,direct_rate) values(account_set.tenant_id,account_set.id,currency_ident,posting_date,'spot',7) on conflict(account_set_id,currency_id,rate_date,rate_type) do update set direct_rate=7;
  select id into debit_subject from public.fms_subject subject where account_set_id=account_set.id and is_enabled and not cash_flow_required and not exists(select 1 from public.fms_subject child where child.parent_id=subject.id) and not exists(select 1 from public.fms_subject_auxiliary_type binding where binding.subject_id=subject.id and binding.is_required) order by subject_code limit 1;

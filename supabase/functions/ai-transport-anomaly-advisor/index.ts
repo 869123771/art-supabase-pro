@@ -1,11 +1,14 @@
-import {
-  authenticateAiEdgeRequest,
-  authorizeAiEdgeAppUser
-} from '../_shared/ai-edge-user-context.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { assessTransportAnomaly } from '../_shared/transport-anomaly-rules.ts'
 
 interface TransportAnomalyAdvisorRequest {
   orderId?: string
+}
+
+interface AppUser {
+  tenant_id: string
+  user_email: string
+  status: string | null
 }
 
 const FEATURE = 'transport_anomaly_advisor'
@@ -29,7 +32,9 @@ function text(value: unknown): string {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  )
 }
 
 Deno.serve(async (request) => {
@@ -38,13 +43,23 @@ Deno.serve(async (request) => {
     return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
-  const authentication = await authenticateAiEdgeRequest(request, 'Invalid session')
-  if (!authentication.ok) {
-    return json(
-      { code: authentication.code, message: authentication.message },
-      authentication.status
-    )
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const authHeader = request.headers.get('Authorization') ?? ''
+  if (!supabaseUrl || !anonKey || !serviceRoleKey || !authHeader) {
+    return json({ code: 'unauthorized', message: 'Authentication required' }, 401)
   }
+
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const {
+    data: { user },
+    error: authError
+  } = await authClient.auth.getUser(token)
+  if (authError || !user) return json({ code: 'unauthorized', message: 'Invalid session' }, 401)
 
   const body = (await request.json().catch(() => ({}))) as TransportAnomalyAdvisorRequest
   const orderId = text(body.orderId)
@@ -52,11 +67,22 @@ Deno.serve(async (request) => {
     return json({ code: 'invalid_order_id', message: '缺少有效的运输订单 ID' }, 400)
   }
 
-  const context = await authorizeAiEdgeAppUser(authentication, '当前用户不可使用 AI 运输异常研判')
-  if (!context.ok) {
-    return json({ code: context.code, message: context.message }, context.status)
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+  const { data: appUserData, error: appUserError } = await admin
+    .from('sys_user')
+    .select('tenant_id,user_email,status')
+    .eq('auth_user_id', user.id)
+    .maybeSingle()
+  const appUser = appUserData as AppUser | null
+  if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
+    return json({ code: 'forbidden', message: '当前用户不可使用 AI 运输异常研判' }, 403)
   }
-  const { admin, userClient, user, appUser } = context
 
   const startedAt = Date.now()
   let runId = ''

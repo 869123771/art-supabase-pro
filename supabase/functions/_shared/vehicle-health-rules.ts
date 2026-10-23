@@ -226,7 +226,11 @@ export function assessVehicleHealth(
   const inspectionDays = daysRemaining(inspectionExpireDate, now)
 
   if (insuranceDays) {
-    const signal = createComplianceSignal('insurance', insuranceDays.remaining, insuranceDays.value)
+    const signal = createComplianceSignal(
+      'insurance',
+      insuranceDays.remaining,
+      insuranceDays.value
+    )
     if (signal) signals.push(signal)
   } else {
     limitations.push('未找到有效保险到期日期，无法判断续保时效。')
@@ -336,16 +340,15 @@ export function assessVehicleHealth(
     actions.push('逐条核实例检问题的处理方法与复检结果，未闭环项目不得忽略。')
   }
 
-  const latestMileage =
-    latestBy(mileage, 'end_time', 'endTime') ?? latestBy(mileage, 'start_time', 'startTime')
+  const latestMileage = latestBy(mileage, 'end_time', 'endTime') ?? latestBy(mileage, 'start_time', 'startTime')
   const currentMileage = latestMileage
-    ? (numberValue(field(latestMileage, 'end_mileage', 'endMileage')) ??
+    ? numberValue(field(latestMileage, 'end_mileage', 'endMileage')) ??
       numberValue(field(latestMileage, 'running_mileage', 'runningMileage')) ??
-      numberValue(field(latestMileage, 'start_mileage', 'startMileage')))
+      numberValue(field(latestMileage, 'start_mileage', 'startMileage'))
     : null
   const latestMileageTime = latestMileage
-    ? (timeValue(field(latestMileage, 'end_time', 'endTime')) ??
-      timeValue(field(latestMileage, 'start_time', 'startTime')))
+    ? timeValue(field(latestMileage, 'end_time', 'endTime')) ??
+      timeValue(field(latestMileage, 'start_time', 'startTime'))
     : null
   if (!latestMileageTime || daysBetween(now, latestMileageTime) > mileageStaleDays) {
     const staleDays = latestMileageTime ? daysBetween(now, latestMileageTime) : null
@@ -353,10 +356,9 @@ export function assessVehicleHealth(
       type: 'mileage_data_stale',
       severity: 'medium',
       title: '里程数据不够新',
-      detail:
-        staleDays === null
-          ? '未找到有效里程记录，无法判断按里程触发的维保需求。'
-          : `最近里程记录距今 ${staleDays} 天，可能影响按里程维保判断。`,
+      detail: staleDays === null
+        ? '未找到有效里程记录，无法判断按里程触发的维保需求。'
+        : `最近里程记录距今 ${staleDays} 天，可能影响按里程维保判断。`,
       evidence: [
         `最近里程：${currentMileage === null ? '未记录' : `${currentMileage.toLocaleString('zh-CN')} km`}`,
         `最近记录时间：${latestMileageTime ? new Date(latestMileageTime).toISOString().slice(0, 10) : '未记录'}`
@@ -446,3 +448,4 @@ export function assessVehicleHealth(
     }
   }
 }
+

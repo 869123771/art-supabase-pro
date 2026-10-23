@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import templateCompilerOptions from '@tresjs/core/template-compiler-options'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Components from 'unplugin-vue-components/vite'
@@ -17,8 +18,11 @@ import {
   getElementPlusStyleDeps,
   matchElementPlusStyles
 } from './scripts/element-plus-style-chunks.mjs'
-import { shouldPreloadHtmlDependency } from './scripts/bundle-boundaries.ts'
-import { createFileViewerAssetSyncPlugin } from './scripts/file-viewer-asset-sync.ts'
+import { platformChunkFileName, shouldPreloadHtmlDependency } from './scripts/bundle-boundaries.ts'
+import {
+  createFileViewerAssetSyncPlugin,
+  REDUNDANT_FILE_VIEWER_ASSETS
+} from './scripts/file-viewer-asset-sync.ts'
 import {
   hostedApplicationSourceDirectories,
   hostedModuleSharedDependencies
@@ -28,6 +32,8 @@ import {
 import { createNoJekyllPlugin } from './src/plugins/nojekyll.ts'
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url))
+const packageRequire = createRequire(path.join(configDirectory, 'package.json'))
+const excelRequire = createRequire(packageRequire.resolve('exceljs/package.json'))
 
 const normalizeModuleId = (id: string) => id.replace(/\\/g, '/')
 
@@ -144,16 +150,28 @@ export default async ({ mode }: { mode: string }) => {
     // 路径别名
     resolve: {
       dedupe: [...new Set([...hostedModuleSharedDependencies, 'three'])],
-      alias: {
-        ...hostedApplicationAliases,
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        '@views': resolvePath('src/views'),
-        '@imgs': resolvePath('src/assets/images'),
-        '@icons': resolvePath('src/assets/icons'),
-        '@utils': resolvePath('src/utils'),
-        '@stores': resolvePath('src/store'),
-        '@styles': resolvePath('src/assets/styles')
-      }
+      alias: [
+        // ES2020 supplies the native APIs omitted by ExcelJS's official bare build.
+        {
+          find: /^exceljs$/,
+          replacement: packageRequire.resolve('exceljs/dist/exceljs.bare.min.js')
+        },
+        // Both current consumers use JSZip 3.10.2; resolve their browser runtime once.
+        {
+          find: /^jszip(?:\/dist\/jszip(?:\.min)?\.js)?$/,
+          replacement: excelRequire.resolve('jszip/dist/jszip.min.js')
+        },
+        ...Object.entries({
+          ...hostedApplicationAliases,
+          '@': fileURLToPath(new URL('./src', import.meta.url)),
+          '@views': resolvePath('src/views'),
+          '@imgs': resolvePath('src/assets/images'),
+          '@icons': resolvePath('src/assets/icons'),
+          '@utils': resolvePath('src/utils'),
+          '@stores': resolvePath('src/store'),
+          '@styles': resolvePath('src/assets/styles')
+        }).map(([find, replacement]) => ({ find, replacement }))
+      ]
     },
     build: {
       target: 'es2020',
@@ -172,6 +190,7 @@ export default async ({ mode }: { mode: string }) => {
       rolldownOptions: {
         ...buildLogPolicy.rolldownOptions,
         output: {
+          chunkFileNames: platformChunkFileName,
           codeSplitting: {
             groups: [
               {
@@ -292,9 +311,7 @@ export default async ({ mode }: { mode: string }) => {
       createFileViewerAssetSyncPlugin({
         enabled: enableFileViewerPlugin && enableFileViewerAssets,
         sourceRoot: fileViewerAssetStageDir,
-        // The preset imports these workers through `new URL(..., import.meta.url)`, so Vite emits
-        // hashed copies in assets/. Do not also ship byte-identical compatibility copies.
-        excludedFiles: ['vendor/pptx/pptx.worker.js', 'vendor/libarchive/worker-bundle.js']
+        excludedFiles: REDUNDANT_FILE_VIEWER_ASSETS
       }),
       buildLogPolicy.summaryPlugin,
       // 自动按需导入 API

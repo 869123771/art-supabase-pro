@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { captureBusinessEvidence } from './support/capture-business-evidence'
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 test.setTimeout(150000)
@@ -122,6 +123,110 @@ const optionsFor = (kind: string) => ({
     name: kind === 'application' ? '采购付款申请' : '采购付款'
   }))
 })
+for (const kind of ['estimated', 'financial', 'application', 'payment', 'writeoff'] as const) {
+  test(`${kind} 手动刷新只旋转原图标并保留列表`, async ({ page }, info) => {
+    let release: (() => void) | undefined
+    let requests = 0
+    const deferred = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const isWriteoff = kind === 'writeoff'
+    const isPurchase = kind === 'estimated' || kind === 'financial'
+    const endpoint = isWriteoff
+      ? 'fms_payable_writeoff_workspace_secure'
+      : isPurchase
+        ? 'fms_purchase_payable_list_secure'
+        : 'fms_payable_settlement_list_secure'
+    const documents = [1, 2].map((index) => ({
+      ...makeDocument(index, kind),
+      supplier_name: `示例供应商${index}`,
+      total_amount: index * 100,
+      tax_amount: 0,
+      source_type: 'manual'
+    }))
+    await page.route('**/rest/v1/**', async (route) => {
+      const name = new URL(route.request().url()).pathname.split('/').at(-1)
+      if (name === endpoint) {
+        requests += 1
+        if (requests === 2) await deferred
+        if (isWriteoff && requests === 3)
+          return route.fulfill({
+            status: 503,
+            json: { code: 'P0001', message: '核销资料暂不可用，请重试' }
+          })
+        return route.fulfill({
+          json: isWriteoff
+            ? {
+                primary: [makeWriteoffCandidate(1, 'AP'), makeWriteoffCandidate(2, 'AP')],
+                secondary: [makeWriteoffCandidate(1, 'PAY'), makeWriteoffCandidate(2, 'PAY')],
+                history: [],
+                schemes: makeWriteoffSchemes()
+              }
+            : { data: documents, total: 2 }
+        })
+      }
+      return route.fulfill({ json: [] })
+    })
+    await page.goto(`/tests/e2e/fixtures/purchase-payable.html?kind=${kind}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000
+    })
+    const rows = page.locator('.el-table__body-wrapper tbody tr')
+    await expect(rows).toHaveCount(isWriteoff ? 4 : 2)
+    await expect(page.locator('.el-skeleton:visible')).toHaveCount(0, { timeout: 120000 })
+    if (!isWriteoff)
+      await page
+        .getByRole('switch', { name: '显示表格右侧工具栏', exact: true })
+        .locator('..')
+        .click()
+    const refresh = page.getByRole('button', {
+      name: isWriteoff ? '刷新' : '刷新表格',
+      exact: true
+    })
+    await refresh.click()
+    try {
+      await expect(refresh).toHaveAttribute('aria-busy', 'true')
+      await expect(refresh.locator('svg')).toHaveCount(1)
+      await expect(rows).toHaveCount(isWriteoff ? 4 : 2)
+      await expect(
+        page.locator(
+          '.el-skeleton:visible, .el-loading-spinner:visible, .art-overlay-loading:visible'
+        )
+      ).toHaveCount(0)
+      await expect(page.getByRole('button', { name: '查询', exact: true })).not.toHaveClass(
+        /is-loading/
+      )
+      await captureBusinessEvidence(page, {
+        path: info.outputPath(`${kind}-refresh.png`),
+        fullPage: true
+      })
+    } finally {
+      release?.()
+    }
+    await expect(refresh).not.toHaveAttribute('aria-busy', 'true')
+    await expect(rows).toHaveCount(isWriteoff ? 4 : 2)
+    expect(requests).toBe(2)
+    if (!isWriteoff) await page.locator('.el-table__header-wrapper .el-checkbox').first().click()
+    for (const label of isWriteoff
+      ? ['核销', '按方案自动核销']
+      : ['提交', '审核', '删除', '打印']) {
+      await expect(
+        page.getByRole('button', { name: label, exact: true }).locator('svg')
+      ).toHaveCount(1)
+    }
+    if (isWriteoff) {
+      await refresh.click()
+      await expect(
+        page.getByRole('alert').getByText('核销资料加载失败，请重新加载', { exact: true })
+      ).toBeVisible()
+      await expect(rows).toHaveCount(4)
+      await expect(page.getByRole('button', { name: '按方案自动核销', exact: true })).toBeDisabled()
+      await page.getByRole('alert').getByRole('button', { name: '重新加载', exact: true }).click()
+      await expect(page.getByRole('button', { name: '按方案自动核销', exact: true })).toBeEnabled()
+      await expect(rows).toHaveCount(4)
+    }
+  })
+}
 for (const kind of ['application', 'payment'] as const) {
   test(`${kind} 单据类型筛选保留停用类型并正确重置`, async ({ page }, info) => {
     const documents = [
@@ -165,7 +270,10 @@ for (const kind of ['application', 'payment'] as const) {
     await expect(rows).toHaveCount(1)
     expect(queriedType).toBe('type-2')
     await expect(rows.first()).toContainText(documents[1].document_no)
-    await page.screenshot({ path: info.outputPath(`${kind}-type-filter.png`), fullPage: true })
+    await captureBusinessEvidence(page, {
+      path: info.outputPath(`${kind}-type-filter.png`),
+      fullPage: true
+    })
     await page.getByRole('button', { name: '重置', exact: true }).click()
     await expect(rows).toHaveCount(2)
     expect(queriedType).toBe('')
@@ -250,7 +358,9 @@ for (const theme of ['light', 'dark'] as const) {
       })
       await expect(option).toBeVisible()
       await expect(page.getByRole('option', { name: /其他账套/ })).toHaveCount(0)
-      await drawer.screenshot({ path: info.outputPath(`payment-${theme}-book-${index + 1}.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`payment-${theme}-book-${index + 1}.png`)
+      })
       await option.click()
       await drawer.getByRole('button', { name: '保存', exact: true }).click()
       await expect(drawer).not.toBeVisible()
@@ -359,7 +469,10 @@ for (const theme of ['light', 'dark']) {
       const rows = page.locator('.art-table-query .el-table__body-wrapper tbody tr')
       await expect(rows).toHaveCount(2)
       await focusCheck(page, kind === 'application' ? '付款申请单' : '付款单')
-      await page.screenshot({ path: info.outputPath(`${kind}-${theme}-list.png`), fullPage: true })
+      await captureBusinessEvidence(page, {
+        path: info.outputPath(`${kind}-${theme}-list.png`),
+        fullPage: true
+      })
       await rows.first().getByRole('button', { name: '编辑', exact: true }).click()
       const drawer = page.getByRole('dialog')
       await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeVisible()
@@ -369,9 +482,13 @@ for (const theme of ['light', 'dark']) {
       await expect(
         drawer.getByRole('combobox', { name: '往来单位', exact: true }).first()
       ).toBeVisible()
-      await drawer.screenshot({ path: info.outputPath(`${kind}-${theme}-editor.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`${kind}-${theme}-editor.png`)
+      })
       await drawer.getByText('金额与付款说明', { exact: true }).scrollIntoViewIfNeeded()
-      await drawer.screenshot({ path: info.outputPath(`${kind}-${theme}-editor-total.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`${kind}-${theme}-editor-total.png`)
+      })
       await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
       await drawer.getByRole('button', { name: '保存', exact: true }).click()
       await expect(drawer).not.toBeVisible()
@@ -437,7 +554,10 @@ for (const theme of ['light', 'dark']) {
       )
       await expect(page.locator('.el-table__body-wrapper tbody tr')).toHaveCount(2)
       await focusCheck(page, kind === 'purpose' ? '付款用途' : '结算方式')
-      await page.screenshot({ path: info.outputPath(`${kind}-${theme}-list.png`), fullPage: true })
+      await captureBusinessEvidence(page, {
+        path: info.outputPath(`${kind}-${theme}-list.png`),
+        fullPage: true
+      })
       await page.getByRole('button', { name: '新增', exact: true }).click()
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('textbox', { name: /编码$/ }).fill('NEW-CFG')
@@ -520,9 +640,14 @@ for (const theme of ['light', 'dark']) {
     await expect(tables).toHaveCount(2)
     for (const table of await tables.all())
       await expect(table.locator('.el-table__body-wrapper tbody tr')).toHaveCount(2)
-    await expect(page.getByRole('combobox', { name: '核销方案', exact: true })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: '核销方案', exact: true })).toBeVisible({
+      timeout: 120000
+    })
     await expect(page.getByRole('combobox', { name: '结算组织', exact: true })).toBeVisible()
-    await page.screenshot({ path: info.outputPath(`writeoff-${theme}.png`), fullPage: true })
+    await captureBusinessEvidence(page, {
+      path: info.outputPath(`writeoff-${theme}.png`),
+      fullPage: true
+    })
     await page.getByRole('button', { name: '核销方案', exact: true }).click()
     await expect(page.getByRole('dialog').locator('.el-table__body-wrapper tbody tr')).toHaveCount(
       2
@@ -560,7 +685,9 @@ for (const theme of ['light', 'dark']) {
     await expect(
       ruleRows.nth(1).getByRole('switch', { name: '为空时匹配', exact: true })
     ).toBeChecked()
-    await ruleDialog.screenshot({ path: info.outputPath(`scheme-${theme}-editor.png`) })
+    await captureBusinessEvidence(ruleDialog, {
+      path: info.outputPath(`scheme-${theme}-editor.png`)
+    })
     await ruleDialog.getByRole('button', { name: '保存配置', exact: true }).click()
     await expect(ruleDialog).not.toBeVisible()
     expect(savedRules).toHaveLength(2)
@@ -584,9 +711,9 @@ for (const theme of ['light', 'dark']) {
     await expect(page.getByRole('dialog').getByText('¥9.00', { exact: true })).toBeVisible()
     await expect(page.getByRole('dialog').getByText('¥1.00', { exact: true })).toBeVisible()
     await expect(page.getByRole('dialog').getByText('匹配依据', { exact: true })).toBeVisible()
-    await page
-      .getByRole('dialog')
-      .screenshot({ path: info.outputPath(`writeoff-${theme}-discount.png`) })
+    await captureBusinessEvidence(page.getByRole('dialog'), {
+      path: info.outputPath(`writeoff-${theme}-discount.png`)
+    })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     expect(errors).toEqual([])
   })
@@ -624,10 +751,14 @@ for (const theme of ['light', 'dark']) {
           }
         })
       if (name === 'fms_auto_payable_writeoff_secure') {
-        const request: { p_scheme_id: string; p_execute: boolean; p_plan_token?: string } = route
-          .request()
-          .postDataJSON()
+        const request: {
+          p_scheme_id: string
+          p_execute: boolean
+          p_plan_token?: string
+          p_query: { supplier_id?: string }
+        } = route.request().postDataJSON()
         expect(request.p_scheme_id).toBe('scheme-2')
+        expect(request.p_query.supplier_id).toBe('supplier-1')
         if (request.p_execute) {
           executions++
           expect(request.p_plan_token).toBe(token)
@@ -667,8 +798,12 @@ for (const theme of ['light', 'dark']) {
       `/tests/e2e/fixtures/purchase-payable.html?kind=writeoff&theme=${theme}&box=${box}`,
       { waitUntil: 'domcontentloaded', timeout: 120000 }
     )
+    await expect(page.getByRole('combobox', { name: '核销方案', exact: true })).toBeVisible({
+      timeout: 120000
+    })
     await page.getByRole('combobox', { name: '核销方案', exact: true }).press('Enter')
     await page.getByRole('option', { name: schemes[1].name, exact: true }).click()
+    await page.locator('.el-tree-node__content').filter({ hasText: '示例供应商1' }).click()
     await page.getByRole('button', { name: '按方案自动核销', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: '按方案自动核销', exact: true })
     await expect(
@@ -677,13 +812,15 @@ for (const theme of ['light', 'dark']) {
     await expect(dialog.getByRole('button', { name: '确认自动核销', exact: true })).toBeDisabled()
     await dialog.getByRole('button', { name: '重新预览', exact: true }).click()
     await expect(dialog.locator('.el-table__body-wrapper tbody tr')).toHaveCount(2)
-    await dialog.screenshot({ path: info.outputPath(`automatic-${theme}-preview.png`) })
+    await captureBusinessEvidence(dialog, {
+      path: info.outputPath(`automatic-${theme}-preview.png`)
+    })
     await dialog.getByRole('button', { name: '确认自动核销', exact: true }).click()
     await expect(
       dialog.getByText('核销结果未确认，请重新预览，并核对最新余额与核销记录。', { exact: true })
     ).toBeVisible()
     await expect(dialog.getByRole('button', { name: '确认自动核销', exact: true })).toBeDisabled()
-    await dialog.screenshot({ path: info.outputPath(`automatic-${theme}-stale.png`) })
+    await captureBusinessEvidence(dialog, { path: info.outputPath(`automatic-${theme}-stale.png`) })
     await dialog.getByRole('button', { name: '重新预览', exact: true }).click()
     await expect(dialog.locator('.el-table__body-wrapper tbody tr')).toHaveCount(2)
     await dialog.getByRole('button', { name: '确认自动核销', exact: true }).click()
@@ -803,7 +940,7 @@ for (const kind of ['purchase_contract', 'purchase_order']) {
       '采购预付款申请'
     )
     expect(pushed).toBe(1)
-    await drawer.screenshot({ path: info.outputPath(`${kind}-prepayment.png`) })
+    await captureBusinessEvidence(drawer, { path: info.outputPath(`${kind}-prepayment.png`) })
     expect(errors).toEqual([])
   })
 }
@@ -850,7 +987,9 @@ test('付款申请明细新增复制删除与多往来保存', async ({ page }, 
   await rows.nth(1).getByRole('combobox', { name: '往来单位', exact: true }).click()
   await page.getByRole('option', { name: '示例供应商1 · SUP-1', exact: true }).click()
   await expect(rows).toHaveCount(2)
-  await drawer.screenshot({ path: info.outputPath('application-multiple-parties.png') })
+  await captureBusinessEvidence(drawer, {
+    path: info.outputPath('application-multiple-parties.png')
+  })
   await drawer.getByRole('button', { name: '保存', exact: true }).click()
   await expect(drawer).not.toBeVisible()
   expect(savedLines.map((row) => row.supplier_id)).toEqual(['supplier-2', 'supplier-1'])

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { captureBusinessEvidence } from './support/capture-business-evidence'
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 test.beforeAll(async ({ browser, baseURL }) => {
   if (process.env.E2E_USE_DEV_SERVER === 'false') return
@@ -86,7 +87,8 @@ for (const kind of ['estimated', 'financial'] as const) {
           return route.fulfill({ json: [], headers: { 'content-range': '*/0' } })
         })
         await page.goto(
-          `/tests/e2e/fixtures/purchase-payable.html?kind=${kind}&theme=${theme}&box=${box}`
+          `/tests/e2e/fixtures/purchase-payable.html?kind=${kind}&theme=${theme}&box=${box}`,
+          { waitUntil: 'domcontentloaded' }
         )
         const rows = page.locator('.el-table__body-wrapper tbody tr')
         await expect(rows).toHaveCount(2)
@@ -113,7 +115,10 @@ for (const kind of ['estimated', 'financial'] as const) {
             exact: true
           })
         ).toBeVisible()
-        await page.screenshot({ path: testInfo.outputPath(`${kind}-list.png`), fullPage: true })
+        await captureBusinessEvidence(page, {
+          path: testInfo.outputPath(`${kind}-list.png`),
+          fullPage: true
+        })
         for (const n of [1, 2]) {
           await rows
             .nth(n - 1)
@@ -125,7 +130,7 @@ for (const kind of ['estimated', 'financial'] as const) {
           await expect(drawer).toContainText(`项目供应商${n}`)
           await expect(drawer.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
           await expect(drawer).not.toContainText(`项目物料${n === 1 ? 2 : 1}`)
-          await page.screenshot({
+          await captureBusinessEvidence(page, {
             path: testInfo.outputPath(`${kind}-detail-${n}.png`),
             fullPage: true
           })
@@ -238,7 +243,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(drawer.getByText('编辑验证物料', { exact: true })).toBeVisible()
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeVisible()
     await expect(drawer.getByText('标准采购应付', { exact: true })).toBeVisible()
-    await page.screenshot({
+    await captureBusinessEvidence(page, {
       path: testInfo.outputPath('financial-edit-header.png'),
       fullPage: true
     })
@@ -268,7 +273,10 @@ for (const theme of ['light', 'dark'] as const) {
       planSection.getByRole('spinbutton', { name: '应付金额', exact: true })
     ).toHaveCount(0)
     await expect(planSection.getByText(/226\.00/)).toBeVisible()
-    await page.screenshot({ path: testInfo.outputPath('financial-edit-plans.png'), fullPage: true })
+    await captureBusinessEvidence(page, {
+      path: testInfo.outputPath('financial-edit-plans.png'),
+      fullPage: true
+    })
     await drawer
       .getByRole('switch', { name: '按比例计算付款计划', exact: true })
       .locator('..')
@@ -332,7 +340,10 @@ for (const theme of ['light', 'dark'] as const) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
       ).toBe(true)
-      await page.screenshot({ path: testInfo.outputPath('payment-terms-list.png'), fullPage: true })
+      await captureBusinessEvidence(page, {
+        path: testInfo.outputPath('payment-terms-list.png'),
+        fullPage: true
+      })
       await page.getByRole('button', { name: '新增', exact: true }).click()
       const dialog = page.getByRole('dialog')
       await dialog
@@ -349,7 +360,7 @@ for (const theme of ['light', 'dark'] as const) {
       await dialog.getByRole('button', { name: '保存付款条件', exact: true }).click()
       await expect(page.getByText('付款条件编号重复', { exact: true })).toBeVisible()
       await expect(dialog).toBeVisible()
-      await page.screenshot({
+      await captureBusinessEvidence(page, {
         path: testInfo.outputPath('payment-term-error-retry.png'),
         fullPage: true
       })

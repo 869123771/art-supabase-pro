@@ -60,7 +60,12 @@ function Get-LinkedDatabaseConnection {
 
   # The CLI resolves the correct pooler host for the project. Capture, never print,
   # its dry-run output because it contains the database password.
-  $dryRun = Invoke-SupabaseQuiet @('db', 'dump', '--linked', '--password', $Password, '--data-only', '--dry-run')
+  $dryRunArguments = @('db', 'dump', '--linked')
+  if (-not [string]::IsNullOrWhiteSpace($Password)) {
+    $dryRunArguments += @('--password', $Password)
+  }
+  $dryRunArguments += @('--data-only', '--dry-run')
+  $dryRun = Invoke-SupabaseQuiet $dryRunArguments
   if (-not $dryRun.Succeeded) { throw 'Unable to resolve the linked database connection.' }
   $text = $dryRun.Output
   $dbHost = [regex]::Match($text, 'export PGHOST="([^"]+)"').Groups[1].Value
@@ -358,8 +363,6 @@ if (-not $ResumeBackupPath -and -not (Get-Command docker -ErrorAction SilentlyCo
 if (-not $ResumeBackupPath -and -not (Test-DockerReady)) { throw 'Docker Desktop is installed but not running.' }
 Enable-SystemProxyForSupabaseCli
 Assert-SupabaseCliProjectAccess -ProjectRef $ProjectRef
-if (-not $ResumeBackupPath -and -not $DbPassword) { $DbPassword = Read-Host 'Supabase database password' -AsSecureString }
-
 $supabaseRoot = $PSScriptRoot
 if (-not $BackupRoot) { $BackupRoot = Join-Path $supabaseRoot 'backups' }
 $BackupRoot = [IO.Path]::GetFullPath($BackupRoot)
@@ -409,9 +412,21 @@ try {
     }
     else {
       Write-Host 'Linking the source project...'
-      Invoke-Supabase @('link', '--project-ref', $ProjectRef, '--password', $plainPassword)
+      $linkArguments = @('link', '--project-ref', $ProjectRef)
+      if (-not [string]::IsNullOrWhiteSpace($plainPassword)) {
+        $linkArguments += @('--password', $plainPassword)
+      }
+      Invoke-Supabase $linkArguments
     }
-    $dbTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked', '--password', $plainPassword) }
+    $dbTarget = if ($DbUrl) {
+      @('--db-url', $DbUrl)
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($plainPassword)) {
+      @('--linked', '--password', $plainPassword)
+    }
+    else {
+      @('--linked')
+    }
     # `db query --linked` uses the Management API and does not accept --password,
     # while dump commands do. Keep command-specific targets separate.
     $queryTarget = if ($DbUrl) { @('--db-url', $DbUrl) } else { @('--linked') }

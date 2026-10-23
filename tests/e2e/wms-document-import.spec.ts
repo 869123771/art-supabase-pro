@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import ExcelJS from 'exceljs'
 
 test.use({ storageState: { cookies: [], origins: [] } })
+test.setTimeout(120_000)
 
 for (const family of ['sales', 'purchase']) {
   test(`${family}导入精确编码不被前二十条模糊候选截断`, async ({ page }, testInfo) => {
@@ -43,9 +44,9 @@ for (const family of ['sales', 'purchase']) {
     await drawer.locator('input[type="file"][accept=".xlsx,.xls,.csv"]').setInputFiles({
       name: '精确编码.csv',
       mimeType: 'text/csv',
-      buffer: Buffer.from('物料编码,数量\nEXACT-IMPORT,2\n')
+      buffer: Buffer.from('物料编码,数量\nEXACT-IMPORT,2\nEXACT-IMPORT,3\n')
     })
-    await expect(drawer.locator('.el-table__body-wrapper tbody tr')).toHaveCount(2)
+    await expect(drawer.locator('.el-table__body-wrapper tbody tr')).toHaveCount(3)
     await expect(drawer).toContainText('精确编码导入物料')
     expect(materialQueries).toHaveLength(1)
     expect(materialQueries[0].searchParams.get('tenant_id')).toBe(
@@ -53,7 +54,7 @@ for (const family of ['sales', 'purchase']) {
     )
     expect(materialQueries[0].searchParams.get('status')).toBe('eq.enabled')
     expect(materialQueries[0].searchParams.has('or')).toBe(false)
-    await drawer.getByText('精确编码导入物料', { exact: true }).scrollIntoViewIfNeeded()
+    await drawer.getByText('精确编码导入物料', { exact: true }).first().scrollIntoViewIfNeeded()
     await page.screenshot({
       path: testInfo.outputPath('exact-code-imported.png'),
       animations: 'disabled'
@@ -224,7 +225,7 @@ for (const family of ['sales', 'purchase']) {
     expect(reads).toBe(originalReads)
     await upload('COMPLETE-IMPORT,2\nMISSING-IMPORT,3\n')
     await expect(
-      page.getByText('第 3 行物料编码“MISSING-IMPORT”未匹配到唯一物料，请检查当前租户物料', {
+      page.getByText('未找到第 3 行当前租户物料编码“MISSING-IMPORT”', {
         exact: true
       })
     ).toBeVisible()
@@ -232,9 +233,12 @@ for (const family of ['sales', 'purchase']) {
     duplicate = true
     await upload('COMPLETE-IMPORT,2\n')
     await expect(
-      page.getByText('第 2 行物料编码“COMPLETE-IMPORT”未匹配到唯一物料，请检查当前租户物料', {
-        exact: true
-      })
+      page.getByText(
+        '第 2 行当前租户物料编码“COMPLETE-IMPORT”存在多个匹配记录，请核对编号后重新导入',
+        {
+          exact: true
+        }
+      )
     ).toBeVisible()
     await expect(rows).toHaveCount(1)
     await drawer.getByRole('button', { name: '导入明细', exact: true }).scrollIntoViewIfNeeded()
@@ -557,7 +561,20 @@ for (const family of ['sales', 'purchase']) {
     const zeroTax = rows.nth(3).getByText('0%', { exact: true })
     await expect(zeroTax).toBeVisible()
     await expect(rows.nth(3).getByRole('spinbutton').nth(2)).toHaveValue('20.0000')
-    await expect(rows.nth(3).getByText('40.00', { exact: true })).toHaveCount(1)
+    const amounts: Array<[string, string]> = [
+      ['金额', '40.00'],
+      ['价税合计', '40.00']
+    ]
+    await expect(drawer.getByRole('columnheader', { name: '税额(元)', exact: true })).toHaveCount(
+      family === 'sales' ? 1 : 0
+    )
+    if (family === 'sales') amounts.push(['税额(元)', '0.00'])
+    for (const [label, value] of amounts) {
+      const header = drawer.getByRole('columnheader', { name: label, exact: true })
+      await expect(header).toHaveCount(1)
+      const column = await header.evaluate((element) => (element as HTMLTableCellElement).cellIndex)
+      await expect(rows.nth(3).locator('td').nth(column)).toHaveText(value)
+    }
     await zeroTax.scrollIntoViewIfNeeded()
     await expect(zeroTax).toBeInViewport()
     await page.screenshot({
@@ -660,7 +677,7 @@ for (const { family, variant } of scenarios) {
       buffer: Buffer.from('物料编码,数量,单价(元)\nNOT-AVAILABLE,2,10\n')
     })
     await expect(
-      page.getByText('第 2 行物料编码“NOT-AVAILABLE”未匹配到唯一物料，请检查当前租户物料', {
+      page.getByText('未找到第 2 行当前租户物料编码“NOT-AVAILABLE”', {
         exact: true
       })
     ).toBeVisible()

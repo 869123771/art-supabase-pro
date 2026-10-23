@@ -158,6 +158,68 @@ test('overlay reset restores nested form values when a callback prevents native 
   assert.equal((overlay.getData() as typeof original).details.amount, 10)
 })
 
+test('reset invalidates a pending confirmation without closing the reset form', async () => {
+  const overlay = createOverlay()
+  let complete!: () => void
+  await overlay.handleOpen(
+    { id: 'same' },
+    {
+      onConfirm: () =>
+        new Promise<void>((resolve) => {
+          complete = resolve
+        })
+    }
+  )
+  const pending = overlay.handleConfirm()
+  overlay.handleReset()
+  complete()
+  assert.equal(await pending, false)
+  assert.equal(overlay.visible.value, true)
+  assert.equal(overlay.confirmLoading.value, false)
+})
+
+test('reset suppresses a pending open failure from the previous form session', async () => {
+  const errors: unknown[] = []
+  const overlay = createOverlay((error) => errors.push(error))
+  let reject!: (error: Error) => void
+  const pending = overlay.handleOpen(
+    { id: 'same' },
+    {
+      onOpen: () =>
+        new Promise<void>((_resolve, rejectPending) => {
+          reject = rejectPending
+        })
+    }
+  )
+  await Promise.resolve()
+  overlay.handleReset()
+  reject(new Error('old initialization failure'))
+  await pending
+  assert.deepEqual(errors, [])
+  assert.equal(overlay.visible.value, true)
+})
+
+test('reset cancels a pending close guard and permits a fresh close request', async () => {
+  const overlay = createOverlay()
+  let allow!: (value: boolean) => void
+  await overlay.handleOpen(
+    { id: 'same' },
+    {
+      onClose: () =>
+        new Promise<boolean>((resolve) => {
+          allow = resolve
+        })
+    }
+  )
+  const closing = overlay.handleClose()
+  overlay.handleReset()
+  allow(true)
+  assert.equal(await closing, false)
+  assert.equal(overlay.visible.value, true)
+  overlay.setOptions({ onClose: undefined })
+  assert.equal(await overlay.handleClose(), true)
+})
+
 interface TestData {
   id?: string
 }

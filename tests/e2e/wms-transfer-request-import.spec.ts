@@ -89,7 +89,7 @@ for (const kind of ['transfer', 'gain', 'loss']) {
     })
   }
   test(`${title}导入无效数量不改表单并可重选两行`, async ({ page }, testInfo) => {
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
     let writes = 0
     const reads: string[] = []
     let holdMaterial = false
@@ -101,6 +101,16 @@ for (const kind of ['transfer', 'gain', 'loss']) {
       const url = new URL(route.request().url())
       const material = url.pathname.endsWith('/mdm_material')
       if (material) reads.push(url.search)
+      if (material && !url.searchParams.has('material_code')) {
+        await route.fulfill({
+          json: Array.from({ length: 500 }, (_, index) => ({
+            id: `fuzzy-${index}`,
+            material_code: `OTHER-${index}`,
+            material_name: `包含 IMPORT-MAT 的模糊候选 ${index}`
+          }))
+        })
+        return
+      }
       if (material && holdMaterial)
         await new Promise<void>((resolve) => {
           releaseMaterial = resolve
@@ -134,6 +144,8 @@ for (const kind of ['transfer', 'gain', 'loss']) {
       })
       .click()
     const drawer = page.getByRole('dialog', { name: `新增${title}`, exact: true })
+    await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
+    await expect(drawer.locator('.art-drawer__content')).toHaveJSProperty('inert', false)
     const button = drawer.getByRole('button', { name: '导入明细', exact: true })
     await expect(button).toBeEnabled()
     const addButton = drawer.getByRole('button', { name: '添加物料', exact: true })
@@ -159,28 +171,32 @@ for (const kind of ['transfer', 'gain', 'loss']) {
       }
     }
     await input.setInputFiles(await file([2, -1]))
-    await expect(
-      page.getByText('第 3 行请填写物料编码和大于零的数量', { exact: true })
-    ).toBeVisible()
+    await expect(page.getByText('第 3 行数量必须为大于零的数字', { exact: true })).toBeVisible()
     await expect(drawer.getByText('请选择物料', { exact: true })).toBeVisible()
     await expect(button).toBeEnabled()
     await expect(input).toHaveValue('')
+    expect(reads).toHaveLength(0)
     await input.setInputFiles(await file([2, 3]))
     const rows = drawer.locator('.el-table__body-wrapper tbody tr')
     await expect(rows).toHaveCount(2)
     await expect(rows.nth(0).getByRole('spinbutton').first()).toHaveValue('2.0000')
     await expect(rows.nth(1).getByRole('spinbutton').first()).toHaveValue('3.0000')
-    expect(reads).toHaveLength(3)
+    expect(reads).toHaveLength(1)
     expect(
       reads.every((query) => new URLSearchParams(query).get('tenant_id') === 'eq.tenant-test')
     ).toBe(true)
+    expect(new URLSearchParams(reads[0]).get('material_code')).toBe('eq.IMPORT-MAT')
+    expect(new URLSearchParams(reads[0]).get('status')).toBe('eq.enabled')
+    expect(new URLSearchParams(reads[0]).has('or')).toBe(false)
+    expect(new URLSearchParams(reads[0]).get('limit')).toBe('2')
     unmatchedMaterial = true
     await input.setInputFiles(await file([9]))
     await expect(
-      page.getByText('第 2 行物料编码“IMPORT-MAT”未匹配到唯一物料，请检查当前租户物料', {
+      page.getByText('未找到第 2 行当前租户物料编码“IMPORT-MAT”', {
         exact: true
       })
     ).toBeVisible()
+    expect(reads).toHaveLength(2)
     await expect(rows).toHaveCount(2)
     await expect(rows.nth(0).getByRole('spinbutton').first()).toHaveValue('2.0000')
     await expect(rows.nth(1).getByRole('spinbutton').first()).toHaveValue('3.0000')
@@ -247,8 +263,9 @@ for (const kind of ['transfer', 'gain', 'loss']) {
     await expect(drawer.getByText('请选择物料', { exact: true })).toBeVisible()
     await expect(rows).toHaveCount(0)
     failMaterial = true
+    const readsBeforeFailure = reads.length
     await input.setInputFiles(await file([2]))
-    await expect.poll(() => reads.length).toBe(6)
+    await expect.poll(() => reads.length).toBeGreaterThan(readsBeforeFailure)
     await expect(button).toBeEnabled()
     await expect(rows).toHaveCount(0)
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeEnabled()

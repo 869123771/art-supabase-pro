@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./qualification-catalog-page-D3KwOCS4.js";var i=t({name:`SmisWorkItem`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{"catalog-type":`work_item`}))}});export{i as default};

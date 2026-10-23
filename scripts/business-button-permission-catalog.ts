@@ -2610,7 +2610,12 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'MdmPaymentTerm',
-    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Delete', '删除')
+    ]
   },
   {
     menuName: 'FinancePayableApplication',
@@ -2657,11 +2662,21 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
   },
   {
     menuName: 'MdmPaymentPurpose',
-    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Delete', '删除')
+    ]
   },
   {
     menuName: 'MdmSettlementMethod',
-    buttons: [button('View', '查看'), button('Add', '新增'), button('Edit', '编辑')]
+    buttons: [
+      button('View', '查看'),
+      button('Add', '新增'),
+      button('Edit', '编辑'),
+      button('Delete', '删除')
+    ]
   },
   {
     menuName: 'WmsInventoryEnable',
@@ -3402,6 +3417,10 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
 ]
 
 export const systemButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] = [
+  {
+    menuName: 'ColumnConfig',
+    buttons: [button('Manage', '维护列方案'), button('Sync', '同步前端列目录')]
+  },
   { menuName: 'Organization', buttons: crud({ view: true }) },
   {
     menuName: 'Menu',

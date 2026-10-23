@@ -708,6 +708,7 @@
 <script setup lang="ts">
   import { getMaterialCategoryIds } from '@/utils/business/material-category'
   import { readWmsDocumentImportRows } from '@/utils/wms/document-import'
+  import { createImportReferenceLookup } from '@/utils/business/import-reference'
   import { formatWmsOwnerName } from '@/utils/wms/owner-display'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { formatUnitDisplayName } from '@/utils/business/unit-display'
@@ -2028,8 +2029,7 @@
     importing.value = true
     drawerRef.value?.setOptions({ confirmDisabled: true })
     try {
-      const importedLines: typeof lines.value = []
-      for (const { row, code, fileRow, amounts } of readWmsDocumentImportRows(rows)) {
+      const resolveMaterial = createImportReferenceLookup(async (code) => {
         const result = await fetchWmsPurchaseMaterials({
           tenantId,
           keyword: '',
@@ -2037,11 +2037,13 @@
           current: 1,
           size: 20
         })
-        const matches = result.data.filter((item) => item.code === code)
+        return result.data.filter((item) => item.code === code)
+      })
+      const importedLines: typeof lines.value = []
+      for (const { row, code, fileRow, amounts } of readWmsDocumentImportRows(rows)) {
+        const material = await resolveMaterial(code, `第 ${fileRow} 行当前租户物料编码“${code}”`)
         if (request !== documentRequest) return
-        if (matches.length !== 1)
-          throw new Error(`第 ${fileRow} 行物料编码“${code}”未匹配到唯一物料，请检查当前租户物料`)
-        const line = makeLine(matches[0])
+        const line = makeLine(material)
         line.quantity = amounts.quantity
         line.unitPrice = amounts.unitPrice
         line.taxRate = amounts.taxRate

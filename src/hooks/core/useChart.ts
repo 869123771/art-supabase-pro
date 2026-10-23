@@ -139,6 +139,13 @@ export function useChart(options: UseChartOptions = {}) {
   const delayedResizeTimerIds = new Set<number>()
   const scheduledFrameIds = new Set<number>()
 
+  const clearInitTimer = () => {
+    if (initTimerId !== null) {
+      clearTimeout(initTimerId)
+      initTimerId = null
+    }
+  }
+
   const scheduleFrame = (callback: FrameRequestCallback): number => {
     const frameId = requestAnimationFrame((timestamp) => {
       scheduledFrameIds.delete(frameId)
@@ -155,10 +162,7 @@ export function useChart(options: UseChartOptions = {}) {
       cancelAnimationFrame(resizeFrameId)
       resizeFrameId = null
     }
-    if (initTimerId !== null) {
-      clearTimeout(initTimerId)
-      initTimerId = null
-    }
+    clearInitTimer()
     delayedResizeTimerIds.forEach((timerId) => clearTimeout(timerId))
     delayedResizeTimerIds.clear()
     scheduledFrameIds.forEach((frameId) => cancelAnimationFrame(frameId))
@@ -453,7 +457,12 @@ export function useChart(options: UseChartOptions = {}) {
         if (entry.isIntersecting && pendingOptions && !isDestroyed) {
           // 使用 requestAnimationFrame 确保在下一帧初始化图表
           scheduleFrame(() => {
-            if (!isDestroyed && pendingOptions) {
+            if (
+              !isDestroyed &&
+              pendingOptions &&
+              chartRef.value &&
+              isContainerVisible(chartRef.value)
+            ) {
               try {
                 // 元素变为可见，初始化图表
                 const visibleOptions = pendingOptions
@@ -486,7 +495,13 @@ export function useChart(options: UseChartOptions = {}) {
 
   // 图表初始化核心逻辑
   const performChartInit = (options: EChartsOption) => {
-    if (!chart && chartRef.value && !isDestroyed) {
+    if (!chartRef.value || isDestroyed) return
+    if (!isContainerVisible(chartRef.value)) {
+      pendingOptions = options
+      intersectionObserver.resume()
+      return
+    }
+    if (!chart) {
       chart = echarts.init(chartRef.value)
       // 图表创建后立即设置监听器
       setupMenuWatchers()
@@ -503,10 +518,7 @@ export function useChart(options: UseChartOptions = {}) {
     create: () => {
       pendingOptions = null
       intersectionObserver.pause()
-      if (initTimerId !== null) {
-        clearTimeout(initTimerId)
-        initTimerId = null
-      }
+      clearInitTimer()
       if (!chartRef.value || emptyStateDiv) return
 
       emptyStateDiv = document.createElement('div')
@@ -540,6 +552,8 @@ export function useChart(options: UseChartOptions = {}) {
   const initChart = (options: EChartsOption = {}, isEmpty: boolean = false) => {
     if (!chartRef.value || isDestroyed) return
 
+    clearInitTimer()
+    pendingOptions = null
     const mergedOptions = { ...initOptions, ...options }
 
     try {
@@ -559,9 +573,6 @@ export function useChart(options: UseChartOptions = {}) {
         intersectionObserver.pause()
         // 容器可见，正常初始化
         if (initDelay > 0) {
-          if (initTimerId !== null) {
-            clearTimeout(initTimerId)
-          }
           initTimerId = window.setTimeout(() => {
             initTimerId = null
             performChartInit(mergedOptions)

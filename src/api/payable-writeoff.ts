@@ -148,7 +148,7 @@ export async function reversePayableWriteoff(id: string, reason: string): Promis
 }
 export async function payableSettlementVoucher(
   id: string,
-  kind: 'payment' | 'writeoff',
+  kind: 'payment' | 'refund' | 'writeoff',
   preview = false
 ): Promise<PayableVoucherResult> {
   const { data } = await responseHandle<PayableVoucherResult>(

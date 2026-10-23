@@ -7,7 +7,7 @@
         :to="to"
         :title="title || `查看${label}详情`"
       >
-        {{ label }}
+        <span class="min-w-0 truncate">{{ label }}</span>
       </RouterLink>
       <button
         v-else-if="interactive"
@@ -16,10 +16,10 @@
         :title="title || `查看${label}详情`"
         @click="emit('click')"
       >
-        {{ label }}
+        <span class="min-w-0 truncate">{{ label }}</span>
       </button>
       <strong v-else class="business-record-link__static" :title="title || label">
-        {{ label }}
+        <span class="min-w-0 truncate">{{ label }}</span>
       </strong>
       <span v-if="meta" class="business-record-link__meta" :title="meta">{{ meta }}</span>
     </div>
@@ -85,7 +85,7 @@
     }
 
     &__control {
-      color: var(--theme-color);
+      color: color-mix(in srgb, var(--theme-color) 85%, var(--el-text-color-primary));
       text-decoration: none;
       cursor: pointer;
       background: var(--el-color-primary-light-9);
@@ -96,7 +96,7 @@
         border-color var(--art-duration-fast);
 
       &:hover {
-        color: var(--el-color-primary-dark-2);
+        color: color-mix(in srgb, var(--theme-color) 75%, var(--el-text-color-primary));
         background: var(--el-color-primary-light-8);
         border-color: var(--el-color-primary-light-5);
       }

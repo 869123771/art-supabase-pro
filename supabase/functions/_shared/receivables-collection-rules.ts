@@ -1,7 +1,10 @@
 export type ReceivablesRiskLevel = 'critical' | 'high' | 'medium' | 'low'
 export type ReceivablesSignalSeverity = 'critical' | 'high' | 'medium'
 export type ReceivablesRecommendation =
-  'unblock_settlement' | 'complete_invoicing' | 'prioritize_collection' | 'routine_monitoring'
+  | 'unblock_settlement'
+  | 'complete_invoicing'
+  | 'prioritize_collection'
+  | 'routine_monitoring'
 
 export interface CustomerStatementRow {
   id?: unknown
@@ -229,7 +232,9 @@ function assessStatement(
   return { ...row, riskScore, reasons }
 }
 
-function buildRiskCustomers(statements: ReceivablesPriorityStatement[]): ReceivablesRiskCustomer[] {
+function buildRiskCustomers(
+  statements: ReceivablesPriorityStatement[]
+): ReceivablesRiskCustomer[] {
   const grouped = new Map<string, ReceivablesRiskCustomer>()
   for (const statement of statements) {
     const key = statement.customerId || statement.customerName
@@ -294,7 +299,9 @@ export function assessReceivablesCollection(
   const aging30Amount = round(aging30Rows.reduce((sum, row) => sum + row.outstandingAmount, 0))
   const aging60Amount = round(aging60Rows.reduce((sum, row) => sum + row.outstandingAmount, 0))
   const aging90Amount = round(aging90Rows.reduce((sum, row) => sum + row.outstandingAmount, 0))
-  const uninvoicedAmount = round(uninvoicedRows.reduce((sum, row) => sum + row.uninvoicedAmount, 0))
+  const uninvoicedAmount = round(
+    uninvoicedRows.reduce((sum, row) => sum + row.uninvoicedAmount, 0)
+  )
   const reviewBlockedAmount = round(
     reviewBlockedRows.reduce((sum, row) => sum + row.outstandingAmount, 0)
   )
@@ -311,10 +318,7 @@ export function assessReceivablesCollection(
       severity: 'critical',
       title: '存在 90 天以上长账龄应收',
       detail: `${aging90Rows.length} 笔未结对账单的账期结束时间已超过 90 天，应优先核实回款承诺与争议原因。`,
-      evidence: [
-        `涉及金额：${money(aging90Amount)}`,
-        `涉及客户：${new Set(aging90Rows.map((row) => row.customerId || row.customerName)).size} 家`
-      ]
+      evidence: [`涉及金额：${money(aging90Amount)}`, `涉及客户：${new Set(aging90Rows.map((row) => row.customerId || row.customerName)).size} 家`]
     })
   } else if (aging60Rows.length) {
     signals.push({
@@ -322,10 +326,7 @@ export function assessReceivablesCollection(
       severity: 'high',
       title: '60 天以上应收需要升级跟进',
       detail: `${aging60Rows.length} 笔未结对账单已进入较长账龄区间，建议明确责任人与下一次催收节点。`,
-      evidence: [
-        `涉及金额：${money(aging60Amount)}`,
-        `占当前未结：${percentage(aging60Amount, outstandingAmount).toFixed(1)}%`
-      ]
+      evidence: [`涉及金额：${money(aging60Amount)}`, `占当前未结：${percentage(aging60Amount, outstandingAmount).toFixed(1)}%`]
     })
   }
 
@@ -335,10 +336,7 @@ export function assessReceivablesCollection(
       severity: reviewBlockedRows.some((row) => row.ageDays >= 30) ? 'high' : 'medium',
       title: '对账确认阻塞回款流程',
       detail: `${reviewBlockedRows.length} 笔对账单仍处于草稿或待审核状态，尚未形成稳定的开票与催收依据。`,
-      evidence: [
-        `阻塞金额：${money(reviewBlockedAmount)}`,
-        `最久账龄：${Math.max(...reviewBlockedRows.map((row) => row.ageDays))} 天`
-      ]
+      evidence: [`阻塞金额：${money(reviewBlockedAmount)}`, `最久账龄：${Math.max(...reviewBlockedRows.map((row) => row.ageDays))} 天`]
     })
   }
 
@@ -348,10 +346,7 @@ export function assessReceivablesCollection(
       severity: uninvoicedAmount >= outstandingAmount * 0.5 ? 'high' : 'medium',
       title: '未开票金额影响回款推进',
       detail: `${uninvoicedRows.length} 笔已确认或部分结算的对账单仍有未开票金额，可能成为客户付款流程的前置阻塞。`,
-      evidence: [
-        `未开票金额：${money(uninvoicedAmount)}`,
-        `占当前未结：${percentage(uninvoicedAmount, outstandingAmount).toFixed(1)}%`
-      ]
+      evidence: [`未开票金额：${money(uninvoicedAmount)}`, `占当前未结：${percentage(uninvoicedAmount, outstandingAmount).toFixed(1)}%`]
     })
   }
 
@@ -366,10 +361,7 @@ export function assessReceivablesCollection(
       severity: topCustomer.riskScore >= 80 ? 'high' : 'medium',
       title: '应收集中度偏高',
       detail: `${topCustomer.customerName} 的未结金额占当前应收的一半以上，单一客户回款波动会明显影响现金流。`,
-      evidence: [
-        `客户未结：${money(topCustomer.outstandingAmount)}`,
-        `应收占比：${percentage(topCustomer.outstandingAmount, outstandingAmount).toFixed(1)}%`
-      ]
+      evidence: [`客户未结：${money(topCustomer.outstandingAmount)}`, `应收占比：${percentage(topCustomer.outstandingAmount, outstandingAmount).toFixed(1)}%`]
     })
   }
 

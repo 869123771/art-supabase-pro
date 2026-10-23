@@ -67,5 +67,7 @@ export interface AddressLocateOptions {
 
 export interface ArtAddressPickerExpose {
   locateCurrent: (options?: AddressLocateOptions) => Promise<AddressLocationPayload | undefined>
+  /** End this control's wait and ignore late device-location callbacks. */
+  cancelLocate: () => void
   openPicker: () => Promise<void>
 }

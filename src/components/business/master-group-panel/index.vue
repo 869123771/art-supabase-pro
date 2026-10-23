@@ -53,6 +53,7 @@
       type="button"
       class="master-group-panel__all"
       :class="{ 'is-current': !selectedId }"
+      :aria-pressed="!selectedId"
       @click="$emit('select', '')"
     >
       <span aria-hidden="true"><ArtSvgIcon icon="ri:apps-2-line" /></span>
@@ -258,39 +259,7 @@
     }
 
     &__all {
-      display: grid;
-      grid-template-columns: 36px minmax(0, 1fr) 18px;
-      gap: 10px;
-      align-items: center;
-      width: 100%;
-      min-height: 58px;
-      padding: 8px 10px;
-      font: inherit;
-      color: var(--el-text-color-regular);
-      text-align: left;
-      cursor: pointer;
-      background: var(--art-gray-100);
-      border: 1px solid transparent;
-      border-radius: var(--el-border-radius-base);
-      transition:
-        background-color var(--art-motion-duration-fast),
-        border-color var(--art-motion-duration-fast),
-        box-shadow var(--art-motion-duration-fast);
-
-      &:hover,
-      &.is-current {
-        background: color-mix(in srgb, var(--theme-color) 9%, var(--default-box-color));
-        border-color: color-mix(in srgb, var(--theme-color) 22%, transparent);
-      }
-
-      &.is-current {
-        box-shadow: inset 3px 0 0 var(--theme-color);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--theme-color);
-        outline-offset: 2px;
-      }
+      @include master-group-all-button;
 
       > span:first-child {
         display: grid;

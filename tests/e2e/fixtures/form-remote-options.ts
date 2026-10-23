@@ -59,6 +59,16 @@ const app = createApp({
       h(
         'button',
         {
+          disabled: !form.value?.readyToSubmit,
+          onClick: async () => {
+            if (await form.value?.validate(() => undefined)) submissions.value += 1
+          }
+        },
+        '外部保存'
+      ),
+      h(
+        'button',
+        {
           onClick: () => {
             callbackFailure = false
           }

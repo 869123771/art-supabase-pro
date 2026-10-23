@@ -24,7 +24,13 @@ const app = createApp({
           { prop: 'bankName', label: '收款银行', minWidth: 180 }
         ],
         headerActions: [
-          { key: 'deleteSelected', label: '批量删除', icon: 'ri:delete-bin-line', selectionRequired: true, onClick: () => undefined }
+          {
+            key: 'deleteSelected',
+            label: '批量删除',
+            icon: 'ri:delete-bin-line',
+            selectionRequired: true,
+            onClick: () => undefined
+          }
         ],
         showSearchBar: false,
         tableProps: { rowKey: 'id' }
@@ -32,7 +38,12 @@ const app = createApp({
     ])
 })
 app.use(store)
-app.use(createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div />' } }] }))
+app.use(
+  createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/', component: { template: '<div />' } }]
+  })
+)
 app.use(language)
 setupGlobDirectives(app)
 app.mount('#fms-selection-bar')

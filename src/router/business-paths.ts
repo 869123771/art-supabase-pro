@@ -37,6 +37,7 @@ export const financePaths = {
   financialPayable: `${FMS_ROOT_PATH}/accounts-payable/purchase-payable`,
   payableApplication: `${FMS_ROOT_PATH}/accounts-payable/payment-application`,
   payablePayment: `${FMS_ROOT_PATH}/accounts-payable/payment`,
+  payableRefund: `${FMS_ROOT_PATH}/accounts-payable/payment-refund`,
   payableWriteoff: `${FMS_ROOT_PATH}/accounts-payable/writeoff`,
   waybillProfit: `${FMS_ROOT_PATH}/settlement/waybill-profit`,
   expenseItem: `${FMS_ROOT_PATH}/settlement/expense-item`,

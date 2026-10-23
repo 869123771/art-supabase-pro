@@ -1,5 +1,5 @@
 <template>
-  <footer class="art-sticky-action-bar art-card-xs">
+  <footer class="art-sticky-action-bar art-card-xs" :class="{ 'is-embedded': embedded }">
     <div v-if="$slots.summary || hint" class="art-sticky-action-bar__summary">
       <slot name="summary">
         <span class="art-sticky-action-bar__hint">
@@ -23,10 +23,13 @@
     defineProps<{
       hint?: string
       hintIcon?: string
+      /** Render as the bounded footer of an existing workspace surface. */
+      embedded?: boolean
     }>(),
     {
       hint: '',
-      hintIcon: 'ri:information-line'
+      hintIcon: 'ri:information-line',
+      embedded: false
     }
   )
 </script>
@@ -49,6 +52,19 @@
     ) !important;
     box-shadow: 0 8px 28px rgb(0 0 0 / 10%) !important;
     backdrop-filter: blur(12px);
+
+    &.is-embedded {
+      position: static;
+      z-index: auto;
+      flex: none;
+      min-height: 64px;
+      padding: 12px 16px;
+      border: 0 !important;
+      border-top: 1px solid var(--el-border-color-lighter) !important;
+      border-radius: 0;
+      box-shadow: none !important;
+      backdrop-filter: none;
+    }
 
     &__summary {
       flex: 1;

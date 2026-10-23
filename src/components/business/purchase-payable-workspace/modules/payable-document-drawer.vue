@@ -93,7 +93,11 @@
           :show-reset="false"
           @update:model-value="replaceReactiveModel(document, $event)"
         />
+        <p v-if="editable" class="mb-3 text-xs text-g-700">
+          更换单位按当前数量更新基本数量，单价不会自动折算；基本数量可核对后手工校正。
+        </p>
         <ArtTable
+          ref="lineTableRef"
           :data="document.lines"
           :columns="lineColumns"
           :pagination="false"
@@ -106,9 +110,13 @@
               v-model="row[field]"
               :aria-label="numericLabels[field]"
               :precision="
-                field === 'quantity' || field === 'baseQuantity' || field.includes('Price') ? 4 : 2
+                field === 'quantity' || field === 'baseQuantity'
+                  ? 6
+                  : field.includes('Price')
+                    ? 4
+                    : 2
               "
-              :min="field === 'quantity' ? 0.0001 : 0"
+              :min="field === 'quantity' || field === 'baseQuantity' ? 0.000001 : 0"
               :controls="false"
               class="w-full!"
               @change="
@@ -150,11 +158,18 @@
               v-if="editable"
               v-model="row.inventoryUnitId"
               aria-label="库存单位"
+              :disabled="optionLoading"
+              :loading="optionLoading"
               class="w-full!"
-              @change="
-                row.unitName = options.unit.find((unit) => unit.id === row.inventoryUnitId)?.name
-              "
+              @change="updateLineUnit(row, 'inventoryUnitId')"
               ><ElOption
+                v-if="
+                  row.inventoryUnitId &&
+                  !options.unit?.some((unit) => unit.id === row.inventoryUnitId)
+                "
+                :value="row.inventoryUnitId"
+                :label="row.unitName || '历史库存单位不可参选，请核对'"
+                disabled /><ElOption
                 v-for="unit in options.unit"
                 :key="unit.id"
                 :value="unit.id"
@@ -166,10 +181,29 @@
               v-if="editable"
               v-model="row[field]"
               :aria-label="referenceLabels[field]"
+              :disabled="optionLoading"
+              :loading="optionLoading"
+              :no-data-text="
+                field === 'contractId'
+                  ? '暂无可参选合同，请确认采购合同查看权限或合同数据'
+                  : '暂无数据'
+              "
               clearable
               filterable
               class="w-full!"
+              @change="field === 'baseUnitId' && updateLineUnit(row, 'baseUnitId')"
             >
+              <ElOption
+                v-if="
+                  row[field] &&
+                  !(options[referenceOptions[field]] || []).some(
+                    (option) => option.id === row[field]
+                  )
+                "
+                :value="row[field]"
+                :label="referenceName(row, field)"
+                disabled
+              />
               <ElOption
                 v-for="option in options[referenceOptions[field]] || []"
                 :key="option.id"
@@ -181,10 +215,24 @@
           </template>
           <template v-for="field in sourceFields" :key="field" #[field]="{ row }">
             <ElInput
-              v-if="editable && document.sourceType === 'manual'"
+              v-if="editable && document.sourceType === 'manual' && !row.estimatedLineId"
               v-model="row[field]"
               :aria-label="field === 'sourceDocumentNo' ? '明细来源单据' : '明细源行号'"
               maxlength="200"
+            />
+            <BusinessRecordLink
+              v-else-if="
+                !editable &&
+                field === 'sourceDocumentNo' &&
+                document.sourceType === 'manual' &&
+                row.estimatedDocumentId &&
+                hasAuth('FinanceEstimatedPayable:View')
+              "
+              :label="row[field] || '来源暂估'"
+              :title="`查看来源暂估 ${row[field]}`"
+              interactive
+              compact
+              @click="openEstimatedSource(row.estimatedDocumentId)"
             />
             <span v-else>{{ row[field] || '—' }}</span>
           </template>
@@ -238,10 +286,8 @@
             /><span v-else>{{ row.remark || '—' }}</span></template
           >
           <template #operation="{ row }"
-            ><ElButton v-if="editable" link type="danger" @click="removeLine(row.id)"
-              >移除</ElButton
-            ></template
-          >
+            ><ArtButtonTable v-if="editable" type="delete" label="移除" @click="removeLine(row.id)"
+          /></template>
         </ArtTable>
       </ArtSectionCard>
       <ArtSectionCard
@@ -250,7 +296,9 @@
         subtitle="金额合计需与价税合计一致；按比例开启后，应付金额自动计算。"
       >
         <template #actions
-          ><ElButton v-if="editable" @click="addPlan">增加付款期次</ElButton></template
+          ><ElButton v-if="editable" @click="addPlan"
+            ><ArtSvgIcon icon="ri:add-line" />增加付款期次</ElButton
+          ></template
         >
         <ElSwitch
           v-model="document.plansByRatio"
@@ -307,14 +355,12 @@
             ></template
           >
           <template #operation="{ $index }"
-            ><ElButton
+            ><ArtButtonTable
               v-if="editable"
-              link
-              type="danger"
+              type="delete"
+              label="移除"
               @click="document.paymentPlans?.splice($index, 1)"
-              >移除</ElButton
-            ></template
-          >
+          /></template>
         </ArtTable>
       </ArtSectionCard>
       <ArtSectionCard title="关联信息" subtitle="来源、冲回与制证均保留在统一应付账簿。">
@@ -360,12 +406,16 @@
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { financePaths } from '@/router/business-paths'
+  import BusinessRecordLink from '@/components/business/business-record-link/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { useUserStore } from '@/store/modules/user'
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtTable, { type ArtTableExpose } from '@/components/core/tables/art-table/index.vue'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import ArtDescriptions from '@/components/core/base/art-descriptions/index.vue'
@@ -379,18 +429,34 @@
   import type { ColumnOption } from '@/types'
 
   const props = defineProps<{ kind: PurchasePayableKind }>()
+  const router = useRouter()
+  const { hasAuth } = useAuth()
   const emit = defineEmits<{ success: [] }>()
   const drawerRef = ref<ArtDrawerExpose>()
   const materialPickerRef = ref<ArtDataSelectExpose>()
   const formRef = ref<InstanceType<typeof ArtForm>>()
+  const lineTableRef = ref<ArtTableExpose>()
   const document = ref<PurchasePayableDocument>()
   const editable = ref(false)
+  async function openEstimatedSource(id: string): Promise<void> {
+    if (editable.value || !hasAuth('FinanceEstimatedPayable:View')) {
+      ElMessage.warning('当前状态不允许查看来源暂估，请先核对权限并关闭编辑')
+      return
+    }
+    try {
+      await drawerRef.value?.handleClose(true)
+      await router.push({ path: financePaths.estimatedPayable, query: { recordId: id } })
+    } catch (error) {
+      notifyFriendlyError(error, '来源暂估定位失败，请重新打开详情后重试')
+    }
+  }
   const optionError = ref(false)
   const optionLoading = ref(false)
   const currencyLoading = ref(false)
   const currencyConfigured = ref(true)
   const currencyMessage = ref('')
   let currencyVersion = 0
+  let lastValidQuantities = new WeakMap<PurchasePayableLine, number>()
   const currency = computed(() => document.value?.currencyCode || 'CNY')
   const baseCurrency = computed(() => document.value?.baseCurrencyCode || 'CNY')
   const amountLabel = (name: string) =>
@@ -627,41 +693,75 @@
   const referenceLabels = {
     baseUnitId: '基本单位',
     supplierId: '供应商',
-    departmentId: '费用承担部门'
+    departmentId: '费用承担部门',
+    contractId: '合同'
   }
   type ReferenceField = keyof typeof referenceLabels
   const referenceFields = Object.keys(referenceLabels) as ReferenceField[]
   const referenceOptions = {
     baseUnitId: 'unit',
     supplierId: 'supplier',
-    departmentId: 'organization'
+    departmentId: 'organization',
+    contractId: 'contract'
   }
   const sourceFields = ['sourceDocumentNo', 'sourceLineNo'] as const
   function referenceName(row: PurchasePayableLine, field: ReferenceField): string {
+    if (field === 'contractId' && row.contractNo) return row.contractNo
     const name = options[referenceOptions[field]]?.find((option) => option.id === row[field])?.name
-    return (
-      name ||
-      (field === 'baseUnitId'
-        ? row.baseUnitName
-        : field === 'supplierId'
-          ? row.supplierName
-          : row.departmentName) ||
-      '—'
-    )
+    const historical = {
+      baseUnitId: row.baseUnitName,
+      supplierId: row.supplierName,
+      departmentId: row.departmentName,
+      contractId: row.contractNo
+    }
+    return name || historical[field] || (row[field] ? '已停用或不可参选，请核对' : '—')
   }
   const lineColumns = computed<ColumnOption<PurchasePayableLine>[]>(() => [
     { prop: 'lineNo', label: '行号', width: 70, fixed: 'left' },
-    { prop: 'materialDescription', label: '物料描述', minWidth: 220, fixed: 'left' },
+    {
+      prop: 'materialDescription',
+      label: '物料描述',
+      minWidth: 220,
+      fixed: 'left',
+      required: true,
+      requiredMessage: '请选择应付物料'
+    },
     { prop: 'materialCode', label: '物料编码', minWidth: 150 },
     { prop: 'specificationModel', label: '规格型号', minWidth: 150 },
     { prop: 'projectName', label: '项目名称', minWidth: 180, useSlot: true },
     { prop: 'projectCode', label: '项目编码', minWidth: 130 },
-    { prop: 'inventoryUnitId', label: '库存单位', width: 120, useSlot: true },
+    {
+      prop: 'inventoryUnitId',
+      label: '库存单位',
+      width: 120,
+      useSlot: true,
+      required: true,
+      requiredMessage: '请选择库存单位'
+    },
     { prop: 'baseUnitId', label: '基本单位', width: 120, useSlot: true },
-    ...numericFields
-      .slice(0, 4)
-      .map((field) => ({ prop: field, label: numericLabels[field], width: 135, useSlot: true })),
-    { prop: 'taxRate', label: '税率(%)', width: 110, useSlot: true },
+    ...numericFields.slice(0, 4).map((field) => ({
+      prop: field,
+      label: numericLabels[field],
+      width: 135,
+      useSlot: true,
+      required: field === 'quantity' || field === 'baseQuantity',
+      rules: {
+        validator: ({ value }: { value: unknown }) =>
+          Number.isFinite(Number(value)) &&
+          (field === 'quantity' || field === 'baseQuantity'
+            ? Number(value) > 0
+            : Number(value) >= 0),
+        message: `请填写有效的${numericLabels[field]}`
+      }
+    })),
+    {
+      prop: 'taxRate',
+      label: '税率(%)',
+      width: 110,
+      useSlot: true,
+      required: true,
+      requiredMessage: '请选择税率'
+    },
     { prop: 'discountMethod', label: '折扣方式', width: 135, useSlot: true },
     { prop: 'discountValue', label: '单位折扣(率)', width: 130, useSlot: true },
     { prop: 'discountAmount', label: amountLabel('折扣额'), width: 125 },
@@ -713,6 +813,17 @@
       : []),
     { prop: 'supplierId', label: '供应商', minWidth: 170, useSlot: true },
     { prop: 'departmentId', label: '费用承担部门', minWidth: 170, useSlot: true },
+    { prop: 'contractId', label: '合同', minWidth: 230, useSlot: true },
+    ...(props.kind === 'estimated'
+      ? [
+          {
+            prop: 'linkedQuantity',
+            label: '已关联财务数量',
+            width: 150,
+            align: 'right' as const
+          }
+        ]
+      : []),
     { prop: 'linkedAmount', label: amountLabel('已关联财务应付'), width: 165 },
     {
       prop: 'unlinkedAmount',
@@ -721,15 +832,19 @@
       formatter: (row) =>
         formatCurrencyValue(row.totalAmount - (row.linkedAmount || 0), currency.value)
     },
-    {
-      prop: 'isReversed',
-      label: '已冲回',
-      width: 90,
-      formatter: (row) => (row.isReversed ? '是' : '否')
-    },
-    { prop: 'unreversedAmount', label: amountLabel('未冲回金额'), width: 150 },
-    { prop: 'reversedAmount', label: amountLabel('已冲回金额'), width: 150 },
-    { prop: 'costDifference', label: `成本差异(${baseCurrency.value})`, width: 145 },
+    ...(props.kind === 'estimated'
+      ? [
+          {
+            prop: 'isReversed',
+            label: '已冲回',
+            width: 90,
+            formatter: (row: PurchasePayableLine) => (row.isReversed ? '是' : '否')
+          },
+          { prop: 'unreversedAmount', label: amountLabel('未冲回金额'), width: 150 },
+          { prop: 'reversedAmount', label: amountLabel('已冲回金额'), width: 150 },
+          { prop: 'costDifference', label: `成本差异(${baseCurrency.value})`, width: 145 }
+        ]
+      : []),
     { prop: 'sourceDocumentNo', label: '来源单据', minWidth: 180, useSlot: true },
     { prop: 'sourceLineNo', label: '源行号', width: 110, useSlot: true },
     { prop: 'remark', label: '备注', minWidth: 180, useSlot: true },
@@ -746,7 +861,19 @@
     { prop: 'remark', label: '备注', minWidth: 160, useSlot: true },
     { prop: 'operation', label: '操作', width: 80, useSlot: true }
   ])
-  const relatedItems: ArtDescriptionItem<PurchasePayableDocument>[] = [
+  const relatedItems = computed<ArtDescriptionItem<PurchasePayableDocument>[]>(() => [
+    ...(props.kind === 'estimated'
+      ? [
+          {
+            key: 'financialPayableTypeName',
+            label: '到票财务类型',
+            value: (row: PurchasePayableDocument) =>
+              row.standardPurchase
+                ? '从同源采购入库单生成'
+                : row.financialPayableTypeName || '未配置'
+          }
+        ]
+      : []),
     { key: 'sourceDocumentNo', label: '来源单据', field: 'sourceDocumentNo' },
     { key: 'supplierName', label: '往来单位', field: 'supplierName' },
     { key: 'voucherNo', label: '凭证号', field: 'voucherNo' },
@@ -768,7 +895,7 @@
       field: 'frozenAmount',
       formatter: (value) => formatCurrencyValue(Number(value || 0), currency.value)
     }
-  ]
+  ])
   async function loadOptions(): Promise<void> {
     const target = document.value
     if (!target) return
@@ -781,6 +908,7 @@
         'organization',
         'unit',
         'payment_term',
+        'contract',
         `${props.kind}_type`,
         'tax'
       ]
@@ -848,6 +976,15 @@
     previousQuantity?: number
   ): void {
     if (!document.value) return
+    if (field === 'baseQuantity') {
+      row.baseQuantityEdited = true
+      return
+    }
+    if (field === 'quantity' && previousQuantity && previousQuantity > 0)
+      lastValidQuantities.set(row, previousQuantity)
+    if (!Number.isFinite(row.quantity) || row.quantity <= 0) return
+    const priorQuantity =
+      previousQuantity && previousQuantity > 0 ? previousQuantity : lastValidQuantities.get(row)
     const changed =
       field === 'unitPrice' || field === 'taxInclusiveUnitPrice' || field === 'amount'
         ? field
@@ -858,10 +995,24 @@
         row,
         document.value,
         changed,
-        field === 'quantity' ? previousQuantity : undefined
+        field === 'quantity' ? priorQuantity : undefined
       )
     )
+    lastValidQuantities.set(row, row.quantity)
+    if (field === 'quantity') {
+      if (row.baseQuantity === undefined)
+        Object.assign(row, calculatePayableLine(row, document.value, 'inventoryUnitId'))
+    }
     recalculatePlans()
+  }
+  function updateLineUnit(row: PurchasePayableLine, field: 'inventoryUnitId' | 'baseUnitId'): void {
+    if (!document.value) return
+    row.unitName =
+      options.unit.find((unit) => unit.id === row.inventoryUnitId)?.name || row.unitName
+    row.baseUnitId ||= row.materialUnits?.baseUnitId || row.inventoryUnitId
+    Object.assign(row, calculatePayableLine(row, document.value, field))
+    if (row.baseQuantity === undefined)
+      ElMessage.warning('未配置该单位换算，请核对物料资料或手工填写基本数量，单价仍需确认')
   }
   function recalculatePlans(): void {
     if (!document.value) return
@@ -889,8 +1040,8 @@
   }
   function addMaterials(materials: PayableOption[]): void {
     if (!document.value) return
-    for (const material of materials)
-      document.value.lines.push({
+    for (const material of materials) {
+      const materialLine: PurchasePayableLine = {
         id: crypto.randomUUID(),
         sourceLineId: null,
         lineNo: (document.value.lines.length + 1) * 10,
@@ -899,13 +1050,17 @@
         materialDescription: material.description || material.name,
         specificationModel: material.specificationModel,
         inventoryUnitId: material.inventoryUnitId,
-        baseUnitId: material.baseUnitId,
-        baseQuantity: 1,
+        baseUnitId: material.baseUnitId || material.inventoryUnitId,
+        materialUnits: {
+          baseUnitId: material.baseUnitId,
+          unitConversions: material.unitConversions || []
+        },
         unitName: material.unitName || '',
         projectName: null,
         constructionNo: null,
         quantity: 1,
         unitPrice: 0,
+        priceBasis: document.value.inputTaxInclusivePrice ? 'gross' : 'net',
         taxInclusiveUnitPrice: 0,
         taxRate: 0,
         supplierId: document.value.supplierId,
@@ -916,7 +1071,12 @@
         amount: 0,
         taxAmount: 0,
         totalAmount: 0
-      })
+      }
+      document.value.lines.push(
+        calculatePayableLine(materialLine, document.value, 'inventoryUnitId')
+      )
+    }
+    materialPickerRef.value?.clear()
   }
   function addPlan(): void {
     if (!document.value) return
@@ -939,28 +1099,26 @@
       optionError.value ||
       optionLoading.value ||
       currencyLoading.value ||
-      !currencyConfigured.value
+      !currencyConfigured.value ||
+      !formRef.value?.controlsReady
     )
       return false
-    if (!(await validateArtFormForSubmit(formRef.value))) return false
-    if (!document.value.lines.length) {
-      ElMessage.warning('请至少选择一行物料明细')
-      return false
-    }
-    if (
-      document.value.lines.some(
-        (line) => !line.inventoryUnitId || !(line.quantity > 0) || line.taxRate === undefined
-      )
-    ) {
-      ElMessage.warning('请填写每行库存单位、有效数量和税率')
-      return false
-    }
-    const planError = validatePaymentPlans(document.value.paymentPlans || [], total.value)
-    if (planError) {
-      ElMessage.warning(planError)
-      return false
-    }
     try {
+      if (!(await validateArtFormForSubmit(formRef.value))) return false
+      if (!document.value.lines.length) {
+        ElMessage.warning('请至少选择一行物料明细')
+        return false
+      }
+      const lineValidation = await lineTableRef.value?.validate()
+      if (lineValidation?.valid === false) {
+        ElMessage.warning(lineValidation.firstError?.message || '请完整填写应付明细')
+        return false
+      }
+      const planError = validatePaymentPlans(document.value.paymentPlans || [], total.value)
+      if (planError) {
+        ElMessage.warning(planError)
+        return false
+      }
       await savePurchasePayable(document.value)
       ElMessage.success('应付单已保存')
       emit('success')
@@ -971,6 +1129,8 @@
     }
   }
   async function open(row?: PurchasePayableDocument, edit = false): Promise<void> {
+    lastValidQuantities = new WeakMap()
+    materialPickerRef.value?.clear()
     currencyVersion += 1
     currencyLoading.value = false
     currencyConfigured.value = true
@@ -1020,17 +1180,26 @@
           taxAmount: 0,
           totalAmount: 0
         }
-    document.value.lines.forEach((line) => {
+    const currentDocument = document.value
+    currentDocument.lines.forEach((line) => {
       line.taxRate ??= line.amount ? Math.round((line.taxAmount / line.amount) * 100) : 0
       line.taxInclusiveUnitPrice ??= Number((line.unitPrice * (1 + line.taxRate / 100)).toFixed(4))
       line.discountMethod ||= 'none'
-      line.baseQuantity ??= line.quantity
+      line.baseUnitId ||= line.materialUnits?.baseUnitId || line.inventoryUnitId
+      line.baseQuantity ??= calculatePayableLine(
+        line,
+        currentDocument,
+        'inventoryUnitId'
+      ).baseQuantity
+      line.baseQuantityEdited = false
     })
+    lineTableRef.value?.clearValidate()
     optionError.value = false
     optionLoading.value = edit
     await drawerRef.value?.handleOpen(undefined, {
       title: `${edit ? (row ? '编辑' : '新增') : ''}${title.value}${edit ? '' : '详情'}`,
       confirmText: '保存',
+      confirmDisabled: edit,
       showFooter: edit,
       onConfirm: save
     })
@@ -1062,7 +1231,8 @@
       optionLoading.value ||
       optionError.value ||
       currencyLoading.value ||
-      !currencyConfigured.value,
+      !currencyConfigured.value ||
+      (editable.value && !formRef.value?.controlsReady),
     (disabled) => drawerRef.value?.setOptions({ confirmDisabled: disabled }),
     { flush: 'sync' }
   )
@@ -1079,13 +1249,19 @@
   )
   watch(
     () => [
+      document.value,
       document.value?.inputTaxInclusivePrice,
       document.value?.inputAmount,
       document.value?.discountIncludesTax,
       document.value?.basis
     ],
-    (_value, previous) => {
-      if (editable.value && previous?.every((value) => value !== undefined))
+    (current, previous) => {
+      if (
+        editable.value &&
+        current[0] === previous?.[0] &&
+        current.slice(2).some((value, index) => value !== previous?.[index + 2]) &&
+        previous?.slice(1).every((value) => value !== undefined)
+      )
         document.value?.lines.forEach((line) => recalculate(line))
     }
   )

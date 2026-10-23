@@ -8,7 +8,6 @@ import {
   type AiCashVoucherStatementCandidate
 } from '../_shared/ai-cash-voucher-ocr-contract.ts'
 import { createVisionOcrHandler } from '../_shared/ai-vision-ocr-runtime.ts'
-import { authorizeAttachmentOcrImages } from '../_shared/ai-attachment-tenant-scope.ts'
 
 interface CashVoucherInput {
   direction: AiCashVoucherDirection
@@ -47,7 +46,6 @@ const handler = createVisionOcrHandler({
   entityType: 'tms_cash_transaction',
   entityTable: 'tms_cash_transaction',
   envPrefix: 'CASH_VOUCHER_OCR',
-  authorizeImageUrls: authorizeAttachmentOcrImages,
   defaultPrompt,
   defaultMaxTokens: 3000,
   expectedShape: {
@@ -90,19 +88,19 @@ const handler = createVisionOcrHandler({
     const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
     const rows = Array.isArray(payload.records) ? (payload.records as AllocatableRow[]) : []
     const candidates: AiCashVoucherStatementCandidate[] = rows.map((row) => ({
-      statementId: row.id,
-      statementNo: row.statement_no,
-      counterpartyId: isReceipt ? String(row.customer_id ?? '') : String(row.carrier_id ?? ''),
-      counterpartyName: isReceipt
-        ? String(row.customer_name ?? '')
-        : String(row.carrier_name ?? ''),
-      periodStart: row.period_start,
-      periodEnd: row.period_end,
-      statementAmount: Number(row.statement_amount ?? 0),
-      settledAmount: Number(row.settled_amount ?? 0),
-      outstandingAmount: Number(row.outstanding_amount ?? 0),
-      createTime: row.create_time
-    }))
+        statementId: row.id,
+        statementNo: row.statement_no,
+        counterpartyId: isReceipt ? String(row.customer_id ?? '') : String(row.carrier_id ?? ''),
+        counterpartyName: isReceipt
+          ? String(row.customer_name ?? '')
+          : String(row.carrier_name ?? ''),
+        periodStart: row.period_start,
+        periodEnd: row.period_end,
+        statementAmount: Number(row.statement_amount ?? 0),
+        settledAmount: Number(row.settled_amount ?? 0),
+        outstandingAmount: Number(row.outstanding_amount ?? 0),
+        createTime: row.create_time
+      }))
     return {
       matches: matchAiCashVoucherStatements(result.voucher, input.direction, candidates),
       evaluatedStatements: candidates.length

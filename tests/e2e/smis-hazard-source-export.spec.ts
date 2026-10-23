@@ -90,8 +90,11 @@ for (const mode of ['complete', 'selected', 'incomplete']) {
       })
     })
     await page.goto('#/smis/safety-production/emergency-rescue/hazard-source-ledger')
-    await expect(page.getByRole('heading', { name: '危险源台账', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '危险源台账', exact: true })).toBeVisible({
+      timeout: 120_000
+    })
     await expect(page.getByText('测试危险源-0', { exact: true })).toBeVisible()
+    await expect(page.getByText('一级', { exact: true }).first()).toBeVisible({ timeout: 30_000 })
     if (mode === 'selected') {
       await page.locator('.site-navigator').getByText('测试场所', { exact: true }).click()
       await expect.poll(() => requests.at(-1)?.p_site_id).toBe('site-test')

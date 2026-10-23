@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./workspace-B50HMmoT.js";var i=t({name:`WmsOtherOutbound`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`other_outbound`}))}});export{i as default};

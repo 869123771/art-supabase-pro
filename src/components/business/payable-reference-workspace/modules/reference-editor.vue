@@ -110,6 +110,7 @@
     type PayableReferenceKind
   } from '@/api/payable-reference'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
+  import { payablePurposeBusinessTypeOptions } from '@/utils/finance/payable-settlement'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import {
     payableMatchFields,
@@ -174,13 +175,7 @@
             label: '付款业务类型',
             type: 'select',
             props: {
-              options: [
-                { value: 'purchase', label: '采购付款' },
-                { value: 'advance', label: '预付款' },
-                { value: 'other', label: '其他付款' },
-                { value: 'sales_refund', label: '销售退款' },
-                { value: 'other_refund', label: '其他退款' }
-              ]
+              options: payablePurposeBusinessTypeOptions
             }
           },
           { key: 'defaultFundPurpose', label: '默认资金用途', type: 'input' },

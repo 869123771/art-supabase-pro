@@ -24,6 +24,10 @@ const LAZY_STYLE_PATTERN =
 export const isLazyCapabilityAsset = (assetPath: string): boolean =>
   LAZY_CAPABILITY_PATTERN.test(assetPath)
 
+/** Avoid repeating long route/component names in thousands of import URLs. */
+export const platformChunkFileName = ({ name }: { name: string }): string =>
+  isLazyCapabilityAsset(`assets/${name}-[hash].js`) ? 'assets/[name]-[hash].js' : 'assets/[hash].js'
+
 export const isLazyCapabilityStyle = (assetPath: string): boolean =>
   LAZY_STYLE_PATTERN.test(assetPath)
 

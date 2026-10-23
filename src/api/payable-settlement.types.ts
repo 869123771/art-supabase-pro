@@ -1,4 +1,4 @@
-export type PayableSettlementKind = 'application' | 'payment'
+export type PayableSettlementKind = 'application' | 'payment' | 'refund'
 export type PayableSettlementAction =
   | 'submit'
   | 'approve'
@@ -42,6 +42,13 @@ export interface PayableSettlementLine {
   contractId?: string | null
   contractNo?: string
   applicationLineId?: string | null
+  refundPaymentLineId?: string | null
+  refundPaymentDocumentNo?: string
+  accountSetId?: string | null
+  expiredDiscountAmount?: number
+  availableRefundAmount?: number
+  availableRefundDiscount?: number
+  sourcePurposeBusinessType?: string
   projectId?: string | null
   projectName?: string
   departmentId?: string | null
@@ -73,6 +80,7 @@ export interface PayableSettlementLine {
     employeeName?: string
     employeeNo?: string
     sourceLineNo?: string
+    sourcePurposeBusinessType?: string
   }
 }
 export interface PayableSettlementDocument {
@@ -82,6 +90,7 @@ export interface PayableSettlementDocument {
   kind: PayableSettlementKind
   recordKey?: string
   documentNo: string
+  accountSetId?: string | null
   documentTypeId?: string
   documentTypeName?: string
   status: string
@@ -114,6 +123,7 @@ export interface PayableSettlementQuery {
   documentTypeId?: string
   businessDateRange?: string[]
   viewMode?: string
+  refundableOnly?: boolean
 }
 export interface PayableSettlementOption {
   id: string
@@ -163,4 +173,5 @@ export interface PayableSettlementOptions {
   purchase: PayableSettlementOption[]
   expense: PayableSettlementOption[]
   bank?: PayableSettlementBank[]
+  refundSource?: PayableSettlementLine[]
 }

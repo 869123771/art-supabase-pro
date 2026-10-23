@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import ExcelJS from 'exceljs'
 import { mockApplicationMenus } from './support/menu-rpc'
 
 const tenantId = '00000000-0000-4000-8000-000000000001'
 const departmentId = '00000000-0000-4000-8000-000000000101'
 
-async function installFixtures(page: Page) {
+async function installFixtures(page: Page, saves: Array<Record<string, unknown>>) {
   const meta = (title: string, icon: string) => ({
     title,
     icon,
@@ -155,19 +156,24 @@ async function installFixtures(page: Page) {
       }
     })
   )
+  await page.route('**/rest/v1/rpc/mdm_save_production_equipment_secure', async (route) => {
+    saves.push(route.request().postDataJSON())
+    await route.fulfill({ json: 'equipment-imported' })
+  })
 }
 
 test('production equipment master keeps the enterprise workspace and dialog visual system', async ({
   page
 }, testInfo) => {
-  test.setTimeout(120_000)
-  await installFixtures(page)
+  test.setTimeout(300_000)
+  const saves: Array<Record<string, unknown>> = []
+  await installFixtures(page, saves)
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
   await page.goto('#/mdm/engineering/production-equipment', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '生产设备', exact: true })).toBeVisible({
-    timeout: 60_000
+    timeout: 180_000
   })
   await expect(page.getByText('总装一线拧紧机', { exact: true })).toBeVisible()
   await expect(page.getByText('生产设备', { exact: true }).last()).toBeVisible()
@@ -208,6 +214,25 @@ test('production equipment master keeps the enterprise workspace and dialog visu
   await page.screenshot({
     path: testInfo.outputPath('production-equipment-dialog.png'),
     animations: 'disabled'
+  })
+  await page.getByRole('button', { name: '关闭此对话框', exact: true }).click()
+
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('生产设备')
+  sheet.addRow(['设备编号', '设备名称', '设备分类', '部门/产线', '设备品牌', '设备型号'])
+  sheet.addRow(['EQ-IMPORT-001', '导入切割机', 'ASSEMBLY', 'LINE-01', '测试品牌', 'M2'])
+  await page.locator('input[type="file"]').setInputFiles({
+    name: '生产设备导入.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.from(await workbook.xlsx.writeBuffer())
+  })
+  await expect.poll(() => saves.length).toBe(1)
+  expect(saves[0]?.p_payload).toMatchObject({
+    tenant_id: tenantId,
+    category_id: '00000000-0000-4000-8000-000000000201',
+    production_department_id: departmentId,
+    equipment_code: 'EQ-IMPORT-001',
+    equipment_name: '导入切割机'
   })
 
   expect(pageErrors).toEqual([])

@@ -1,4 +1,5 @@
 import { useAmapSdk } from './useAmapSdk'
+import { withTimeout } from '@/utils/async'
 
 export interface AmapRouteCoordinate {
   longitude: number
@@ -52,46 +53,35 @@ export function useAmapDrivingEstimate() {
       extensions: 'base'
     })
 
-    return await new Promise((resolve, reject) => {
-      let settled = false
-      let timeoutId = 0
-      const finish = (callback: () => void): void => {
-        if (settled) return
-        settled = true
-        window.clearTimeout(timeoutId)
-        callback()
-      }
-      timeoutId = window.setTimeout(
-        () => finish(() => reject(new Error('路线估算超时'))),
-        ROUTE_ESTIMATE_TIMEOUT_MS
-      )
+    return withTimeout(
+      new Promise<AmapDrivingEstimate>((resolve, reject) => {
+        driving.search(
+          [origin.longitude, origin.latitude],
+          [destination.longitude, destination.latitude],
+          (status, result) => {
+            if (status !== 'complete' || !isDrivingResult(result)) {
+              reject(new Error('未获取到可用的驾车路线'))
+              return
+            }
 
-      driving.search(
-        [origin.longitude, origin.latitude],
-        [destination.longitude, destination.latitude],
-        (status, result) => {
-          if (status !== 'complete' || !isDrivingResult(result)) {
-            finish(() => reject(new Error('未获取到可用的驾车路线')))
-            return
-          }
+            const route = result.routes?.[0]
+            const distanceMeters = Number(route?.distance)
+            const durationSeconds = Number(route?.time)
+            if (!Number.isFinite(distanceMeters) || !Number.isFinite(durationSeconds)) {
+              reject(new Error('路线估算结果不完整'))
+              return
+            }
 
-          const route = result.routes?.[0]
-          const distanceMeters = Number(route?.distance)
-          const durationSeconds = Number(route?.time)
-          if (!Number.isFinite(distanceMeters) || !Number.isFinite(durationSeconds)) {
-            finish(() => reject(new Error('路线估算结果不完整')))
-            return
-          }
-
-          finish(() =>
             resolve({
               distanceKm: Math.round((distanceMeters / 1000) * 100) / 100,
               estimatedMinutes: Math.max(1, Math.ceil(durationSeconds / 60))
             })
-          )
-        }
-      )
-    })
+          }
+        )
+      }),
+      ROUTE_ESTIMATE_TIMEOUT_MS,
+      '路线估算超时'
+    )
   }
 
   return { estimateDrivingRoute }

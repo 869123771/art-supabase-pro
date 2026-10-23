@@ -50,7 +50,7 @@ const handler = createVisionOcrHandler({
   inputMetadata: () => ({ source: 'waybill_expense_form' }),
   validate: validateAiWaybillExpensePayload,
   normalize: normalizeAiWaybillExpenseResponse,
-  proposedPayload: (result) => ({ ...result.expense }),
+  proposedPayload: (result) => result.expense as unknown as Record<string, unknown>,
   compare: compareAiWaybillExpensePayloads,
   labels: {
     unauthorized: '需要登录后使用运单费用票据识别',
@@ -66,3 +66,4 @@ const handler = createVisionOcrHandler({
 })
 
 Deno.serve(handler)
+

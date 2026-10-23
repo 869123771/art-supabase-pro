@@ -27,10 +27,20 @@
         :header-actions="[
           { type: 'add', permission: permissions.Add, onClick: () => editorRef?.open() }
         ]"
+        :selection-actions="[
+          {
+            type: 'delete',
+            permission: permissions.Delete,
+            confirm: false,
+            disabled: deleteBusy,
+            onClick: ({ selectedRows }) => removeRows(selectedRows as PayableReference[])
+          }
+        ]"
         header-actions-placement="workspace"
         focusable
       />
       <ReferenceEditor ref="editorRef" :kind="kind" @success="tableRef?.refreshData()" />
+      <MasterDataDeleteGuard ref="deleteGuardRef" />
     </div>
   </ArtPermissionGuard>
 </template>
@@ -38,8 +48,10 @@
   import { ElTag } from 'element-plus'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { formatTenantLabel } from '@/utils/tenant-display'
+  import { payablePurposeBusinessTypeOptions } from '@/utils/finance/payable-settlement'
   import {
     fetchPayableReferences,
+    deletePayableMasters,
     type PayableReference,
     type PayableReferenceKind
   } from '@/api/payable-reference'
@@ -50,20 +62,24 @@
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
   import ReferenceEditor from './modules/reference-editor.vue'
   import type { ColumnOption } from '@/types'
+  import { useRecordDeleteGuard } from '@/hooks/core/useRecordDeleteGuard'
+  import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   const props = defineProps<{
     kind: Exclude<PayableReferenceKind, 'scheme'>
-    permissions: { View: string; Add: string; Edit: string }
+    permissions: { View: string; Add: string; Edit: string; Delete: string }
   }>()
   const tenantScope = useTenantScopeStore()
   const title = computed(() => (props.kind === 'purpose' ? '付款用途' : '结算方式'))
+  const table = computed(() =>
+    props.kind === 'purpose' ? 'mdm_payment_purpose' : 'mdm_settlement_method'
+  )
+  const { deleteGuardRef, deleteRecords, deleteBusy } = useRecordDeleteGuard(table, title)
   const tableRef = ref<InstanceType<typeof ArtTableQuery>>()
   const editorRef = ref<InstanceType<typeof ReferenceEditor>>()
   const labels: Record<string, string> = {
-    purchase: '采购付款',
-    advance: '预付款',
-    other: '其他付款',
-    sales_refund: '销售退款',
-    other_refund: '其他退款',
+    ...Object.fromEntries(
+      payablePurposeBusinessTypeOptions.map(({ value, label }) => [value, label])
+    ),
     cash: '现金',
     cheque: '支票',
     remittance: '汇兑',
@@ -79,6 +95,7 @@
     return { data: rows.slice(start, start + size), total: rows.length }
   }
   const columnsFactory = (): ColumnOption<PayableReference>[] => [
+    { type: 'selection', width: 50, fixed: 'left' },
     ...(tenantScope.isAllTenants
       ? [
           {
@@ -132,7 +149,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 80,
+      width: 120,
       fixed: 'right',
       formatter: (row) => (
         <BusinessTableRowActions>
@@ -142,8 +159,31 @@
             permission={props.permissions.Edit}
             onClick={() => editorRef.value?.open(row)}
           />
+          <ArtButtonTable
+            type="delete"
+            label="删除"
+            permission={props.permissions.Delete}
+            disabled={deleteBusy.value}
+            onClick={() => removeRows([row])}
+          />
         </BusinessTableRowActions>
       )
     }
   ]
+  async function removeRows(rows: PayableReference[]): Promise<void> {
+    await deleteRecords({
+      resources: rows.map((row) => ({ id: row.id || '', label: `${row.name} · ${row.code}` })),
+      permission: props.permissions.Delete,
+      remove: () =>
+        deletePayableMasters(
+          table.value,
+          rows.map((row) => row.id || '')
+        ),
+      onDeleted: async () => {
+        tableRef.value?.clearSelection()
+        await tableRef.value?.refreshRemove()
+      },
+      successMessage: `${title.value}已删除`
+    })
+  }
 </script>

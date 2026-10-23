@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./calendar-workspace-B_o4mrMS.js";var i=t({__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`patrol`,mode:`detail`}))}});export{i as default};

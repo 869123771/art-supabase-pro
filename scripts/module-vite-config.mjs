@@ -143,6 +143,19 @@ export async function createModuleViteConfig({
     },
     plugins: [
       createModuleTailwindSourcePlugin(applicationRoot, platformSourceRoot),
+      {
+        name: 'module-platform-favicon',
+        transformIndexHtml: {
+          order: 'pre',
+          handler(html, context) {
+            const faviconPath = path.join(platformSourceRoot, 'assets/images/favicon.ico')
+            const faviconUrl = context.server
+              ? `${context.server.config.base}@fs/${faviconPath.replace(/\\/g, '/')}`
+              : path.relative(applicationRoot, faviconPath).replace(/\\/g, '/')
+            return html.replaceAll('@/assets/images/favicon.ico', faviconUrl)
+          }
+        }
+      },
       vue(),
       vueJsx(),
       tailwindcss(),

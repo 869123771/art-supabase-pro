@@ -2,10 +2,12 @@ import {
   getCurrentScope,
   nextTick,
   onScopeDispose,
+  readonly,
   ref,
   shallowRef,
   toRaw,
   type Component,
+  type InjectionKey,
   type Ref,
   type ShallowRef
 } from 'vue'
@@ -111,6 +113,24 @@ interface UseArtOverlayConfig<TData, TOptions, TApi> {
   onConfirmRejected?: () => void
 }
 
+/** Descendant async controls inherit the actual overlay session, including reset. */
+export interface ArtOverlayRequestScope {
+  visible: Readonly<Ref<boolean>>
+  version: Readonly<Ref<number>>
+}
+
+export const artOverlayRequestScopeKey: InjectionKey<ArtOverlayRequestScope> =
+  Symbol('artOverlayRequestScope')
+
+/** Tracks form resets before an overlay opens as well as pending visible work. */
+export function useArtOverlaySession(isVisible: () => boolean) {
+  const version = ref(0)
+  const invalidate = () => ++version.value
+  const isCurrent = (requestVersion: number) => requestVersion === version.value && isVisible()
+  if (getCurrentScope()) onScopeDispose(invalidate)
+  return { version: readonly(version), invalidate, isCurrent }
+}
+
 export const cloneOverlayData = <TValue>(value: TValue): TValue => {
   if (value === undefined || value === null) return value
   if (typeof structuredClone === 'function') {
@@ -142,12 +162,12 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   const initialData = shallowRef<TData>({} as TData) as ShallowRef<TData>
   const options = ref<TOptions>(config.getDefaultOptions()) as Ref<TOptions>
   const closePending = ref(false)
-  let openSequence = 0
+  const openSequence = ref(0)
 
   if (scope) {
     onScopeDispose(() => {
       // Invalidate UI continuations without invoking business close/reset callbacks.
-      ++openSequence
+      ++openSequence.value
       visible.value = false
       loading.value = false
       confirmLoading.value = false
@@ -182,16 +202,18 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
 
   const handleReset = () => {
     if (scope && !scope.active) return
+    ++openSequence.value
     openData.value = cloneOverlayData(initialData.value)
     loading.value = false
     confirmLoading.value = false
+    closePending.value = false
     options.value.onReset?.(config.getApi())
     config.emitReset()
   }
 
   const handleOpen = async (data = {} as TData, openOptions: Partial<TOptions> = {}) => {
     if (scope && !scope.active) return
-    const sequence = ++openSequence
+    const sequence = ++openSequence.value
     options.value = config.mergeOptions(config.getDefaultOptions(), openOptions)
     const activeOptions = options.value
     loading.value = Boolean(options.value.loading)
@@ -202,18 +224,18 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
     visible.value = true
 
     await nextTick()
-    if (sequence !== openSequence || !visible.value) return
+    if (sequence !== openSequence.value || !visible.value) return
 
     try {
       await activeOptions.onOpen?.(openData.value, config.getApi())
     } catch (error) {
-      if (sequence === openSequence && visible.value) config.emitError(error)
+      if (sequence === openSequence.value && visible.value) config.emitError(error)
     }
   }
 
   const handleClose = async (force = false): Promise<boolean> => {
     if (closePending.value || !visible.value) return false
-    const sequence = openSequence
+    const sequence = openSequence.value
     closePending.value = true
 
     try {
@@ -222,16 +244,16 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
         if (canClose === false) return false
       }
 
-      if (sequence !== openSequence || !visible.value) return false
+      if (sequence !== openSequence.value || !visible.value) return false
 
-      ++openSequence
+      ++openSequence.value
       visible.value = false
       return true
     } catch (error) {
-      if (sequence === openSequence && visible.value) config.emitError(error)
+      if (sequence === openSequence.value && visible.value) config.emitError(error)
       return false
     } finally {
-      if (sequence === openSequence || !visible.value) closePending.value = false
+      if (sequence === openSequence.value || !visible.value) closePending.value = false
     }
   }
 
@@ -244,11 +266,11 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
       closePending.value
     )
       return false
-    const sequence = openSequence
+    const sequence = openSequence.value
     const activeOptions = options.value
 
     config.emitConfirm(openData.value)
-    if (sequence !== openSequence || !visible.value) return false
+    if (sequence !== openSequence.value || !visible.value) return false
     if (!activeOptions.onConfirm) {
       if (activeOptions.autoClose) await handleClose()
       return true
@@ -257,26 +279,26 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
     confirmLoading.value = true
     try {
       const result = await activeOptions.onConfirm?.(openData.value, config.getApi())
-      if (sequence !== openSequence || !visible.value) return false
+      if (sequence !== openSequence.value || !visible.value) return false
       if (result === false) {
         await nextTick()
-        if (sequence === openSequence && visible.value) config.onConfirmRejected?.()
+        if (sequence === openSequence.value && visible.value) config.onConfirmRejected?.()
       }
-      if (result !== false && sequence === openSequence && activeOptions.autoClose)
+      if (result !== false && sequence === openSequence.value && activeOptions.autoClose)
         await handleClose()
       return result !== false
     } catch (error) {
-      if (sequence !== openSequence || !visible.value) return false
+      if (sequence !== openSequence.value || !visible.value) return false
       config.emitError(error)
       if (activeOptions.closeOnConfirmError) {
         await handleClose(true)
       } else {
         await nextTick()
-        if (sequence === openSequence && visible.value) config.onConfirmRejected?.()
+        if (sequence === openSequence.value && visible.value) config.onConfirmRejected?.()
       }
       return false
     } finally {
-      if (sequence === openSequence || !visible.value) confirmLoading.value = false
+      if (sequence === openSequence.value || !visible.value) confirmLoading.value = false
     }
   }
 
@@ -290,12 +312,12 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
   }
 
   const handleBeforeClose = (done: () => void, nativeBeforeClose?: unknown): void => {
-    const sequence = openSequence
+    const sequence = openSequence.value
     const reportError = (error: unknown): void => {
-      if (sequence === openSequence && visible.value) config.emitError(error)
+      if (sequence === openSequence.value && visible.value) config.emitError(error)
     }
     const requestClose = (cancel = false): void => {
-      if (cancel || sequence !== openSequence || !visible.value) return
+      if (cancel || sequence !== openSequence.value || !visible.value) return
       void handleClose().then((allowed) => {
         if (allowed) done()
       })
@@ -311,13 +333,14 @@ export const useArtOverlay = <TData, TApi, TOptions extends ArtOverlayOptions<TD
 
   const handleClosed = () => {
     if (scope && !scope.active) return
-    ++openSequence
+    ++openSequence.value
     visible.value = false
     closePending.value = false
     if (options.value.resetOnClose) handleReset()
   }
 
   return {
+    requestScope: { visible: readonly(visible), version: readonly(openSequence) },
     visible,
     loading,
     confirmLoading,

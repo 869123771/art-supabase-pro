@@ -160,10 +160,12 @@ export function assessTransportAnomaly(
   const orderUpdatedAt = timeValue(field(row, 'update_time', 'updateTime'))
   const waybillUpdatedAt = timeValue(field(row, 'waybill_update_time', 'waybillUpdateTime'))
   const latestUpdate = Math.max(orderUpdatedAt ?? 0, waybillUpdatedAt ?? 0) || null
-  const overdueArrivalHours =
-    plannedArrival && plannedArrival < now ? hoursBetween(now, plannedArrival) : 0
-  const overdueDepartureHours =
-    plannedDeparture && plannedDeparture < now ? hoursBetween(now, plannedDeparture) : 0
+  const overdueArrivalHours = plannedArrival && plannedArrival < now
+    ? hoursBetween(now, plannedArrival)
+    : 0
+  const overdueDepartureHours = plannedDeparture && plannedDeparture < now
+    ? hoursBetween(now, plannedDeparture)
+    : 0
   const staleHours = latestUpdate && latestUpdate < now ? hoursBetween(now, latestUpdate) : 0
   const vehicleId = text(
     field(row, 'dispatch_vehicle_id', 'dispatchVehicleId') ?? field(row, 'vehicle_id', 'vehicleId')
@@ -177,8 +179,7 @@ export function assessTransportAnomaly(
   )
   const hasSchedule = Boolean(plannedDeparture && plannedArrival)
   const isTerminal = TERMINAL_STATUSES.has(orderStatus)
-  const isActive =
-    ACTIVE_ORDER_STATUSES.has(orderStatus) || ACTIVE_WAYBILL_STATUSES.has(waybillStatus)
+  const isActive = ACTIVE_ORDER_STATUSES.has(orderStatus) || ACTIVE_WAYBILL_STATUSES.has(waybillStatus)
   const signals: TransportAnomalySignal[] = []
   const actions: string[] = []
   const limitations = ['当前未接入连续 GPS 上报时间，本次不会判断真实偏航或车辆物理停驶。']
@@ -236,10 +237,7 @@ export function assessTransportAnomaly(
       severity: 'medium',
       title: '运输计划时间不完整',
       detail: `当前缺少${!plannedDeparture && !plannedArrival ? '计划发车和到达时间' : !plannedDeparture ? '计划发车时间' : '计划到达时间'}。`,
-      evidence: [
-        `计划发车：${plannedDepartureText || '未设置'}`,
-        `计划到达：${plannedArrivalText || '未设置'}`
-      ]
+      evidence: [`计划发车：${plannedDepartureText || '未设置'}`, `计划到达：${plannedArrivalText || '未设置'}`]
     })
     actions.push('补充计划发车与到达时间，作为后续时效预警基线。')
     limitations.push('计划时间不完整会降低时效风险判断的可信度。')
@@ -252,19 +250,14 @@ export function assessTransportAnomaly(
       severity,
       title: '运输业务记录长时间未更新',
       detail: `订单或运单记录已有 ${formatHours(staleHours)} 未更新。`,
-      evidence: [
-        `最近业务更新时间距今：${formatHours(staleHours)}`,
-        `预警阈值：${staleThreshold} 小时`
-      ]
+      evidence: [`最近业务更新时间距今：${formatHours(staleHours)}`, `预警阈值：${staleThreshold} 小时`]
     })
     actions.push('联系司机或调度员确认实际进展，并补录最新运输节点。')
     limitations.push('该信号依据业务记录更新时间，不等同于 GPS 车辆停驶。')
   }
 
   const statusMismatch =
-    (!isTerminal &&
-      orderStatus === 'transporting' &&
-      waybillStatus &&
+    (!isTerminal && orderStatus === 'transporting' && waybillStatus &&
       !TRANSPORTING_WAYBILL_STATUSES.has(waybillStatus)) ||
     (!isTerminal && TERMINAL_STATUSES.has(waybillStatus) && ACTIVE_ORDER_STATUSES.has(orderStatus))
   if (statusMismatch) {
@@ -335,12 +328,11 @@ export function detectTransportAnomalies(
       const primarySignal = assessment.signals[0]
       if (!primarySignal) return null
 
-      const overdueHours =
-        primarySignal.type === 'arrival_overdue'
-          ? assessment.metrics.overdueArrivalHours
-          : primarySignal.type === 'departure_overdue'
-            ? assessment.metrics.overdueDepartureHours
-            : 0
+      const overdueHours = primarySignal.type === 'arrival_overdue'
+        ? assessment.metrics.overdueArrivalHours
+        : primarySignal.type === 'departure_overdue'
+          ? assessment.metrics.overdueDepartureHours
+          : 0
 
       return {
         orderId: assessment.orderId,
@@ -352,7 +344,8 @@ export function detectTransportAnomalies(
         dispatchStatus: text(field(row, 'dispatch_status', 'dispatchStatus')),
         plannedDepartureTime:
           text(field(row, 'planned_departure_time', 'plannedDepartureTime')) || null,
-        plannedArrivalTime: text(field(row, 'planned_arrival_time', 'plannedArrivalTime')) || null,
+        plannedArrivalTime:
+          text(field(row, 'planned_arrival_time', 'plannedArrivalTime')) || null,
         overdueHours,
         staleHours: assessment.metrics.staleHours
       }

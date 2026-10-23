@@ -147,6 +147,7 @@
     "axios": "^1.20.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.23",
+    "decimal.js-light": "2.5.1",
     "dompurify": "3.4.16",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.7",

@@ -486,6 +486,10 @@ userStore.setUserInfo({
 useTenantScopeStore(store).selectedTenantId = tenantId
 await nextTick()
 userStore.setDictMap({
+  scmTaxRate: [
+    { name: '税率', code: 'scmTaxRate', label: '0%', value: '0', status: '1' },
+    { name: '税率', code: 'scmTaxRate', label: '13%', value: '13', status: '1' }
+  ],
   commonDocumentReviewStatus: [
     {
       name: '单据状态',

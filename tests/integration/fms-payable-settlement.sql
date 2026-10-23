@@ -8,7 +8,7 @@ declare
 begin
  select auth_user_id into actor from public.sys_user where user_roles @>array['R_SUPER'] and auth_user_id is not null limit 1;
  select f.tenant_id,f.id into tenant,fund from public.fms_fund_account f join public.fms_currency c on c.id=f.currency_id
- where f.status='active' and c.currency_code='CNY' and (select count(*) from public.mdm_supplier where tenant_id=f.tenant_id)>=2 limit 1;
+ where f.status='active' and f.account_type<>'cash' and c.currency_code='CNY' and f.account_set_id=app_private.resolve_fms_posting_account_set(f.tenant_id) and (select count(*) from public.mdm_supplier where tenant_id=f.tenant_id)>=2 limit 1;
  select id into supplier from public.mdm_supplier where tenant_id=tenant order by id limit 1;
  select id into supplier_two from public.mdm_supplier where tenant_id=tenant and id<>supplier order by id limit 1;
  select id,inventory_unit_id into material,unit_id from public.mdm_material where tenant_id=tenant and inventory_unit_id is not null limit 1;

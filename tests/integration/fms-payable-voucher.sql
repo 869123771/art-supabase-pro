@@ -36,7 +36,7 @@ begin
   end loop;
   select id,inventory_unit_id into material,inventory_unit from public.mdm_material where tenant_id=account_set.tenant_id and status='enabled' and inventory_unit_id is not null limit 1;
   select id into supplier from public.mdm_supplier where tenant_id=account_set.tenant_id limit 1;
-  select id into document_type from public.mdm_document_type where tenant_id=account_set.tenant_id and document_type_code='AP_EST_STANDARD';
+  select id into document_type from public.mdm_document_type where tenant_id=account_set.tenant_id and document_type_code='AP_EST_OTHER';
   estimate:=public.fms_save_purchase_payable_secure(jsonb_build_object('kind','estimated','tenant_id',account_set.tenant_id,'supplier_id',supplier,'document_type_id',document_type,'business_date',posting_date,'lines',jsonb_build_array(jsonb_build_object('material_id',material,'inventory_unit_id',inventory_unit,'quantity',1,'unit_price',100,'tax_rate',13))));
   estimate_id:=(estimate->>'id')::uuid;
   perform public.fms_act_purchase_payable_secure(array[estimate_id],'submit');

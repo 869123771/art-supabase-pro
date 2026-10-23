@@ -37,10 +37,24 @@ export interface PayableReference {
   remark?: string
 }
 const { supabase, responseHandle, keysToSnakeDeep } = useSupabase()
+export type PayableMasterTable =
+  'mdm_payment_term' | 'mdm_payment_purpose' | 'mdm_settlement_method'
 const options = {
   breakReturn: true,
   showErrorMessage: false,
   errorMessage: '付款配置操作失败，请重试'
+}
+export async function deletePayableMasters(
+  table: PayableMasterTable,
+  ids: string[]
+): Promise<number> {
+  const { data } = await responseHandle<number>(
+    () => supabase.rpc('mdm_delete_payable_masters_secure', { p_table: table, p_ids: ids }),
+    options
+  )
+  if (typeof data !== 'number' || data !== ids.length)
+    throw new Error('部分资料未删除，请刷新后核对记录与权限')
+  return data
 }
 export async function fetchPayableReferences(
   kind: PayableReferenceKind

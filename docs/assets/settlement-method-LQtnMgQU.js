@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./payable-reference-workspace--eFTMr_z.js";var i=t({name:`MdmSettlementMethod`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`method`,permissions:{View:`MdmSettlementMethod:View`,Add:`MdmSettlementMethod:Add`,Edit:`MdmSettlementMethod:Edit`}}))}});export{i as default};

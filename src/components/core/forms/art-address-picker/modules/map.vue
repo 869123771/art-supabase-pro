@@ -54,7 +54,9 @@
   import ArtEmptyState from '@/components/core/feedback/art-empty-state/index.vue'
   import { LocationFilled, Search } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { debounce, isNil, trim } from 'lodash-es'
+  import { debounce, trim } from 'lodash-es'
+  import { normalizeCoordinatePair } from '@/utils/geo'
+  import { normalizeAmapCoordinate } from '@/utils/amap'
   import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
   import { stripRegionPrefix } from '../address'
   import type { AddressMapPickResult } from '../types'
@@ -267,6 +269,9 @@
   let geocoderInstance: AMapGeocoderInstance | undefined
   let districtSearchInstance: AMapDistrictSearchInstance | undefined
   let searchSequence = 0
+  let mapVersion = 0
+  let pickSequence = 0
+  let centerSequence = 0
 
   const amapKey = computed(() => props.amapKey || import.meta.env.VITE_AMAP_KEY || '')
 
@@ -281,8 +286,9 @@
 
   const getAmapErrorMessage = (result: AMapErrorLike | undefined, fallback: string): string => {
     const info = String(result?.info ?? result?.message ?? '')
-    if (info === 'INVALID_USER_DOMAIN') return '高德地图域名白名单未放行当前访问域名。'
-    return info ? `高德地图服务异常：${info}` : fallback
+    if (info === 'INVALID_USER_DOMAIN') return '地图服务未授权当前站点，请联系管理员检查配置。'
+    if (info) console.warn('[ArtAddressMap] 地图服务响应异常:', info)
+    return fallback
   }
 
   const normalizeCityName = (value: unknown): string => {
@@ -313,10 +319,8 @@
   const getPoiLocation = (poi: AMapPoi): { lng: number; lat: number } | undefined => {
     const location = poi.location
     if (!location) return undefined
-    const lng = typeof location.getLng === 'function' ? location.getLng() : location.lng
-    const lat = typeof location.getLat === 'function' ? location.getLat() : location.lat
-    if (isNil(lng) || isNil(lat)) return undefined
-    return { lng: Number(lng), lat: Number(lat) }
+    const pair = normalizeAmapCoordinate(location)
+    return pair ? { lng: pair.longitude, lat: pair.latitude } : undefined
   }
 
   const normalizePoi = (poi: Partial<AMapPoi>): AMapPoi | undefined => {
@@ -355,6 +359,9 @@
   }
 
   const emitPick = (payload: AddressMapPickResult, poi?: AMapPoi): void => {
+    searchSequence += 1
+    debouncedPoiSearch.cancel()
+    poiLoading.value = false
     const nextPoi = poi ?? createSelectedPoi(payload)
     selectedPoi.value = nextPoi
     poiList.value = props.showPoiSearch ? (poi ? poiList.value : [nextPoi]) : []
@@ -364,6 +371,10 @@
   }
 
   const setPickedLocation = (payload: AddressMapPickResult): void => {
+    pickSequence += 1
+    searchSequence += 1
+    debouncedPoiSearch.cancel()
+    poiLoading.value = false
     const nextPoi = createSelectedPoi(payload)
     selectedPoi.value = nextPoi
     poiList.value = props.showPoiSearch ? [nextPoi] : []
@@ -397,6 +408,8 @@
   }
 
   const reverseGeocode = (lng: number, lat: number): void => {
+    const request = ++pickSequence
+    const version = mapVersion
     if (!geocoderInstance) {
       emitPick({
         address: props.fallbackAddress || `${lng}, ${lat}`,
@@ -409,8 +422,9 @@
     }
 
     geocoderInstance.getAddress([lng, lat], (status: string, result) => {
+      if (version !== mapVersion || request !== pickSequence) return
       if (status !== 'complete' && result?.info) {
-        const message = getAmapErrorMessage(result, '高德逆地理编码失败')
+        const message = getAmapErrorMessage(result, '地点信息读取失败，请重新选点')
         ElMessage.warning(message)
       }
 
@@ -436,6 +450,7 @@
   }
 
   const searchPoi = (options: { silent?: boolean; fallbackKeyword?: string } = {}): void => {
+    const currentSequence = ++searchSequence
     const keyword = trim(innerSearchKeyword.value || options.fallbackKeyword || '')
     if (!keyword) {
       poiList.value = []
@@ -444,11 +459,10 @@
     }
     if (!autoCompleteInstance && !placeSearchInstance) {
       if (options.silent) return
-      ElMessage.warning('地图尚未加载完成')
+      ElMessage.warning('地图尚未加载完成，请稍后重试')
       return
     }
 
-    const currentSequence = ++searchSequence
     poiLoading.value = true
     updateSearchScope()
     autoCompleteInstance?.search(keyword, (autoStatus: string, autoResult) => {
@@ -483,6 +497,7 @@
   }, 350)
 
   const handleSearchInput = (): void => {
+    searchSequence += 1
     emit('update:searchKeyword', innerSearchKeyword.value)
     selectedPoi.value = undefined
     if (!trim(innerSearchKeyword.value)) {
@@ -494,21 +509,25 @@
   }
 
   const handleSearchClear = (): void => {
+    searchSequence += 1
+    debouncedPoiSearch.cancel()
     emit('update:searchKeyword', '')
     poiList.value = []
     poiLoading.value = false
   }
 
   const geocodePoi = (poi: AMapPoi): void => {
+    const request = ++pickSequence
+    const version = mapVersion
     const address = getPoiAddress(poi)
     if (!geocoderInstance || !address) return
     geocoderInstance.getLocation(address, (status: string, result) => {
+      if (version !== mapVersion || request !== pickSequence) return
       const geocode = result?.geocodes?.[0]
       const location = geocode?.location
-      const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
-      const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
-      if (status !== 'complete' || isNil(lng) || isNil(lat)) {
-        const message = getAmapErrorMessage(result, '高德地址解析失败')
+      const pair = normalizeAmapCoordinate(location)
+      if (status !== 'complete' || !pair) {
+        const message = getAmapErrorMessage(result, '地址解析失败，请重新搜索或点击地图选点')
         ElMessage.warning(message)
         return
       }
@@ -516,8 +535,8 @@
       emitPick(
         {
           address,
-          longitude: Number(lng),
-          latitude: Number(lat),
+          longitude: pair.longitude,
+          latitude: pair.latitude,
           regionPath: normalizeRegionPath({
             province: geocode?.province || poi.pname,
             city: geocode?.city || poi.cityname,
@@ -537,6 +556,7 @@
       return
     }
 
+    pickSequence += 1
     emitPick(
       {
         address: getPoiAddress(poi),
@@ -553,70 +573,91 @@
     )
   }
 
-  const centerMapByGeocoder = (region: string): void => {
+  const centerMapByGeocoder = (region: string, request: number, version: number): void => {
     if (!region || !geocoderInstance) return
     geocoderInstance.getLocation(region, (status: string, result) => {
+      if (version !== mapVersion || request !== centerSequence) return
       const location = result?.geocodes?.[0]?.location
-      const lng = typeof location?.getLng === 'function' ? location.getLng() : location?.lng
-      const lat = typeof location?.getLat === 'function' ? location.getLat() : location?.lat
-      if (status !== 'complete' || isNil(lng) || isNil(lat)) return
-      setZoomAndCenter(13, [Number(lng), Number(lat)])
+      const pair = normalizeAmapCoordinate(location)
+      if (status !== 'complete' || !pair) return
+      setZoomAndCenter(13, [pair.longitude, pair.latitude])
     })
   }
 
   const centerByRegion = (): void => {
+    const request = ++centerSequence
+    const version = mapVersion
     const region = props.regionSearchText
     if (!region) return
     if (districtSearchInstance) {
       districtSearchInstance.setLevel?.(props.districtLevel)
       districtSearchInstance.search(props.regionAdcode || region, (status: string, result) => {
+        if (version !== mapVersion || request !== centerSequence) return
         const center = result?.districtList?.[0]?.center
-        const lng = typeof center?.getLng === 'function' ? center.getLng() : center?.lng
-        const lat = typeof center?.getLat === 'function' ? center.getLat() : center?.lat
-        if (status === 'complete' && !isNil(lng) && !isNil(lat)) {
-          setZoomAndCenter(props.districtLevel === 'district' ? 13 : 11, [Number(lng), Number(lat)])
+        const pair = normalizeAmapCoordinate(center)
+        if (status === 'complete' && pair) {
+          setZoomAndCenter(props.districtLevel === 'district' ? 13 : 11, [
+            pair.longitude,
+            pair.latitude
+          ])
           return
         }
-        centerMapByGeocoder(region)
+        centerMapByGeocoder(region, request, version)
       })
       return
     }
-    centerMapByGeocoder(region)
+    centerMapByGeocoder(region, request, version)
   }
 
   const initialize = async (options: InitOptions): Promise<AMapConstructor | undefined> => {
-    if (!mapRef.value) return undefined
+    const version = ++mapVersion
+    searchSequence += 1
+    pickSequence += 1
+    centerSequence += 1
+    const element = mapRef.value
+    if (!element) return undefined
 
     const AMap = await loadAmap()
+    if (version !== mapVersion || mapRef.value !== element) return undefined
     destroyMap()
-    amapNamespace = AMap
-    amapInstance = new AMap.Map(mapRef.value, {
-      zoom: options.zoom ?? 11,
-      center: options.center,
-      viewMode: '2D',
-      mapStyle: 'amap://styles/normal',
-      features: ['bg', 'road', 'building', 'point'],
-      resizeEnable: true
-    })
-    amapInstance.addControl(new AMap.Scale())
-    amapInstance.addControl(new AMap.ToolBar({ position: 'RT' }))
-    amapInstance.on('click', (event: { lnglat: { lng: number; lat: number } }) => {
-      emit('map-click', {
-        lng: event.lnglat.lng,
-        lat: event.lnglat.lat
+    try {
+      amapNamespace = AMap
+      amapInstance = new AMap.Map(element, {
+        zoom: options.zoom ?? 11,
+        center: options.center,
+        viewMode: '2D',
+        mapStyle: 'amap://styles/normal',
+        features: ['bg', 'road', 'building', 'point'],
+        resizeEnable: true
       })
-      if (props.enableMapPick || props.showPoiSearch) {
-        reverseGeocode(event.lnglat.lng, event.lnglat.lat)
-      }
-    })
-    initializeServices(AMap)
-    return AMap
+      amapInstance.addControl(new AMap.Scale())
+      amapInstance.addControl(new AMap.ToolBar({ position: 'RT' }))
+      amapInstance.on('click', (event: { lnglat: { lng: number; lat: number } }) => {
+        if (version !== mapVersion) return
+        const pair = normalizeCoordinatePair(event.lnglat.lng, event.lnglat.lat)
+        if (!pair) return
+        emit('map-click', {
+          lng: pair.longitude,
+          lat: pair.latitude
+        })
+        if (props.enableMapPick || props.showPoiSearch) {
+          reverseGeocode(pair.longitude, pair.latitude)
+        }
+      })
+      initializeServices(AMap)
+      return AMap
+    } catch (error) {
+      destroy()
+      throw error
+    }
   }
 
   const setMarker = (longitude: number | string, latitude: number | string): void => {
     if (!amapInstance || !amapNamespace) return
-
-    const position: [number, number] = [Number(longitude), Number(latitude)]
+    const pair = normalizeCoordinatePair(longitude, latitude)
+    if (!pair) return
+    centerSequence += 1
+    const position: [number, number] = [pair.longitude, pair.latitude]
     if (!markerInstance) {
       const markerContent = document.createElement('span')
       markerContent.className = 'art-address-map-marker'
@@ -649,6 +690,7 @@
   }
 
   const clearPoi = (): void => {
+    searchSequence += 1
     poiList.value = []
     selectedPoi.value = undefined
     poiLoading.value = false
@@ -663,6 +705,9 @@
   }
 
   const destroy = (): void => {
+    mapVersion += 1
+    pickSequence += 1
+    centerSequence += 1
     clearPoi()
     destroyMap()
     placeSearchInstance = undefined

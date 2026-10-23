@@ -127,7 +127,7 @@
         :close-on-click-modal="false"
         show-fullscreen-button
         @opened="handleDialogOpened"
-        @closed="handleDialogClosed"
+        @close="handleDialogClose"
         @fullscreen-change="handleMapFullscreenChange"
       >
         <div class="art-address-picker-map">
@@ -190,7 +190,11 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import ArtPickerEmpty from '@/components/core/feedback/art-picker-empty/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
-  import { useAmapSdk, type AmapBrowserNamespace } from '@/hooks/core/useAmapSdk'
+  import {
+    useAmapGeolocation,
+    type AmapLocationAddressComponent
+  } from '@/hooks/core/useAmapGeolocation'
+  import { artOverlayRequestScopeKey } from '@/hooks/core/useArtOverlay'
   import { stripRegionPrefix } from './address'
   import ArtAddressMap from './modules/map.vue'
   import type {
@@ -231,36 +235,6 @@
     showCoordinateHint?: boolean
     showLocateButton?: boolean
     hideRegionSelector?: boolean
-  }
-
-  interface AMapLngLatLike {
-    lng?: number
-    lat?: number
-    getLng?: () => number
-    getLat?: () => number
-  }
-
-  interface AMapLocationAddressComponent {
-    province?: string
-    city?: string | string[]
-    district?: string
-    adcode?: string
-  }
-
-  interface AMapGeolocationResult {
-    position?: AMapLngLatLike
-    formattedAddress?: string
-    addressComponent?: AMapLocationAddressComponent
-    info?: string
-    message?: string
-  }
-
-  interface AMapGeolocationInstance {
-    getCurrentPosition: (callback: (status: string, result: AMapGeolocationResult) => void) => void
-  }
-
-  interface AMapLocationNamespace extends AmapBrowserNamespace {
-    Geolocation: new (options: Record<string, unknown>) => AMapGeolocationInstance
   }
 
   interface MapExpose {
@@ -357,11 +331,38 @@
   const draftRegionAdcode = ref<string>()
   const mapMessage = ref('')
   const locating = ref(false)
-  const { loadAmap: loadLocationAmap } = useAmapSdk<AMapLocationNamespace>({
+  const overlayScope = inject(artOverlayRequestScopeKey, undefined)
+  let locationRequest: AbortController | undefined
+  let locationPending: Promise<AddressLocationPayload | undefined> | undefined
+  let applyingLocation = false
+  let pickerSession = 0
+  const { getCurrentLocation } = useAmapGeolocation({
     key: () => props.amapKey || import.meta.env.VITE_AMAP_KEY,
-    plugins: ['AMap.Geolocation'],
     securityJsCode: () => props.amapSecurityJsCode || import.meta.env.VITE_AMAP_SECURITY_JS_CODE
   })
+
+  const cancelLocate = (): void => {
+    const request = locationRequest
+    if (!request) return
+    locationRequest = undefined
+    locationPending = undefined
+    locating.value = false
+    request.abort()
+  }
+  watch(
+    [addressDetail, regionPath, regionAdcode, longitude, latitude, coordinateSystem],
+    () => {
+      if (!applyingLocation) cancelLocate()
+    },
+    { deep: true, flush: 'sync' }
+  )
+  watch(
+    [() => props.disabled, () => overlayScope?.visible.value, () => overlayScope?.version.value],
+    cancelLocate,
+    { flush: 'sync' }
+  )
+  onBeforeUnmount(cancelLocate)
+  onDeactivated(cancelLocate)
 
   const resolvedRegionOptions = computed(() =>
     props.regionOptions.length ? props.regionOptions : loadedRegionOptions.value
@@ -526,35 +527,11 @@
     return findRegionPathByNames(options, names) ?? names
   }
 
-  const normalizeLocatedRegionPath = (component?: AMapLocationAddressComponent): string[] => {
+  const normalizeLocatedRegionPath = (component?: AmapLocationAddressComponent): string[] => {
     const city = Array.isArray(component?.city) ? component?.city[0] : component?.city
     return [component?.province, city, component?.district]
       .map((value) => trim(String(value ?? '')))
       .filter(Boolean)
-  }
-
-  const readPosition = (
-    position?: AMapLngLatLike
-  ): { longitude: number; latitude: number } | undefined => {
-    const longitude = typeof position?.getLng === 'function' ? position.getLng() : position?.lng
-    const latitude = typeof position?.getLat === 'function' ? position.getLat() : position?.lat
-    const coordinate = normalizeCoordinatePair(longitude, latitude)
-    if (!coordinate) return undefined
-    return {
-      longitude: Number(coordinate.longitude.toFixed(7)),
-      latitude: Number(coordinate.latitude.toFixed(7))
-    }
-  }
-
-  const getLocationErrorMessage = (result?: AMapGeolocationResult): string => {
-    const message = String(result?.message || result?.info || '')
-    if (/permission|denied|拒绝|权限/i.test(message)) {
-      return '定位权限未开启，请在浏览器设置中允许访问位置，或改用地图选点'
-    }
-    if (/timeout|超时/i.test(message)) {
-      return '定位超时，请移动到信号较好的位置后重试，或改用地图选点'
-    }
-    return message ? `当前位置获取失败：${message}` : '暂时无法获取当前位置，请重试或改用地图选点'
   }
 
   const applyLocatedAddress = (payload: AddressMapPickResult): AddressLocationPayload => {
@@ -585,40 +562,30 @@
     return result
   }
 
-  const locateCurrent = async (
+  const locateCurrent = (
     options: AddressLocateOptions = {}
   ): Promise<AddressLocationPayload | undefined> => {
-    if (props.disabled || locating.value) return undefined
+    if (locationRequest && locationPending) return locationPending
+    if (props.disabled || locating.value || (overlayScope && !overlayScope.visible.value))
+      return Promise.resolve(undefined)
+    const request = new AbortController()
+    locationRequest = request
     locating.value = true
+    locationPending = performLocate(options, request)
+    return locationPending
+  }
+
+  const performLocate = async (
+    options: AddressLocateOptions,
+    request: AbortController
+  ): Promise<AddressLocationPayload | undefined> => {
     try {
-      if (
-        !window.isSecureContext &&
-        !['localhost', '127.0.0.1'].includes(window.location.hostname)
-      ) {
-        throw new Error('浏览器仅允许在 HTTPS 页面使用精确定位')
+      const result = await getCurrentLocation(request.signal)
+      if (locationRequest !== request || request.signal.aborted) return undefined
+      const position = {
+        longitude: Number(result.longitude.toFixed(7)),
+        latitude: Number(result.latitude.toFixed(7))
       }
-      const AMap = await loadLocationAmap()
-      const result = await new Promise<AMapGeolocationResult>((resolve, reject) => {
-        const geolocation = new AMap.Geolocation({
-          convert: true,
-          enableHighAccuracy: true,
-          extensions: 'all',
-          needAddress: true,
-          showButton: false,
-          showCircle: false,
-          showMarker: false,
-          timeout: 12000
-        })
-        geolocation.getCurrentPosition((status, value) => {
-          if (status === 'complete') {
-            resolve(value)
-            return
-          }
-          reject(new Error(getLocationErrorMessage(value)))
-        })
-      })
-      const position = readPosition(result.position)
-      if (!position) throw new Error('定位结果缺少有效经纬度，请重试或改用地图选点')
       const regionPath = normalizeLocatedRegionPath(result.addressComponent)
       const address = trim(result.formattedAddress || '')
       const payload: AddressMapPickResult = {
@@ -628,17 +595,25 @@
         regionPath,
         regionAdcode: result.addressComponent?.adcode
       }
+      applyingLocation = true
       const located = applyLocatedAddress(payload)
-      if (!options.silent) ElMessage.success('当前位置已回填，请核对地址与坐标')
+      if (!options.silent && !request.signal.aborted)
+        ElMessage.success('当前位置已回填，请核对地址与坐标')
       return located
     } catch (error) {
+      if (request.signal.aborted || locationRequest !== request) return undefined
       const message = getFriendlySupabaseErrorMessage(error, '当前位置获取失败，请重试')
       if (!hasCoordinate.value) coordinateStatus.value = 'failed'
       emit('locate-error', message)
       if (!options.silent) ElMessage.warning(message)
       return undefined
     } finally {
-      locating.value = false
+      applyingLocation = false
+      if (locationRequest === request) {
+        locationRequest = undefined
+        locationPending = undefined
+        locating.value = false
+      }
     }
   }
 
@@ -668,6 +643,7 @@
   }
 
   const handleRegionChange = (): void => {
+    cancelLocate()
     if (!currentRegionPath.value.length) {
       regionAdcode.value = undefined
       clearLocationState()
@@ -680,11 +656,13 @@
   }
 
   const handleDetailChange = (): void => {
+    cancelLocate()
     markCoordinateUnconfirmed()
     emit('address-change', createPayload())
   }
 
   const handleDetailClear = (): void => {
+    cancelLocate()
     clearCoordinateState()
     draftAddress.value = ''
     searchKeyword.value = ''
@@ -704,7 +682,7 @@
     mapRef.value?.setMarker(payload.longitude, payload.latitude)
   }
 
-  const initializeMap = async (): Promise<void> => {
+  const initializeMap = async (session: number): Promise<void> => {
     mapMessage.value = ''
     const defaultCenter: [number, number] = hasCoordinate.value
       ? [Number(longitude.value), Number(latitude.value)]
@@ -713,6 +691,7 @@
       center: defaultCenter,
       zoom: hasCoordinate.value ? 15 : 11
     })
+    if (session !== pickerSession) return
 
     if (hasCoordinate.value) {
       setDraftLocation({
@@ -738,6 +717,8 @@
 
   const handleOpenPicker = async (): Promise<void> => {
     if (props.disabled) return
+    cancelLocate()
+    pickerSession += 1
     regionAdcode.value = findRegionAdcode(resolvedRegionOptions.value, currentRegionPath.value)
     searchKeyword.value = fullAddress.value
     draftAddress.value = fullAddress.value || addressDetail.value
@@ -760,9 +741,12 @@
   }
 
   const handleDialogOpened = async (): Promise<void> => {
+    const session = pickerSession
     try {
       await waitForMapLayout()
-      await initializeMap()
+      if (session !== pickerSession) return
+      await initializeMap(session)
+      if (session !== pickerSession) return
       mapRef.value?.setSearchKeyword(searchKeyword.value)
       if (hasCoordinate.value) {
         mapRef.value?.setPickedLocation({
@@ -776,8 +760,10 @@
         mapRef.value?.searchPoi({ silent: true, fallbackKeyword: fullAddress.value })
       }
       await waitForMapLayout()
+      if (session !== pickerSession) return
       mapRef.value?.resize()
     } catch (error) {
+      if (session !== pickerSession) return
       mapMessage.value = getFriendlySupabaseErrorMessage(
         error,
         '地图加载失败，请稍后重试或手动填写地址'
@@ -785,10 +771,12 @@
     }
   }
 
-  const handleDialogClosed = (): void => {
+  const handleDialogClose = (): void => {
+    pickerSession += 1
     mapRef.value?.destroy()
     mapMessage.value = ''
   }
+  onBeforeUnmount(handleDialogClose)
 
   const handleMapFullscreenChange = async (): Promise<void> => {
     await waitForMapLayout()
@@ -859,6 +847,7 @@
 
   defineExpose({
     locateCurrent,
+    cancelLocate,
     openPicker: handleOpenPicker
   })
 </script>

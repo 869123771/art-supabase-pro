@@ -6,6 +6,7 @@ import { store } from '@/store'
 import { useTenantScopeStore } from '@/store/modules/tenant-scope'
 import { useUserStore } from '@/store/modules/user'
 import { useSettingStore } from '@/store/modules/setting'
+import { useMenuStore } from '@/store/modules/menu'
 import { initializeTheme } from '@/hooks/core/useTheme'
 import { SystemThemeEnum } from '@/enums/app-enum'
 import { ElConfigProvider } from 'element-plus'
@@ -34,6 +35,7 @@ const pages = [
     component: () => import('@fms/views/accounts-payable/payment-application/index.vue')
   },
   { kind: 'payment', component: () => import('@fms/views/accounts-payable/payment/index.vue') },
+  { kind: 'cash', component: () => import('@fms/views/settlement/cash-transaction/index.vue') },
   {
     kind: 'purpose',
     component: () => import('@mdm/views/financial-master/payment-purpose/index.vue')
@@ -81,8 +83,38 @@ setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'purchase-preview-user',
   tenantId: '11111111-1111-4111-8111-111111111111',
-  platformSuper: true
+  platformSuper: parameters.get('kind') !== 'cash'
 })
+if (parameters.get('kind') === 'cash') {
+  const permissions = [
+    'FinanceCashTransaction:View',
+    'FinanceCashTransaction:Void',
+    'FinancePayablePayment:View'
+  ]
+  if (!parameters.has('withoutConfirm')) permissions.push('FinancePayablePayment:Confirm')
+  if (parameters.has('withAllocate')) permissions.push('FinanceCashTransaction:Allocate')
+  useMenuStore(store).setButtonList(
+    permissions.map((name) => ({ name, path: name, type: 'button', meta: { title: name } }))
+  )
+  useUserStore(store).setDictMap({
+    tmsCashDirection: [
+      { name: '付款', label: '付款', code: 'payment', value: 'payment', status: '1' }
+    ],
+    tmsCashPaymentMethod: [
+      { name: '现金', label: '现金', code: 'cash', value: 'cash', status: '1' }
+    ],
+    tmsCashTransactionStatus: [
+      {
+        name: '待核销',
+        label: '待核销',
+        code: 'pending_allocation',
+        value: 'pending_allocation',
+        status: '1'
+      },
+      { name: '已作废', label: '已作废', code: 'voided', value: 'voided', status: '1' }
+    ]
+  })
+}
 useTenantScopeStore(store).selectedTenantId =
   parameters.get('scope') === 'all' ? null : '11111111-1111-4111-8111-111111111111'
 const setting = useSettingStore(store)

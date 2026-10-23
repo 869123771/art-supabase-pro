@@ -1,22 +1,22 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg">
     <div class="organization-dialog">
-      <section class="organization-dialog__context">
-        <span class="organization-dialog__context-icon" aria-hidden="true">
-          <ArtSvgIcon :icon="dialogType === 'add' ? 'ri:node-tree' : 'ri:organization-chart'" />
-        </span>
-        <div>
-          <strong>{{ contextTitle }}</strong>
-          <p>{{ contextDescription }}</p>
-        </div>
-        <ElTag
-          :type="form.isSystem ? 'warning' : dialogType === 'add' ? 'success' : 'primary'"
-          effect="light"
-          round
-        >
-          {{ form.isSystem ? '系统根组织' : dialogType === 'add' ? '新增节点' : '编辑节点' }}
-        </ElTag>
-      </section>
+      <ArtEntitySummary
+        compact
+        :icon="dialogType === 'add' ? 'ri:node-tree' : 'ri:organization-chart'"
+        :title="contextTitle"
+        :description="contextDescription"
+      >
+        <template #aside>
+          <ElTag
+            :type="form.isSystem ? 'warning' : dialogType === 'add' ? 'success' : 'primary'"
+            effect="light"
+            round
+          >
+            {{ form.isSystem ? '系统根组织' : dialogType === 'add' ? '新增节点' : '编辑节点' }}
+          </ElTag>
+        </template>
+      </ArtEntitySummary>
 
       <ElAlert
         v-if="form.isSystem"
@@ -54,7 +54,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import {
     addOrganization,
     editOrganization,
@@ -482,51 +482,6 @@
     gap: 16px;
     min-width: 0;
 
-    &__context {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 14px 16px;
-      background: var(--el-color-primary-light-9);
-      border: 1px solid var(--el-color-primary-light-8);
-      border-radius: var(--custom-radius);
-
-      > div {
-        min-width: 0;
-      }
-
-      strong {
-        display: block;
-        margin-bottom: 3px;
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--el-text-color-secondary);
-        overflow-wrap: anywhere;
-      }
-    }
-
-    &__context-icon {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      color: var(--el-color-primary);
-      background: var(--el-bg-color);
-      border-radius: var(--el-border-radius-base);
-
-      :deep(svg) {
-        width: 19px;
-        height: 19px;
-      }
-    }
-
     &__notice {
       align-items: flex-start;
 
@@ -536,17 +491,6 @@
 
       :deep(.el-alert__title) {
         line-height: 1.6;
-      }
-    }
-
-    @media (width <= 640px) {
-      &__context {
-        grid-template-columns: auto minmax(0, 1fr);
-
-        > :deep(.el-tag) {
-          grid-column: 2;
-          justify-self: start;
-        }
       }
     }
   }

@@ -3,10 +3,21 @@ import { describe, it } from 'node:test'
 import { allocatePayableWriteoff } from '../../src/utils/finance/payable-writeoff'
 import {
   newPayableSettlementLine,
-  validateSettlementAmounts
+  validateSettlementAmounts,
+  payablePurposeBusinessTypeOptions
 } from '../../src/utils/finance/payable-settlement'
 
 describe('payable writeoff allocation', () => {
+  it('keeps payment and symmetric refund business types distinct', () => {
+    const labels = Object.fromEntries(
+      payablePurposeBusinessTypeOptions.map(({ value, label }) => [value, label])
+    )
+    assert.equal(Object.keys(labels).length, payablePurposeBusinessTypeOptions.length)
+    assert.equal(labels.purchase, '采购付款')
+    assert.equal(labels.purchase_refund, '退采购付款')
+    assert.equal(labels.advance_refund, '退预付款')
+    assert.equal(labels.other_refund, '其他退款')
+  })
   it('splits multiple sides exactly in cents without mutating inputs', () => {
     const primary = [
       { id: 'ap1', availableAmount: 0.1 },

@@ -1,1 +1,0 @@
-import{Bn as e,en as t}from"./framework-C5JvCe_B.js";function n(n){let r=e(),i;return{component:r,load:async()=>{if(!r.value){i??(i=n().then(({default:e})=>{r.value=e}));try{await i}finally{i=void 0}}await t()}}}export{n as t};

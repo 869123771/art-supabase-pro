@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import ExcelJS from 'exceljs'
+import { captureBusinessEvidence } from './support/capture-business-evidence'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(180000)
@@ -128,7 +129,7 @@ for (const kind of ['estimated', 'financial', 'application', 'payment'] as const
     await expect(popup.locator('body')).toContainText('<em>示例供应商</em>')
     await expect(popup.locator('em')).toHaveCount(0)
     expect(await popup.evaluate(() => window.opener === null)).toBe(true)
-    await popup.screenshot({
+    await captureBusinessEvidence(popup, {
       path: info.outputPath(`${kind}-two-record-print.png`),
       fullPage: true
     })

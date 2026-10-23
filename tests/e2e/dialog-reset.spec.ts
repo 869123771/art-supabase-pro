@@ -9,13 +9,37 @@ for (const scenario of ['mdm', 'pmis', 'smis'] as const) {
     const errors: string[] = []
     const saves: Array<{ method: string; body: Record<string, unknown> }> = []
     let employeeListScans = 0
+    let referenceFailure = false
     page.on('pageerror', (error) => errors.push(error.message))
     await prepareIsolatedSession(page)
     await page.route('**/rest/v1/**', async (route) => {
       const request = route.request()
       const url = new URL(request.url())
       const resource = url.pathname.split('/').at(-1)
-      if (resource === 'hr_list_employee_selector_secure') employeeListScans++
+      if (resource === 'hr_list_employee_selector_secure') {
+        employeeListScans++
+        expect(request.postDataJSON().p_tenant_id).toBe('test-tenant')
+        if (referenceFailure) {
+          return route.fulfill({
+            status: 403,
+            json: { code: '42501', message: 'permission denied' }
+          })
+        }
+        return route.fulfill({
+          json: {
+            records: [
+              {
+                id: 'historical-employee',
+                tenant_id: 'test-tenant',
+                employee_no: 'EMP-OLD',
+                employee_name: '历史通知人员',
+                employment_status: 'active'
+              }
+            ],
+            total: 1
+          }
+        })
+      }
       if (
         [
           'mdm_save_esop_category',
@@ -41,19 +65,9 @@ for (const scenario of ['mdm', 'pmis', 'smis'] as const) {
                   department_code: 'TEST'
                 }
               ]
-            : resource === 'mdm_employee'
-              ? [
-                  {
-                    id: 'historical-employee',
-                    tenant_id: 'test-tenant',
-                    employee_no: 'EMP-OLD',
-                    employee_name: '历史通知人员',
-                    employment_status: 'inactive'
-                  }
-                ]
-              : resource === 'sys_dictionary'
-                ? [{ name: '启用', label: '启用', value: 'enabled', status: '1' }]
-                : []
+            : resource === 'sys_dictionary'
+              ? [{ name: '启用', label: '启用', value: 'enabled', status: '1' }]
+              : []
       })
     })
     await page.goto(`/tests/e2e/fixtures/dialog-reset.html?scenario=${scenario}`)
@@ -65,7 +79,11 @@ for (const scenario of ['mdm', 'pmis', 'smis'] as const) {
         timeout: 60_000
       })
     } else if (scenario === 'pmis') {
-      await expect(dialog.getByText('历史通知人员 · EMP-OLD', { exact: false })).toBeVisible()
+      const notifier = dialog.getByText('历史通知人员 · EMP-OLD', { exact: false })
+      await expect(notifier).toBeVisible()
+      await notifier.scrollIntoViewIfNeeded()
+      await expect(notifier).toBeInViewport()
+      await page.screenshot({ path: info.outputPath('pmis-existing-reference.png') })
     }
     await dialog.getByRole('button', { name: '取消', exact: true }).click()
     await expect(dialog).toBeHidden()
@@ -89,6 +107,11 @@ for (const scenario of ['mdm', 'pmis', 'smis'] as const) {
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
     ).toBeLessThanOrEqual(1)
     await page.screenshot({ path: info.outputPath(`${scenario}-new-after-edit.png`) })
+    if (scenario === 'pmis') {
+      await dialog.getByText('升级通知人员', { exact: true }).scrollIntoViewIfNeeded()
+      await expect(dialog.getByText('历史通知人员 · EMP-OLD', { exact: false })).toHaveCount(0)
+      await page.screenshot({ path: info.outputPath('pmis-new-lower-content.png') })
+    }
     await dialog
       .getByRole('button', {
         name: scenario === 'mdm' ? '新增分类' : scenario === 'pmis' ? '保存设置' : '保存判定标准',
@@ -99,7 +122,16 @@ for (const scenario of ['mdm', 'pmis', 'smis'] as const) {
     if (scenario === 'pmis') expect(saves[0].body.p_id).toBeNull()
     else if (scenario === 'mdm') expect(saves[0].body.p_payload).not.toHaveProperty('id')
     else expect(saves[0].method).toBe('POST')
-    expect(employeeListScans).toBe(0)
+    if (scenario === 'pmis') {
+      expect(employeeListScans).toBeGreaterThan(0)
+      await expect(dialog).toBeHidden()
+      referenceFailure = true
+      await page.getByRole('button', { name: '打开已有记录', exact: true }).click()
+      await expect(dialog).toBeVisible()
+      await expect(page.locator('.el-message--error')).toBeVisible()
+      await expect(page.getByText('permission denied', { exact: false })).toHaveCount(0)
+      await expect(dialog.locator('.el-loading-mask:visible')).toHaveCount(0)
+    } else expect(employeeListScans).toBe(0)
     expect(errors).toEqual([])
   })
 }

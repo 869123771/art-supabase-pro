@@ -51,7 +51,7 @@
             v-bind="cleanColumnProps(child)"
           >
             <template
-              v-if="child.required || (child.useHeaderSlot && child.prop)"
+              v-if="child.required || (child.useHeaderSlot && child.prop) || hasColumnFilter(child)"
               #header="headerScope"
             >
               <span class="art-table__header-label">
@@ -65,8 +65,13 @@
                 >
                   {{ child.label }}
                 </slot>
+                <component
+                  v-else-if="typeof child.renderHeader === 'function'"
+                  :is="child.renderHeader(headerScope)"
+                />
                 <template v-else>{{ child.label }}</template>
                 <span v-if="child.required" class="sr-only">（必填）</span>
+                <component v-if="hasColumnFilter(child)" :is="renderColumnFilter(child)" />
               </span>
             </template>
             <template v-if="shouldUseCustomCellTemplate(child)" #default="slotScope">
@@ -120,7 +125,10 @@
 
         <!-- 渲染普通列 -->
         <ElTableColumn v-else v-bind="cleanColumnProps(col)">
-          <template v-if="col.required || (col.useHeaderSlot && col.prop)" #header="headerScope">
+          <template
+            v-if="col.required || (col.useHeaderSlot && col.prop) || hasColumnFilter(col)"
+            #header="headerScope"
+          >
             <span class="art-table__header-label">
               <span v-if="col.required" class="art-table__required-marker" aria-hidden="true"
                 >*</span
@@ -132,8 +140,13 @@
               >
                 {{ col.label }}
               </slot>
+              <component
+                v-else-if="typeof col.renderHeader === 'function'"
+                :is="col.renderHeader(headerScope)"
+              />
               <template v-else>{{ col.label }}</template>
               <span v-if="col.required" class="sr-only">（必填）</span>
+              <component v-if="hasColumnFilter(col)" :is="renderColumnFilter(col)" />
             </span>
           </template>
           <template v-if="shouldUseCustomCellTemplate(col)" #default="slotScope">
@@ -191,15 +204,19 @@
         </ElTableColumn>
       </template>
 
-      <template v-if="$slots.default" #default><slot /></template>
+      <template v-if="$slots.default" #default><ConfiguredSlotColumns /></template>
 
       <template #empty>
         <div v-if="loading"></div>
         <div v-else ref="emptyContentRef">
           <slot name="empty">
             <ArtEmptyState
-              :title="emptyText"
-              :description="emptyDescription"
+              :title="activeColumnFilterCount ? '当前页没有匹配记录' : emptyText"
+              :description="
+                activeColumnFilterCount
+                  ? '请调整表头过滤条件，或清空列过滤后重试。'
+                  : emptyDescription
+              "
               :visual-size="92"
               size="compact"
             />
@@ -218,12 +235,24 @@
     />
 
     <div
-      class="pagination custom-pagination"
-      v-if="showPagination"
+      class="pagination custom-pagination flex-wrap items-center gap-x-3 gap-y-2"
+      v-if="showPagination || activeColumnFilterCount"
       :class="mergedPaginationOptions?.align"
       ref="paginationRef"
     >
+      <div
+        v-if="activeColumnFilterCount"
+        class="flex flex-wrap items-center justify-end gap-2 text-xs text-g-700"
+        role="status"
+      >
+        <span
+          >当前页过滤 {{ activeColumnFilterCount }} 项 · 显示 {{ filteredRows.length }} /
+          {{ props.data?.length ?? 0 }} 条</span
+        >
+        <ElButton link type="primary" @click="clearColumnFilters">清空列过滤</ElButton>
+      </div>
       <ElPagination
+        v-if="showPagination"
         v-bind="mergedPaginationOptions"
         :total="currentPagination?.total"
         :disabled="loading"
@@ -251,6 +280,17 @@
     h,
     isVNode
   } from 'vue'
+  import { shallowRef, useSlots } from 'vue'
+  import ArtTableColumnFilter from '@/components/core/tables/art-table-column-filter/index.vue'
+  import {
+    columnFilterOptions,
+    filterColumnRows,
+    isColumnFilterActive,
+    type ColumnFilterCondition
+  } from '@/utils/table/column-filters'
+  import { isEqual, uniqBy } from 'lodash-es'
+  import { readSlotColumns, renderSlotColumns } from '@/utils/table/slot-columns'
+  import { fitColumnHeaderControls } from '@/utils/table/column-profile'
   import { cloneVNode, type ComponentPublicInstance } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { TableProps } from 'element-plus'
@@ -266,6 +306,7 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
+  import { useConfiguredTableColumns } from '@/hooks/core/useConfiguredTableColumns'
   import {
     useEventListener,
     useMutationObserver,
@@ -485,10 +526,93 @@
     fixedColumnMinWidth: 640
   })
   const { t } = useI18n()
+  const configuredColumns = useConfiguredTableColumns(() => props.columns)
+  const slots = useSlots()
+  const slotColumnDescriptors = shallowRef<ColumnOption<unknown>[]>([])
+  const configuredSlotColumns = useConfiguredTableColumns(() => slotColumnDescriptors.value)
+  const ConfiguredSlotColumns = () => {
+    const nodes = slots.default?.() ?? []
+    const descriptors = readSlotColumns(nodes).map((entry) => entry.column)
+    if (!isEqual(descriptors, slotColumnDescriptors.value))
+      slotColumnDescriptors.value = descriptors
+    return descriptors.length
+      ? renderSlotColumns(nodes, configuredSlotColumns.factory(), (column, content) =>
+          hasColumnFilter(column)
+            ? h('span', { class: 'inline-flex items-center gap-1' }, [
+                content,
+                renderColumnFilter(column)
+              ])
+            : content
+        )
+      : nodes
+  }
   const visibleColumns = computed(() =>
-    filterTenantDimensionDescriptors(props.columns, isPlatformScope.value)
+    filterTenantDimensionDescriptors(
+      configuredColumns
+        .factory()
+        .filter((column) => column.visible !== false && column.checked !== false),
+      isPlatformScope.value
+    )
   )
   const instance = getCurrentInstance()
+  const columnFilters = ref<Record<string, ColumnFilterCondition>>({})
+  const filterColumnTree = new TreeUtils({ deepClone: false })
+  const filterableColumns = computed(() => {
+    const columns: ArtTableColumn[] = []
+    filterColumnTree.traverse(
+      [
+        ...visibleColumns.value,
+        ...configuredSlotColumns
+          .factory()
+          .filter((column) => column.visible !== false && column.checked !== false)
+      ],
+      (column) => {
+        if (hasColumnFilter(column)) columns.push(column)
+      }
+    )
+    return uniqBy(columns, 'prop')
+  })
+  const activeColumnFilterCount = computed(
+    () =>
+      filterableColumns.value.filter((column) =>
+        isColumnFilterActive(columnFilters.value[column.prop!])
+      ).length
+  )
+  const filteredRows = computed(() =>
+    filterColumnRows(
+      props.data ?? [],
+      filterableColumns.value,
+      columnFilters.value,
+      props.treeProps?.children ?? 'children'
+    )
+  )
+  function hasColumnFilter(column: ArtTableColumn): boolean {
+    return Boolean(
+      column.prop &&
+      column.filterType &&
+      column.filterType !== 'none' &&
+      column.visible !== false &&
+      column.checked !== false &&
+      !column.type &&
+      column.prop !== 'operation'
+    )
+  }
+  function clearColumnFilters(): void {
+    columnFilters.value = {}
+  }
+  function renderColumnFilter(column: ArtTableColumn) {
+    return h(ArtTableColumnFilter, {
+      label: column.label ?? column.prop!,
+      type: column.filterType!,
+      modelValue: columnFilters.value[column.prop!],
+      options: columnFilterOptions(flattenRows(props.data ?? []), column.prop!),
+      dictCode: column.dict?.code,
+      'onUpdate:modelValue': (value: ColumnFilterCondition) => {
+        columnFilters.value = { ...columnFilters.value, [column.prop!]: value }
+      }
+    })
+  }
+  watch([configuredColumns.revision, configuredSlotColumns.revision], clearColumnFilters)
   const attrs = useAttrs()
 
   const LAYOUT = {
@@ -675,6 +799,7 @@
 
     return {
       ...tableProps,
+      data: filteredRows.value,
       height: height.value,
       scrollbarAlwaysOn: hasExplicitTableProp('scrollbarAlwaysOn')
         ? props.scrollbarAlwaysOn
@@ -766,7 +891,7 @@
   }
 
   const isColumnDragDisabled = (col: ArtTableColumn, row: ArtTableRow) => {
-    return resolveColumnBoolean(col.dragDisabled, row)
+    return activeColumnFilterCount.value > 0 || resolveColumnBoolean(col.dragDisabled, row)
   }
 
   const getCellValue = (row: ArtTableRow, prop: string) => {
@@ -1375,7 +1500,7 @@
 
   // 清理列属性，移除插槽相关的自定义属性，确保它们不会被 ElTableColumn 错误解释
   const cleanColumnProps = (col: ArtTableColumn) => {
-    const columnProps = { ...col }
+    const columnProps = fitColumnHeaderControls({ ...col })
     if (isRowActionsColumn(columnProps)) {
       // 按当前可见操作测量宽度，计入单元格留白和纵向滚动条，避免按钮被遮挡。
       columnProps.className = [columnProps.className, 'art-table-operation-column']
@@ -1383,13 +1508,6 @@
         .join(' ')
       columnProps.width = rowActionsWidth.value
       columnProps.minWidth = rowActionsWidth.value
-    }
-    if (columnProps.sortable) {
-      // Reserve room for the header label and Element Plus sorting controls.
-      const minimumWidth = Math.max(100, (columnProps.label?.length ?? 0) * 14 + 52)
-      const configuredWidth = Number(columnProps.width)
-      if (configuredWidth > 0) columnProps.width = Math.max(configuredWidth, minimumWidth)
-      columnProps.minWidth = Math.max(Number(columnProps.minWidth) || 0, minimumWidth)
     }
     if (containerWidth.value > 0 && containerWidth.value < props.fixedColumnMinWidth) {
       columnProps.fixed = false
@@ -1451,6 +1569,7 @@
     delete columnProps.required
     delete columnProps.requiredMessage
     delete columnProps.rules
+    delete columnProps.filterType
     return columnProps
   }
 

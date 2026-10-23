@@ -115,10 +115,14 @@ function checkVehicleEligibility(
   const auditStatus = text(rawVehicle.audit_status ?? rawVehicle.auditStatus)
   const operationStatus = text(rawVehicle.operation_status ?? rawVehicle.operationStatus)
   const driver = normalizedDriver(rawVehicle)
-  const driverId = text(driver.id ?? rawVehicle.primary_driver_id ?? rawVehicle.primaryDriverId)
+  const driverId = text(
+    driver.id ?? rawVehicle.primary_driver_id ?? rawVehicle.primaryDriverId
+  )
   const driverName = text(driver.driver_name ?? driver.driverName)
   const driverEnabled = driver.enabled
-  const approvedLoadMass = numberValue(rawVehicle.approved_load_mass ?? rawVehicle.approvedLoadMass)
+  const approvedLoadMass = numberValue(
+    rawVehicle.approved_load_mass ?? rawVehicle.approvedLoadMass
+  )
   const licenseExpireDate = text(driver.license_expire_date ?? driver.licenseExpireDate) || null
   const serviceEndTime = timeValue(rawVehicle.service_end_time ?? rawVehicle.serviceEndTime)
 
@@ -144,7 +148,11 @@ function checkVehicleEligibility(
     increment(rejectedByReason, 'license_expired')
     return null
   }
-  if (orderWeightKg !== null && approvedLoadMass !== null && orderWeightKg > approvedLoadMass) {
+  if (
+    orderWeightKg !== null &&
+    approvedLoadMass !== null &&
+    orderWeightKg > approvedLoadMass
+  ) {
     increment(rejectedByReason, 'capacity_exceeded')
     return null
   }
@@ -187,7 +195,9 @@ export function recommendDispatchResources(
   const orderId = text(input.order.id)
   const origin = text(input.order.origin_station ?? input.order.originStation)
   const destination = text(input.order.destination_station ?? input.order.destinationStation)
-  const orderWeightKg = numberValue(input.order.cargo_weight_total ?? input.order.cargoWeightTotal)
+  const orderWeightKg = numberValue(
+    input.order.cargo_weight_total ?? input.order.cargoWeightTotal
+  )
   const activeAssignments = input.activeAssignments ?? []
   const history = input.history ?? []
   const busyVehicleIds = new Set<string>()
@@ -195,9 +205,7 @@ export function recommendDispatchResources(
 
   for (const assignment of activeAssignments) {
     if (text(assignment.id) === orderId) continue
-    if (
-      !ACTIVE_DISPATCH_STATUSES.has(text(assignment.dispatch_status ?? assignment.dispatchStatus))
-    ) {
+    if (!ACTIVE_DISPATCH_STATUSES.has(text(assignment.dispatch_status ?? assignment.dispatchStatus))) {
       continue
     }
     const vehicleId = text(assignment.dispatch_vehicle_id ?? assignment.dispatchVehicleId)
@@ -266,12 +274,7 @@ export function recommendDispatchResources(
       if (routeHistory.length) {
         score += Math.min(15, routeHistory.length * 3)
         reasons.push(`近 180 天完成同线路 ${routeHistory.length} 单`)
-      } else if (
-        origin &&
-        destination &&
-        operationRoute.includes(origin) &&
-        operationRoute.includes(destination)
-      ) {
+      } else if (origin && destination && operationRoute.includes(origin) && operationRoute.includes(destination)) {
         score += 8
         reasons.push('车辆登记营运线路覆盖本次起讫站')
       }
@@ -311,8 +314,7 @@ export function recommendDispatchResources(
     })
     .sort(
       (left, right) =>
-        right.score - left.score ||
-        right.confidence - left.confidence ||
+        right.score - left.score || right.confidence - left.confidence ||
         left.vehicle.plateNo.localeCompare(right.vehicle.plateNo, 'zh-CN')
     )
 
@@ -333,10 +335,8 @@ export function recommendDispatchResources(
     selectedVehicleIds.add(item.vehicle.id)
   }
 
-  const recommendations = selectedRecommendations.map((item, index) => ({
-    ...item,
-    rank: index + 1
-  }))
+  const recommendations = selectedRecommendations
+    .map((item, index) => ({ ...item, rank: index + 1 }))
 
   return {
     recommendations,

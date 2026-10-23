@@ -1,8 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import {
-  authenticateAiEdgeRequest,
-  authorizeAiEdgeAppUser
-} from '../_shared/ai-edge-user-context.ts'
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { getAiConfigTenantScope } from '../_shared/ai-config-tenancy.ts'
 import { resolveAiProviderEndpoints } from '../_shared/ai-provider-endpoints.ts'
 
@@ -10,6 +7,11 @@ interface CatalogRequest {
   action?: 'catalog' | 'benchmark'
   forceRefresh?: boolean
   model?: string
+}
+
+interface AppUser {
+  tenant_id: string
+  status: string | null
 }
 
 interface ConfiguredModelRow {
@@ -395,10 +397,7 @@ async function readProviderError(response: Response): Promise<string> {
   return raw
 }
 
-function createProviderBenchmarkError(
-  status: number,
-  providerMessage: string
-): ProviderBenchmarkError {
+function createProviderBenchmarkError(status: number, providerMessage: string): ProviderBenchmarkError {
   if (status === 410) {
     return new ProviderBenchmarkError(
       'model_retired',
@@ -503,25 +502,40 @@ async function benchmarkModel(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (req.method !== 'POST')
-    return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
+  if (req.method !== 'POST') return json({ code: 'method_not_allowed', message: 'Method not allowed' }, 405)
 
-  const authentication = await authenticateAiEdgeRequest(req, 'Invalid or expired session')
-  if (!authentication.ok) {
-    return json(
-      { code: authentication.code, message: authentication.message },
-      authentication.status
-    )
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const authHeader = req.headers.get('Authorization') ?? ''
+  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey || !authHeader) {
+    return json({ code: 'unauthorized', message: 'Authentication required' }, 401)
   }
 
-  const context = await authorizeAiEdgeAppUser(
-    authentication,
-    'Active application user is required'
-  )
-  if (!context.ok) {
-    return json({ code: context.code, message: context.message }, context.status)
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+  const {
+    data: { user },
+    error: authError
+  } = await authClient.auth.getUser(token)
+  if (authError || !user) {
+    return json({ code: 'unauthorized', message: 'Invalid or expired session' }, 401)
   }
-  const { admin, appUser } = context
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  })
+  const { data: appUserData, error: appUserError } = await admin
+    .from('sys_user')
+    .select('tenant_id,status')
+    .eq('auth_user_id', user.id)
+    .maybeSingle()
+  const appUser = appUserData as AppUser | null
+  if (appUserError || !appUser?.tenant_id || appUser.status === '0') {
+    return json({ code: 'forbidden', message: 'Active application user is required' }, 403)
+  }
 
   const sharedModel = Deno.env.get('AI_MODEL') || Deno.env.get('OPENAI_MODEL') || ''
   const [providerEndpoint] = resolveAiProviderEndpoints({
@@ -539,10 +553,7 @@ Deno.serve(async (req) => {
       return json({ code: 'invalid_model', message: '请选择有效的模型 ID' }, 400)
     }
     if (!apiKey) {
-      return json(
-        { code: 'provider_not_configured', message: 'AI 服务密钥尚未配置，无法测速' },
-        503
-      )
+      return json({ code: 'provider_not_configured', message: 'AI 服务密钥尚未配置，无法测速' }, 503)
     }
     try {
       return json(await benchmarkModel(baseUrl, apiKey, model))
@@ -616,3 +627,4 @@ Deno.serve(async (req) => {
     warning
   })
 })
+

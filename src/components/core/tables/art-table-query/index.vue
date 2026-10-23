@@ -13,7 +13,7 @@
       v-show="showSearchBar"
       v-model="searchModel"
       v-bind="resolvedSearchBarProps"
-      :search-loading="resolvedLoading"
+      :search-loading="resolvedLoading && !iconOnlyRefresh"
       @search="handleSearch"
       @reset="handleReset"
     >
@@ -29,7 +29,11 @@
       defer
     >
       <template v-for="action in visibleHeaderActions" :key="getHeaderActionKey(action)">
-        <span v-auth="getHeaderActionPermission(action)" :class="getHeaderActionClass()">
+        <span
+          v-auth="getHeaderActionPermission(action)"
+          :class="getHeaderActionClass()"
+          :inert="iconOnlyRefresh || undefined"
+        >
           <slot v-if="action.slot" :name="action.slot" v-bind="getHeaderActionSlotProps(action)" />
           <component
             v-else-if="action.render"
@@ -160,6 +164,7 @@
                     <span
                       v-auth="getHeaderActionPermission(action)"
                       class="art-table-query__selection-action"
+                      :inert="iconOnlyRefresh || undefined"
                     >
                       <slot
                         v-if="action.slot"
@@ -684,6 +689,7 @@
   export interface ArtTableQueryProps {
     /** 外部受控模式的加载状态；传 apiFn 时由组件内部 useTable 接管。 */
     loading?: boolean
+    refreshFeedback?: 'table' | 'icon'
     /** 外部受控模式的表格数据；传 apiFn 时由组件内部 useTable 接管。 */
     data?: TableQueryRecord[]
     /** 外部受控模式的表格列配置；传 columnsFactory 时由组件内部 useTable 接管。 */
@@ -1053,7 +1059,9 @@
         showTableHeader: shouldRenderTableHeader.value,
         additionalHeightOffset:
           Number(resolvedTableProps.value.additionalHeightOffset ?? 0) + headerTopHeight.value,
-        loading: resolvedLoading.value,
+        loading: resolvedLoading.value && !iconOnlyRefresh.value,
+        inert: iconOnlyRefresh.value || undefined,
+        'aria-busy': resolvedLoading.value || undefined,
         data: resolvedData.value,
         columns: resolvedColumns.value,
         pagination: resolvedPagination.value,
@@ -1271,6 +1279,7 @@
     const disabled = typeof action.disabled === 'function' ? action.disabled(ctx) : action.disabled
     return (
       !!disabled ||
+      iconOnlyRefresh.value ||
       pendingActionKey.value !== null ||
       (action.type === 'import' && importPending.value) ||
       (isHeaderActionSelectionRequired(action) && ctx.selectedCount === 0)
@@ -1630,11 +1639,17 @@
     emit('reset')
   }
 
-  const handleRefresh = (): void => {
-    if (isManaged.value) {
-      void managedTable.refreshData()
+  const manualRefreshing = ref(false)
+  const iconOnlyRefresh = computed(() => props.refreshFeedback === 'icon' && manualRefreshing.value)
+  const handleRefresh = async (): Promise<void> => {
+    if (resolvedLoading.value || manualRefreshing.value) return
+    manualRefreshing.value = true
+    try {
+      emit('refresh')
+      if (isManaged.value) await managedTable.refreshData()
+    } finally {
+      manualRefreshing.value = false
     }
-    emit('refresh')
   }
 
   const refreshRemove = async (): Promise<void> => {

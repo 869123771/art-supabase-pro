@@ -4,8 +4,35 @@ import test from 'node:test'
 import {
   isLazyCapabilityAsset,
   isLazyCapabilityStyle,
+  platformChunkFileName,
   shouldPreloadHtmlDependency
 } from '../../scripts/bundle-boundaries'
+
+test('compact production URLs preserve every lazy-capability budget boundary', () => {
+  for (const name of [
+    'monaco',
+    'exceljs.bare.min',
+    'pdf.worker',
+    'pdf',
+    'charts',
+    'file-viewer',
+    'iwork.parser',
+    'receivable-workspace',
+    'framework'
+  ]) {
+    const output = platformChunkFileName({ name })
+      .replace('[name]', name)
+      .replace('[hash]', 'ABC12345')
+    const namedOutput = `assets/${name}-ABC12345.js`
+    assert.equal(isLazyCapabilityAsset(output), isLazyCapabilityAsset(namedOutput), name)
+    assert.equal(
+      shouldPreloadHtmlDependency(output),
+      shouldPreloadHtmlDependency(namedOutput),
+      name
+    )
+    if (!isLazyCapabilityAsset(namedOutput)) assert.equal(output, 'assets/ABC12345.js')
+  }
+})
 
 test('heavy capabilities remain outside ordinary application chunk budgets', () => {
   for (const asset of [

@@ -1,22 +1,22 @@
 <template>
   <ArtDialog ref="dialogRef" size="lg">
     <div class="user-dialog">
-      <section class="user-dialog__context">
-        <div class="user-dialog__context-icon" aria-hidden="true">
-          <ArtSvgIcon :icon="isEdit ? 'ri:user-settings-line' : 'ri:user-add-line'" />
-        </div>
-        <div>
-          <strong>{{ contextTitle }}</strong>
-          <p>{{ contextDescription }}</p>
-        </div>
-        <ElTag
-          :type="isCurrentUser ? 'warning' : isEdit ? 'primary' : 'success'"
-          effect="light"
-          round
-        >
-          {{ isCurrentUser ? '当前账号' : isEdit ? '编辑资料' : '新增账号' }}
-        </ElTag>
-      </section>
+      <ArtEntitySummary
+        compact
+        :icon="isEdit ? 'ri:user-settings-line' : 'ri:user-add-line'"
+        :title="contextTitle"
+        :description="contextDescription"
+      >
+        <template #aside>
+          <ElTag
+            :type="isCurrentUser ? 'warning' : isEdit ? 'primary' : 'success'"
+            effect="light"
+            round
+          >
+            {{ isCurrentUser ? '当前账号' : isEdit ? '编辑资料' : '新增账号' }}
+          </ElTag>
+        </template>
+      </ArtEntitySummary>
 
       <ElAlert
         v-if="isCurrentUser"
@@ -86,6 +86,7 @@
   import ArtUploadImage from '@/components/core/forms/art-upload-image/index.vue'
   import ArtEmployeeSelect from '@/components/business/art-employee-select/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { useUserStore } from '@/store/modules/user'
   import { addUser, editUser, fetchEnabledOrganizationTree } from '@/api/system-manage'
   import { fetchEnabledTenantList } from '@/api/system-manage/tenant'
@@ -648,51 +649,6 @@
     gap: 16px;
     min-width: 0;
 
-    &__context {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 14px 16px;
-      background: var(--el-color-primary-light-9);
-      border: 1px solid var(--el-color-primary-light-8);
-      border-radius: var(--custom-radius);
-
-      > div:nth-child(2) {
-        min-width: 0;
-      }
-
-      strong {
-        display: block;
-        margin-bottom: 3px;
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--el-text-color-secondary);
-        overflow-wrap: anywhere;
-      }
-    }
-
-    &__context-icon {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      color: var(--el-color-primary);
-      background: var(--el-bg-color);
-      border-radius: var(--el-border-radius-base);
-
-      :deep(svg) {
-        width: 19px;
-        height: 19px;
-      }
-    }
-
     &__notice {
       align-items: flex-start;
 
@@ -732,15 +688,6 @@
     }
 
     @media (width <= 640px) {
-      &__context {
-        grid-template-columns: auto minmax(0, 1fr);
-
-        > :deep(.el-tag) {
-          grid-column: 2;
-          justify-self: start;
-        }
-      }
-
       &__employee-guide {
         align-items: flex-start;
       }

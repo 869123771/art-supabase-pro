@@ -27,10 +27,88 @@ const line: PurchasePayableLine = {
   totalAmount: 226
 }
 const settings = { inputTaxInclusivePrice: true, inputAmount: false, discountIncludesTax: true }
+
+test('单位联动复用物料换算，更新基本数量但不改数量、单价或分摊金额', () => {
+  const withUnits: PurchasePayableLine = {
+    ...line,
+    quantity: 2,
+    inventoryUnitId: 'box',
+    baseUnitId: 'piece',
+    baseQuantity: 2,
+    materialUnits: {
+      baseUnitId: 'piece',
+      unitConversions: [{ sourceUnitId: 'box', sourceFactor: 1, baseFactor: 10 }]
+    },
+    totalAmount: 0.09,
+    amount: 0.08,
+    taxAmount: 0.01
+  }
+  const boxed = calculatePayableLine(withUnits, settings, 'inventoryUnitId')
+  assert.equal(boxed.baseQuantity, 20)
+  assert.equal(boxed.quantity, 2)
+  assert.equal(boxed.unitPrice, 100)
+  assert.equal(boxed.totalAmount, 0.09)
+  const pieces = calculatePayableLine(
+    { ...boxed, inventoryUnitId: 'piece' },
+    settings,
+    'inventoryUnitId'
+  )
+  assert.equal(pieces.baseQuantity, 2)
+  const otherBase = calculatePayableLine({ ...boxed, baseUnitId: 'box' }, settings, 'baseUnitId')
+  assert.equal(otherBase.baseQuantity, 2)
+  const corrected = calculatePayableLine({ ...boxed, baseQuantity: 24 }, settings, 'baseQuantity')
+  assert.equal(corrected.baseQuantityEdited, true)
+  assert.equal(corrected.baseQuantity, 24)
+  assert.equal(corrected.totalAmount, 0.09)
+  const missing = calculatePayableLine(
+    { ...boxed, inventoryUnitId: 'unconfigured' },
+    settings,
+    'inventoryUnitId'
+  )
+  assert.equal(missing.baseQuantity, undefined)
+})
 test('金额舍入与数据库一致，正负半分均远离零且不丢失外币折算尾分', () => {
   assert.equal(roundPayable(1.005), 1.01)
   assert.equal(roundPayable(-1.005), -1.01)
   assert.equal(roundPayable(0.03 * 1.5), 0.05)
+})
+
+test('固定换算不复用已圆整基本数量，手工校正则保留实际比例', () => {
+  const configured = calculatePayableLine(
+    {
+      ...line,
+      quantity: 1,
+      inventoryUnitId: 'box',
+      baseUnitId: 'piece',
+      materialUnits: {
+        baseUnitId: 'piece',
+        unitConversions: [{ sourceUnitId: 'box', sourceFactor: 3, baseFactor: 1 }]
+      }
+    },
+    settings,
+    'inventoryUnitId'
+  )
+  assert.equal(configured.baseQuantity, 0.333333)
+  const changed = calculatePayableLine({ ...configured, quantity: 3 }, settings, 'quantity', 1)
+  assert.equal(changed.baseQuantity, 1)
+  const manual = calculatePayableLine(
+    { ...configured, baseQuantity: 0.4 },
+    settings,
+    'baseQuantity'
+  )
+  assert.equal(
+    calculatePayableLine({ ...manual, quantity: 3 }, settings, 'quantity', 1).baseQuantity,
+    1.2
+  )
+  assert.equal(
+    calculatePayableLine(
+      { ...manual, quantity: 1.5, baseQuantity: 1.000001 },
+      settings,
+      'quantity',
+      3
+    ).baseQuantity,
+    0.500001
+  )
 })
 test('部分到票数量调整沿用已带入的基本单位换算比例', () => {
   const changed = calculatePayableLine(
@@ -42,6 +120,11 @@ test('部分到票数量调整沿用已带入的基本单位换算比例', () =>
   assert.equal(changed.baseQuantity, 10)
   assert.equal(changed.totalAmount, 113)
   assert.equal(calculatePayableLine({ ...changed, taxRate: 9 }, settings).baseQuantity, 10)
+  assert.equal(
+    calculatePayableLine({ ...line, quantity: 0, baseQuantity: 20 }, settings, 'quantity', 2)
+      .baseQuantity,
+    20
+  )
 })
 
 test('应付含税价与不含税价双向换算', () => {
@@ -84,6 +167,74 @@ test('录入含税金额时保留价税合计，按税率拆分', () => {
   assert.equal(result.taxAmount, 39)
   assert.equal(result.totalAmount, 339)
 })
+test('含税录入口径锁定分位总额，调整数量不复用已圆整净单价', () => {
+  const penny = calculatePayableLine(
+    { ...line, quantity: 1, taxInclusiveUnitPrice: 0.04 },
+    settings,
+    'taxInclusiveUnitPrice'
+  )
+  assert.deepEqual([penny.amount, penny.taxAmount, penny.totalAmount], [0.04, 0, 0.04])
+  const priced = calculatePayableLine(
+    { ...line, quantity: 1000, taxInclusiveUnitPrice: 112.95 },
+    settings,
+    'taxInclusiveUnitPrice'
+  )
+  assert.equal(priced.priceBasis, 'gross')
+  assert.equal(priced.totalAmount, 112950)
+  const changed = calculatePayableLine({ ...priced, quantity: 1001 }, settings)
+  assert.equal(changed.totalAmount, 113062.95)
+  assert.equal(changed.taxInclusiveUnitPrice, 112.95)
+  assert.equal(roundPayable(changed.amount + changed.taxAmount), changed.totalAmount)
+  const restored = calculatePayableLine({ ...changed, quantity: 1000 }, settings)
+  assert.deepEqual(restored, priced)
+})
+
+test('税率和模式切换保留最后实际价格口径，重新录入净价才切换', () => {
+  const gross = calculatePayableLine(
+    { ...line, quantity: 3, taxInclusiveUnitPrice: 0.05 },
+    settings,
+    'taxInclusiveUnitPrice'
+  )
+  const changed = calculatePayableLine(
+    { ...gross, taxRate: 9 },
+    { ...settings, inputTaxInclusivePrice: false }
+  )
+  assert.equal(changed.priceBasis, 'gross')
+  assert.equal(changed.totalAmount, 0.15)
+  const net = calculatePayableLine({ ...changed, unitPrice: 1 }, settings, 'unitPrice')
+  assert.equal(net.priceBasis, 'net')
+  assert.equal(net.totalAmount, 3.27)
+  const amountEntry = calculatePayableLine(
+    { ...gross, totalAmount: 0.04 },
+    { ...settings, inputAmount: true }
+  )
+  assert.deepEqual(
+    [amountEntry.amount, amountEntry.taxAmount, amountEntry.totalAmount],
+    [0.04, 0, 0.04]
+  )
+  const gift = calculatePayableLine({ ...gross, gift: true }, settings)
+  assert.deepEqual([gift.amount, gift.taxAmount, gift.totalAmount], [0, 0, 0])
+  assert.equal(calculatePayableLine({ ...gift, gift: false }, settings).totalAmount, 0.15)
+})
+
+test('折扣先圆分，含税基准拆税吸收尾分且100%折扣归零', () => {
+  const priced = calculatePayableLine(
+    { ...line, quantity: 3, taxInclusiveUnitPrice: 0.05 },
+    settings,
+    'taxInclusiveUnitPrice'
+  )
+  const discounted = calculatePayableLine(
+    { ...priced, discountMethod: 'rate', discountValue: 10 },
+    settings
+  )
+  assert.equal(discounted.discountAmount, 0.02)
+  assert.deepEqual(
+    [discounted.amount, discounted.taxAmount, discounted.totalAmount],
+    [0.12, 0.01, 0.13]
+  )
+  assert.equal(calculatePayableLine({ ...discounted, discountValue: 100 }, settings).totalAmount, 0)
+})
+
 test('付款计划开关在比例与金额间转换并拒绝不平衡计划', () => {
   const plans = [
     {

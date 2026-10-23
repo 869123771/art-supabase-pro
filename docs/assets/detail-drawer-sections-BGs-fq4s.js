@@ -1,1 +1,0 @@
-import{It as e,pn as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./_plugin-vue_export-helper-B8BmMbpX.js";var i={},a={class:`pmis-detail-drawer-sections grid gap-4 content-start min-w-0`};function o(r,i){return n(),e(`div`,a,[t(r.$slots,`default`)])}var s=r(i,[[`render`,o]]);export{s as t};

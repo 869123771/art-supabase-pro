@@ -1,3 +1,5 @@
+import type { WmsMaterialUnits } from '@/utils/wms/material-quantity'
+
 export type PurchasePayableKind = 'estimated' | 'financial'
 export type PayableStatus = 'draft' | 'submitted' | 'approved'
 export type PayableBasis = 'quantity' | 'amount'
@@ -23,10 +25,18 @@ export interface PayablePaymentPlan {
   contractNo: string
   remark: string
 }
+export interface PayableEstimatedSource {
+  id: string
+  documentNo: string
+  status: PayableStatus
+}
 export interface PurchasePayableLine {
   id: string
   sourceLineId: string | null
   estimatedLineId?: string | null
+  estimatedDocumentId?: string | null
+  estimatedDocumentNo?: string | null
+  estimatedLineNo?: number | null
   lineNo: number
   materialId?: string | null
   materialCode: string
@@ -41,8 +51,11 @@ export interface PurchasePayableLine {
   baseUnitId?: string | null
   baseUnitName?: string | null
   baseQuantity?: number
+  baseQuantityEdited?: boolean
+  materialUnits?: WmsMaterialUnits
   quantity: number
   unitPrice: number
+  priceBasis?: 'net' | 'gross'
   taxInclusiveUnitPrice?: number
   taxRate?: number
   discountMethod?: 'none' | 'rate' | 'unit'
@@ -53,6 +66,7 @@ export interface PurchasePayableLine {
   supplierId?: string | null
   supplierName?: string | null
   contractId?: string | null
+  contractNo?: string | null
   departmentId?: string | null
   departmentName?: string | null
   sourceDocumentNo?: string
@@ -89,9 +103,13 @@ export interface PurchasePayableDocument {
   documentNo: string
   documentTypeId?: string | null
   documentTypeName?: string
+  standardPurchase?: boolean
+  financialPayableTypeId?: string | null
+  financialPayableTypeName?: string | null
   sourceType?: 'manual' | 'purchase_inbound' | 'carrier_statement'
   sourceDocumentId: string | null
   sourceDocumentNo: string
+  estimatedSources?: PayableEstimatedSource[]
   supplierId?: string | null
   supplierName: string | null
   payeeSupplierId?: string | null
@@ -151,14 +169,13 @@ export interface PayableSearch {
   writeoffStatus?: string
   viewMode?: 'document' | 'line'
 }
-export interface PayableOption {
+export interface PayableOption extends WmsMaterialUnits {
   id: string
   name: string
   code?: string
   description?: string
   specificationModel?: string
   inventoryUnitId?: string
-  baseUnitId?: string
   unitName?: string
   days?: number
 }

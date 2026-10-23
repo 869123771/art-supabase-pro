@@ -12,7 +12,9 @@ export type WaybillCostAuditSignalType =
 export type WaybillCostAuditSeverity = 'critical' | 'high' | 'medium'
 export type WaybillCostAuditRiskLevel = WaybillCostAuditSeverity | 'low'
 export type WaybillCostAuditRecommendation =
-  'block_for_verification' | 'manual_review' | 'routine_review'
+  | 'block_for_verification'
+  | 'manual_review'
+  | 'routine_review'
 
 export interface WaybillCostAuditSignal {
   type: WaybillCostAuditSignalType
@@ -132,9 +134,7 @@ function attachmentCount(value: unknown): number {
 }
 
 function normalizedPayee(row: Record<string, unknown>): string {
-  return text(field(row, 'payee_name', 'payeeName'))
-    .toLowerCase()
-    .replace(/\s+/g, '')
+  return text(field(row, 'payee_name', 'payeeName')).toLowerCase().replace(/\s+/g, '')
 }
 
 function signalScore(signal: WaybillCostAuditSignal): number {
@@ -210,10 +210,9 @@ export function assessWaybillCost(
   const receivable = profit
     ? roundMoney(numberValue(field(profit, 'receivable_amount', 'receivableAmount')))
     : null
-  const projectedGrossMargin =
-    receivable && receivable > 0
-      ? Math.round(((receivable - projectedTotalCost) / receivable) * 10_000) / 10_000
-      : null
+  const projectedGrossMargin = receivable && receivable > 0
+    ? Math.round(((receivable - projectedTotalCost) / receivable) * 10_000) / 10_000
+    : null
   const signals: WaybillCostAuditSignal[] = []
   const actions: string[] = []
 
@@ -356,12 +355,11 @@ export function assessWaybillCost(
     ? clamp(Math.max(...signals.map(signalScore)) + Math.min(6, (signals.length - 1) * 2), 0, 99)
     : 10
   const hasCritical = signals.some((item) => item.severity === 'critical')
-  const recommendation: WaybillCostAuditRecommendation =
-    hasCritical || duplicates.length
-      ? 'block_for_verification'
-      : signals.length
-        ? 'manual_review'
-        : 'routine_review'
+  const recommendation: WaybillCostAuditRecommendation = hasCritical || duplicates.length
+    ? 'block_for_verification'
+    : signals.length
+      ? 'manual_review'
+      : 'routine_review'
   let confidence = 0.5
   if (profit) confidence += 0.15
   if (benchmarkValues.length >= 5) confidence += 0.12
@@ -408,3 +406,4 @@ export function assessWaybillCost(
     }
   }
 }
+

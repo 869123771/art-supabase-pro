@@ -9,11 +9,15 @@ import '@styles/index.scss'
 
 const scenario = new URLSearchParams(location.search).get('scenario')
 const component = defineAsyncComponent(
-  scenario === 'workstation'
-    ? () => import('@mdm/views/process-master/workstation/index.vue')
-    : scenario === 'gantt'
-      ? () => import('@mes/views/production-plan/gantt-scheduling/index.vue')
-      : () => import('@mes/views/components/manufacturing/index.vue')
+  scenario === 'scheduling'
+    ? () => import('@mes/views/production-plan/scheduling/index.vue')
+    : scenario === 'execution'
+      ? () => import('@mes/views/production-execution/modules/production-workspace.vue')
+      : scenario === 'workstation'
+        ? () => import('@mdm/views/process-master/workstation/index.vue')
+        : scenario === 'gantt'
+          ? () => import('@mes/views/production-plan/gantt-scheduling/index.vue')
+          : () => import('@mes/views/components/manufacturing/index.vue')
 )
 const router = createRouter({
   history: createMemoryHistory(),
@@ -29,7 +33,7 @@ setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'tree-test',
   tenantId: 'test-tenant',
-  platformSuper: false
+  platformSuper: true
 })
 await router.push('/production-scope-test')
 await router.isReady()

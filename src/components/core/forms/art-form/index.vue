@@ -1414,6 +1414,10 @@
   defineExpose({
     ref: formInstance,
     controlsReady: formControlsReady,
+    readyToSubmit: computed(
+      () =>
+        !props.disabled && !props.submitLoading && !props.disabledSubmit && !hasBlockingFields.value
+    ),
     validate: async (...args: Parameters<FormInstance['validate']>) => {
       if (hasBlockingFields.value) {
         const invalidFields = Object.fromEntries(

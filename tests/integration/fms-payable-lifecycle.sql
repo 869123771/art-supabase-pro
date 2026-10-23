@@ -22,7 +22,7 @@ begin
   if actor is null or tenant is null then raise exception 'Missing payable test fixtures'; end if;
   perform set_config('request.jwt.claim.sub',actor::text,true);
   perform set_config('request.headers','{}',true);
-  select id into est_type from public.mdm_document_type where tenant_id=tenant and document_type_code='AP_EST_STANDARD';
+  select id into est_type from public.mdm_document_type where tenant_id=tenant and document_type_code='AP_EST_OTHER';
   estimate:=public.fms_save_purchase_payable_secure(jsonb_build_object(
     'kind','estimated','tenant_id',tenant,'supplier_id',supplier,'document_type_id',est_type,
     'business_date','2026-10-21','posting_date','2026-10-21','input_tax_inclusive_price',true,
@@ -101,7 +101,7 @@ begin
   blocked:=false;
   begin perform public.fms_save_purchase_payable_secure(finance||jsonb_build_object('payment_plans',jsonb_build_array(jsonb_build_object('due_date','2026-02-30','ratio',100,'amount',0.01)))); exception when datetime_field_overflow then blocked:=true; end;
   if not blocked then raise exception 'Invalid payment plan calendar date was accepted'; end if;
-  select id into est_type from public.mdm_document_type where tenant_id=tenant and document_type_code='AP_EST_STANDARD';
+  select id into est_type from public.mdm_document_type where tenant_id=tenant and document_type_code='AP_EST_OTHER';
   estimate:=public.fms_save_purchase_payable_secure(jsonb_build_object(
     'kind','estimated','tenant_id',tenant,'supplier_id',supplier,'document_type_id',est_type,
     'business_date','2026-10-21','lines',jsonb_build_array(jsonb_build_object('material_id',material,

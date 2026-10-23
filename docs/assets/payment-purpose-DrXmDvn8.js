@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./payable-reference-workspace--eFTMr_z.js";var i=t({name:`MdmPaymentPurpose`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`purpose`,permissions:{View:`MdmPaymentPurpose:View`,Add:`MdmPaymentPurpose:Add`,Edit:`MdmPaymentPurpose:Edit`}}))}});export{i as default};

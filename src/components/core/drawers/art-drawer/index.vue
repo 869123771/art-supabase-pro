@@ -172,7 +172,11 @@
   import ArtOverlayLoading from '@/components/core/feedback/art-overlay-loading/index.vue'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { mergeOverlayRecords, useArtOverlay } from '@/hooks/core/useArtOverlay'
+  import {
+    artOverlayRequestScopeKey,
+    mergeOverlayRecords,
+    useArtOverlay
+  } from '@/hooks/core/useArtOverlay'
   import { focusFirstInvalidFormField } from '@/utils/form/validation'
   import { handoffVerticalWheel } from '@/utils/ui/wheel-scroll'
   import { artFormFocusKey } from '@/components/core/forms/art-form/focus'
@@ -307,6 +311,8 @@
     emitError: (error) => emit('error', error),
     onConfirmRejected: () => focusFirstInvalidFormField(contentRef)
   })
+
+  provide(artOverlayRequestScopeKey, overlay.requestScope)
 
   const {
     visible,

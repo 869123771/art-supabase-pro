@@ -1,1 +1,0 @@
-import{Yn as e}from"./framework-C5JvCe_B.js";var t=(e=``)=>e.replace(/[|\\{}()[\]^$+*?.]/g,`\\$&`).replace(/-/g,`\\x2d`),n=t=>e(t);export{t as n,n as t};

@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./catalog-BFgjrmUY.js";var i=t({name:`MdmMaterialDirectory`,__name:`index`,setup(t){return(t,i)=>(n(),e(r))}});export{i as default};

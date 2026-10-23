@@ -63,6 +63,8 @@ export interface TableColumnValidationRule<T = ComponentRecord> {
 
 // 表格列配置接口
 export interface ColumnOption<T = ComponentRecord> {
+  /** Optional current-page filter supplied by the table's column profile. */
+  filterType?: import('../table-column-config').TableColumnFilterType
   // 列类型
   type?: 'selection' | 'expand' | 'index' | 'globalIndex'
   // 列属性名

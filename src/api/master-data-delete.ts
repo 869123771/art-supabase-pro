@@ -11,6 +11,10 @@ export interface RecordDeleteDependency extends Omit<
 }
 
 const scopedDeleteReaders: Partial<Record<string, string>> = {
+  mdm_payment_term: 'get_mdm_payable_master_delete_dependencies_secure',
+  mdm_payment_purpose: 'get_mdm_payable_master_delete_dependencies_secure',
+  mdm_settlement_method: 'get_mdm_payable_master_delete_dependencies_secure',
+  mdm_document_type: 'get_mdm_document_type_delete_dependencies_secure',
   fms_travel_application: 'get_fms_travel_application_delete_dependencies_secure',
   fms_travel_loan: 'get_fms_travel_loan_delete_dependencies_secure',
   tms_expense_reimbursement: 'get_fms_reimbursement_delete_dependencies_secure',
@@ -27,7 +31,9 @@ export async function fetchRecordDeleteDependencies(
       () => {
         const reader = scopedDeleteReaders[context.table]
         const query = supabase.rpc(reader ?? 'get_record_delete_dependency_details', {
-          ...(reader ? {} : { p_table: context.table }),
+          ...(reader && reader !== 'get_mdm_payable_master_delete_dependencies_secure'
+            ? {}
+            : { p_table: context.table }),
           p_ids: context.ids,
           p_constraint: context.constraint ?? null
         })

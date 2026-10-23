@@ -8,6 +8,8 @@ import PersonDialog from '@mdm/views/production/modules/person-dialog.vue'
 import DepartmentDialog from '@mdm/views/production/modules/department-dialog.vue'
 import TemplateDialog from '@mdm/views/production/operation-template/modules/template-dialog.vue'
 import ShiftScheduleDialog from '@mdm/views/production/shift-scheduling/modules/shift-schedule-dialog.vue'
+import QrDialog from '@mdm/views/production/work-center/modules/qr-dialog.vue'
+import { createWorkCenter } from '@mdm/views/production/work-center/modules/center-policy'
 import { createDepartment } from '@mdm/views/production/modules/production-model'
 import '@styles/core/tailwind.css'
 import '@styles/index.scss'
@@ -16,6 +18,37 @@ const mode = new URLSearchParams(location.search).get('mode')
 const department = mode === 'department'
 const app = createApp({
   setup() {
+    if (mode === 'qr') {
+      const editor = ref<InstanceType<typeof QrDialog>>()
+      return () =>
+        h('main', { class: 'p-4' }, [
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () =>
+                editor.value?.handleOpen(
+                  [1, 2].map((index) => ({
+                    ...createWorkCenter(),
+                    id: `center-${index}`,
+                    tenantId: 'test-tenant',
+                    code: `WC-00${index}`,
+                    name: `测试工作中心 ${index}`,
+                    qrToken: `center-token-${index}`,
+                    department: null,
+                    operationControlCode: null,
+                    mainCenter: null,
+                    createBy: 'qa',
+                    createTime: '2026-10-01T00:00:00Z',
+                    updateTime: '2026-10-01T00:00:00Z'
+                  }))
+                )
+            },
+            '打开二维码'
+          ),
+          h(QrDialog, { ref: editor })
+        ])
+    }
     if (mode === 'template') {
       const editor = ref<InstanceType<typeof TemplateDialog>>()
       return () =>

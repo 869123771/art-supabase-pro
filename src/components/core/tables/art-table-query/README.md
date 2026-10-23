@@ -1,5 +1,9 @@
 # ArtTableQuery
 
+## 手动刷新反馈
+
+内管列表可设置 `refresh-feedback="icon"`：点击工具栏刷新时，仅旋转原有刷新图标，保留当前列表，不触发表格遮罩或查询按钮的加载动画。刷新期间表格和头部操作暂不可交互，`dataState.loading` 仍反映真实请求状态。首次加载、查询和分页继续沿用正常加载反馈；默认不改变现有页面行为。
+
 ## 关联记录定位
 
 `ArtTableQueryExpose.dataState` 提供只读的 `rows`、`loading`、`error` 计算属性，代表当前表格实际呈现的结果，并沿用公共请求的失效保护。业务页应把表格引用传给 `MasterDeleteProcessingNotice`，由公共组件匹配目标记录；不要根据路由参数是否存在提前显示“已找到”。目标与路由 `recordId` 不同时传 `record-id`，编号规则等非 `id` 主键传 `record-key`。树形记录沿用公共树工具查找。

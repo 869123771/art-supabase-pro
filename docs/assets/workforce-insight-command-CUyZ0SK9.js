@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./domain-command-screen-8qu0oCxA.js";var i=t({name:`WorkforceInsightCommand`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`workforce-insight`}))}});export{i as default};

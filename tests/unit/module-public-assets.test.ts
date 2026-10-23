@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import test from 'node:test'
 
-test('standalone module builds include the platform region data and font license', () => {
+test('standalone modules build and serve platform public assets and the canonical favicon', () => {
   const projectRoot = fileURLToPath(new URL('../..', import.meta.url))
   const artifactRoot = resolve(projectRoot, '.artifacts')
   mkdirSync(artifactRoot, { recursive: true })
@@ -13,7 +13,7 @@ test('standalone module builds include the platform region data and font license
   try {
     writeFileSync(
       join(fixtureRoot, 'index.html'),
-      '<!doctype html><html><body>资源验收</body></html>'
+      '<!doctype html><html><head><link rel="icon" href="@/assets/images/favicon.ico" /></head><body>资源验收</body></html>'
     )
     const factoryUrl = pathToFileURL(join(projectRoot, 'scripts/module-vite-config.mjs')).href
     const result = spawnSync(
@@ -23,7 +23,7 @@ test('standalone module builds include the platform region data and font license
         '-e',
         `
           import assert from 'node:assert/strict'
-          import { readFile } from 'node:fs/promises'
+          import { readFile, readdir } from 'node:fs/promises'
           import path from 'node:path'
           import { build, createServer } from 'vite'
           const { createModuleViteConfig } = await import(${JSON.stringify(factoryUrl)})
@@ -41,6 +41,14 @@ test('standalone module builds include the platform region data and font license
             build: { ...config.build, outDir: path.join(root, 'dist') }
           })
           console.info('Module public assets built')
+          const builtAssets = await readdir(path.join(root, 'dist/assets'))
+          const faviconAsset = builtAssets.find((asset) => /^favicon-.*[.]ico$/.test(asset))
+          assert.ok(faviconAsset, '站点图标必须由平台素材打包，不能保留未解析的别名')
+          const faviconBytes = await readFile(path.join(platformRoot, 'src/assets/images/favicon.ico'))
+          assert.deepEqual(await readFile(path.join(root, 'dist/assets', faviconAsset)), faviconBytes)
+          const builtHtml = await readFile(path.join(root, 'dist/index.html'), 'utf8')
+          assert.ok(builtHtml.includes(faviconAsset))
+          assert.ok(!builtHtml.includes('@/assets/images/favicon.ico'))
           for (const asset of [
             'data/pca-code.json',
             'fonts/HarmonyOS-Sans-LICENSE.txt'
@@ -52,7 +60,7 @@ test('standalone module builds include the platform region data and font license
           }
           const server = await createServer({
             ...config, root, configFile: false, logLevel: 'silent',
-            plugins: [],
+            plugins: config.plugins.filter((plugin) => plugin?.name === 'module-platform-favicon'),
             optimizeDeps: { noDiscovery: true, include: [] },
             server: { ...config.server, host: '127.0.0.1', port: 0, watch: null, hmr: false }
           })
@@ -67,6 +75,14 @@ test('standalone module builds include the platform region data and font license
               Buffer.from(await response.arrayBuffer()),
               await readFile(path.join(platformRoot, 'public/data/pca-code.json'))
             )
+            const htmlResponse = await fetch(url)
+            const servedHtml = await htmlResponse.text()
+            const faviconHref = servedHtml.match(/rel="icon"[^>]*href="([^"]+)"/)?.[1]
+            assert.ok(faviconHref)
+            const faviconResponse = await fetch(new URL(faviconHref, url))
+            assert.equal(faviconResponse.status, 200)
+            assert.ok(faviconResponse.headers.get('content-type')?.startsWith('image/'))
+            assert.deepEqual(Buffer.from(await faviconResponse.arrayBuffer()), faviconBytes)
           } finally {
             await server.close()
           }

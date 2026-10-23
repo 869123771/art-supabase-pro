@@ -8,7 +8,7 @@
       >
         <template #aside
           ><ElTag :type="document.status === 'confirmed' ? 'success' : 'info'"
-            >{{ settlementStatusLabels[document.status]
+            >{{ settlementStatusLabel(kind, document.status)
             }}{{ document.frozen ? ' · 已冻结' : '' }}</ElTag
           ></template
         >
@@ -38,8 +38,10 @@
         <ArtDescriptions v-else :data="document" :items="readOnlyItems" />
       </ArtSectionCard>
       <ArtSectionCard
-        :title="kind === 'application' ? '付款申请明细' : '付款明细'"
-        :subtitle="`共 ${document.lines.length} 行 · ${kind === 'application' ? '申请' : '实付'}金额 ${formatCurrencyValue(total)}`"
+        :title="
+          kind === 'refund' ? '退款收款明细' : kind === 'application' ? '付款申请明细' : '付款明细'
+        "
+        :subtitle="`共 ${document.lines.length} 行 · ${kind === 'refund' ? '退款本金' : kind === 'application' ? '申请金额' : '实付金额'} ${formatCurrencyValue(total)}`"
       >
         <template #actions>
           <ElButton v-if="editable" :disabled="loading || !!error" @click="addLine"
@@ -54,7 +56,9 @@
           :title="
             kind === 'application'
               ? '核准与预计付款金额不得超过申请金额；关联应付后将占用可用余额。'
-              : '确认付款登记实际资金流；核销由所选方案另行匹配。取消付款保留冲回与操作记录，不代表银行已退款。'
+              : kind === 'refund'
+                ? '仅退原付款未核销现金本金，不含手续费或虚拟结算。同源可拆行收至同账套账户；退完全部本金时剩余未兑现折扣自动失效，不作现金退款或已实现损益。'
+                : '确认付款登记实际资金流；核销由所选方案另行匹配。取消付款保留冲回与操作记录，不代表银行已退款。'
           "
         />
         <ArtTable
@@ -66,7 +70,19 @@
         >
           <template v-for="field in referenceFields" :key="field" #[field]="{ row }">
             <ElSelect
-              v-if="editable"
+              v-if="
+                editable &&
+                !(
+                  kind === 'refund' &&
+                  [
+                    'supplierId',
+                    'payeeSupplierId',
+                    'projectId',
+                    'contractId',
+                    'departmentId'
+                  ].includes(field)
+                )
+              "
               v-model="row[field]"
               :aria-label="referenceLabels[field]"
               :disabled="referenceDisabled(row, field)"
@@ -137,7 +153,22 @@
           </template>
           <template #source="{ row }">
             <ElSelect
-              v-if="editable && !row.applicationLineId"
+              v-if="editable && kind === 'refund' && !row.id"
+              v-model="row.refundPaymentLineId"
+              aria-label="原付款明细"
+              filterable
+              class="w-full!"
+              @change="(value) => selectRefundSource(row, value)"
+            >
+              <ElOption
+                v-for="source in options?.refundSource || []"
+                :key="source.refundPaymentLineId"
+                :value="source.refundPaymentLineId || ''"
+                :label="`${source.refundPaymentDocumentNo} / ${source.lineNo} · ${source.supplierName || '承运商'} · 可退 ${formatCurrencyValue(source.availableRefundAmount || 0)}`"
+              />
+            </ElSelect>
+            <ElSelect
+              v-else-if="editable && kind !== 'refund' && !row.applicationLineId"
               :model-value="row.payableId || row.purchaseId"
               aria-label="来源单据"
               filterable
@@ -170,7 +201,9 @@
                   :value="option.id"
                   :label="`${option.code} · ${option.name}`"
               /></ElOptionGroup> </ElSelect
-            ><span v-else>{{ row.sourceDocumentNo || '手工新增' }}</span>
+            ><span v-else>{{
+              row.refundPaymentDocumentNo || row.sourceDocumentNo || '手工新增'
+            }}</span>
           </template>
           <template #employee="{ row }">
             <ArtEmployeeSelect
@@ -225,12 +258,18 @@
         </ArtTable>
       </ArtSectionCard>
       <ArtSectionCard
-        title="金额与付款说明"
-        subtitle="申请、核准及预计金额由明细汇总；手续费不冲减供应商应付余额。"
+        :title="kind === 'refund' ? '退款金额说明' : '金额与付款说明'"
+        :subtitle="
+          kind === 'refund'
+            ? '退款本金与失效折扣分开记录；保存时校准同源全额退款的失效折扣。'
+            : '申请、核准及预计金额由明细汇总；手续费不冲减供应商应付余额。'
+        "
       >
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div
-            ><p class="text-sm text-g-600">{{ kind === 'application' ? '申请金额' : '实付金额' }}</p
+            ><p class="text-sm text-g-600">{{
+              kind === 'refund' ? '退款本金' : kind === 'application' ? '申请金额' : '实付金额'
+            }}</p
             ><p class="mt-1 text-xl font-semibold text-warning">{{
               formatCurrencyValue(total)
             }}</p></div
@@ -262,6 +301,14 @@
               :controls="false"
             /><p v-else>{{ formatCurrencyValue(document.details.fee || 0) }}</p></div
           >
+          <div v-if="kind === 'refund'">
+            <p class="text-sm text-g-600">失效折扣（非现金）</p>
+            <p class="mt-1 text-lg font-medium">{{
+              formatCurrencyValue(
+                document.lines.reduce((sum, row) => sum + Number(row.expiredDiscountAmount || 0), 0)
+              )
+            }}</p>
+          </div>
         </div>
       </ArtSectionCard>
     </div>
@@ -295,7 +342,8 @@
     type PayableSettlementOption
   } from '@/api/payable-settlement'
   import {
-    settlementStatusLabels,
+    settlementStatusLabel,
+    settlementTitles,
     newPayableSettlement,
     newPayableSettlementLine,
     validateSettlementAmounts
@@ -322,7 +370,7 @@
   )
   let requestVersion = 0
   const { confirmDelete } = useArtFeedback()
-  const title = computed(() => (props.kind === 'application' ? '付款申请单' : '付款单'))
+  const title = computed(() => settlementTitles[props.kind])
   const total = computed(
     () => document.value?.lines.reduce((sum, row) => sum + Number(row.amount || 0), 0) || 0
   )
@@ -338,14 +386,14 @@
   ] as const
   type ReferenceField = (typeof referenceFields)[number]
   const referenceLabels: Record<ReferenceField, string> = {
-    purposeId: '付款用途',
+    purposeId: props.kind === 'refund' ? '退款用途' : '付款用途',
     supplierId: '往来单位',
     payeeSupplierId: '收款单位',
     projectId: '项目名称',
     contractId: '合同',
     departmentId: '费用承担部门',
     settlementMethodId: '结算方式',
-    fundAccountId: '付款账号'
+    fundAccountId: props.kind === 'refund' ? '退款收款账户' : '付款账号'
   }
   const referenceKeys = {
     purposeId: 'purpose',
@@ -360,15 +408,24 @@
   const numericFields = computed(() =>
     props.kind === 'application'
       ? (['amount', 'approvedAmount', 'plannedAmount'] as const)
-      : (['amount', 'cashDiscount', 'taxRate'] as const)
+      : props.kind === 'refund'
+        ? (['amount', 'expiredDiscountAmount'] as const)
+        : (['amount', 'cashDiscount', 'taxRate'] as const)
   )
-  type NumericField = 'amount' | 'approvedAmount' | 'plannedAmount' | 'cashDiscount' | 'taxRate'
+  type NumericField =
+    | 'amount'
+    | 'approvedAmount'
+    | 'plannedAmount'
+    | 'cashDiscount'
+    | 'taxRate'
+    | 'expiredDiscountAmount'
   const numericLabels: Record<NumericField, string> = {
-    amount: '申请金额',
+    amount: props.kind === 'refund' ? '退款本金' : '申请金额',
     approvedAmount: '核准金额',
     plannedAmount: '预计付款金额',
     cashDiscount: '现金折扣',
-    taxRate: '税率'
+    taxRate: '税率',
+    expiredDiscountAmount: '失效折扣'
   }
   const textFields = [
     'bankAccount',
@@ -391,7 +448,7 @@
   const headerItems = computed<FormItem[]>(() => [
     {
       key: 'documentNo',
-      label: props.kind === 'application' ? '付款申请单号' : '付款单号',
+      label: `${title.value}号`,
       type: 'input',
       props: { disabled: true, placeholder: '保存后自动生成' }
     },
@@ -409,9 +466,14 @@
     },
     {
       key: 'currencyCode',
-      label: props.kind === 'application' ? '结算币种' : '付款币种',
+      label:
+        props.kind === 'refund'
+          ? '退款币种'
+          : props.kind === 'application'
+            ? '结算币种'
+            : '付款币种',
       type: 'select',
-      props: { options: toSelect('currency') }
+      props: { options: toSelect('currency'), disabled: props.kind === 'refund' }
     },
     ...(props.kind === 'payment'
       ? [
@@ -431,7 +493,7 @@
       : []),
     {
       key: 'organizationId',
-      label: '付款组织',
+      label: props.kind === 'refund' ? '退款组织' : '付款组织',
       type: 'select',
       span: props.kind === 'application' ? 12 : 8,
       props: { options: toSelect('organization'), clearable: true }
@@ -523,6 +585,16 @@
   }
   function fieldOptions(field: ReferenceField, row: PayableSettlementLine) {
     const data = options.value?.[referenceKeys[field]] || []
+    if (field === 'purposeId' && props.kind === 'refund') {
+      const sourceType = row.sourcePurposeBusinessType || row.details.sourcePurposeBusinessType
+      const symmetricType = (
+        { purchase: 'purchase_refund', advance: 'advance_refund', other: 'other_refund' } as Record<
+          string,
+          string
+        >
+      )[sourceType || '']
+      return data.filter((option) => option.businessType === symmetricType)
+    }
     if (field === 'contractId')
       return data.filter(
         (option) =>
@@ -531,9 +603,10 @@
       )
     if (field !== 'fundAccountId') return data
     const method = options.value?.method.find((option) => option.id === row.settlementMethodId)
-    const sourceBook = options.value?.payable.find(
-      (option) => option.id === row.payableId
-    )?.accountSetId
+    const sourceBook =
+      props.kind === 'refund'
+        ? document.value?.accountSetId || row.accountSetId
+        : options.value?.payable.find((option) => option.id === row.payableId)?.accountSetId
     return data.filter(
       (option) =>
         option.currencyCode === document.value?.currencyCode &&
@@ -639,6 +712,39 @@
       row.fundAccountId &&
       !fieldOptions('fundAccountId', row).some((option) => option.id === row.fundAccountId)
     )
+      row.fundAccountId = null
+  }
+  function selectRefundSource(row: PayableSettlementLine, id: string): void {
+    const source = options.value?.refundSource?.find((option) => option.refundPaymentLineId === id)
+    if (!source || !document.value) return
+    Object.assign(row, {
+      refundPaymentLineId: id,
+      refundPaymentDocumentNo: source.refundPaymentDocumentNo,
+      sourceDocumentNo: source.refundPaymentDocumentNo,
+      accountSetId: source.accountSetId,
+      supplierId: source.supplierId,
+      supplierName: source.supplierName,
+      payeeSupplierId: source.payeeSupplierId,
+      payeeSupplierName: source.payeeSupplierName,
+      carrierId: source.carrierId,
+      payableId: source.payableId,
+      purchaseId: source.purchaseId,
+      contractId: source.contractId,
+      projectId: source.projectId,
+      departmentId: source.departmentId,
+      sourcePurposeBusinessType: source.sourcePurposeBusinessType,
+      amount: source.availableRefundAmount || 0,
+      approvedAmount: source.availableRefundAmount || 0,
+      plannedAmount: source.availableRefundAmount || 0,
+      expiredDiscountAmount: source.availableRefundDiscount || 0,
+      cashDiscount: 0,
+      settlementMethodId: source.settlementMethodId,
+      fundAccountId: source.fundAccountId,
+      details: { ...source.details, sourcePurposeBusinessType: source.sourcePurposeBusinessType }
+    })
+    row.purposeId = fieldOptions('purposeId', row)[0]?.id || ''
+    document.value.accountSetId ||= source.accountSetId
+    if (!fieldOptions('fundAccountId', row).some((option) => option.id === row.fundAccountId))
       row.fundAccountId = null
   }
   function supplierBanks(row: PayableSettlementLine) {
@@ -750,7 +856,7 @@
           !(await validateArtFormForSubmit(formRef.value))
         )
           return false
-        const invalid = validateSettlementAmounts(document.value.lines)
+        const invalid = validateSettlementAmounts(document.value.lines, props.kind)
         if (invalid) {
           ElMessage.warning(invalid)
           return false

@@ -1,22 +1,22 @@
 <template>
   <ArtDialog ref="dialogRef" size="md">
     <div class="tenant-dialog">
-      <section class="tenant-dialog__context">
-        <div class="tenant-dialog__context-icon" aria-hidden="true">
-          <ArtSvgIcon :icon="isEdit ? 'ri:building-2-line' : 'ri:add-circle-line'" />
-        </div>
-        <div>
-          <strong>{{ contextTitle }}</strong>
-          <p>{{ contextDescription }}</p>
-        </div>
-        <ElTag
-          :type="isSystemTenant ? 'warning' : isEdit ? 'primary' : 'success'"
-          effect="light"
-          round
-        >
-          {{ isSystemTenant ? '系统租户' : isEdit ? '编辑模式' : '新增租户' }}
-        </ElTag>
-      </section>
+      <ArtEntitySummary
+        compact
+        :icon="isEdit ? 'ri:building-2-line' : 'ri:add-circle-line'"
+        :title="contextTitle"
+        :description="contextDescription"
+      >
+        <template #aside>
+          <ElTag
+            :type="isSystemTenant ? 'warning' : isEdit ? 'primary' : 'success'"
+            effect="light"
+            round
+          >
+            {{ isSystemTenant ? '系统租户' : isEdit ? '编辑模式' : '新增租户' }}
+          </ElTag>
+        </template>
+      </ArtEntitySummary>
 
       <ElAlert
         v-if="isSystemTenant"
@@ -51,7 +51,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { addTenant, editTenant } from '@/api/system-manage/tenant'
   import { useUserStore } from '@/store/modules/user'
   import { omit } from 'lodash-es'
@@ -298,55 +298,6 @@
     gap: 16px;
     min-width: 0;
 
-    &__context {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 14px 16px;
-      background: var(--el-color-primary-light-9);
-      border: 1px solid var(--el-color-primary-light-8);
-      border-radius: var(--custom-radius);
-
-      > div:nth-child(2) {
-        min-width: 0;
-      }
-
-      strong,
-      p {
-        overflow-wrap: anywhere;
-      }
-
-      strong {
-        display: block;
-        margin-bottom: 3px;
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
-    &__context-icon {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      color: var(--el-color-primary);
-      background: var(--el-bg-color);
-      border-radius: var(--el-border-radius-base);
-
-      :deep(svg) {
-        width: 19px;
-        height: 19px;
-      }
-    }
-
     &__alert {
       align-items: flex-start;
 
@@ -356,17 +307,6 @@
 
       :deep(.el-alert__title) {
         line-height: 1.6;
-      }
-    }
-
-    @media (width <= 640px) {
-      &__context {
-        grid-template-columns: auto minmax(0, 1fr);
-
-        > :deep(.el-tag) {
-          grid-column: 2;
-          justify-self: start;
-        }
       }
     }
   }

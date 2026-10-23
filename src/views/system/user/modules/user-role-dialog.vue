@@ -1,16 +1,20 @@
 <template>
   <ArtDialog ref="dialogRef" size="sm">
     <div class="user-role-dialog">
-      <section class="user-role-dialog__context">
-        <ElAvatar :size="42" :src="userContext?.avatar || undefined">
-          {{ userAvatarFallback }}
-        </ElAvatar>
-        <div>
-          <strong>{{ userContext?.nickName || userContext?.userName || '未选择用户' }}</strong>
-          <p>{{ userContext?.userEmail || '暂无登录邮箱' }}</p>
-        </div>
-        <ElTag type="primary" effect="light" round>已选 {{ selectedRoleCount }} 项</ElTag>
-      </section>
+      <ArtEntitySummary
+        compact
+        :title="userContext?.nickName || userContext?.userName || '未选择用户'"
+        :description="userContext?.userEmail || '暂无登录邮箱'"
+      >
+        <template #icon>
+          <ElAvatar :size="34" :src="userContext?.avatar || undefined">
+            {{ userAvatarFallback }}
+          </ElAvatar>
+        </template>
+        <template #aside>
+          <ElTag type="primary" effect="light" round>已选 {{ selectedRoleCount }} 项</ElTag>
+        </template>
+      </ArtEntitySummary>
 
       <ElAlert
         class="user-role-dialog__notice"
@@ -41,6 +45,7 @@
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtForm, { type FormItem } from '@/components/core/forms/art-form/index.vue'
+  import ArtEntitySummary from '@/components/core/surfaces/art-entity-summary/index.vue'
   import { cloneDeep } from 'lodash-es'
   import { ElMessage, type FormRules } from 'element-plus'
   import { assignUserRoles, fetchEnabledRoleList } from '@/api/system-manage'
@@ -168,48 +173,6 @@
     gap: 16px;
     min-width: 0;
 
-    &__context {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 12px;
-      align-items: center;
-      padding: 14px 16px;
-      background: var(--el-color-primary-light-9);
-      border: 1px solid var(--el-color-primary-light-8);
-      border-radius: var(--custom-radius);
-
-      :deep(.el-avatar) {
-        font-weight: 700;
-        color: var(--el-color-primary);
-        background: var(--el-bg-color);
-        border: 1px solid var(--el-color-primary-light-7);
-      }
-
-      > div {
-        min-width: 0;
-      }
-
-      strong,
-      p {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      strong {
-        margin-bottom: 3px;
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-
-      p {
-        margin: 0;
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-      }
-    }
-
     &__notice {
       align-items: flex-start;
 
@@ -219,17 +182,6 @@
 
       :deep(.el-alert__title) {
         line-height: 1.6;
-      }
-    }
-
-    @media (width <= 640px) {
-      &__context {
-        grid-template-columns: auto minmax(0, 1fr);
-
-        > :deep(.el-tag) {
-          grid-column: 2;
-          justify-self: start;
-        }
       }
     }
   }

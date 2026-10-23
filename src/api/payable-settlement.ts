@@ -32,7 +32,9 @@ export async function fetchSettlementDeleteDestination(
       supabase.from('fms_payable_settlement_document').select('kind').eq('id', id).maybeSingle(),
     options
   )
-  return data?.kind === 'application' || data?.kind === 'payment' ? data.kind : null
+  return data?.kind === 'application' || data?.kind === 'payment' || data?.kind === 'refund'
+    ? data.kind
+    : null
 }
 
 export async function fetchPayableSettlements(
@@ -115,7 +117,7 @@ export async function actPayableSettlement(
 export async function pushPayableSettlement(
   id: string,
   kind: PayableSettlementKind,
-  source: 'payable' | 'application' | 'purchase' = 'payable'
+  source: 'payable' | 'application' | 'purchase' | 'payment' = 'payable'
 ): Promise<PayableSettlementDocument> {
   const { data } = await responseHandle<PayableSettlementDocument>(
     () =>

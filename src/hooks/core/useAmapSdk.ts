@@ -1,5 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useScriptTag } from '@vueuse/core'
+import { withTimeout } from '@/utils/async'
 
 export interface UseAmapSdkOptions {
   key: MaybeRefOrGetter<string | undefined>
@@ -33,7 +34,7 @@ export function useAmapSdk<TNamespace extends ArtAmapBrowserNamespace>(options: 
     if (securityJsCode) window._AMapSecurityConfig = { securityJsCode }
 
     if (!window.AMap) {
-      amapSdkLoadPromise ??= loadScript()
+      amapSdkLoadPromise ??= withTimeout(loadScript(), 10_000, '高德地图加载超时，请稍后重试')
         .then(() => getLoadedAmap())
         .catch((error: unknown) => {
           amapSdkLoadPromise = undefined
@@ -61,23 +62,22 @@ function loadAmapPlugins(amap: ArtAmapBrowserNamespace, plugins: readonly string
   if (!missingPlugins.length) return Promise.resolve()
   if (!amap.plugin) return Promise.reject(new Error('AMap plugin loader is unavailable'))
 
-  return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(
-      () => reject(new Error(`${missingPlugins.join(', ')} 服务加载超时`)),
-      8000
-    )
-    amap.plugin?.([...missingPlugins], () => {
-      window.clearTimeout(timeout)
-      const failedPlugins = missingPlugins.filter(
-        (pluginName) => !amap[pluginName.replace(/^AMap\./, '')]
-      )
-      if (failedPlugins.length) {
-        reject(new Error(`${failedPlugins.join(', ')} 服务加载失败`))
-        return
-      }
-      resolve()
-    })
-  })
+  return withTimeout(
+    new Promise<void>((resolve, reject) => {
+      amap.plugin?.([...missingPlugins], () => {
+        const failedPlugins = missingPlugins.filter(
+          (pluginName) => !amap[pluginName.replace(/^AMap\./, '')]
+        )
+        if (failedPlugins.length) {
+          reject(new Error(`${failedPlugins.join(', ')} 服务加载失败`))
+          return
+        }
+        resolve()
+      })
+    }),
+    8000,
+    `${missingPlugins.join(', ')} 服务加载超时`
+  )
 }
 
 function normalizeAmapLoadError(error: unknown): Error {

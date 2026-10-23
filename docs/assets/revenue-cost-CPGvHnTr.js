@@ -1,1 +1,0 @@
-import{Pt as e,Wt as t,un as n}from"./framework-C5JvCe_B.js";import{t as r}from"./ar-secondary-workspace-CoYHRsT7.js";var i=t({name:`FinanceRevenueCost`,__name:`index`,setup(t){return(t,i)=>(n(),e(r,{kind:`revenue`}))}});export{i as default};

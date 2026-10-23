@@ -451,7 +451,7 @@
   import { useTable, CacheInvalidationStrategy } from '@/hooks/core/useTable'
   import { useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { queryDemoUsers, type DemoUser, type DemoUserQuery } from './demo-user-data'
-  import { getColumnKey } from '@/hooks/core/useTableColumns'
+  import { getColumnKey } from '@/utils/table/column-profile'
 
   defineOptions({ name: 'Tables' })
 

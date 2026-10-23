@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { captureBusinessEvidence } from './support/capture-business-evidence'
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 test.setTimeout(180000)
@@ -122,7 +123,9 @@ for (const kind of ['estimated', 'financial'] as const) {
       await expect(drawer.getByText('USD', { exact: true })).toBeVisible()
       await expect(drawer.getByRole('cell', { name: '价税合计(USD)', exact: true })).toBeVisible()
       await expect(drawer.getByText(/\$100\.00/).first()).toBeVisible()
-      await drawer.screenshot({ path: info.outputPath(`${kind}-${theme}-foreign-readonly.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`${kind}-${theme}-foreign-readonly.png`)
+      })
       await page.keyboard.press('Escape')
       await rows.first().getByRole('button', { name: '编辑', exact: true }).click()
       const rate = drawer.getByRole('spinbutton', { name: /^\*?\s*记账汇率$/ })
@@ -138,7 +141,9 @@ for (const kind of ['estimated', 'financial'] as const) {
         drawer.getByRole('textbox', { name: '价税合计（本位币）', exact: true })
       ).toHaveValue(/^725(?:\.0+)?$/)
       expect(currencyRequests).toBe(requestsBeforeEdit)
-      await drawer.screenshot({ path: info.outputPath(`${kind}-${theme}-foreign-edit.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`${kind}-${theme}-foreign-edit.png`)
+      })
       await drawer.getByText('应付明细', { exact: true }).scrollIntoViewIfNeeded()
       const lineTable = drawer.locator('.el-table').first()
       await lineTable.locator('.el-table__body-wrapper .el-scrollbar__wrap').evaluate((element) => {
@@ -154,7 +159,9 @@ for (const kind of ['estimated', 'financial'] as const) {
           drawer.getByRole('columnheader', { name: '应付金额(USD)', exact: true })
         ).toBeVisible()
       }
-      await drawer.screenshot({ path: info.outputPath(`${kind}-${theme}-foreign-edit-lower.png`) })
+      await captureBusinessEvidence(drawer, {
+        path: info.outputPath(`${kind}-${theme}-foreign-edit-lower.png`)
+      })
       configured = false
       await drawer.getByRole('button', { name: '取业务日期汇率', exact: true }).click()
       await expect(drawer.getByText('核算币种未启用，请配置后重试', { exact: true })).toBeVisible()

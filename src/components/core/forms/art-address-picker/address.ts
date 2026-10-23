@@ -8,6 +8,6 @@ export function stripRegionPrefix(address: string, path: readonly string[]): str
     result.push(`${result.at(-1) ?? ''}${item}`)
     return result
   }, [])
-  const matchedPrefix = prefixes.toReversed().find((prefix) => normalizedAddress.startsWith(prefix))
+  const matchedPrefix = prefixes.reverse().find((prefix) => normalizedAddress.startsWith(prefix))
   return trim(matchedPrefix ? normalizedAddress.slice(matchedPrefix.length) : normalizedAddress)
 }

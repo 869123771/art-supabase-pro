@@ -1,19 +1,11 @@
 import { fetchDocumentNumberRulesByKeys } from '@/api/document-number'
-import { useTenantScopeStore } from '@/store/modules/tenant-scope'
-import { resolveTenantReadTargetId } from '@/utils/tenant-scope-access-policy'
+import { useTenantReadTarget } from './useTenantReadTarget'
 
 export function useDocumentNumberRule(
   ruleKey: string,
   tenantId?: MaybeRefOrGetter<string | undefined>
 ) {
-  const tenantScopeStore = useTenantScopeStore()
-  const readTenantId = computed(() =>
-    resolveTenantReadTargetId({
-      effectiveTenantId: tenantScopeStore.effectiveTenantId,
-      requestedTenantId: toValue(tenantId),
-      isPlatformSuper: tenantScopeStore.isPlatformScope
-    })
-  )
+  const readTenantId = useTenantReadTarget(tenantId)
   const rule = shallowRef<Api.SystemManage.DocumentNumberRuleItem>()
   const loading = ref(false)
   const hasLoaded = ref(false)

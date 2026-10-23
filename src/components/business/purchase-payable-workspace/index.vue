@@ -22,6 +22,7 @@
         :columns-context-key="search.viewMode"
         :header-actions="headerActions"
         header-actions-placement="workspace"
+        refresh-feedback="icon"
         :table-props="{
           rowKey: 'recordKey',
           emptyText: '暂无应付单',
@@ -42,7 +43,7 @@
             <template #dropdown
               ><ElDropdownMenu
                 ><ElDropdownItem v-if="kind === 'estimated'" command="financial"
-                  >财务应付</ElDropdownItem
+                  ><ArtSvgIcon icon="ri:bill-line" />财务应付</ElDropdownItem
                 >
                 <ElDropdownItem
                   v-if="
@@ -51,7 +52,7 @@
                     hasAuth('FinancePayableApplication:View')
                   "
                   command="application"
-                  >付款申请</ElDropdownItem
+                  ><ArtSvgIcon icon="ri:file-list-3-line" />付款申请</ElDropdownItem
                 >
                 <ElDropdownItem
                   v-if="
@@ -60,7 +61,7 @@
                     hasAuth('FinancePayablePayment:View')
                   "
                   command="payment"
-                  >付款单</ElDropdownItem
+                  ><ArtSvgIcon icon="ri:bank-card-line" />付款单</ElDropdownItem
                 ></ElDropdownMenu
               ></template
             >
@@ -78,8 +79,11 @@
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="preview">预览凭证</ElDropdownItem
-                ><ElDropdownItem command="generate">生成凭证</ElDropdownItem></ElDropdownMenu
+                ><ElDropdownItem command="preview"
+                  ><ArtSvgIcon icon="ri:file-search-line" />预览凭证</ElDropdownItem
+                ><ElDropdownItem command="generate"
+                  ><ArtSvgIcon icon="ri:file-add-line" />生成凭证</ElDropdownItem
+                ></ElDropdownMenu
               ></template
             >
           </ElDropdown>
@@ -155,6 +159,7 @@
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { payableStatusLabels } from '@/utils/finance/payable'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useRouteTableContext } from '@/hooks/core/useRouteTableContext'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { printHtmlDocument } from '@/utils/file/print-document'
   import { financePaths } from '@/router/business-paths'
@@ -177,6 +182,11 @@
   const voucherDialogRef = ref<InstanceType<typeof FinanceVoucherPreview>>()
   const voucherPreview = ref<PayableVoucherPreview>()
   const busy = ref(false)
+  useRouteTableContext(
+    () =>
+      props.kind === 'estimated' ? financePaths.estimatedPayable : financePaths.financialPayable,
+    tableRef
+  )
   const search = reactive({
     keyword: '',
     status: '',
@@ -424,6 +434,11 @@
         })
         return
       }
+      const source = await reloadDocument(id)
+      if (source.standardPurchase) {
+        ElMessage.warning('标准采购请从同源采购入库单生成财务应付，不能从暂估直接下推')
+        return
+      }
       const created = await pushEstimatedPayable(id)
       ElMessage.success(`已生成 ${created.documentNo}`)
       await tableRef.value?.refreshData()
@@ -532,6 +547,7 @@
     {
       key: 'import-tms',
       label: '导入TMS',
+      icon: 'ri:download-cloud-2-line',
       permission: permission('Import'),
       disabled: busy.value,
       onClick: () => carrierPickerRef.value?.open()
@@ -539,6 +555,7 @@
     {
       key: 'submit',
       label: '提交',
+      icon: 'ri:send-plane-line',
       permission: permission('Submit'),
       selectionRequired: true,
       disabled: busy.value,
@@ -551,6 +568,7 @@
     {
       key: 'approve',
       label: '审核',
+      icon: 'ri:checkbox-circle-line',
       permission: permission('Approve'),
       selectionRequired: true,
       disabled: busy.value,
@@ -563,6 +581,7 @@
     {
       key: 'remove',
       label: '删除',
+      icon: 'ri:delete-bin-line',
       permission: permission('Delete'),
       selectionRequired: true,
       disabled: busy.value,
@@ -585,6 +604,7 @@
     {
       key: 'print',
       label: '打印',
+      icon: 'ri:printer-line',
       permission: permission('Print'),
       selectionRequired: true,
       onClick: ({ selectedRows }) => print(selectedRows.map((row) => String(row.id)))
@@ -634,6 +654,14 @@
     { prop: 'documentNo', label: '单据编号', minWidth: 215, fixed: 'left' },
     { prop: 'supplierName', label: '往来单位', minWidth: 180 },
     {
+      prop: 'baseTotalAmount',
+      label: '价税合计(本位币)',
+      minWidth: 175,
+      align: 'right',
+      formatter: (row) =>
+        formatCurrencyValue(row.baseTotalAmount ?? row.totalAmount, row.baseCurrencyCode || 'CNY')
+    },
+    {
       prop: 'status',
       label: '单据状态',
       width: 110,
@@ -656,14 +684,6 @@
       label: '记账汇率',
       width: 130,
       formatter: (row) => row.exchangeRate ?? 1
-    },
-    {
-      prop: 'baseTotalAmount',
-      label: '价税合计(本位币)',
-      minWidth: 175,
-      align: 'right',
-      formatter: (row) =>
-        formatCurrencyValue(row.baseTotalAmount ?? row.totalAmount, row.baseCurrencyCode || 'CNY')
     },
     ...(search.viewMode === 'line'
       ? [

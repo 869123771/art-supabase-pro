@@ -109,6 +109,37 @@ test('延迟初始化清空后不恢复旧图表', async ({ page }) => {
   await expect(page.locator('[_echarts_instance_]')).toHaveCount(1)
   await expect(page.getByText('暂无数据', { exact: true })).toHaveCount(0)
 })
+
+for (const updateWhileHidden of [false, true]) {
+  test(`延迟初始化期间隐藏后保留${updateWhileHidden ? '最新' : '原始'}数据`, async ({
+    page
+  }, info) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.clock.install()
+    await page.goto('/tests/e2e/fixtures/chart-motion.html?kind=delayed-update')
+    await page.getByRole('button', { name: '隐藏图表', exact: true }).click()
+    if (updateWhileHidden) await page.getByRole('button', { name: '更新统计', exact: true }).click()
+    await page.clock.fastForward(6000)
+    await expect(page.locator('[_echarts_instance_]')).toHaveCount(0)
+    await page.getByRole('button', { name: '显示图表', exact: true }).click()
+    const read = async () =>
+      JSON.parse((await page.getByTestId('chart-state').textContent()) || '{}')
+    await expect
+      .poll(async () => (await read()).series?.[0]?.data)
+      .toEqual([updateWhileHidden ? 23 : 7])
+    await expect(page.locator('canvas')).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+    ).toBeLessThanOrEqual(1)
+    await page.screenshot({
+      path: info.outputPath('latest-visible-chart.png'),
+      animations: 'disabled'
+    })
+    expect(errors).toEqual([])
+  })
+}
+
 for (const kind of ['line', 'bar'] as const) {
   for (const initialMotion of ['reduce', 'no-preference'] as const) {
     test(`${kind} 图表真实值与动画中断 ${initialMotion}`, async ({ page }, testInfo) => {

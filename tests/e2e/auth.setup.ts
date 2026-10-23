@@ -1,6 +1,7 @@
 import { keysToCamelDeep } from '../../src/utils/supabase/key-transform'
 import { fetchAllRangePages } from '../../src/utils/supabase/pagination'
 import fs from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
@@ -8,7 +9,11 @@ import { expect, test as setup } from '@playwright/test'
 import { loadEnv } from 'vite'
 import { readDemoCredentials } from './support/demo-credentials'
 
-const authFile = path.join(process.cwd(), 'playwright', '.auth', 'user.json')
+const authFile = path.resolve(
+  process.env.E2E_AUTH_STATE_FILE || path.join(process.cwd(), 'playwright', '.auth', 'user.json')
+)
+if (spawnSync('git', ['check-ignore', '-q', authFile], { windowsHide: true }).status !== 0)
+  throw new Error('认证测试会话必须保存在 Git 忽略路径中')
 const packageVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version as string
 
 setup('登录并保存视觉回归会话', async ({ page }) => {
@@ -30,6 +35,11 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
   expect(data.session, 'Supabase 未返回测试会话').toBeTruthy()
 
   const session = data.session!
+  const { data: identity, error: identityError } = await authClient.auth.getUser(
+    session.access_token
+  )
+  expect(identityError, '服务器登录身份校验失败').toBeNull()
+  expect(identity.user?.id, '登录会话与服务器身份不一致').toBe(session.user.id)
   const [{ data: userData, error: userError }, { data: dictionaryData, error: dictionaryError }] =
     await Promise.all([
       authClient
@@ -55,6 +65,16 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
   expect(dictionaryError, 'Supabase 测试字典加载失败').toBeNull()
 
   const camelUser = keysToCamelDeep(userData) as Record<string, unknown>
+  const expectedTenantCode = process.env.E2E_EXPECTED_TENANT_CODE
+  const tenant = camelUser.tenant
+  if (
+    expectedTenantCode &&
+    (!tenant ||
+      typeof tenant !== 'object' ||
+      !('tenantCode' in tenant) ||
+      tenant.tenantCode !== expectedTenantCode)
+  )
+    throw new Error('登录账号不属于指定验收租户，禁止继续真实数据测试')
   const { id: userId, userEmail: email, ...userInfo } = camelUser
   const dictionaryMap = Object.groupBy(
     keysToCamelDeep(dictionaryData) as Array<{
@@ -109,8 +129,13 @@ setup('登录并保存视觉回归会话', async ({ page }) => {
     }
   )
 
-  await page.goto('#/dashboard/console', { waitUntil: 'domcontentloaded' })
+  const landingPath = process.env.E2E_LANDING_PATH || '/dashboard/console'
+  await page.goto(`#${landingPath}`, { waitUntil: 'domcontentloaded' })
   await expect(page).not.toHaveURL(/#\/(?:auth\/)?login/, { timeout: 30_000 })
-  await expect(page.locator('.operations-dashboard').first()).toBeVisible({ timeout: 60_000 })
+  if (process.env.E2E_LANDING_HEADING)
+    await expect(
+      page.getByRole('heading', { name: process.env.E2E_LANDING_HEADING, exact: true })
+    ).toBeVisible({ timeout: 60_000 })
+  else await expect(page.locator('.operations-dashboard').first()).toBeVisible({ timeout: 60_000 })
   await page.context().storageState({ path: authFile })
 })

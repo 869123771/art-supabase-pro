@@ -190,6 +190,7 @@
 | `reset()` | `() => void` | 执行组件重置逻辑并触发 `reset` |
 | `fetchOptions(item)` | `(item: FormItem) => Promise<Record<string, any>[]>` | 加载单个字段的异步选项 |
 | `reloadOptions(key?)` | `(key?: string) => Promise<unknown>` | 重新加载指定字段或全部异步选项 |
+| `readyToSubmit` | `boolean` | 控件与远程选项就绪且表单未禁用、未提交；外部弹窗保存按钮可据此禁用，不代表必填校验已通过 |
 | `getOutput()` | `() => Record<string, any>` | 获取按 `sanitizeOutput` 清洗后的表单输出 |
 
 底层 `ElForm` 的其他方法可通过 `formRef.value?.ref.value` 访问，例如 `resetFields`、`fields`。

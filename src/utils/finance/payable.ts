@@ -4,10 +4,33 @@ import type {
   PurchasePayableLine
 } from '@/api/purchase-payable.types'
 import { round } from 'lodash-es'
+import {
+  convertWmsMaterialQuantity,
+  scaleWmsMaterialBaseQuantity
+} from '@/utils/wms/material-quantity'
 
 export const payableStatusLabels = { draft: '暂存', submitted: '已提交', approved: '已审核' }
-export const roundPayable = (value: number, digits = 2): number =>
-  Math.sign(value) * round(Math.abs(value), digits)
+export const roundPayable = (value: number, digits = 2): number => {
+  const rounded = Math.sign(value) * round(Math.abs(value), digits)
+  return rounded === 0 ? 0 : rounded
+}
+
+function configuredBaseQuantity(
+  line: PurchasePayableLine,
+  quantity = line.quantity
+): number | undefined {
+  if (!line.inventoryUnitId || !line.baseUnitId || !Number.isFinite(quantity) || quantity <= 0)
+    return undefined
+  if (line.inventoryUnitId === line.baseUnitId) return quantity
+  return line.materialUnits
+    ? (convertWmsMaterialQuantity(
+        line.materialUnits,
+        quantity,
+        line.inventoryUnitId,
+        line.baseUnitId
+      ) ?? undefined)
+    : undefined
+}
 
 export function calculatePayableLine(
   line: PurchasePayableLine,
@@ -15,51 +38,96 @@ export function calculatePayableLine(
     PurchasePayableDocument,
     'inputTaxInclusivePrice' | 'inputAmount' | 'discountIncludesTax' | 'basis'
   >,
-  changed: 'unitPrice' | 'taxInclusiveUnitPrice' | 'quantity' | 'amount' = 'quantity',
+  changed:
+    | 'unitPrice'
+    | 'taxInclusiveUnitPrice'
+    | 'quantity'
+    | 'amount'
+    | 'inventoryUnitId'
+    | 'baseUnitId'
+    | 'baseQuantity' = 'quantity',
   previousQuantity?: number
 ): PurchasePayableLine {
+  if (changed === 'baseQuantity') return { ...line, baseQuantityEdited: true }
+  if (changed === 'inventoryUnitId' || changed === 'baseUnitId') {
+    return { ...line, baseQuantity: configuredBaseQuantity(line), baseQuantityEdited: false }
+  }
   const taxFactor = 1 + Number(line.taxRate ?? 0) / 100
-  let unitPrice = Number(line.unitPrice || 0)
-  if (changed === 'taxInclusiveUnitPrice')
-    unitPrice = Number(line.taxInclusiveUnitPrice || 0) / taxFactor
-  const taxInclusiveUnitPrice = unitPrice * taxFactor
+  const priceBasis =
+    changed === 'unitPrice'
+      ? 'net'
+      : changed === 'taxInclusiveUnitPrice'
+        ? 'gross'
+        : line.priceBasis || 'net'
+  const enteredPrice = roundPayable(
+    Number((priceBasis === 'gross' ? line.taxInclusiveUnitPrice : line.unitPrice) || 0),
+    4
+  )
+  const unitPrice = priceBasis === 'gross' ? enteredPrice / taxFactor : enteredPrice
+  const taxInclusiveUnitPrice = priceBasis === 'gross' ? enteredPrice : enteredPrice * taxFactor
   const quantity = Number(line.quantity || 0)
+  let baseQuantity = line.baseQuantity
+  if (
+    changed === 'quantity' &&
+    quantity > 0 &&
+    previousQuantity &&
+    previousQuantity > 0 &&
+    baseQuantity !== undefined
+  ) {
+    const configuredPrevious = configuredBaseQuantity(line, previousQuantity)
+    const configuredNext = configuredBaseQuantity(line)
+    baseQuantity =
+      !line.baseQuantityEdited &&
+      configuredPrevious !== undefined &&
+      configuredPrevious === baseQuantity &&
+      configuredNext !== undefined
+        ? configuredNext
+        : (scaleWmsMaterialBaseQuantity(baseQuantity, previousQuantity, quantity) ?? undefined)
+  }
   const discountValue = Number(line.discountValue || 0)
   const priceBase = settings.discountIncludesTax === false ? unitPrice : taxInclusiveUnitPrice
-  const discountAmount =
+  const discountAmount = roundPayable(
     line.discountMethod === 'rate'
       ? (quantity * priceBase * discountValue) / 100
       : line.discountMethod === 'unit'
         ? quantity * discountValue
         : 0
+  )
   const discountNet =
     settings.discountIncludesTax === false ? discountAmount : discountAmount / taxFactor
   const amountEntry = settings.inputAmount || settings.basis === 'amount'
   const grossEntry = amountEntry && settings.inputTaxInclusivePrice !== false
   let amount = quantity * unitPrice - discountNet
   let totalAmount: number
+  let taxAmount: number
   if (amountEntry) {
     if (grossEntry && changed !== 'amount') amount = Number(line.totalAmount || 0) / taxFactor
     else amount = Number(line.amount || 0)
   }
   amount = roundPayable(amount)
-  const taxAmount = roundPayable(amount * (taxFactor - 1))
-  totalAmount = roundPayable(amount + taxAmount)
-  if (grossEntry && changed !== 'amount') totalAmount = roundPayable(Number(line.totalAmount || 0))
+  if (grossEntry && changed !== 'amount') {
+    totalAmount = roundPayable(Number(line.totalAmount || 0))
+    taxAmount = roundPayable(totalAmount - amount)
+  } else if (!amountEntry && priceBasis === 'gross') {
+    totalAmount = roundPayable(
+      quantity * taxInclusiveUnitPrice -
+        (settings.discountIncludesTax === false ? discountAmount * taxFactor : discountAmount)
+    )
+    amount = roundPayable(totalAmount / taxFactor)
+    taxAmount = roundPayable(totalAmount - amount)
+  } else {
+    taxAmount = roundPayable(amount * (taxFactor - 1))
+    totalAmount = roundPayable(amount + taxAmount)
+  }
   return {
     ...line,
-    baseQuantity:
-      changed === 'quantity' &&
-      previousQuantity &&
-      previousQuantity > 0 &&
-      line.baseQuantity !== undefined
-        ? roundPayable((line.baseQuantity * quantity) / previousQuantity, 6)
-        : line.baseQuantity,
+    baseQuantity,
     unitPrice: roundPayable(unitPrice, 4),
+    priceBasis,
     taxInclusiveUnitPrice: roundPayable(taxInclusiveUnitPrice, 4),
     discountAmount: roundPayable(discountAmount),
     amount: line.gift ? 0 : amount,
-    taxAmount: line.gift ? 0 : grossEntry ? roundPayable(totalAmount - amount) : taxAmount,
+    taxAmount: line.gift ? 0 : taxAmount,
     totalAmount: line.gift ? 0 : totalAmount
   }
 }

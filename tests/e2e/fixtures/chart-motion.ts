@@ -17,14 +17,14 @@ const app = createApp({
     const kind = new URLSearchParams(location.search).get('kind')
     const visible = ref(kind !== 'hidden')
     const delayed =
-      kind === 'delayed' || kind === 'hidden' || kind === 'dispose'
-        ? useChart({ initDelay: kind === 'delayed' ? 5000 : 0 })
+      kind === 'delayed' || kind === 'delayed-update' || kind === 'hidden' || kind === 'dispose'
+        ? useChart({ initDelay: kind === 'delayed' || kind === 'delayed-update' ? 5000 : 0 })
         : undefined
     const initializeDelayed = () =>
       delayed?.initChart({
         xAxis: { type: 'category', data: ['本月'] },
         yAxis: { type: 'value' },
-        series: [{ type: 'bar', data: [23] }]
+        series: [{ type: 'bar', data: [kind === 'delayed-update' ? value.value : 23] }]
       })
     onMounted(() => {
       if (delayed) initializeDelayed()
@@ -40,6 +40,7 @@ const app = createApp({
     return () =>
       h('main', { class: 'p-4' }, [
         h('button', { onClick: () => (visible.value = true) }, '显示图表'),
+        h('button', { onClick: () => (visible.value = false) }, '隐藏图表'),
         h('button', { onClick: () => delayed?.destroyChart() }, '销毁图表'),
         h(
           'button',

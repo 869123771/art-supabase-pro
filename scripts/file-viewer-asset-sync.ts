@@ -7,6 +7,17 @@ const ASSET_MANIFEST = 'flyfish-viewer-assets.json'
 const RETRYABLE_FS_ERROR_CODES = new Set(['EACCES', 'EBUSY', 'EPERM', 'UNKNOWN'])
 const MAX_FS_ATTEMPTS = 6
 
+// Current CAD clients resolve the versioned runtime directory. The unversioned
+// copies and workers already emitted by Vite add bytes without another consumer.
+export const REDUNDANT_FILE_VIEWER_ASSETS = [
+  'vendor/pptx/pptx.worker.js',
+  'vendor/libarchive/worker-bundle.js',
+  'wasm/cad/dwg-worker.js',
+  'wasm/cad/libredwg-web.js',
+  'wasm/cad/libredwg-web.wasm',
+  'wasm/cad/dwfv-render.wasm'
+] as const
+
 interface FileViewerAssetManifest {
   assets?: unknown[]
   [key: string]: unknown
@@ -22,7 +33,7 @@ export interface FileViewerAssetSyncResult {
 interface FileViewerAssetSyncPluginOptions {
   enabled: boolean
   sourceRoot: string
-  excludedFiles?: string[]
+  excludedFiles?: readonly string[]
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
@@ -187,7 +198,7 @@ async function createOutputManifest(
 export async function syncFileViewerAssets(
   sourceRoot: string,
   targetRoot: string,
-  excludedFilePaths: string[] = []
+  excludedFilePaths: readonly string[] = []
 ): Promise<FileViewerAssetSyncResult> {
   const sourceInfo = await stat(sourceRoot)
   if (!sourceInfo.isDirectory()) {

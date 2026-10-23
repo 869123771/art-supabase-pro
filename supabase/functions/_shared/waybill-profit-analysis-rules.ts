@@ -233,10 +233,7 @@ export function assessWaybillProfitPortfolio(
       severity: costCoverage < 30 ? 'high' : 'medium',
       title: '利润数据覆盖率不足',
       detail: `当前只有 ${costedRows.length}/${rows.length} 票形成成本，暂不适合直接用于客户、线路或承运商绩效判断。`,
-      evidence: [
-        `成本覆盖率：${costCoverage.toFixed(1)}%`,
-        `缺少成本：${missingCostRows.length} 票`
-      ]
+      evidence: [`成本覆盖率：${costCoverage.toFixed(1)}%`, `缺少成本：${missingCostRows.length} 票`]
     })
   }
 
@@ -315,3 +312,4 @@ export function assessWaybillProfitPortfolio(
     }
   }
 }
+

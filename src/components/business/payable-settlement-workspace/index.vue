@@ -6,7 +6,9 @@
         :description="
           kind === 'application'
             ? '统一采购与运输请款，按明细管理核准额度、付款进度和冻结关闭。'
-            : '按已审核申请或应付登记实际付款，资金流水与核销记录分别保留。'
+            : kind === 'refund'
+              ? '按原付款退回未核销现金本金，沿用原账套，到账与核销记录分别保留。'
+              : '按已审核申请或应付登记实际付款，资金流水与核销记录分别保留。'
         "
         icon="ri:secure-payment-line"
         density="compact"
@@ -22,10 +24,14 @@
         :columns-context-key="query.viewMode"
         :header-actions="headerActions"
         header-actions-placement="workspace"
+        refresh-feedback="icon"
         :table-props="{
           rowKey: 'recordKey',
           emptyText: `暂无${title}`,
-          emptyDescription: '新增单据，或从财务应付单下推。付款申请审核后可继续下推付款。'
+          emptyDescription:
+            kind === 'refund'
+              ? '从已确认付款下推，或新增并选择原付款明细。'
+              : '新增单据，或从财务应付单下推。付款申请审核后可继续下推付款。'
         }"
         focusable
       >
@@ -41,7 +47,11 @@
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="payment">付款单</ElDropdownItem></ElDropdownMenu
+                ><ElDropdownItem command="payment"
+                  ><ArtSvgIcon icon="ri:bank-card-line" />{{
+                    kind === 'payment' ? '付款退款单' : '付款单'
+                  }}</ElDropdownItem
+                ></ElDropdownMenu
               ></template
             >
           </ElDropdown>
@@ -59,13 +69,21 @@
             "
           >
             <ElButton plain :disabled="busy || !selectedRows.length"
-              ><ArtSvgIcon icon="ri:bank-card-line" />确认付款<ArtSvgIcon
-                icon="ri:arrow-down-s-line"
+              ><ArtSvgIcon icon="ri:bank-card-line" />{{
+                kind === 'refund' ? '确认到账' : '确认付款'
+              }}<ArtSvgIcon icon="ri:arrow-down-s-line"
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="confirm">确认付款</ElDropdownItem
-                ><ElDropdownItem command="cancel_payment">取消付款</ElDropdownItem></ElDropdownMenu
+                ><ElDropdownItem command="confirm"
+                  ><ArtSvgIcon icon="ri:checkbox-circle-line" />{{
+                    kind === 'refund' ? '确认到账' : '确认付款'
+                  }}</ElDropdownItem
+                ><ElDropdownItem command="cancel_payment"
+                  ><ArtSvgIcon icon="ri:arrow-go-back-line" />{{
+                    kind === 'refund' ? '取消到账' : '取消付款'
+                  }}</ElDropdownItem
+                ></ElDropdownMenu
               ></template
             >
           </ElDropdown>
@@ -82,8 +100,11 @@
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="preview">预览凭证</ElDropdownItem
-                ><ElDropdownItem command="generate">生成凭证</ElDropdownItem></ElDropdownMenu
+                ><ElDropdownItem command="preview"
+                  ><ArtSvgIcon icon="ri:file-search-line" />预览凭证</ElDropdownItem
+                ><ElDropdownItem command="generate"
+                  ><ArtSvgIcon icon="ri:file-add-line" />生成凭证</ElDropdownItem
+                ></ElDropdownMenu
               ></template
             >
           </ElDropdown>
@@ -124,11 +145,15 @@
   import MasterDataDeleteGuard from '@/components/business/master-data-delete-guard/index.vue'
   import SettlementDocumentDrawer from './modules/settlement-document-drawer.vue'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { useRouteTableContext } from '@/hooks/core/useRouteTableContext'
   import { notifyFriendlyError, useArtFeedback } from '@/hooks/core/useArtFeedback'
   import { formatCurrencyValue } from '@/utils/ui/format'
   import {
     settlementStatusLabels,
-    settlementPaymentLabels
+    settlementPaymentLabels,
+    settlementTitles,
+    settlementStatusLabel,
+    settlementPaymentLabel
   } from '@/utils/finance/payable-settlement'
   import { printHtmlDocument } from '@/utils/file/print-document'
   import { financePaths } from '@/router/business-paths'
@@ -143,6 +168,15 @@
   const drawerRef = ref<InstanceType<typeof SettlementDocumentDrawer>>()
   const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
   const busy = ref(false)
+  const settlementPath = computed(
+    () =>
+      ({
+        application: financePaths.payableApplication,
+        payment: financePaths.payablePayment,
+        refund: financePaths.payableRefund
+      })[props.kind]
+  )
+  useRouteTableContext(() => settlementPath.value, tableRef)
   const tenantScope = useTenantScopeStore()
   const voucherRef = ref<InstanceType<typeof FinanceVoucherPreview>>()
   const voucherResult = ref<PayableVoucherResult>()
@@ -150,7 +184,7 @@
   const router = useRouter()
   const { hasAuth } = useAuth()
   const { confirm, confirmDelete, promptReason } = useArtFeedback()
-  const title = computed(() => (props.kind === 'application' ? '付款申请单' : '付款单'))
+  const title = computed(() => settlementTitles[props.kind])
   const query = reactive<PayableSettlementQuery>({ current: 1, size: 20, viewMode: 'document' })
   const searchItems = computed<SearchFormItem[]>(() => [
     {
@@ -179,18 +213,21 @@
         options: Object.entries(settlementStatusLabels)
           .filter(
             ([value]) =>
-              value !== 'processing' && (props.kind === 'payment' || value !== 'confirmed')
+              value !== 'processing' && (props.kind !== 'application' || value !== 'confirmed')
           )
-          .map(([value, label]) => ({ value, label }))
+          .map(([value]) => ({ value, label: settlementStatusLabel(props.kind, value) }))
       }
     },
     {
       key: 'paymentStatus',
-      label: '付款状态',
+      label: props.kind === 'refund' ? '到账状态' : '付款状态',
       type: 'select',
       props: {
         clearable: true,
-        options: Object.entries(settlementPaymentLabels).map(([value, label]) => ({ value, label }))
+        options: Object.keys(settlementPaymentLabels).map((value) => ({
+          value,
+          label: settlementPaymentLabel(props.kind, value)
+        }))
       }
     },
     {
@@ -243,15 +280,22 @@
         if (['cancel_payment', 'freeze', 'unfreeze', 'close', 'void'].includes(action))
           reason = await promptReason(
             action === 'cancel_payment'
-              ? '此操作冲回账面资金与未制证核销，保留历史记录；请先核实实际银行状态。'
+              ? props.kind === 'refund'
+                ? '此操作冲回退款到账及未制证核销，保留历史；退款占用直到作废后才释放。请先核实实际银行状态。'
+                : '此操作冲回账面资金与未制证核销，保留历史记录；请先核实实际银行状态。'
               : '请填写本次业务处理原因。',
             '处理原因'
           )
         else if (action === 'confirm')
-          await confirm('确认登记实际付款？系统按明细生成资金流水，并按已启用的同源方案核销。', {
-            title: '确认付款',
-            confirmButtonText: '确认登记'
-          })
+          await confirm(
+            props.kind === 'refund'
+              ? '请核实退款已实际到账。确认后按明细登记收款资金流水，不会发起银行转账。'
+              : '确认登记实际付款？系统按明细生成资金流水，并按已启用的同源方案核销。',
+            {
+              title: props.kind === 'refund' ? '确认退款到账' : '确认付款',
+              confirmButtonText: '确认登记'
+            }
+          )
       } catch {
         return
       }
@@ -288,6 +332,16 @@
               routePath: financePaths.payablePayment,
               routeQuery: (record) => ({ recordId: record.targetId }),
               canNavigate: () => hasAuth('FinancePayablePayment:View')
+            },
+            refund: {
+              label: '付款退款',
+              unit: '张',
+              description: '原付款已有退款引用，保留经营历史。',
+              actionLabel: '查看退款',
+              order: 3,
+              routePath: financePaths.payableRefund,
+              routeQuery: (record) => ({ recordId: record.targetId }),
+              canNavigate: () => hasAuth('FinancePayableRefund:View')
             }
           }
         })
@@ -313,14 +367,25 @@
   }
   async function push(id: string): Promise<void> {
     await run(async () => {
-      const created = await pushPayableSettlement(id, 'payment', 'application')
+      const created = await pushPayableSettlement(
+        id,
+        props.kind === 'payment' ? 'refund' : 'payment',
+        props.kind === 'payment' ? 'payment' : 'application'
+      )
       ElMessage.success(`已生成 ${created.documentNo}`)
-      await router.push({ path: financePaths.payablePayment, query: { recordId: created.id } })
+      await router.push({
+        path: props.kind === 'payment' ? financePaths.payableRefund : financePaths.payablePayment,
+        query: { recordId: created.id }
+      })
     })
   }
   async function voucher(id: string, preview: boolean): Promise<void> {
     await run(async () => {
-      voucherResult.value = await payableSettlementVoucher(id, 'payment', preview)
+      voucherResult.value = await payableSettlementVoucher(
+        id,
+        props.kind === 'refund' ? 'refund' : 'payment',
+        preview
+      )
       if (preview) await voucherRef.value?.handleOpen()
       else {
         if (voucherResult.value.status === 'generated')
@@ -356,6 +421,7 @@
     ...(['submit', 'approve'] as const).map((action) => ({
       key: action,
       label: action === 'submit' ? '提交' : '审核',
+      icon: action === 'submit' ? 'ri:send-plane-line' : 'ri:checkbox-circle-line',
       permission: action === 'submit' ? props.permissions.Submit : props.permissions.Approve,
       selectionRequired: true,
       disabled: busy.value,
@@ -367,23 +433,34 @@
     })),
     {
       key: 'delete',
+      icon: 'ri:delete-bin-line',
       label: '删除',
       permission: props.permissions.Delete,
       selectionRequired: true,
       disabled: busy.value,
       onClick: ({ selectedRows }) => remove(selectedRows.map((row) => String(row.id)))
     },
-    ...(props.kind === 'application'
+    ...(props.kind !== 'refund'
       ? [
           {
             key: 'push',
             slot: 'payment-push',
             permission: props.permissions.Push,
             selectionRequired: true
-          },
+          }
+        ]
+      : []),
+    ...(props.kind === 'application'
+      ? [
           ...(['freeze', 'unfreeze', 'close'] as const).map((action) => ({
             key: action,
             label: action === 'freeze' ? '冻结' : action === 'unfreeze' ? '解冻' : '关闭',
+            icon:
+              action === 'freeze'
+                ? 'ri:lock-line'
+                : action === 'unfreeze'
+                  ? 'ri:lock-unlock-line'
+                  : 'ri:close-circle-line',
             permission: action === 'close' ? props.permissions.Close : props.permissions.Freeze,
             selectionRequired: true,
             disabled: busy.value,
@@ -409,7 +486,8 @@
           },
           {
             key: 'void',
-            label: '作废未付款单',
+            label: props.kind === 'refund' ? '作废未到账单' : '作废未付款单',
+            icon: 'ri:prohibited-line',
             permission: props.permissions.Void,
             selectionRequired: true,
             disabled: busy.value,
@@ -423,6 +501,7 @@
     {
       key: 'print',
       label: '打印',
+      icon: 'ri:printer-line',
       permission: props.permissions.Print,
       selectionRequired: true,
       onClick: ({ selectedRows }) => print(selectedRows.map((row) => String(row.id)))
@@ -457,18 +536,30 @@
       : []),
     {
       prop: 'documentNo',
-      label: props.kind === 'application' ? '付款申请单号' : '付款单号',
+      label: `${title.value}号`,
       minWidth: 215,
       fixed: 'left'
     },
-    { prop: 'documentTypeName', label: '单据类型', minWidth: 155 },
+    { prop: 'counterpartyName', label: '往来单位', minWidth: 220 },
+    {
+      prop: 'amount',
+      label:
+        props.kind === 'application'
+          ? '申请金额(元)'
+          : props.kind === 'refund'
+            ? '退款本金(元)'
+            : '实付金额(元)',
+      width: 160,
+      align: 'right',
+      formatter: (row) => formatCurrencyValue(row.amount)
+    },
     {
       prop: 'status',
       label: '单据状态',
       width: 135,
       formatter: (row) => (
         <ElTag type={row.status === 'confirmed' ? 'success' : 'info'}>
-          {settlementStatusLabels[row.status] || row.status}
+          {settlementStatusLabel(props.kind, row.status)}
           {row.frozen ? ' · 冻结' : ''}
         </ElTag>
       )
@@ -478,26 +569,21 @@
       label: props.kind === 'application' ? '申请日期' : '业务日期',
       width: 130
     },
-    { prop: 'counterpartyName', label: '往来单位', minWidth: 220 },
-    { prop: 'reason', label: props.kind === 'application' ? '请款事由' : '摘要', minWidth: 220 },
-    { prop: 'currencyCode', label: '结算币种', width: 110 },
-    {
-      prop: 'amount',
-      label: props.kind === 'application' ? '申请金额(元)' : '实付金额(元)',
-      width: 160,
-      fixed: 'right',
-      align: 'right',
-      formatter: (row) => formatCurrencyValue(row.amount)
-    },
     {
       prop: 'paymentStatus',
-      label: '付款状态',
+      label: props.kind === 'refund' ? '到账状态' : '付款状态',
       width: 130,
-      fixed: 'right',
-      formatter: (row) => settlementPaymentLabels[row.paymentStatus || 'none']
+      formatter: (row) => settlementPaymentLabel(props.kind, row.paymentStatus || 'none')
     },
+    { prop: 'documentTypeName', label: '单据类型', minWidth: 155 },
+    { prop: 'reason', label: props.kind === 'application' ? '请款事由' : '摘要', minWidth: 220 },
+    { prop: 'currencyCode', label: '结算币种', width: 110 },
     { prop: 'applicantName', label: '申请人', minWidth: 130 },
-    { prop: 'organizationName', label: '付款组织', minWidth: 180 },
+    {
+      prop: 'organizationName',
+      label: props.kind === 'refund' ? '退款组织' : '付款组织',
+      minWidth: 180
+    },
     {
       prop: 'operation',
       label: '操作',

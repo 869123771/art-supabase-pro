@@ -3,18 +3,30 @@
     <ArtSectionCard
       title="匹配清单"
       subtitle="仅核减双方会计余额，不发起银行付款。确认时会重新校验方案与余额。"
-      :loading="loading"
-      :error="loadError"
+      :loading="loading && !plan"
+      :error="plan ? '' : loadError"
       :empty="!plan?.items.length"
       empty-title="暂无符合方案的单据"
       empty-description="请检查双方未核销余额、日期范围及方案匹配条件。"
       @retry="load"
     >
       <template #actions>
-        <ElButton :loading="loading" :disabled="executing" @click="load">
-          <ArtSvgIcon icon="ri:refresh-line" />重新预览
-        </ElButton>
+        <ArtIconButton
+          icon="ri:refresh-line"
+          label="重新预览"
+          :loading="loading"
+          :disabled="executing"
+          @click="load"
+        />
       </template>
+      <ElAlert
+        v-if="plan && loadError"
+        class="mb-3"
+        :title="loadError"
+        type="error"
+        :closable="false"
+        show-icon
+      />
       <div v-if="plan" class="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
         <span class="text-g-700">{{ plan.schemeName }} · 共 {{ plan.recordCount }} 笔</span>
         <span class="font-semibold text-g-900"
@@ -40,6 +52,7 @@
   import type { ArtDialogExpose } from '@/components/core/dialogs/art-dialog/types'
   import ArtSectionCard from '@/components/core/surfaces/art-section-card/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
@@ -88,7 +101,6 @@
     const current = ++version
     loading.value = true
     loadError.value = ''
-    plan.value = undefined
     try {
       const result = await automaticPayableWriteoff(request.value)
       if (current === version) plan.value = result

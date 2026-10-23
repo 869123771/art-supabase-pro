@@ -39,15 +39,13 @@
         </template>
 
         <div class="workflow-definition__table-workspace">
-          <section v-if="!isDesktopMenuLayout" class="workflow-definition__mobile-menu art-card-xs">
-            <span aria-hidden="true"><ArtSvgIcon icon="ri:node-tree" /></span>
-            <div
-              ><small>当前业务范围</small><strong>{{ selectedMenuLabel }}</strong></div
-            >
-            <ElButton type="primary" plain @click="openMenuDrawer">
-              <ArtSvgIcon icon="ri:filter-3-line" />业务筛选
-            </ElButton>
-          </section>
+          <BusinessMobileFilterContext
+            v-if="!isDesktopMenuLayout"
+            label="当前业务范围"
+            :value="selectedMenuLabel"
+            action-label="业务筛选"
+            @action="openMenuDrawer"
+          />
 
           <ArtTableQuery
             ref="tableQueryRef"
@@ -128,6 +126,7 @@
   import ArtWorkspaceSplitter from '@/components/core/layouts/art-workspace-splitter/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import BusinessMobileFilterContext from '@/components/business/business-mobile-filter-context/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import MasterDataDeleteGuard, {
     type MasterDataDeleteGuardOpenOptions
@@ -749,53 +748,6 @@
     &__table-workspace {
       display: flex;
       flex-direction: column;
-    }
-
-    &__mobile-menu {
-      display: flex;
-      flex: none;
-      gap: 11px;
-      align-items: center;
-      min-width: 0;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      background: linear-gradient(145deg, var(--el-color-primary-light-9), var(--el-bg-color) 76%);
-
-      > span {
-        display: inline-flex;
-        flex: 0 0 36px;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        color: var(--el-color-primary);
-        background: var(--el-bg-color);
-        border: 1px solid var(--el-color-primary-light-7);
-        border-radius: var(--custom-radius);
-      }
-
-      > div {
-        display: grid;
-        flex: 1;
-        min-width: 0;
-      }
-
-      small,
-      strong {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      small {
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-
-      strong {
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
     }
 
     &__drawer-filter {

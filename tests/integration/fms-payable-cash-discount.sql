@@ -7,7 +7,7 @@ declare
 begin
  select auth_user_id into actor from public.sys_user where user_roles @>array['R_SUPER'] and auth_user_id is not null limit 1;
  select a.* into account_set from public.fms_account_set a where a.is_default and a.status='active'
- and exists(select 1 from public.fms_fund_account f join public.fms_currency c on c.id=f.currency_id where f.account_set_id=a.id and f.status='active' and c.currency_code='CNY')
+ and exists(select 1 from public.fms_fund_account f join public.fms_currency c on c.id=f.currency_id where f.account_set_id=a.id and f.status='active' and c.currency_code='CNY' and f.account_type<>'cash')
  and exists(select 1 from public.mdm_material where tenant_id=a.tenant_id and inventory_unit_id is not null) limit 1;
  select start_date into posting_date from public.fms_accounting_period where account_set_id=account_set.id and status='open' order by start_date desc limit 1;
  select f.id into fund from public.fms_fund_account f join public.fms_currency c on c.id=f.currency_id where f.account_set_id=account_set.id and f.status='active' and c.currency_code='CNY' and f.account_type<>'cash' limit 1;

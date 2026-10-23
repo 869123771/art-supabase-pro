@@ -78,33 +78,35 @@ for (const mode of ['single', 'bulk']) {
           ? route.fulfill({ status: 403, json: { code: '42501', message: 'permission denied' } })
           : route.fulfill({ json: [{ id: referenceId, enabled: false }] })
       })
-      await page.route('**/rest/v1/rpc/get_record_delete_dependency_details**', (route) => {
-        events.push('inspect')
-        expect(route.request().postDataJSON()).toMatchObject({
-          p_table: 'mdm_document_type',
-          p_ids: ids
-        })
-        if (state === 'failed')
-          return route.fulfill({ status: 500, json: { code: 'XX000', message: 'test failure' } })
-        return route.fulfill({
-          json:
-            ['referenced', 'status-failed'].includes(state) ||
-            (state === 'concurrent' && events.includes('delete'))
-              ? [
-                  {
-                    resource_id: id,
-                    source_table: 'mdm_business_type',
-                    record_id: referenceId,
-                    target_id: referenceId,
-                    record_no: 'BUSINESS-REF-001',
-                    record_summary: '测试引用业务类型',
-                    record_status: 'enabled',
-                    created_at: '2026-10-01'
-                  }
-                ]
-              : []
-        })
-      })
+      await page.route(
+        '**/rest/v1/rpc/get_mdm_document_type_delete_dependencies_secure**',
+        (route) => {
+          events.push('inspect')
+          expect(route.request().postDataJSON()).toMatchObject({
+            p_ids: ids
+          })
+          if (state === 'failed')
+            return route.fulfill({ status: 500, json: { code: 'XX000', message: 'test failure' } })
+          return route.fulfill({
+            json:
+              ['referenced', 'status-failed'].includes(state) ||
+              (state === 'concurrent' && events.includes('delete'))
+                ? [
+                    {
+                      resource_id: id,
+                      source_table: 'mdm_business_type',
+                      record_id: referenceId,
+                      target_id: referenceId,
+                      record_no: 'BUSINESS-REF-001',
+                      record_summary: '测试引用业务类型',
+                      record_status: 'enabled',
+                      created_at: '2026-10-01'
+                    }
+                  ]
+                : []
+          })
+        }
+      )
       await page.goto('/tests/e2e/fixtures/business-type-delete.html?page=document')
       const row = page.locator('.el-table__body-wrapper tr').first()
       await expect(row).toContainText('DOC-TEST-001')

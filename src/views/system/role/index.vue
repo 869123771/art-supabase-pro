@@ -40,19 +40,13 @@
         </template>
 
         <div class="role-page__table-workspace">
-          <section v-if="!isDesktopOrganizationLayout" class="role-page__mobile-scope art-card-xs">
-            <span class="role-page__mobile-scope-icon" aria-hidden="true">
-              <ArtSvgIcon icon="ri:node-tree" />
-            </span>
-            <div>
-              <small>当前组织范围</small>
-              <strong>{{ selectedOrganizationLabel }}</strong>
-            </div>
-            <ElButton type="primary" plain @click="openOrganizationDrawer">
-              <ArtSvgIcon icon="ri:filter-3-line" />
-              组织筛选
-            </ElButton>
-          </section>
+          <BusinessMobileFilterContext
+            v-if="!isDesktopOrganizationLayout"
+            label="当前组织范围"
+            :value="selectedOrganizationLabel"
+            action-label="组织筛选"
+            @action="openOrganizationDrawer"
+          />
 
           <ArtTableQuery
             ref="tableQueryRef"
@@ -111,8 +105,8 @@
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
+  import BusinessMobileFilterContext from '@/components/business/business-mobile-filter-context/index.vue'
   import BusinessWorkspaceHeader, {
     type BusinessWorkspaceMetric
   } from '@/components/business/business-workspace-header/index.vue'
@@ -682,53 +676,6 @@
       flex-direction: column;
     }
 
-    &__mobile-scope {
-      display: flex;
-      flex: none;
-      gap: 11px;
-      align-items: center;
-      min-width: 0;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      background: linear-gradient(145deg, var(--el-color-primary-light-9), var(--el-bg-color) 76%);
-
-      > div {
-        display: grid;
-        flex: 1;
-        min-width: 0;
-      }
-
-      small,
-      strong {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      small {
-        font-size: 11px;
-        color: var(--el-text-color-secondary);
-      }
-
-      strong {
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-    }
-
-    &__mobile-scope-icon {
-      display: inline-flex;
-      flex: 0 0 36px;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      color: var(--el-color-primary);
-      background: var(--el-bg-color);
-      border: 1px solid var(--el-color-primary-light-7);
-      border-radius: var(--custom-radius);
-    }
-
     &__drawer-filter {
       height: 100%;
       border: 0;
@@ -840,15 +787,6 @@
       .role-operation-cell__protected {
         font-size: 12px;
         color: var(--el-text-color-placeholder);
-      }
-    }
-
-    @media (width <= 640px) {
-      &__mobile-scope {
-        .el-button {
-          flex: none;
-          padding-inline: 10px;
-        }
       }
     }
   }
