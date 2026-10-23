@@ -1,0 +1,1 @@
+import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./vw1mkzn3.js";var i=n({name:`BusinessCockpit`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{mode:`business`}))}});export{i as default};

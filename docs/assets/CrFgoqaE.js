@@ -1,0 +1,1 @@
+import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./XRQ3Z08x.js";var i=n({name:`MesReportAllocation`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{mode:`allocation`}))}});export{i as default};

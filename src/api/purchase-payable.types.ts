@@ -75,6 +75,11 @@ export interface PurchasePayableLine {
   amount: number
   taxAmount: number
   totalAmount: number
+  faceAmount?: number
+  faceTaxAmount?: number
+  faceTotalAmount?: number
+  faceWrittenOffAmount?: number
+  faceUnpaidAmount?: number
   linkedQuantity?: number
   linkedAmount?: number
   writtenOffAmount?: number
@@ -131,6 +136,7 @@ export interface PurchasePayableDocument {
   invoiceNo?: string
   remark?: string
   isReversal?: boolean
+  isCredit?: boolean
   reversalOf?: string | null
   frozenAmount?: number
   freezeStatus?: 'none' | 'partial' | 'full'
@@ -151,6 +157,12 @@ export interface PurchasePayableDocument {
   amount: number
   taxAmount: number
   totalAmount: number
+  faceAmount?: number
+  faceTaxAmount?: number
+  faceTotalAmount?: number
+  faceBaseTotalAmount?: number
+  faceWrittenOffAmount?: number
+  faceUnpaidAmount?: number
   plansByRatio?: boolean
   paymentPlans?: PayablePaymentPlan[]
   lines: PurchasePayableLine[]
@@ -178,6 +190,7 @@ export interface PayableOption extends WmsMaterialUnits {
   inventoryUnitId?: string
   unitName?: string
   days?: number
+  standardPurchase?: boolean
 }
 export interface PayableCurrencyContext {
   accountSetId?: string | null

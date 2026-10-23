@@ -2,7 +2,9 @@ import { useSupabase } from '@/hooks/core/useSupabase'
 import type { PayableReference, PayableMatchRule } from '@/api/payable-reference'
 import type { PayableSettlementOption } from '@/api/payable-settlement.types'
 import type { PayableVoucherPreview } from '@/api/purchase-payable'
-export type PayableWriteoffRelation = 'payable_payment' | 'payment_refund' | 'payable_receivable'
+export type PayableWriteoffRelation =
+  'payable_payment' | 'payment_refund' | 'payable_receivable' | 'payable_red_blue'
+export type PayableCrossCurrencyMode = 'same_currency' | 'book_equivalent' | 'full_pair'
 export interface PayableWriteoffQuery {
   organizationId?: string
   supplierId?: string
@@ -11,6 +13,8 @@ export interface PayableWriteoffQuery {
   documentIds?: string[]
   counterpartyKey?: string
   allowCrossParty?: boolean
+  asOfDate?: string
+  crossCurrencyMode?: PayableCrossCurrencyMode
 }
 export type PayableManualWriteoffItem =
   | { payableId: string; paymentLineId: string; amount: number }
@@ -20,6 +24,14 @@ export type PayableManualWriteoffItem =
       payableId: string
       receivableLineId: string
       amount: number
+      allowCrossParty?: boolean
+    }
+  | {
+      relation: 'payable_red_blue'
+      payableId: string
+      creditPayableId: string
+      amount: number
+      creditAmount: number
       allowCrossParty?: boolean
     }
 export interface PayableWriteoffCandidate {
@@ -35,6 +47,10 @@ export interface PayableWriteoffCandidate {
   lineNo?: number
   purposeName?: string
   currencyCode: string
+  baseCurrencyCode?: string
+  exchangeRate?: number
+  accountSetId?: string
+  accountSetName?: string
   projectName?: string
   sourceDocumentNo?: string
   amount: number
@@ -53,6 +69,16 @@ export interface PayableWriteoffRecord {
   paymentLineId?: string | null
   receivableLineId?: string | null
   receivableAmount?: number
+  creditPayableId?: string
+  creditAmount?: number
+  payableBaseAmount?: number
+  creditBaseAmount?: number
+  exchangeDifference?: number
+  currencyCode?: string
+  secondaryCurrencyCode?: string
+  baseCurrencyCode?: string
+  primaryExchangeRate?: number
+  secondaryExchangeRate?: number
   counterpartyKey?: string
   counterpartyName?: string
   payableNo: string
@@ -75,6 +101,7 @@ export interface PayableWriteoffWorkspace {
   history: PayableWriteoffRecord[]
   schemes: PayableReference[]
   organizations?: PayableSettlementOption[]
+  relations?: Array<{ label: string; value: PayableWriteoffRelation }>
 }
 export interface PayableVoucherResult {
   status?: string
@@ -88,6 +115,14 @@ export interface PayableAutomaticWriteoffItem {
   refundLineId?: string
   paymentLineId?: string
   receivableLineId?: string
+  creditPayableId?: string
+  creditAmount?: number
+  currencyCode?: string
+  secondaryCurrencyCode?: string
+  baseCurrencyCode?: string
+  payableBaseAmount?: number
+  creditBaseAmount?: number
+  exchangeDifference?: number
   payableNo: string
   paymentNo: string
   supplierName: string
@@ -97,7 +132,8 @@ export interface PayableAutomaticWriteoffItem {
 }
 export interface PayableAutomaticWriteoffPlan {
   items: PayableAutomaticWriteoffItem[]
-  totalAmount: number
+  totalAmount: number | null
+  currencyTotals?: Array<{ currencyCode: string; amount: number }>
   recordCount: number
   planToken: string
   recordIds: string[]

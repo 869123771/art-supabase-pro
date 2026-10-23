@@ -1,1 +1,0 @@
-import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./CYBgX3So.js";var i=n({name:`PmisPatrolAnalysis`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{kind:`patrol`}))}});export{i as default};

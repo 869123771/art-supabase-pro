@@ -1,5 +1,23 @@
 <template>
   <ArtDialog ref="dialogRef" title="按方案自动核销" size="xl" confirm-text="确认自动核销">
+    <div v-if="isRedBlue" class="mb-4 flex flex-wrap items-center gap-3 text-sm">
+      <span class="text-g-700">异币自动分配</span>
+      <ElSegmented
+        v-model="crossCurrencyMode"
+        :options="currencyModes"
+        aria-label="异币自动分配方式"
+        :disabled="loading || executing"
+        @change="changeCurrencyMode"
+      />
+    </div>
+    <ElAlert
+      v-if="isRedBlue && crossCurrencyMode === 'full_pair'"
+      class="mb-4"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="异币匹配双方可用余量将全部对冲，差额计入汇兑损益，请逐行核对原币金额。"
+    />
     <ArtSectionCard
       title="匹配清单"
       subtitle="仅核减双方会计余额，不发起银行付款。确认时会重新校验方案与余额。"
@@ -30,7 +48,7 @@
       <div v-if="plan" class="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
         <span class="text-g-700">{{ plan.schemeName }} · 共 {{ plan.recordCount }} 笔</span>
         <span class="font-semibold text-g-900"
-          >核销合计 {{ formatCurrencyValue(plan.totalAmount) }}</span
+          >核销合计 {{ formatPayableCurrencyTotals(plan.items, (row) => row.amount) }}</span
         >
       </div>
       <ArtTable
@@ -55,13 +73,18 @@
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
   import { notifyFriendlyError } from '@/hooks/core/useArtFeedback'
   import { formatCurrencyValue } from '@/utils/ui/format'
+  import {
+    formatPayableCurrencyTotals,
+    formatPayableExchangeDifference
+  } from '@/utils/finance/payable-writeoff'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import type { ColumnOption } from '@/types'
   import {
     automaticPayableWriteoff,
     type PayableAutomaticWriteoffItem,
     type PayableAutomaticWriteoffPlan,
-    type PayableAutomaticWriteoffRequest
+    type PayableAutomaticWriteoffRequest,
+    type PayableCrossCurrencyMode
   } from '@/api/payable-writeoff'
 
   const emit = defineEmits<{ success: []; refresh: [] }>()
@@ -72,6 +95,18 @@
   const loading = ref(false)
   const executing = ref(false)
   const loadError = ref('')
+  const isRedBlue = computed(() => request.value?.query.relation === 'payable_red_blue')
+  const crossCurrencyMode = ref<PayableCrossCurrencyMode>('book_equivalent')
+  const currencyModes = [
+    { label: '本位币等值分配', value: 'book_equivalent' },
+    { label: '匹配余量全部对冲', value: 'full_pair' },
+    { label: '仅同币种', value: 'same_currency' }
+  ]
+  async function changeCurrencyMode(): Promise<void> {
+    if (!request.value) return
+    request.value.query.crossCurrencyMode = crossCurrencyMode.value
+    await load()
+  }
   let version = 0
   const confirmDisabled = computed(
     () => loading.value || executing.value || !!loadError.value || !plan.value?.items.length
@@ -79,15 +114,20 @@
   const columns = computed<ColumnOption<PayableAutomaticWriteoffItem>[]>(() => [
     {
       prop: 'payableNo',
-      label: request.value?.query.relation === 'payment_refund' ? '付款单' : '财务应付单',
+      label: isRedBlue.value
+        ? '蓝字财务应付'
+        : request.value?.query.relation === 'payment_refund'
+          ? '付款单'
+          : '财务应付单',
       minWidth: 215,
       fixed: 'left'
     },
     { prop: 'supplierName', label: '主方往来单位', minWidth: 180 },
     {
       prop: 'paymentNo',
-      label:
-        request.value?.query.relation === 'payable_receivable'
+      label: isRedBlue.value
+        ? '红字财务应付'
+        : request.value?.query.relation === 'payable_receivable'
           ? '财务应收单'
           : request.value?.query.relation === 'payment_refund'
             ? '付款退款单'
@@ -103,12 +143,42 @@
     },
     {
       prop: 'amount',
-      label: '核销金额(元)',
+      label: isRedBlue.value ? '主方原币金额' : '核销金额(元)',
       width: 165,
       fixed: 'right',
       align: 'right',
-      formatter: (row) => formatCurrencyValue(row.amount)
-    }
+      formatter: (row) => formatCurrencyValue(row.amount, row.currencyCode || 'CNY')
+    },
+    ...(isRedBlue.value
+      ? [
+          {
+            prop: 'currencyCode',
+            label: '主方/辅方币种',
+            width: 145,
+            formatter: (row: PayableAutomaticWriteoffItem) =>
+              `${row.currencyCode || 'CNY'} / ${row.secondaryCurrencyCode || row.currencyCode || 'CNY'}`
+          },
+          {
+            prop: 'creditAmount',
+            label: '辅方原币金额',
+            width: 170,
+            align: 'right' as const,
+            formatter: (row: PayableAutomaticWriteoffItem) =>
+              formatCurrencyValue(
+                row.creditAmount ?? row.amount,
+                row.secondaryCurrencyCode || 'CNY'
+              )
+          },
+          {
+            prop: 'exchangeDifference',
+            label: '汇兑差额(本位币)',
+            width: 195,
+            align: 'right' as const,
+            formatter: (row: PayableAutomaticWriteoffItem) =>
+              formatPayableExchangeDifference(row.exchangeDifference, row.baseCurrencyCode || 'CNY')
+          }
+        ]
+      : [])
   ])
   async function load(): Promise<void> {
     if (!request.value || executing.value) return
@@ -133,6 +203,10 @@
       return
     }
     request.value = cloneDeep(value)
+    if (isRedBlue.value) {
+      crossCurrencyMode.value = value.query.crossCurrencyMode || crossCurrencyMode.value
+      request.value.query.crossCurrencyMode = crossCurrencyMode.value
+    }
     plan.value = undefined
     loadError.value = ''
     await dialogRef.value?.handleOpen(undefined, {

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   allocateWriteoffAmounts,
-  preferredPayableWriteoffScheme
+  preferredPayableWriteoffScheme,
+  allocatePayableRedBlueAmounts,
+  formatPayableCurrencyTotals,
+  formatPayableExchangeDifference
 } from '../../src/utils/finance/payable-writeoff'
 import type { PayableReference } from '../../src/api/payable-reference'
 import {
@@ -29,6 +32,7 @@ describe('payable writeoff allocation', () => {
     assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_payment', 'one'), 'legacy')
     assert.equal(preferredPayableWriteoffScheme(schemes, 'payment_refund', 'one'), 'legacy')
     assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_receivable', 'one'), 'ar')
+    assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_red_blue', 'one'), 'legacy')
     assert.equal(preferredPayableWriteoffScheme(schemes, 'payable_receivable', 'two'), '')
     assert.deepEqual(
       schemes.map((scheme) => scheme.id),
@@ -102,5 +106,61 @@ describe('payable writeoff allocation', () => {
     assert.equal(validateSettlementAmounts([line]), null)
     assert.match(validateSettlementAmounts([{ ...line, approvedAmount: 101 }]) || '', /金额不正确/)
     assert.match(validateSettlementAmounts([{ ...line, supplierId: null }]) || '', /往来单位/)
+  })
+  it('keeps red/blue allocation within each book and currency, while explicit foreign pairs retain both original amounts', () => {
+    assert.deepEqual(
+      allocatePayableRedBlueAmounts(
+        [
+          { id: 'blue-cny', currencyCode: 'CNY', accountSetId: 'one', availableAmount: 50 },
+          { id: 'blue-usd', currencyCode: 'USD', accountSetId: 'one', availableAmount: 100 }
+        ],
+        [
+          { id: 'credit-usd', currencyCode: 'USD', accountSetId: 'one', availableAmount: 100 },
+          { id: 'credit-cny', currencyCode: 'CNY', accountSetId: 'one', availableAmount: 50 }
+        ]
+      ),
+      [
+        { primaryId: 'blue-cny', secondaryId: 'credit-cny', amount: 50, creditAmount: 50 },
+        { primaryId: 'blue-usd', secondaryId: 'credit-usd', amount: 100, creditAmount: 100 }
+      ]
+    )
+    assert.deepEqual(
+      allocatePayableRedBlueAmounts(
+        [{ id: 'blue', currencyCode: 'USD', accountSetId: 'one', availableAmount: 100 }],
+        [{ id: 'credit', currencyCode: 'EUR', accountSetId: 'one', availableAmount: 90 }]
+      ),
+      [{ primaryId: 'blue', secondaryId: 'credit', amount: 100, creditAmount: 90 }]
+    )
+    assert.throws(
+      () =>
+        allocatePayableRedBlueAmounts(
+          [{ id: 'blue', currencyCode: 'CNY', accountSetId: 'one', availableAmount: 100 }],
+          [{ id: 'credit', currencyCode: 'CNY', accountSetId: 'two', availableAmount: 100 }]
+        ),
+      /跨账套/
+    )
+    assert.throws(
+      () =>
+        allocatePayableRedBlueAmounts(
+          [{ id: 'blue', currencyCode: 'CNY', availableAmount: 100, writeoffAmount: 0.001 }],
+          [{ id: 'credit', currencyCode: 'USD', availableAmount: 100 }]
+        ),
+      /两位小数/
+    )
+  })
+  it('never adds different currencies into a misleading yuan total and keeps the FX sign explicit', () => {
+    const value = formatPayableCurrencyTotals(
+      [
+        { currencyCode: 'CNY', amount: 100 },
+        { currencyCode: 'USD', amount: 100 }
+      ],
+      (row) => row.amount
+    )
+    assert.match(value, /¥100\.00/)
+    assert.match(value, /USD/)
+    assert.doesNotMatch(value, /¥200/)
+    assert.match(formatPayableExchangeDifference(10), /收益.*10\.00/)
+    assert.match(formatPayableExchangeDifference(-10), /损失.*10\.00/)
+    assert.equal(formatPayableExchangeDifference(0), '—')
   })
 })

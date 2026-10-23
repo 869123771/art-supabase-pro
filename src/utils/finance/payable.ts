@@ -3,7 +3,7 @@ import type {
   PurchasePayableDocument,
   PurchasePayableLine
 } from '@/api/purchase-payable.types'
-import { round } from 'lodash-es'
+import { cloneDeep, round } from 'lodash-es'
 import {
   convertWmsMaterialQuantity,
   scaleWmsMaterialBaseQuantity
@@ -13,6 +13,24 @@ export const payableStatusLabels = { draft: '暂存', submitted: '已提交', ap
 export const roundPayable = (value: number, digits = 2): number => {
   const rounded = Math.sign(value) * round(Math.abs(value), digits)
   return rounded === 0 ? 0 : rounded
+}
+
+export function payableLiabilityAmount(amount: number, isCredit?: boolean): number {
+  return isCredit && amount !== 0 ? -Math.abs(amount) : amount
+}
+
+export function payableDocumentForEditing(
+  source: PurchasePayableDocument
+): PurchasePayableDocument {
+  const document = cloneDeep(source)
+  if (document.isCredit) {
+    for (const line of document.lines) {
+      line.amount = line.faceAmount ?? Math.abs(line.amount)
+      line.taxAmount = line.faceTaxAmount ?? Math.abs(line.taxAmount)
+      line.totalAmount = line.faceTotalAmount ?? Math.abs(line.totalAmount)
+    }
+  }
+  return document
 }
 
 function configuredBaseQuantity(

@@ -6,7 +6,7 @@
         :description="
           kind === 'estimated'
             ? '统一采购与运输暂估，按来源跟踪关联、到票冲回及剩余暂估。'
-            : '收到发票确认应付，审核时冲回同源暂估，按付款计划跟踪余额与冻结。'
+            : '到票立账、红字冲减与同源冲回，跟踪余额及付款计划。'
         "
         icon="ri:bill-line"
         density="compact"
@@ -33,10 +33,14 @@
         <template #payable-push="{ selectedRows }">
           <ElDropdown
             trigger="click"
-            :disabled="busy || selectedRows.length !== 1"
+            :disabled="busy || selectedRows.length !== 1 || !!selectedRows[0]?.isCredit"
             @command="(command) => push(selectedRows[0]?.id, command)"
           >
-            <ElButton :disabled="busy || selectedRows.length !== 1" :loading="busy" plain
+            <ElButton
+              :disabled="busy || selectedRows.length !== 1 || !!selectedRows[0]?.isCredit"
+              :title="selectedRows[0]?.isCredit ? '红字冲减不能直接下推付款' : undefined"
+              :loading="busy"
+              plain
               ><ArtSvgIcon icon="ri:file-transfer-line" />下推<ArtSvgIcon
                 icon="ri:arrow-down-s-line"
             /></ElButton>
@@ -155,6 +159,7 @@
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import BusinessTableWorkspaceActions from '@/components/business/business-table-workspace-actions/index.vue'
   import BusinessTableRowActions from '@/components/business/business-table-row-actions/index.vue'
+  import BusinessTableIdentityCell from '@/components/business/business-table-identity-cell/index.vue'
   import PayableDocumentDrawer from './modules/payable-document-drawer.vue'
   import { formatCurrencyValue } from '@/utils/ui/format'
   import { payableStatusLabels } from '@/utils/finance/payable'
@@ -415,6 +420,10 @@
       if (props.kind === 'financial') {
         if (command !== 'application' && command !== 'payment') return
         const source = await reloadDocument(id)
+        if (source.isCredit) {
+          ElMessage.warning('红字用于冲减应付，不能直接下推付款申请或付款单')
+          return
+        }
         if (
           (source.currencyCode || 'CNY') !== 'CNY' ||
           (source.baseCurrencyCode || 'CNY') !== 'CNY'
@@ -476,7 +485,7 @@
   async function freeze(id: string, unfreeze: boolean): Promise<void> {
     await run(async () => {
       const row = await reloadDocument(id)
-      freezeForm.amount = unfreeze ? 0 : (row.unpaidAmount ?? row.totalAmount)
+      freezeForm.amount = unfreeze ? 0 : Math.abs(row.unpaidAmount ?? row.totalAmount)
       freezeForm.reason = ''
       await freezeDialogRef.value?.handleOpen(undefined, {
         title: `${unfreeze ? '解冻财务应付' : '冻结财务应付'} · ${row.currencyCode || 'CNY'}`,
@@ -651,7 +660,26 @@
           }
         ]
       : []),
-    { prop: 'documentNo', label: '单据编号', minWidth: 215, fixed: 'left' },
+    {
+      prop: 'documentNo',
+      label: '单据编号',
+      minWidth: 245,
+      fixed: 'left',
+      formatter: (row) => (
+        <BusinessTableIdentityCell
+          primary={row.documentNo}
+          secondary={
+            row.isCredit
+              ? '红字冲减'
+              : row.isReversal
+                ? '暂估冲回'
+                : row.documentTypeName || (props.kind === 'estimated' ? '暂估应付' : '蓝字应付')
+          }
+          icon="ri:bill-line"
+          iconTone={row.isCredit ? 'danger' : 'primary'}
+        />
+      )
+    },
     { prop: 'supplierName', label: '往来单位', minWidth: 180 },
     {
       prop: 'baseTotalAmount',
@@ -672,6 +700,23 @@
       )
     },
     { prop: 'documentTypeName', label: '单据类型', minWidth: 155 },
+    ...(props.kind === 'financial'
+      ? [
+          {
+            prop: 'isCredit',
+            label: '应付方向',
+            width: 110,
+            formatter: (row: ListRow) =>
+              row.isCredit ? (
+                <ElTag type="danger" effect="plain">
+                  红字冲减
+                </ElTag>
+              ) : (
+                '蓝字应付'
+              )
+          }
+        ]
+      : []),
     { prop: 'businessDate', label: '业务日期', width: 120 },
     {
       prop: 'currencyCode',

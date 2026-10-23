@@ -1,0 +1,1 @@
+import{Lt as e,pn as t,qt as n}from"./BCo0rLY3.js";import{t as r}from"./DtX1qsqY.js";var i=n({name:`ScmPurchaseRequest`,__name:`index`,setup(n){return(n,i)=>(t(),e(r,{kind:`purchase_request`}))}});export{i as default};

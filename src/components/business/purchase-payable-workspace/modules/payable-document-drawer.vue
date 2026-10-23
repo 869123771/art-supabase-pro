@@ -6,13 +6,24 @@
         :title="document.documentNo || `新增${title}`"
         :description="`${document.sourceType === 'carrier_statement' ? '来源承运商对账单' : document.sourceType === 'manual' ? '来源单据' : '来源采购入库单'}：${document.sourceDocumentNo || '手工录入'}`"
       >
-        <template #aside
-          ><ElTag :type="document.status === 'approved' ? 'success' : 'info'"
-            >{{ payableStatusLabels[document.status]
-            }}{{ document.isReversal ? ' · 冲回单' : '' }}</ElTag
-          ></template
-        >
+        <template #aside>
+          <div class="flex flex-wrap items-center gap-2">
+            <ElTag v-if="document.isCredit" type="danger" effect="plain">红字冲减</ElTag>
+            <ElTag :type="document.status === 'approved' ? 'success' : 'info'"
+              >{{ payableStatusLabels[document.status]
+              }}{{ document.isReversal ? ' · 冲回单' : '' }}</ElTag
+            >
+          </div>
+        </template>
       </ArtEntitySummary>
+      <ElAlert
+        v-if="document.isCredit"
+        type="info"
+        :closable="false"
+        show-icon
+        title="红字冲减应付，不生成付款计划或直接下推付款"
+        description="数量、单价和录入金额填写正数，系统按负债冲减方向立账。当前支持非标准采购类型的手工红字，采购退库及运输来源另走对应业务链。"
+      />
       <ElAlert
         v-if="optionError"
         type="warning"
@@ -56,7 +67,12 @@
             >取业务日期汇率</ElButton
           >
         </template>
-        <ArtDescriptions v-if="!editable" :data="document" :items="readOnlyHeaderItems" />
+        <ArtDescriptions
+          v-if="!editable"
+          :data="document"
+          :items="readOnlyHeaderItems"
+          :label-width="144"
+        />
         <ArtForm
           v-else
           ref="formRef"
@@ -74,7 +90,7 @@
       </ArtSectionCard>
       <ArtSectionCard
         title="应付明细"
-        :subtitle="`共 ${document.lines.length} 行 · 价税合计 ${formatCurrencyValue(total, currency)}`"
+        :subtitle="`共 ${document.lines.length} 行 · 立账价税合计 ${formatCurrencyValue(signedTotal, currency)}`"
       >
         <template #actions>
           <ElButton
@@ -94,6 +110,7 @@
           @update:model-value="replaceReactiveModel(document, $event)"
         />
         <p v-if="editable" class="mb-3 text-xs text-g-700">
+          <span v-if="document.isCredit">红字明细按绝对值录入。</span>
           更换单位按当前数量更新基本数量，单价不会自动折算；基本数量可核对后手工校正。
         </p>
         <ArtTable
@@ -137,7 +154,7 @@
                 v-for="option in options.tax"
                 :key="option.id"
                 :value="Number(option.code)"
-                :label="option.name" /></ElSelect
+                :label="`${Number(option.code)}%`" /></ElSelect
             ><span v-else>{{ row.taxRate ?? 0 }}%</span></template
           >
           <template #projectName="{ row }"
@@ -291,7 +308,7 @@
         </ArtTable>
       </ArtSectionCard>
       <ArtSectionCard
-        v-if="document.kind === 'financial'"
+        v-if="document.kind === 'financial' && !document.isCredit"
         title="付款计划"
         subtitle="金额合计需与价税合计一致；按比例开启后，应付金额自动计算。"
       >
@@ -363,8 +380,15 @@
           /></template>
         </ArtTable>
       </ArtSectionCard>
-      <ArtSectionCard title="关联信息" subtitle="来源、冲回与制证均保留在统一应付账簿。">
-        <ArtDescriptions :data="document" :items="relatedItems" :columns="3" />
+      <ArtSectionCard
+        title="关联信息"
+        :subtitle="
+          document.isCredit
+            ? '核对红字核销余额、冻结与会计凭证，不创建资金付款。'
+            : '来源、冲回与制证均保留在统一应付账簿。'
+        "
+      >
+        <ArtDescriptions :data="document" :items="relatedItems" :columns="3" :label-width="144" />
       </ArtSectionCard>
     </div>
   </ArtDrawer>
@@ -400,7 +424,9 @@
     calculatePaymentPlans,
     validatePaymentPlans,
     payableStatusLabels,
-    roundPayable
+    roundPayable,
+    payableLiabilityAmount,
+    payableDocumentForEditing
   } from '@/utils/finance/payable'
   import { replaceReactiveModel } from '@/utils/form/model'
   import { validateArtFormForSubmit } from '@/utils/form/validate-art-form'
@@ -465,7 +491,7 @@
     () =>
       currencyMessage.value ||
       (currency.value !== 'CNY' || baseCurrency.value !== 'CNY'
-        ? '当前外币支持立账、同币冲回和制证；付款与跨币核销尚未接通，禁止按人民币金额代付。'
+        ? '当前外币支持立账、同币冲回和制证；付款与当前工作台的跨币入口尚未开放，禁止按人民币金额代付。'
         : '')
   )
   const options = reactive<Record<string, PayableOption[]>>({})
@@ -484,6 +510,21 @@
   const total = computed(
     () => document.value?.lines.reduce((sum, line) => sum + line.totalAmount, 0) || 0
   )
+  const signedTotal = computed(() => payableLiabilityAmount(total.value, document.value?.isCredit))
+  const documentTypeOptions = computed(() =>
+    (options[`${props.kind}_type`] || []).filter(
+      (option) => !document.value?.isCredit || option.standardPurchase === false
+    )
+  )
+  const directionLocked = computed(
+    () =>
+      document.value?.status !== 'draft' ||
+      document.value?.sourceType !== 'manual' ||
+      document.value?.isReversal ||
+      !!document.value?.sourceDocumentId ||
+      !!document.value?.lines.some((line) => line.estimatedLineId || line.sourceLineId) ||
+      !!document.value?.paymentPlans?.length
+  )
   const pickerColumns = [
     { prop: 'code', label: '编码', width: 160 },
     { prop: 'name', label: '名称', minWidth: 200 }
@@ -498,6 +539,12 @@
   const readOnlyHeaderItems = computed<ArtDescriptionItem<PurchasePayableDocument>[]>(() => [
     { key: 'documentNo', label: '单据编号', field: 'documentNo' },
     { key: 'documentTypeName', label: '单据类型', field: 'documentTypeName' },
+    {
+      key: 'isCredit',
+      label: '应付方向',
+      value: (row: PurchasePayableDocument) =>
+        row.isReversal ? '暂估冲回' : row.isCredit ? '红字冲减' : '蓝字应付'
+    },
     { key: 'businessDate', label: '业务日期', field: 'businessDate' },
     { key: 'postingDate', label: '记账日期', field: 'postingDate' },
     { key: 'currencyCode', label: '结算币种', field: 'currencyCode' },
@@ -545,10 +592,29 @@
       props: { disabled: true, placeholder: '保存后自动生成' }
     },
     {
+      key: 'isCredit',
+      label: '应付方向',
+      type: 'segment',
+      hidden: props.kind !== 'financial',
+      help: '红字仅用于手工非标准采购应付。有关联来源或付款计划时不可切换方向。',
+      props: {
+        disabled: directionLocked.value,
+        options: [
+          { label: '蓝字应付', value: false },
+          { label: '红字冲减', value: true }
+        ]
+      }
+    },
+    {
       key: 'documentTypeId',
       label: '单据类型',
       type: 'select',
-      props: { options: fieldOptions(`${props.kind}_type`) }
+      props: {
+        options: documentTypeOptions.value.map((option) => ({
+          label: option.name,
+          value: option.id
+        }))
+      }
     },
     {
       key: 'businessDate',
@@ -638,6 +704,7 @@
       key: 'paymentTermId',
       label: '付款条件',
       type: 'select',
+      hidden: !!document.value?.isCredit,
       props: { options: fieldOptions('payment_term'), clearable: true }
     },
     {
@@ -877,18 +944,38 @@
     { key: 'sourceDocumentNo', label: '来源单据', field: 'sourceDocumentNo' },
     { key: 'supplierName', label: '往来单位', field: 'supplierName' },
     { key: 'voucherNo', label: '凭证号', field: 'voucherNo' },
-    {
-      key: 'linkedAmount',
-      label: '已关联金额',
-      field: 'linkedAmount',
-      formatter: (value) => formatCurrencyValue(Number(value || 0), currency.value)
-    },
-    {
-      key: 'reversedAmount',
-      label: '已冲回金额',
-      field: 'reversedAmount',
-      formatter: (value) => formatCurrencyValue(Number(value || 0), currency.value)
-    },
+    ...(document.value?.isCredit
+      ? [
+          {
+            key: 'writtenOffAmount',
+            label: '已核销金额',
+            value: (row: PurchasePayableDocument) =>
+              formatCurrencyValue(row.writtenOffAmount ?? 0, currency.value)
+          },
+          {
+            key: 'unpaidAmount',
+            label: '未核销余额',
+            value: (row: PurchasePayableDocument) =>
+              formatCurrencyValue(
+                row.status === 'draft' ? signedTotal.value : (row.unpaidAmount ?? row.totalAmount),
+                currency.value
+              )
+          }
+        ]
+      : [
+          {
+            key: 'linkedAmount',
+            label: '已关联金额',
+            field: 'linkedAmount',
+            formatter: (value: unknown) => formatCurrencyValue(Number(value || 0), currency.value)
+          },
+          {
+            key: 'reversedAmount',
+            label: '已冲回金额',
+            field: 'reversedAmount',
+            formatter: (value: unknown) => formatCurrencyValue(Number(value || 0), currency.value)
+          }
+        ]),
     {
       key: 'frozenAmount',
       label: '冻结金额',
@@ -917,7 +1004,8 @@
       keys.forEach((key, index) => {
         options[key] = values[index]
       })
-      if (!target.documentTypeId) target.documentTypeId = options[`${props.kind}_type`][0]?.id
+      if (!target.documentTypeId && !target.isCredit)
+        target.documentTypeId = documentTypeOptions.value[0]?.id
       await loadCurrency(false)
     } catch {
       if (document.value === target) optionError.value = true
@@ -1079,7 +1167,7 @@
     materialPickerRef.value?.clear()
   }
   function addPlan(): void {
-    if (!document.value) return
+    if (!document.value || document.value.isCredit) return
     const term = options.payment_term?.find((item) => item.id === document.value?.paymentTermId)
     document.value.paymentPlans ||= []
     document.value.paymentPlans.push({
@@ -1115,6 +1203,10 @@
         return false
       }
       const planError = validatePaymentPlans(document.value.paymentPlans || [], total.value)
+      if (document.value.isCredit && document.value.paymentPlans?.length) {
+        ElMessage.warning('红字冲减不能设置付款计划，请核对单据方向')
+        return false
+      }
       if (planError) {
         ElMessage.warning(planError)
         return false
@@ -1151,7 +1243,8 @@
           currencyCode: 'CNY',
           baseCurrencyCode: 'CNY',
           exchangeRate: 1,
-          ...cloneDeep(row)
+          isCredit: false,
+          ...(edit ? payableDocumentForEditing(row) : cloneDeep(row))
         }
       : {
           id: '',
@@ -1168,6 +1261,7 @@
           businessDate: dayjs().format('YYYY-MM-DD'),
           postingDate: dayjs().format('YYYY-MM-DD'),
           status: 'draft',
+          isCredit: false,
           taxExcludedFromCost: true,
           inputTaxInclusivePrice: true,
           inputAmount: false,
@@ -1205,16 +1299,16 @@
     })
     if (edit) await loadOptions()
   }
-  watch(total, (value) => {
-    if (document.value) document.value.totalAmount = Number(value.toFixed(2))
+  watch(signedTotal, (value) => {
+    if (document.value && editable.value) document.value.totalAmount = roundPayable(value)
   })
   watch(
-    () => [total.value, document.value?.exchangeRate],
+    () => [signedTotal.value, document.value?.exchangeRate],
     () => {
       if (document.value && editable.value)
         document.value.baseTotalAmount =
           Number.isFinite(document.value.exchangeRate) && (document.value.exchangeRate || 0) > 0
-            ? roundPayable(total.value * (document.value.exchangeRate || 0))
+            ? roundPayable(signedTotal.value * (document.value.exchangeRate || 0))
             : undefined
     }
   )
@@ -1263,6 +1357,25 @@
         previous?.slice(1).every((value) => value !== undefined)
       )
         document.value?.lines.forEach((line) => recalculate(line))
+    }
+  )
+  watch(
+    () => document.value?.isCredit,
+    (isCredit, previous) => {
+      if (
+        !editable.value ||
+        !document.value ||
+        !isCredit ||
+        previous === undefined ||
+        optionLoading.value
+      )
+        return
+      if (
+        !documentTypeOptions.value.some((option) => option.id === document.value?.documentTypeId)
+      ) {
+        document.value.documentTypeId = undefined
+        ElMessage.info('请选择支持手工红字的非标准采购单据类型')
+      }
     }
   )
   watch(

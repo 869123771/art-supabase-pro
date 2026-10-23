@@ -5,9 +5,14 @@ import {
   calculatePaymentPlans,
   validatePaymentPlans,
   payableCostDifference,
-  roundPayable
+  roundPayable,
+  payableLiabilityAmount,
+  payableDocumentForEditing
 } from '../../src/utils/finance/payable'
-import type { PurchasePayableLine } from '../../src/api/purchase-payable.types'
+import type {
+  PurchasePayableDocument,
+  PurchasePayableLine
+} from '../../src/api/purchase-payable.types'
 
 const line: PurchasePayableLine = {
   id: 'line',
@@ -27,6 +32,63 @@ const line: PurchasePayableLine = {
   totalAmount: 226
 }
 const settings = { inputTaxInclusivePrice: true, inputAmount: false, discountIncludesTax: true }
+
+test('红字编辑恢复绝对计价但不改写原投影、单价或核销余额', () => {
+  const source: PurchasePayableDocument = {
+    id: 'credit',
+    tenantId: 'tenant',
+    kind: 'financial',
+    documentNo: 'AP-CREDIT',
+    sourceDocumentId: null,
+    sourceDocumentNo: '',
+    supplierName: '回滚供应商',
+    businessDate: '2026-10-24',
+    status: 'draft',
+    isCredit: true,
+    amount: -200,
+    taxAmount: -26,
+    totalAmount: -226,
+    lines: [
+      {
+        ...line,
+        amount: -200,
+        taxAmount: -26,
+        totalAmount: -226,
+        faceAmount: 200,
+        faceTaxAmount: 26,
+        faceTotalAmount: 226,
+        unpaidAmount: -100
+      }
+    ]
+  }
+  const editing = payableDocumentForEditing(source)
+  assert.deepEqual(
+    [editing.lines[0].amount, editing.lines[0].taxAmount, editing.lines[0].totalAmount],
+    [200, 26, 226]
+  )
+  assert.equal(editing.lines[0].quantity, 2)
+  assert.equal(editing.lines[0].unitPrice, 100)
+  assert.equal(editing.lines[0].unpaidAmount, -100)
+  assert.equal(editing.totalAmount, -226)
+  editing.lines[0].quantity = 3
+  assert.equal(source.lines[0].quantity, 2)
+  assert.equal(source.lines[0].totalAmount, -226)
+  const fallback = payableDocumentForEditing({
+    ...source,
+    lines: [{ ...line, amount: -200, taxAmount: -26, totalAmount: -226 }]
+  })
+  assert.equal(fallback.lines[0].totalAmount, 226)
+  const blue = { ...source, isCredit: false }
+  assert.deepEqual(payableDocumentForEditing(blue), blue)
+})
+
+test('红字方向不会二次反转负投影、生成负零或改动暂估冲回', () => {
+  assert.equal(payableLiabilityAmount(113, true), -113)
+  assert.equal(payableLiabilityAmount(-113, true), -113)
+  assert.equal(payableLiabilityAmount(-113, false), -113)
+  assert.equal(payableLiabilityAmount(113, false), 113)
+  assert.ok(Object.is(payableLiabilityAmount(0, true), 0))
+})
 
 test('单位联动复用物料换算，更新基本数量但不改数量、单价或分摊金额', () => {
   const withUnits: PurchasePayableLine = {
