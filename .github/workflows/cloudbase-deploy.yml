@@ -43,7 +43,8 @@ jobs:
             BuildType: "GIT",
             Source: {
               Type: "git", Repo: "https://github.com/art-si/art-supabase-pro.git",
-              Ref: $sha, Channel: "github", IsPrivate: false
+              Ref: $sha, Channel: "github", IsPrivate: false,
+              CodeUrlWithAuth: "https://github.com/art-si/art-supabase-pro.git"
             },
             StaticConfig: {
               Framework: "vue", NodeJsVersion: "24", AppPath: "/art-supabase-pro", BuildPath: "",
