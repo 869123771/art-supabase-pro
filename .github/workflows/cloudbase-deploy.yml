@@ -36,9 +36,6 @@ jobs:
       - name: Build and deploy the existing application
         run: |
           set -euo pipefail
-          baseline=$(jq -nc --arg env "$TCB_ENV_ID" '{EnvId: $env, ServiceName: "art-supabase-pro", DeployType: "static-hosting", VersionName: "art-supabase-pro-006"}')
-          baseline=$(tcb --json api tcb DescribeCloudAppVersion --body "$baseline")
-          printf '%s\n' "$baseline" | sed -n '/^{/,$p' | jq '.data | {fields: keys, config: (.StaticConfig | {fields: keys, CodeSource, CodeRepo, CodeBranch})}'
           request=$(jq -nc --arg env "$TCB_ENV_ID" --arg sha "$GITHUB_SHA" '{
             EnvId: $env,
             ServiceName: "art-supabase-pro",
@@ -46,14 +43,15 @@ jobs:
             BuildType: "GIT",
             Source: {
               Type: "git", Repo: "https://github.com/art-si/art-supabase-pro.git",
-              Ref: $sha, Channel: "github", IsPrivate: false,
+              Ref: "master", Channel: "github", IsPrivate: false,
               CodeUrlWithAuth: "https://github.com/art-si/art-supabase-pro.git"
             },
             StaticConfig: {
               Framework: "vue", NodeJsVersion: "24", AppPath: "/art-supabase-pro", BuildPath: "",
-              CodeSource: "github", CodeRepo: "art-si/art-supabase-pro", CodeBranch: $sha,
+              CodeSource: "github", CodeRepo: "art-si/art-supabase-pro", CodeBranch: "master",
               StaticCmd: {
-                InstallCmd: "npm run cloudbase:install", BuildCmd: "npm run cloudbase:build",
+                InstallCmd: ("git fetch --depth=1 origin " + $sha + " && git checkout --detach " + $sha + " && npm run cloudbase:install"),
+                BuildCmd: "npm run cloudbase:build",
                 DeployCmd: "tcb hosting deploy ./docs /art-supabase-pro"
               }
             }
