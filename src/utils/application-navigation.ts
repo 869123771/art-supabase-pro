@@ -35,7 +35,14 @@ export async function navigateToApplication(
     throw new Error('目标应用尚未配置访问地址')
   }
 
-  const target = resolveApplicationBaseUrl(applicationCode, application.baseUrl, window.location)
+  const target = resolveApplicationBaseUrl(
+    applicationCode,
+    application.baseUrl,
+    window.location,
+    currentApplication.code === 'platform'
+      ? import.meta.env.VITE_HOSTED_APPLICATION_BASE_URL
+      : undefined
+  )
   target.hash = `${normalizedPath}${routeQuery.size ? `?${routeQuery.toString()}` : ''}`
   window.location.assign(target.toString())
 }

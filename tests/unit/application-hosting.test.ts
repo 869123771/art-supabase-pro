@@ -47,3 +47,29 @@ test('GitHub Pages deployments retain the application-specific deployment path',
 
   assert.equal(target.toString(), 'https://art-si.github.io/art-supabase-hr/')
 })
+
+test('aggregated hosting keeps every business application under the deployed host path', () => {
+  for (const code of [
+    'fms',
+    'hr',
+    'mdm',
+    'mes',
+    'pmis',
+    'scm',
+    'smis',
+    'tms',
+    'vms',
+    'wms'
+  ] as const) {
+    const target = resolveApplicationBaseUrl(
+      code,
+      `/${code}/`,
+      {
+        hostname: 'example.tcloudbaseapp.com',
+        origin: 'https://example.tcloudbaseapp.com'
+      },
+      '/art-supabase-pro/'
+    )
+    assert.equal(target.toString(), 'https://example.tcloudbaseapp.com/art-supabase-pro/')
+  }
+})

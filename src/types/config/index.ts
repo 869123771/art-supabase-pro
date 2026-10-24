@@ -155,6 +155,7 @@ export interface EnvConfig {
   VITE_VERSION: string
   // 独立应用标识
   VITE_APP_CODE?: 'platform' | 'fms' | 'hr' | 'mdm' | 'mes' | 'smis' | 'tms' | 'vms' | 'wms'
+  VITE_HOSTED_APPLICATION_BASE_URL?: string
   // 应用端口
   VITE_PORT: string
   // 应用基础路径

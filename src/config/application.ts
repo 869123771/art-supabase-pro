@@ -136,11 +136,14 @@ export function resolveApplicationCode(value: string | undefined): ApplicationCo
 export function resolveApplicationBaseUrl(
   applicationCode: ApplicationCode,
   configuredBaseUrl: string,
-  location: ApplicationLocation
+  location: ApplicationLocation,
+  hostedBaseUrl?: string
 ): URL {
-  const baseUrl = location.hostname.toLowerCase().endsWith('.github.io')
-    ? APPLICATION_PROFILES[applicationCode].deploymentPath
-    : configuredBaseUrl
+  const baseUrl =
+    hostedBaseUrl ||
+    (location.hostname.toLowerCase().endsWith('.github.io')
+      ? APPLICATION_PROFILES[applicationCode].deploymentPath
+      : configuredBaseUrl)
 
   return new URL(baseUrl, location.origin)
 }
