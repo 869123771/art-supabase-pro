@@ -25,6 +25,12 @@ if (!isPlainObjectRecord(platformManifest) || !Array.isArray(platformManifest.fi
 const publishedPaths = platformManifest.files.filter(
   (entry): entry is string => typeof entry === 'string'
 )
+const platformDependencies = new Set(
+  ['dependencies', 'peerDependencies', 'devDependencies'].flatMap((key) => {
+    const dependencies = platformManifest[key]
+    return isPlainObjectRecord(dependencies) ? Object.keys(dependencies) : []
+  })
+)
 for (const publishedPath of publishedPaths) {
   if (!publishedPath.startsWith('scripts/') || !publishedPath.endsWith('.mjs')) continue
   const content = await readFile(publishedPath, 'utf8')
@@ -137,6 +143,9 @@ for (const sourceDirectory of Object.values(hostedApplicationSourceDirectories))
           .join('/')
         if (!declared.has(dependency)) {
           findings.add(`${path.relative(process.cwd(), file)}: 未声明依赖 ${dependency}`)
+        }
+        if (!platformDependencies.has(dependency)) {
+          findings.add(`${path.relative(process.cwd(), file)}: 聚合宿主未声明依赖 ${dependency}`)
         }
       }
       function visit(node: ts.Node): void {
