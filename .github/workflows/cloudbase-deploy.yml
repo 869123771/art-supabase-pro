@@ -34,5 +34,43 @@ jobs:
       - name: Install CloudBase CLI
         run: npm install --global @cloudbase/cli@3.8.9
       - name: Build and deploy the existing application
-        run: >-
-          tcb --verbose app deploy art-supabase-pro --env-id "$TCB_ENV_ID" --framework vue --install-command "npm run cloudbase:install" --build-command "npm run cloudbase:build" --output-dir ./docs --deploy-path /art-supabase-pro --enable-git-ignore --ignore "docs/**" --force
+        run: |
+          set -euo pipefail
+          request=$(jq -nc --arg env "$TCB_ENV_ID" --arg sha "$GITHUB_SHA" '{
+            EnvId: $env,
+            ServiceName: "art-supabase-pro",
+            DeployType: "static-hosting",
+            BuildType: "GIT",
+            Source: {
+              Type: "git", Repo: "https://github.com/art-si/art-supabase-pro.git",
+              Ref: $sha, Channel: "github", IsPrivate: false
+            },
+            StaticConfig: {
+              Framework: "vue", NodeJsVersion: "24", AppPath: "/art-supabase-pro", BuildPath: "",
+              CodeSource: "github", CodeRepo: "https://github.com/art-si/art-supabase-pro.git", CodeBranch: $sha,
+              StaticCmd: {
+                InstallCmd: "npm run cloudbase:install", BuildCmd: "npm run cloudbase:build",
+                DeployCmd: "tcb hosting deploy ./docs /art-supabase-pro"
+              }
+            }
+          }')
+          response=$(tcb --json api tcb CreateCloudApp --body "$request")
+          version=$(printf '%s\n' "$response" | sed -n '/^{/,$p' | jq -er '.data.VersionName')
+          echo "CloudBase version: $version; source commit: $GITHUB_SHA"
+          query=$(jq -nc --arg env "$TCB_ENV_ID" --arg version "$version" '{
+            EnvId: $env, ServiceName: "art-supabase-pro", DeployType: "static-hosting", VersionName: $version
+          }')
+          for attempt in $(seq 1 60); do
+            response=$(tcb --json api tcb DescribeCloudAppVersion --body "$query")
+            status=$(printf '%s\n' "$response" | sed -n '/^{/,$p' | jq -er '.data.Status')
+            echo "CloudBase $version: $status"
+            case "$status" in
+              SUCCESS) exit 0 ;;
+              FAILED|FAIL|ERROR|CANCELLED|CANCELED)
+                printf '%s\n' "$response" | sed -n '/^{/,$p' | jq '.data.Steps'
+                exit 1 ;;
+            esac
+            sleep 20
+          done
+          echo '::error::CloudBase build did not finish within 20 minutes; inspect the version in the CloudBase console.'
+          exit 1
