@@ -246,3 +246,21 @@ test('does not expose long or technical Chinese provider details', () => {
     '数据加载失败，请稍后重试'
   )
 })
+
+test('provider authorization failures remain distinct from application login failures', async () => {
+  const error = {
+    context: new Response(
+      JSON.stringify({ code: 'server_error', message: 'AI provider request failed with HTTP 401' }),
+      { status: 500 }
+    )
+  }
+  assert.equal(
+    (await createFriendlySupabaseFunctionError(error)).message,
+    '模型服务鉴权失败，请联系平台管理员检查服务密钥'
+  )
+  assert.equal(isSupabaseSessionFailure(error), false)
+  assert.equal(
+    getFriendlySupabaseErrorMessage(new Error('AI provider request failed with HTTP 410')),
+    '当前模型服务不可用，请联系平台管理员检查模型配置'
+  )
+})

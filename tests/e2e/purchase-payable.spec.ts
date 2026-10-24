@@ -129,6 +129,7 @@ for (const kind of ['estimated', 'financial'] as const) {
           await expect(drawer).toContainText(`项目物料${n}`)
           await expect(drawer).toContainText(`项目供应商${n}`)
           await expect(drawer.getByRole('button', { name: '保存', exact: true })).toHaveCount(0)
+          await expect(drawer.getByRole('columnheader').filter({ hasText: '必填' })).toHaveCount(0)
           await expect(drawer).not.toContainText(`项目物料${n === 1 ? 2 : 1}`)
           await captureBusinessEvidence(page, {
             path: testInfo.outputPath(`${kind}-detail-${n}.png`),
@@ -217,6 +218,31 @@ for (const theme of ['light', 'dark'] as const) {
       const body = route.request().postDataJSON()
       if (name === 'fms_purchase_payable_list_secure')
         return route.fulfill({ json: { data: [record], total: 1 } })
+      if (name === 'mdm_organization')
+        return route.fulfill({
+          json: [
+            {
+              id: 'org-parent',
+              tenant_id: tenant,
+              parent_id: null,
+              organization_code: 'GROUP',
+              organization_name: '树形验收集团',
+              organization_type: 'group',
+              status: '1',
+              sort: 0
+            },
+            {
+              id: 'org-child',
+              tenant_id: tenant,
+              parent_id: 'org-parent',
+              organization_code: 'COMPANY',
+              organization_name: '树形验收公司',
+              organization_type: 'company',
+              status: '1',
+              sort: 1
+            }
+          ]
+        })
       if (name === 'fms_payable_options_secure')
         return route.fulfill({ json: options[body.p_kind] || [] })
       if (name === 'fms_payable_currency_context_secure')
@@ -243,6 +269,15 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(drawer.getByText('编辑验证物料', { exact: true })).toBeVisible()
     await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeVisible()
     await expect(drawer.getByText('标准采购应付', { exact: true })).toBeVisible()
+    await drawer.getByLabel('付款组织', { exact: true }).click()
+    await page
+      .getByRole('treeitem', { name: '树形验收集团', exact: true })
+      .locator('.el-tree-node__expand-icon')
+      .first()
+      .click()
+    await page.getByRole('treeitem', { name: '树形验收公司', exact: true }).click()
+    await expect(drawer.getByText('树形验收公司', { exact: true })).toBeVisible()
+    await expect(drawer.getByRole('columnheader').filter({ hasText: '必填' })).toHaveCount(5)
     await captureBusinessEvidence(page, {
       path: testInfo.outputPath('financial-edit-header.png'),
       fullPage: true
@@ -288,6 +323,7 @@ for (const theme of ['light', 'dark'] as const) {
     await drawer.getByRole('button', { name: '保存', exact: true }).click()
     await expect(drawer).not.toBeVisible()
     expect(saved?.plans_by_ratio).toBe(false)
+    expect(saved?.organization_id).toBe('org-child')
     expect(saved?.payment_plans).toEqual([
       expect.objectContaining({ amount: 226, ratio: 100, due_date: '2026-10-21' })
     ])

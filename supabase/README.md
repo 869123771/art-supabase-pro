@@ -51,6 +51,21 @@ This is the only Supabase directory for project `ckbftoopuyophiebamwy`. Business
 
 Database structure, data, and migration history are kept together inside the backup directory. Export does not create one SQL file per migration in the repository.
 
+## Cron run-history retention (2026-10-21)
+
+Project `ckbftoopuyophiebamwy` runs `cron.job_run_details` cleanup job 16 daily at 02:00 UTC
+(10:00 Asia/Shanghai). It deletes only successful runs with `end_time` older than seven days;
+failed runs remain available for diagnosis. The initial cleanup removed approximately 260,000
+old successful runs, leaving 36,647 rows and all three failed runs at verification. The cleanup
+job remained active after verification. Supabase performance advisors were run afterward;
+their pre-existing findings are unrelated to this retention job.
+
+Before the first cleanup, 260,244 eligible rows were copied and count-verified in the private
+`app_private.cron_job_run_details_backup_20261021` table because the full backup script could not
+run without Docker. This temporary recovery copy occupies about 42 MB. Review and remove it after
+the desired recovery window; deleting rows does not immediately shrink the physical Cron table,
+so check database size before considering an exclusive-lock table rewrite.
+
 ## Tenant read-scope boundary
 
 The authenticated platform super's home tenant is the platform tenant. The header scope is a separate read context: an empty selection means all tenants; a concrete selection limits tenant-owned reads to that tenant. Ordinary users always read and write within their authenticated tenant, even if they forge the header. A permissive `canonical_platform_super_write` policy also grants SELECT, so every tenant-owned table with that policy needs a restrictive `canonical_tenant_read_scope` SELECT policy. Keep existing permissive grants for feature permissions and ownership; they combine with the restrictive scope.

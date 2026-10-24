@@ -38,10 +38,12 @@
         <template #payment-push="{ selectedRows }">
           <ElDropdown
             trigger="click"
-            :disabled="busy || selectedRows.length !== 1"
+            :disabled="selectedRows.length !== 1 || actionDisabled('push', selectedRows)"
             @command="() => push(selectedRows[0]?.id)"
           >
-            <ElButton plain :disabled="busy || selectedRows.length !== 1"
+            <ElButton
+              plain
+              :disabled="selectedRows.length !== 1 || actionDisabled('push', selectedRows)"
               ><ArtSvgIcon icon="ri:file-transfer-line" />下推<ArtSvgIcon
                 icon="ri:arrow-down-s-line"
             /></ElButton>
@@ -59,7 +61,10 @@
         <template #payment-confirm="{ selectedRows }">
           <ElDropdown
             trigger="click"
-            :disabled="busy || !selectedRows.length"
+            :disabled="
+              actionDisabled('confirm', selectedRows) &&
+              actionDisabled('cancel_payment', selectedRows)
+            "
             @command="
               (command) =>
                 act(
@@ -68,18 +73,27 @@
                 )
             "
           >
-            <ElButton plain :disabled="busy || !selectedRows.length"
+            <ElButton
+              plain
+              :disabled="
+                actionDisabled('confirm', selectedRows) &&
+                actionDisabled('cancel_payment', selectedRows)
+              "
               ><ArtSvgIcon icon="ri:bank-card-line" />{{
                 kind === 'refund' ? '确认到账' : '确认付款'
               }}<ArtSvgIcon icon="ri:arrow-down-s-line"
             /></ElButton>
             <template #dropdown
               ><ElDropdownMenu
-                ><ElDropdownItem command="confirm"
+                ><ElDropdownItem
+                  command="confirm"
+                  :disabled="actionDisabled('confirm', selectedRows)"
                   ><ArtSvgIcon icon="ri:checkbox-circle-line" />{{
                     kind === 'refund' ? '确认到账' : '确认付款'
                   }}</ElDropdownItem
-                ><ElDropdownItem command="cancel_payment"
+                ><ElDropdownItem
+                  command="cancel_payment"
+                  :disabled="actionDisabled('cancel_payment', selectedRows)"
                   ><ArtSvgIcon icon="ri:arrow-go-back-line" />{{
                     kind === 'refund' ? '取消到账' : '取消付款'
                   }}</ElDropdownItem
@@ -136,7 +150,8 @@
     type PayableSettlementQuery
   } from '@/api/payable-settlement'
   import ArtTableQuery, {
-    type ArtTableQueryHeaderAction
+    type ArtTableQueryHeaderAction,
+    type ArtTableQueryHeaderActionContext
   } from '@/components/core/tables/art-table-query/index.vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
@@ -254,6 +269,44 @@
       id: typeof route.query.recordId === 'string' ? route.query.recordId : undefined
     })
   }
+  function actionDisabled(
+    action: PayableSettlementAction | 'push',
+    rows: Record<string, unknown>[]
+  ): boolean {
+    if (busy.value || !rows.length) return true
+    return rows.some((row) => {
+      const activeApplication =
+        props.kind === 'application' &&
+        ['submitted', 'approved'].includes(String(row.status)) &&
+        row.paymentStatus !== 'full'
+      switch (action) {
+        case 'submit':
+        case 'delete':
+          return row.status !== 'draft' || !!row.frozen
+        case 'approve':
+          return row.status !== 'submitted' || !!row.frozen
+        case 'freeze':
+          return !activeApplication || !!row.frozen
+        case 'unfreeze':
+          return !activeApplication || !row.frozen
+        case 'close':
+          return !activeApplication
+        case 'confirm':
+          return row.status !== 'approved' || !!row.frozen
+        case 'cancel_payment':
+          return row.status !== 'confirmed' || !!row.frozen
+        case 'void':
+          return !['draft', 'submitted', 'approved'].includes(String(row.status))
+        case 'push':
+          return (
+            !!row.frozen ||
+            (props.kind === 'application'
+              ? row.status !== 'approved' || row.paymentStatus === 'full'
+              : row.status !== 'confirmed')
+          )
+      }
+    })
+  }
   async function reload(id: string): Promise<PayableSettlementDocument> {
     const response = await fetchPayableSettlements(props.kind, { id, current: 1, size: 1 })
     if (!response.data[0]) throw new Error('付款单据已变更或不可查看，请刷新列表')
@@ -321,6 +374,8 @@
               unit: '张',
               description: '仅无引用的暂存单可以删除，经营历史保留。',
               actionLabel: '查看单据',
+              routePath: settlementPath.value,
+              canNavigate: () => hasAuth(props.permissions.View),
               order: 1
             },
             payment: {
@@ -404,12 +459,9 @@
             `<section><h1>${escape(title.value)} ${escape(row.documentNo)}</h1><p>${escape(row.businessDate)} · ${escape(row.currencyCode)} · ${escape(row.reason)}</p><table><tr><th>行号</th><th>往来单位</th><th>收款单位</th><th>金额</th><th>来源单据</th></tr>${row.lines.map((line) => `<tr><td>${line.lineNo}</td><td>${escape(line.supplierName || '')}</td><td>${escape(line.payeeSupplierName || '')}</td><td>${formatCurrencyValue(line.amount)}</td><td>${escape(line.sourceDocumentNo || '')}</td></tr>`).join('')}</table><p>合计 ${formatCurrencyValue(row.amount)}</p></section>`
         )
         .join('')
-      if (
-        !printHtmlDocument(
-          `<html><head><title>${escape(title.value)}</title><style>body{font:14px sans-serif;padding:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #888;padding:8px;text-align:left}section{break-after:page}</style></head><body>${body}</body></html>`
-        )
+      printHtmlDocument(
+        `<html><head><title>${escape(title.value)}</title><style>body{font:14px sans-serif;padding:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #888;padding:8px;text-align:left}section{break-after:page}</style></head><body>${body}</body></html>`
       )
-        ElMessage.warning('请允许弹出打印窗口后重试')
     })
   }
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
@@ -424,7 +476,8 @@
       icon: action === 'submit' ? 'ri:send-plane-line' : 'ri:checkbox-circle-line',
       permission: action === 'submit' ? props.permissions.Submit : props.permissions.Approve,
       selectionRequired: true,
-      disabled: busy.value,
+      disabled: ({ selectedRows }: ArtTableQueryHeaderActionContext) =>
+        actionDisabled(action, selectedRows),
       onClick: ({ selectedRows }: { selectedRows: Record<string, unknown>[] }) =>
         act(
           selectedRows.map((row) => String(row.id)),
@@ -437,7 +490,7 @@
       label: '删除',
       permission: props.permissions.Delete,
       selectionRequired: true,
-      disabled: busy.value,
+      disabled: ({ selectedRows }) => actionDisabled('delete', selectedRows),
       onClick: ({ selectedRows }) => remove(selectedRows.map((row) => String(row.id)))
     },
     ...(props.kind !== 'refund'
@@ -463,7 +516,8 @@
                   : 'ri:close-circle-line',
             permission: action === 'close' ? props.permissions.Close : props.permissions.Freeze,
             selectionRequired: true,
-            disabled: busy.value,
+            disabled: ({ selectedRows }: ArtTableQueryHeaderActionContext) =>
+              actionDisabled(action, selectedRows),
             onClick: ({ selectedRows }: { selectedRows: Record<string, unknown>[] }) =>
               act(
                 selectedRows.map((row) => String(row.id)),
@@ -490,7 +544,8 @@
             icon: 'ri:prohibited-line',
             permission: props.permissions.Void,
             selectionRequired: true,
-            disabled: busy.value,
+            disabled: ({ selectedRows }: ArtTableQueryHeaderActionContext) =>
+              actionDisabled('void', selectedRows),
             onClick: ({ selectedRows }: { selectedRows: Record<string, unknown>[] }) =>
               act(
                 selectedRows.map((row) => String(row.id)),
@@ -592,7 +647,7 @@
       formatter: (row) => (
         <BusinessTableRowActions>
           <ArtButtonTable type="view" label="查看" onClick={() => open(row)} />
-          {row.status === 'draft' && (
+          {row.status === 'draft' && !row.frozen && (
             <ArtButtonTable
               type="edit"
               label="编辑"

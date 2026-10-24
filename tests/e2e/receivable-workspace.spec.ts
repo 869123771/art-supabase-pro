@@ -161,6 +161,29 @@ async function mock(
         dict_type_table: { code, name: code },
         tag_type: ''
       }))
+    } else if (url.pathname.endsWith('/mdm_organization')) {
+      response = [
+        {
+          id: 'organization-group',
+          tenant_id: tenant,
+          parent_id: null,
+          organization_code: 'GROUP',
+          organization_name: '演示集团',
+          organization_type: 'group',
+          status: '1',
+          sort: 0
+        },
+        {
+          id: organization,
+          tenant_id: tenant,
+          parent_id: 'organization-group',
+          organization_code: 'ORG-001',
+          organization_name: '演示结算组织',
+          organization_type: 'company',
+          status: '1',
+          sort: 1
+        }
+      ]
     } else if (url.pathname.endsWith('/fms_ar_options_secure')) {
       const type = String(body?.p_type)
       response =
@@ -365,9 +388,10 @@ async function mock(
 }
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 test.setTimeout(120_000)
-test('暂估列表、抽屉和窄屏完整可用', async ({ page }) => {
+test('暂估列表、抽屉和窄屏完整可用', async ({ page }, info) => {
   await mock(page)
-  await page.goto('/tests/e2e/fixtures/receivable-workspace.html?kind=estimate')
+  const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
+  await page.goto(`/tests/e2e/fixtures/receivable-workspace.html?kind=estimate&theme=${theme}`)
   await expect(page.getByText('AR-E-202610-001', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '新增', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -375,18 +399,87 @@ test('暂估列表、抽屉和窄屏完整可用', async ({ page }) => {
   await expect(page.getByRole('button', { name: '保存应收单', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '新增服务行', exact: true }).click()
   await expect(page.getByRole('spinbutton', { name: '录入价税合计(元) 第10行' })).toBeVisible()
+  await expect(
+    page.getByRole('dialog').getByRole('columnheader').filter({ hasText: '必填' })
+  ).toHaveCount(3)
   await mkdir('.artifacts/receivable-visual', { recursive: true })
   await page.screenshot({
     path: '.artifacts/receivable-visual/estimate-editor.png',
     fullPage: true
   })
   await page.getByRole('button', { name: '取消', exact: true }).last().click()
+  await page.getByRole('button', { name: '查看', exact: true }).click()
+  const detail = page.getByRole('dialog')
+  await expect(detail.getByRole('columnheader').filter({ hasText: '必填' })).toHaveCount(0)
+  await expect(detail.getByRole('button', { name: '保存应收单', exact: true })).toHaveCount(0)
+  await detail.screenshot({ path: info.outputPath('receivable-readonly.png') })
+  await detail.getByRole('button', { name: '取消', exact: true }).click()
   await page.setViewportSize({ width: 1024, height: 768 })
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true)
   await page.screenshot({ path: '.artifacts/receivable-visual/estimate-1024.png', fullPage: true })
 })
+test('收款只读详情不显示填写标记或保存操作', async ({ page }, info) => {
+  await mock(page)
+  const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
+  await page.goto(`/tests/e2e/fixtures/receivable-workspace.html?kind=receipt&theme=${theme}`)
+  await page.getByRole('button', { name: '查看', exact: true }).click()
+  const detail = page.getByRole('dialog')
+  await expect(
+    detail.getByRole('columnheader', { name: '本次收款金额', exact: true })
+  ).toBeVisible()
+  await expect(detail.getByRole('columnheader').filter({ hasText: '必填' })).toHaveCount(0)
+  await expect(detail.getByRole('spinbutton')).toHaveCount(0)
+  await expect(detail.getByRole('button', { name: '保存草稿', exact: true })).toHaveCount(0)
+  await detail.screenshot({ path: info.outputPath('receipt-readonly.png') })
+})
+
+for (const [kind, guide] of [
+  ['estimate', '新建暂估应收，或从已审核销售出库、已签收运输来源生成暂估。'],
+  ['financial', '新建财务应收，或从已审核暂估应收下推；先开票单据可后续勾稽。']
+]) {
+  test(`${kind} 空态提供对应业务指引`, async ({ page }, info) => {
+    await mock(page, { empty: true })
+    const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
+    await page.goto(`/tests/e2e/fixtures/receivable-workspace.html?kind=${kind}&theme=${theme}`)
+    await expect(page.getByText('暂无应收单据', { exact: true })).toBeVisible()
+    await expect(page.getByText(guide, { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '新增', exact: true })).toBeEnabled()
+    await page.screenshot({ path: info.outputPath(`${kind}-empty-guide.png`), fullPage: true })
+  })
+}
+
+test('仅已确认收款展示已收款未核销金额', async ({ page }, info) => {
+  await mock(page)
+  await page.route('**/rest/v1/rpc/fms_receivable_workspace_secure', (route) =>
+    route.fulfill({
+      json: {
+        records: ['draft', 'submitted', 'approved', 'confirmed'].map((status, index) => ({
+          id: `receipt-status-${index}`,
+          documentNo: `QA-RECEIPT-STATUS-${index}`,
+          status,
+          tenant_id: tenant,
+          customerName: '隔离收款状态客户',
+          business_date: '2026-10-24',
+          currency_code: 'CNY',
+          amount: 100,
+          availableAmount: 100,
+          lines: []
+        })),
+        total: 4
+      }
+    })
+  )
+  const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
+  await page.goto(`/tests/e2e/fixtures/receivable-workspace.html?kind=receipt&theme=${theme}`)
+  for (const index of [0, 1, 2, 3]) {
+    const row = page.getByRole('row').filter({ hasText: `QA-RECEIPT-STATUS-${index}` })
+    await expect(row.locator('td').nth(7)).toHaveText(index === 3 ? '¥100.00' : '—')
+  }
+  await page.screenshot({ path: info.outputPath('receipt-confirmed-balance.png'), fullPage: true })
+})
+
 test('空态、加载错误和重试', async ({ page }) => {
   const state = { empty: true, error: false }
   await mock(page, state)
@@ -533,6 +626,129 @@ test('编辑保存只发送业务字段并包含稳定请求标识', async ({ pa
   expect(body.lines[0]).not.toHaveProperty('materialCode')
   await expect(page.getByRole('dialog')).not.toBeVisible()
 })
+for (const kind of ['estimate', 'financial']) {
+  test(`${kind} 两张单据费用承担部门保留三级树并提交子部门`, async ({ page }, info) => {
+    await mock(page)
+    const records = [1, 2].map((index) => ({
+      ...doc,
+      id: `department-document-${index}`,
+      kind,
+      document_no: `QA-DEPARTMENT-${index}`,
+      lines: [
+        {
+          ...doc.lines[0],
+          id: `department-line-${index}`,
+          expense_department_id: null as string | null
+        }
+      ]
+    }))
+    await page.route('**/rest/v1/rpc/fms_receivable_workspace_secure', (route) => {
+      const body = route.request().postDataJSON()
+      const rows = body.p_query?.id ? records.filter((row) => row.id === body.p_query.id) : records
+      return route.fulfill({ json: { records: rows, total: rows.length } })
+    })
+    await page.route('**/rest/v1/rpc/fms_ar_options_secure', (route) => {
+      if (route.request().postDataJSON().p_type !== 'organization') return route.fallback()
+      return route.fulfill({
+        json: [1, 2].map((index) => ({
+          id: `department-${index}`,
+          tenant_id: tenant,
+          name: `验收部门${index}`,
+          code: `D${index}`
+        }))
+      })
+    })
+    await page.route('**/rest/v1/mdm_organization*', (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: 'group',
+            tenant_id: tenant,
+            parent_id: null,
+            organization_name: '验收集团',
+            organization_code: 'G',
+            status: '1'
+          },
+          {
+            id: organization,
+            tenant_id: tenant,
+            parent_id: 'group',
+            organization_name: '演示结算组织',
+            organization_code: 'C',
+            status: '1'
+          },
+          ...[1, 2].map((index) => ({
+            id: `department-${index}`,
+            tenant_id: tenant,
+            parent_id: organization,
+            organization_name: `验收部门${index}`,
+            organization_code: `D${index}`,
+            status: '1'
+          }))
+        ]
+      })
+    )
+    const payloads: Array<{ id: string; lines: Array<{ expenseDepartmentId: string }> }> = []
+    await page.route('**/rest/v1/rpc/fms_save_receivable_document_secure', (route) => {
+      const payload = route.request().postDataJSON().p_payload
+      payloads.push(payload)
+      const record = records.find((row) => row.id === payload.id)
+      expect(record).toBeDefined()
+      if (record) record.lines[0].expense_department_id = payload.lines[0].expenseDepartmentId
+      return route.fulfill({ json: payload.id })
+    })
+    const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
+    await page.goto(`/tests/e2e/fixtures/receivable-workspace.html?kind=${kind}&theme=${theme}`)
+    for (const index of [1, 2]) {
+      await expect(page.locator('.el-message')).toHaveCount(0)
+      await page
+        .getByRole('row')
+        .filter({ hasText: `QA-DEPARTMENT-${index}` })
+        .getByRole('button', { name: '编辑', exact: true })
+        .click()
+      const dialog = page.getByRole('dialog')
+      const department = dialog.getByRole('combobox', { name: '费用承担部门 第10行', exact: true })
+      await department.click()
+      await expect(page.getByRole('treeitem', { name: '验收集团' })).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      )
+      await page
+        .getByRole('treeitem', { name: '验收集团' })
+        .locator('.el-tree-node__expand-icon')
+        .first()
+        .click()
+      await expect(
+        page.getByRole('treeitem', { name: '演示结算组织', exact: true })
+      ).toHaveAttribute('aria-disabled', 'true')
+      await page
+        .getByRole('treeitem', { name: '演示结算组织', exact: true })
+        .locator('.el-tree-node__expand-icon')
+        .first()
+        .click()
+      if (index === 2)
+        await page.screenshot({
+          path: info.outputPath(`${kind}-department-tree-open.png`),
+          fullPage: true
+        })
+      await page.getByRole('treeitem', { name: `验收部门${index}`, exact: true }).click()
+      if (index === 2)
+        await dialog.screenshot({ path: info.outputPath(`${kind}-department-tree.png`) })
+      await dialog.getByRole('button', { name: '保存应收单', exact: true }).click()
+      await expect(dialog).not.toBeVisible()
+    }
+    expect(
+      payloads.map((payload) => ({
+        id: payload.id,
+        department: payload.lines[0].expenseDepartmentId
+      }))
+    ).toEqual([
+      { id: 'department-document-1', department: 'department-1' },
+      { id: 'department-document-2', department: 'department-2' }
+    ])
+  })
+}
+
 test('删除检查失败会停止删除并可重试', async ({ page }) => {
   const state = { deleteError: true }
   const mutations: string[] = []
@@ -561,7 +777,12 @@ test('核销查验及特殊核销传递所选主方和原因', async ({ page }) 
   await initializedOptions
   await expect(page.locator('#ar-preview').getByText('应收收款核销', { exact: true })).toBeVisible()
   await page.getByLabel('结算组织', { exact: true }).click()
-  await page.getByRole('option', { name: '演示结算组织', exact: true }).click()
+  await page
+    .getByRole('treeitem', { name: '演示集团', exact: true })
+    .locator('.el-tree-node__expand-icon')
+    .first()
+    .click()
+  await page.getByRole('treeitem', { name: '演示结算组织', exact: true }).click()
   await page.getByRole('button', { name: '查询待核销单据' }).click()
   await expect(page.getByText('AR-F-202610-001', { exact: true })).toBeVisible()
   await page.locator('.el-table__header-wrapper .el-checkbox').nth(0).click()

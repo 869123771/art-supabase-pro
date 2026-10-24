@@ -78,6 +78,30 @@ begin
   or (select count(*) from public.fms_revenue_cost_document where tenant_id=t and status='approved')<>2
  then raise exception '验收流程数量或终态不正确'; end if;
 end $seed$;
+
+-- A public profile with a synthetic JWT subject is enough for SQL authorization tests.
+-- No Auth account, password, login session or persistent grant is created.
+do $security_context$
+declare tenant uuid; source public.fms_receivable_document%rowtype; credit uuid;
+begin
+ select id into tenant from public.sys_tenant where tenant_code=current_setting('test.ar_tenant_code');
+ for source in select * from public.fms_receivable_document
+  where tenant_id=tenant and kind='financial' and not is_credit order by id loop
+  credit:=public.fms_save_receivable_document_secure(jsonb_build_object(
+   'kind','financial','tenantId',tenant,'documentTypeId',source.document_type_id,
+   'customerId',source.customer_id,'settlementOrganizationId',source.settlement_organization_id,
+   'businessDate',current_date,'isCredit',true,'currencyCode','CNY','settlementMethod','cash',
+   'lines',jsonb_build_array(jsonb_build_object('lineNo',10,'basis','amount',
+    'materialDescription','隔离贷方权限验收','quantity',0,'enteredGrossAmount',20,'taxRate',0,'gift',false))));
+  perform public.fms_act_receivable_document_secure(credit,'submit');
+  perform public.fms_act_receivable_document_secure(credit,'approve');
+ end loop;
+ update public.sys_user set auth_user_id=gen_random_uuid()
+ where tenant_id=tenant and auth_user_id is null;
+ if (select count(*) from public.fms_receivable_document where tenant_id=tenant and kind='financial' and is_credit and status='approved')<>2
+  or (select count(*) from public.sys_user where tenant_id=tenant and auth_user_id is not null)<>1
+ then raise exception 'Isolated debit/credit and ordinary profile fixtures are incomplete';end if;
+end $security_context$;
 select tenant_code,tenant_name,id from public.sys_tenant where tenant_code=current_setting('test.ar_tenant_code');
 
 rollback;

@@ -1,0 +1,1 @@
+import{Jn as e,On as t,d as n}from"./B2BaADVT.js";function r(r,i){let a=n();t(()=>a.path===e(r)?a.fullPath:``,async t=>{if(!t)return;let n=e(i);n?.clearSelection(),await n?.refreshContext()},{flush:`post`})}export{r as t};

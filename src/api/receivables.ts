@@ -1,5 +1,7 @@
 import { useSupabase } from '@/hooks/core/useSupabase'
 import { pick } from 'lodash-es'
+import { fetchOrganizationOptionsTree } from '@/api/system-manage'
+import { buildOrganizationSelectTree } from '@/utils/organization-options'
 import { normalizeNullableText, normalizeNonNullableText } from '@/utils/form/normalize'
 import type { MasterDataDeleteDependencyDetail } from '@/api/master-data-delete'
 import type {
@@ -361,6 +363,24 @@ export async function fetchArOptions(
   if (result.error) throw result.error
   if (!Array.isArray(result.data)) throw new Error('参选资料返回不完整，请重试')
   return result.data.filter((row) => typeof row.id === 'string' && typeof row.name === 'string')
+}
+
+export interface ArOrganizationOption extends ArOption {
+  disabled: boolean
+  children?: ArOrganizationOption[]
+}
+
+/** Preserve the receivables permission/default/initialization rules within the organization hierarchy. */
+export async function fetchArOrganizationTree(
+  type: 'organization' | 'company' | 'initialized_organization',
+  tenantId?: string | null
+): Promise<ArOrganizationOption[]> {
+  const [allowed, response] = await Promise.all([
+    fetchArOptions(type, tenantId),
+    fetchOrganizationOptionsTree({ tenantId: tenantId ?? undefined }, { showErrorMessage: false })
+  ])
+  if (response.error) throw response.error
+  return buildOrganizationSelectTree(response.data ?? [], allowed)
 }
 
 export async function saveArReceipt(payload: Partial<ReceiptDocument>): Promise<string> {

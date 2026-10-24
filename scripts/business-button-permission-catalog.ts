@@ -2644,6 +2644,7 @@ export const businessButtonPermissionCatalog: BusinessMenuButtonCatalogEntry[] =
       button('Delete', '删除'),
       button('Push', '下推付款退款'),
       button('Confirm', '确认/取消付款'),
+      button('Push', '下推付款退款'),
       button('Void', '作废未付款单'),
       button('Voucher', '生成凭证'),
       button('Print', '打印'),

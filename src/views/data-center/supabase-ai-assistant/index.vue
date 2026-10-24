@@ -155,10 +155,11 @@
         </ElSplitter>
       </section>
 
-      <ProjectAssistantHistoryDrawer
+      <ArtAssistantHistoryDrawer
         ref="historyDrawerRef"
         v-model:query="history.query"
         :loading="history.loading"
+        :selecting-id="history.restoringId"
         :error="history.error"
         :items="history.items"
         :active-id="chat.conversationId"
@@ -194,7 +195,7 @@
   import BusinessWorkspaceHeader from '@/components/business/business-workspace-header/index.vue'
   import ProjectCapabilityCenterDrawer from './modules/capability-center-drawer.vue'
   import ProjectAssistantChatPanel from './modules/project-assistant-chat-panel.vue'
-  import ProjectAssistantHistoryDrawer from './modules/project-assistant-history-drawer.vue'
+  import ArtAssistantHistoryDrawer from '@/components/core/layouts/art-assistant-history-drawer/index.vue'
   import ProjectAssistantObjectBrowser from './modules/project-assistant-object-browser.vue'
   import ProjectAssistantObjectDetail from './modules/project-assistant-object-detail.vue'
   import {

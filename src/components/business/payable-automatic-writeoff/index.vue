@@ -4,7 +4,10 @@
       <span class="text-g-700">异币自动分配</span>
       <ElSegmented
         v-model="crossCurrencyMode"
+        class="w-full sm:w-auto"
         :options="currencyModes"
+        :direction="isNarrow ? 'vertical' : 'horizontal'"
+        :block="isNarrow"
         aria-label="异币自动分配方式"
         :disabled="loading || executing"
         @change="changeCurrencyMode"
@@ -64,6 +67,7 @@
 
 <script setup lang="ts">
   import { cloneDeep } from 'lodash-es'
+  import { useMediaQuery } from '@vueuse/core'
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { ElMessage } from 'element-plus'
   import ArtDialog from '@/components/core/dialogs/art-dialog/index.vue'
@@ -95,6 +99,7 @@
   const loading = ref(false)
   const executing = ref(false)
   const loadError = ref('')
+  const isNarrow = useMediaQuery('(max-width: 639px)')
   const isRedBlue = computed(() => request.value?.query.relation === 'payable_red_blue')
   const crossCurrencyMode = ref<PayableCrossCurrencyMode>('book_equivalent')
   const currencyModes = [

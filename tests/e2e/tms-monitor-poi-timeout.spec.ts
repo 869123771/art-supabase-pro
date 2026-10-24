@@ -125,6 +125,24 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+test('在途监控每分钟刷新一次，不重复订阅轮询', async ({ page }) => {
+  let requests = 0
+  page.on('request', (request) => {
+    if (request.url().includes('/rpc/tms_list_waybills_secure')) requests++
+  })
+  await page.goto('/tests/e2e/fixtures/tms-monitor-date-format.html?root', {
+    waitUntil: 'domcontentloaded'
+  })
+  await expect(page.locator('.vehicle-card')).toHaveCount(5)
+  expect(requests).toBe(1)
+  await page.clock.fastForward(30_000)
+  expect(requests).toBe(1)
+  await page.clock.fastForward(30_001)
+  await expect.poll(() => requests).toBe(2)
+  await page.clock.fastForward(60_000)
+  await expect.poll(() => requests).toBe(3)
+})
+
 test('位置查询无回调后释放并发槽和加载状态，路线超时后允许再次查询', async ({ page }, info) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

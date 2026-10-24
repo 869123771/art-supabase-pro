@@ -194,8 +194,26 @@
             ><span v-else>{{ row.unitName }}</span></template
           >
           <template v-for="field in referenceFields" :key="field" #[field]="{ row }">
+            <ElTreeSelect
+              v-if="editable && field === 'departmentId'"
+              v-model="row.departmentId"
+              aria-label="费用承担部门"
+              :data="organizationTree"
+              :props="{ label: 'organizationName', children: 'children' }"
+              node-key="id"
+              :disabled="optionLoading"
+              :cache-data="
+                row.departmentId
+                  ? [{ id: row.departmentId, organizationName: referenceName(row, field) }]
+                  : []
+              "
+              check-strictly
+              filterable
+              clearable
+              class="w-full!"
+            />
             <ElSelect
-              v-if="editable"
+              v-else-if="editable"
               v-model="row[field]"
               :aria-label="referenceLabels[field]"
               :disabled="optionLoading"
@@ -406,6 +424,7 @@
   />
 </template>
 <script setup lang="ts">
+  import { fetchOrganizationOptionsTree } from '@/api/system-manage'
   import dayjs from 'dayjs'
   import { cloneDeep } from 'lodash-es'
   import { ElMessage } from 'element-plus'
@@ -495,6 +514,7 @@
         : '')
   )
   const options = reactive<Record<string, PayableOption[]>>({})
+  const organizationTree = ref<Api.SystemManage.OrganizationListItem[]>([])
   const headerRules = {
     documentTypeId: [{ required: true, message: '请选择单据类型' }],
     supplierId: [{ required: true, message: '请选择结算供应商' }],
@@ -685,8 +705,13 @@
     {
       key: 'organizationId',
       label: '付款组织',
-      type: 'select',
-      props: { options: fieldOptions('organization'), clearable: true }
+      type: 'treeSelect',
+      api: () => fetchOrganizationOptionsTree({ tenantId: document.value?.tenantId }),
+      resultField: 'data',
+      labelField: 'organizationName',
+      valueField: 'id',
+      childrenField: 'children',
+      props: { clearable: true, filterable: true, checkStrictly: true }
     },
     {
       key: 'projectId',
@@ -790,7 +815,7 @@
       label: '物料描述',
       minWidth: 220,
       fixed: 'left',
-      required: true,
+      required: editable.value,
       requiredMessage: '请选择应付物料'
     },
     { prop: 'materialCode', label: '物料编码', minWidth: 150 },
@@ -802,7 +827,7 @@
       label: '库存单位',
       width: 120,
       useSlot: true,
-      required: true,
+      required: editable.value,
       requiredMessage: '请选择库存单位'
     },
     { prop: 'baseUnitId', label: '基本单位', width: 120, useSlot: true },
@@ -811,7 +836,7 @@
       label: numericLabels[field],
       width: 135,
       useSlot: true,
-      required: field === 'quantity' || field === 'baseQuantity',
+      required: editable.value && (field === 'quantity' || field === 'baseQuantity'),
       rules: {
         validator: ({ value }: { value: unknown }) =>
           Number.isFinite(Number(value)) &&
@@ -826,7 +851,7 @@
       label: '税率(%)',
       width: 110,
       useSlot: true,
-      required: true,
+      required: editable.value,
       requiredMessage: '请选择税率'
     },
     { prop: 'discountMethod', label: '折扣方式', width: 135, useSlot: true },
@@ -1000,7 +1025,10 @@
         'tax'
       ]
       const values = await Promise.all(keys.map((key) => fetchPayableOptions(key, target.tenantId)))
+      const organizations = await fetchOrganizationOptionsTree({ tenantId: target.tenantId })
+      if (organizations.error) throw organizations.error
       if (document.value !== target) return
+      organizationTree.value = organizations.data ?? []
       keys.forEach((key, index) => {
         options[key] = values[index]
       })

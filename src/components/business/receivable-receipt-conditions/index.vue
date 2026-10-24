@@ -173,6 +173,8 @@
   async function remove(ids: string[]): Promise<void> {
     const result = await fetchRows({ ids, size: 500 })
     const rows = result.data.filter((row) => ids.includes(row.id))
+    if (rows.length !== ids.length)
+      throw new Error('所选收款条件已变化或不可查看，请重新查询后再删除')
     const options = {
       resourceLabel: '收款条件',
       resources: rows.map((row) => ({ id: row.id, label: row.name })),

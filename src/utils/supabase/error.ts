@@ -122,6 +122,14 @@ const ERROR_NAME_MESSAGES: Record<string, string> = {
 
 const MESSAGE_RULES: Array<{ pattern: RegExp; message: string }> = [
   {
+    pattern: /AI provider request failed with HTTP (401|403)\b/i,
+    message: '模型服务鉴权失败，请联系平台管理员检查服务密钥'
+  },
+  {
+    pattern: /AI provider request failed with HTTP (404|410)\b/i,
+    message: '当前模型服务不可用，请联系平台管理员检查模型配置'
+  },
+  {
     pattern: /invalid login credentials|login credentials or grant type not recognized/i,
     message: ERROR_CODE_MESSAGES.invalid_credentials
   },

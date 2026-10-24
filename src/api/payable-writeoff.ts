@@ -1,4 +1,6 @@
 import { useSupabase } from '@/hooks/core/useSupabase'
+import { fetchOrganizationOptionsTree } from '@/api/system-manage'
+import { buildOrganizationSelectTree } from '@/utils/organization-options'
 import type { PayableReference, PayableMatchRule } from '@/api/payable-reference'
 import type { PayableSettlementOption } from '@/api/payable-settlement.types'
 import type { PayableVoucherPreview } from '@/api/purchase-payable'
@@ -95,12 +97,16 @@ export interface PayableWriteoffRecord {
   status: string
   remark: string
 }
+export interface PayableWriteoffOrganization extends PayableSettlementOption {
+  disabled: boolean
+  children?: PayableWriteoffOrganization[]
+}
 export interface PayableWriteoffWorkspace {
   primary: PayableWriteoffCandidate[]
   secondary: PayableWriteoffCandidate[]
   history: PayableWriteoffRecord[]
   schemes: PayableReference[]
-  organizations?: PayableSettlementOption[]
+  organizations?: PayableWriteoffOrganization[]
   relations?: Array<{ label: string; value: PayableWriteoffRelation }>
 }
 export interface PayableVoucherResult {
@@ -167,6 +173,12 @@ export async function fetchPayableWriteoffWorkspace(
     !Array.isArray(data.history)
   )
     throw new Error('核销资料加载失败，请重试')
+  const organizations = await fetchOrganizationOptionsTree({}, { showErrorMessage: false })
+  if (organizations.error) throw organizations.error
+  data.organizations = buildOrganizationSelectTree(
+    organizations.data ?? [],
+    data.organizations ?? []
+  )
   return data
 }
 export async function executePayableWriteoff(

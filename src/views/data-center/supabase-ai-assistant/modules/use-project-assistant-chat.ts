@@ -49,6 +49,7 @@ export interface ProjectAssistantChatState {
 }
 
 export interface ProjectAssistantHistoryState {
+  restoringId: string
   loading: boolean
   query: string
   error: string
@@ -73,6 +74,7 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
     messages: []
   })
   const history = reactive<ProjectAssistantHistoryState>({
+    restoringId: '',
     loading: false,
     query: '',
     error: '',
@@ -227,9 +229,9 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
   }
 
   async function restoreConversation(conversationId: string): Promise<boolean> {
-    if (history.loading) return false
-    activeHistoryRequest += 1
-    history.loading = true
+    if (history.restoringId || chat.sending) return false
+    if (chat.conversationId === conversationId) return true
+    history.restoringId = conversationId
     try {
       const result = await fetchProjectAssistantConversation(conversationId)
       chat.conversationId = result.conversation.id
@@ -241,7 +243,7 @@ export function useProjectAssistantChat(options: UseProjectAssistantChatOptions)
       ElMessage.error(getFriendlySupabaseErrorMessage(error, '会话恢复失败'))
       return false
     } finally {
-      history.loading = false
+      history.restoringId = ''
     }
   }
 

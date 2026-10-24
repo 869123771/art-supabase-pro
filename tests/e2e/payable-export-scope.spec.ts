@@ -56,7 +56,7 @@ const makeRecords = (kind: string) =>
     ]
   }))
 
-for (const kind of ['estimated', 'financial', 'application', 'payment'] as const) {
+for (const kind of ['estimated', 'financial', 'application', 'payment', 'refund'] as const) {
   test(`${kind} 关联单据入口导出只包含当前单据`, async ({ page }, info) => {
     const records = makeRecords(kind)
     let exportId: string | undefined

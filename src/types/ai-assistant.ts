@@ -11,6 +11,15 @@ export interface AiAssistantPageContext {
   pageTitle?: string
   recordId?: string
   query?: Record<string, unknown>
+  capabilities?: {
+    label?: string
+    description?: string
+    routePath?: string
+    dataSources?: string[]
+    filters?: Record<string, unknown>
+    selection?: string[]
+    filterFields?: string[]
+  }[]
 }
 
 export interface AiAssistantChatRequest {

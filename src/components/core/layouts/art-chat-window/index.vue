@@ -20,7 +20,7 @@
             <div class="art-ai-assistant__status">
               <span class="art-ai-assistant__connection">
                 <i :class="{ 'is-offline': !isOnline }"></i>
-                {{ isOnline ? '服务已连接' : '网络已断开' }}
+                {{ isOnline ? '网络在线' : '网络已断开' }}
               </span>
               <em>·</em>
               <span class="art-ai-assistant__page">{{ pageTitle }}</span>
@@ -30,6 +30,7 @@
 
         <div class="art-ai-assistant__header-actions">
           <ElSegmented
+            :disabled="state.sending"
             v-model="assistantMode"
             :options="assistantModeOptions"
             size="small"
@@ -55,10 +56,20 @@
               @click="openProjectWorkbench"
             />
           </ArtTooltip>
+          <ArtTooltip content="会话历史" placement="bottom">
+            <ArtIconButton
+              icon="ri:history-line"
+              label="会话历史"
+              :disabled="state.sending"
+              class="art-ai-assistant__header-button"
+              @click="openHistory"
+            />
+          </ArtTooltip>
           <ArtTooltip content="新建对话" placement="bottom">
             <ArtIconButton
               icon="ri:chat-new-line"
               label="新建对话"
+              :disabled="state.sending"
               class="art-ai-assistant__header-button"
               @click="resetConversation"
             />
@@ -152,6 +163,16 @@
                 </div>
                 <div class="art-ai-assistant__bubble">
                   <div class="art-ai-assistant__message-content">{{ message.content }}</div>
+                  <div v-if="message.destinations?.length" class="mt-2 flex flex-wrap gap-2">
+                    <ElButton
+                      v-for="destination in message.destinations"
+                      :key="destination.path"
+                      size="small"
+                      :disabled="state.sending"
+                      @click="openDestination(destination)"
+                      >{{ destination.title }}</ElButton
+                    >
+                  </div>
                   <div
                     v-if="message.role === 'assistant' && hasMessageTrace(message)"
                     class="art-ai-assistant__trace"
@@ -295,15 +316,27 @@
       </footer>
     </div>
   </ArtDrawer>
+  <ArtAssistantHistoryDrawer
+    ref="historyDrawerRef"
+    v-model:query="historyQuery"
+    :loading="false"
+    error=""
+    :items="filteredHistory"
+    :active-id="activeHistoryId"
+    @select="selectHistory"
+    @rename="renameHistory"
+  />
 </template>
 
 <script setup lang="ts">
+  import { cloneDeep } from 'lodash-es'
   import { copyTextToClipboard } from '@/utils/file/clipboard'
 
+  import ArtAssistantHistoryDrawer from '@/components/core/layouts/art-assistant-history-drawer/index.vue'
   import { formatDurationMs } from '@/utils/ui/format'
   import { getFriendlySupabaseErrorMessage } from '@/utils/supabase'
   import { Refresh } from '@element-plus/icons-vue'
-  import { useIntervalFn, useNetwork, useWindowSize } from '@vueuse/core'
+  import { useIntervalFn, useNetwork, useWindowSize, useSessionStorage } from '@vueuse/core'
   import { ElMessage, type ScrollbarInstance } from 'element-plus'
   import { useRoute, useRouter } from 'vue-router'
   import { chatWithAiAssistant } from '@/api/ai-assistant'
@@ -312,6 +345,15 @@
   import ArtDrawer from '@/components/core/drawers/art-drawer/index.vue'
   import type { ArtDrawerExpose } from '@/components/core/drawers/art-drawer/types'
   import ArtIconButton from '@/components/core/widget/art-icon-button/index.vue'
+  import { useCurrentAssistantPage } from '@/hooks/core/useAssistantPage'
+  import { useMenuStore } from '@/store/modules/menu'
+  import { useTenantScopeStore } from '@/store/modules/tenant-scope'
+  import {
+    matchAssistantDestinations,
+    parseAssistantFilters,
+    type AssistantDestination
+  } from '@/utils/assistant-navigation'
+  import type { AppRouteRecord } from '@/types/router'
   import { useUserStore } from '@/store/modules/user'
   import type {
     AiAssistantMessageRole,
@@ -339,7 +381,9 @@
     }
     feedback?: -1 | 1
     isError?: boolean
+    pageContext?: AiAssistantPageContext
     retryContent?: string
+    destinations?: AssistantDestination[]
   }
 
   interface AssistantState {
@@ -403,7 +447,7 @@
       ? '我可以只读查看数据库对象、DDL、外键关系和 Edge Function 元数据，并生成变更方案。'
       : isSmisPage.value
         ? '我会在你的数据权限内查询隐患、特殊作业、培训与安全知识，并生成可复核的安全交底提纲。'
-        : '我会结合当前页面和你的数据权限，查询订单、运输经营情况与车辆临期事项。'
+        : '支持跨页面连续对话。发送“当前页面”了解业务上下文，或发送“打开 + 菜单名称”前往有权访问的页面。'
   )
   const dataCapabilityLabel = computed(() =>
     isProjectMode.value ? '项目实时元数据' : '实时业务数据'
@@ -430,7 +474,7 @@
   const drawerSize = computed(() => {
     if (isMobile.value) return '100%'
     if (isExpanded.value) return 'full'
-    return '680px'
+    return 'min(800px, 100vw)'
   })
 
   function getDrawerProps(): typeof drawerProps {
@@ -461,6 +505,185 @@
     elapsedMs: 0,
     messages: []
   })
+  const menuStore = useMenuStore()
+  const tenantScope = useTenantScopeStore()
+  const pageCapabilities = useCurrentAssistantPage()
+  const historyScope = computed(
+    () =>
+      `art-assistant:${userStore.getUserInfo.userId}:${tenantScope.effectiveTenantId ?? 'all'}:${assistantMode.value}`
+  )
+  interface SavedChat {
+    id: string
+    title: string
+    conversationId?: string
+    updateTime?: string
+    messages: ChatMessage[]
+  }
+  // Tab-scoped history avoids leaving business messages on a shared computer after the tab closes.
+  const history = useSessionStorage<SavedChat[]>(historyScope, [])
+  const activeHistoryId = ref<string>(crypto.randomUUID())
+  const { promptText } = useArtFeedback()
+  const historyDrawerRef = ref<ArtDrawerExpose>()
+  const historyQuery = ref('')
+  const filteredHistory = computed(() =>
+    history.value
+      .filter((item) =>
+        item.title.toLocaleLowerCase().includes(historyQuery.value.trim().toLocaleLowerCase())
+      )
+      .map((item) => {
+        const lastReply = [...item.messages]
+          .reverse()
+          .find((message) => message.role === 'assistant')
+        return {
+          ...item,
+          lastMessage: item.messages.at(-1),
+          lastRun: lastReply?.model
+            ? { model: lastReply.model, latencyMs: lastReply.latencyMs }
+            : undefined
+        }
+      })
+  )
+  async function renameHistory(item: SavedChat): Promise<void> {
+    try {
+      const title = await promptText('请输入新的会话标题', '重命名会话', {
+        initialValue: item.title,
+        maxLength: 80,
+        emptyMessage: '会话标题不能为空'
+      })
+      history.value = history.value.map((saved) =>
+        saved.id === item.id ? { ...saved, title } : saved
+      )
+    } catch (error) {
+      if (error !== 'cancel' && error !== 'close') ElMessage.error('会话重命名失败，请重试')
+    }
+  }
+  function openHistory(): void {
+    historyQuery.value = ''
+    void historyDrawerRef.value?.handleOpen()
+  }
+  function selectHistory(id: string): void {
+    restoreHistory(id)
+    historyDrawerRef.value?.handleClose()
+  }
+  let requestGeneration = 0
+  function persistHistory(): void {
+    if (!state.messages.length) return
+    const saved: SavedChat = {
+      id: activeHistoryId.value,
+      title:
+        state.messages.find((message) => message.role === 'user')?.content.slice(0, 40) || '新对话',
+      conversationId: state.conversationId,
+      updateTime: new Date().toISOString(),
+      messages: state.messages.slice(-80)
+    }
+    history.value = [saved, ...history.value.filter((item) => item.id !== saved.id)].slice(0, 20)
+  }
+  function restoreHistory(id: string): void {
+    if (state.sending) return
+    const saved = history.value.find((item) => item.id === id)
+    if (!saved) return
+    resetConversation()
+    activeHistoryId.value = saved.id
+    state.conversationId = saved.conversationId
+    state.messages = cloneDeep(saved.messages)
+    scrollToBottom()
+  }
+  const destinations = computed<AssistantDestination[]>(() => {
+    const result: AssistantDestination[] = []
+    function visit(menus: AppRouteRecord[]): void {
+      for (const menu of menus) {
+        if (menu.children?.length) visit(menu.children)
+        else if (
+          !menu.meta.isHide &&
+          !menu.meta.link &&
+          menu.type !== 'button' &&
+          router.hasRoute(menu.name)
+        ) {
+          const registered = router.getRoutes().find((record) => record.name === menu.name)
+          if (!registered || registered.path.includes(':')) continue
+          const resolved = router.resolve({ name: menu.name })
+          if (resolved.matched.length && !resolved.path.includes(':'))
+            result.push({ title: menu.meta.title, path: resolved.path })
+        }
+      }
+    }
+    visit(menuStore.menuList)
+    return result
+  })
+  async function openDestination(destination: AssistantDestination): Promise<void> {
+    if (!destinations.value.some((item) => item.path === destination.path)) {
+      ElMessage.warning('该页面当前不可访问，请刷新权限后重试')
+      return
+    }
+    await router.push(destination.path)
+  }
+  async function runPageCommand(
+    content: string
+  ): Promise<{ message: string; destinations?: AssistantDestination[] } | null> {
+    if (/^查看选中记录[。！!]?$/u.test(content)) {
+      const capability = pageCapabilities.value.find((item) => item.viewSelection)
+      if (!capability?.viewSelection) return { message: '当前页面尚未接入选中记录详情。' }
+      await capability.viewSelection()
+      await drawerRef.value?.handleClose()
+      return { message: '已打开选中记录的详情。' }
+    }
+    const matches = matchAssistantDestinations(content, destinations.value)
+    if (matches)
+      return {
+        message: matches.length
+          ? '请选择要打开的页面，当前对话会保留。'
+          : '未找到你有权访问的页面，请使用菜单中的完整名称。',
+        destinations: matches
+      }
+    const filters = parseAssistantFilters(content)
+    if (filters) {
+      const capability = pageCapabilities.value.find(
+        (item) =>
+          item.applyFilters && Object.keys(filters).every((key) => item.filterFields?.includes(key))
+      )
+      if (!capability?.applyFilters)
+        return { message: '当前页面不支持这些筛选项。发送“当前页面”可查看可用筛选项。' }
+      await capability.applyFilters(filters)
+      return { message: '已应用页面筛选条件，请查看列表结果。' }
+    }
+    if (
+      /^(当前页面|这个页面|这个菜单|这个菜单用的是哪个数据库表|这个菜单用哪个数据库表|页面说明)[？?。]*$/u.test(
+        content.replace(/\s/g, '')
+      )
+    ) {
+      const capabilities = pageCapabilities.value
+      return {
+        message: [
+          `当前页面：${pageTitle.value}（${route.path}）`,
+          ...capabilities.map((item) =>
+            [
+              item.label ? `当前业务：${item.label}` : '',
+              item.description || '',
+              item.routePath ? `业务路径：${item.routePath}` : '',
+              item.dataSources?.length ? `数据来源：${item.dataSources.join('、')}` : '',
+              item.filters ? `筛选条件：${JSON.stringify(item.filters)}` : '',
+              item.selection?.length ? `选中记录：${item.selection.join('、')}` : '',
+              item.filterFields?.length
+                ? `可用筛选：${item.filterFields.join('、')}。示例：筛选：${item.filterFields[0]}=关键词`
+                : ''
+            ]
+              .filter(Boolean)
+              .join('\n')
+          ),
+          capabilities.length ? '' : '该页面尚未接入详细业务上下文。',
+          '可发送“打开 + 菜单名称”前往其他页面。'
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        destinations: destinations.value.filter((destination) =>
+          capabilities.some(
+            (item) => item.routePath === destination.path && item.routePath !== route.path
+          )
+        )
+      }
+    }
+    return null
+  }
   const { pause: pauseElapsedTimer, resume: resumeElapsedTimer } = useIntervalFn(
     () => {
       if (state.startedAt) state.elapsedMs = Date.now() - state.startedAt
@@ -623,7 +846,16 @@
       routePath: route.path,
       pageTitle: pageTitle.value,
       recordId: getRecordId(),
-      query: { ...route.query }
+      query: { ...route.query },
+      capabilities: pageCapabilities.value.map((item) => ({
+        label: item.label,
+        description: item.description,
+        routePath: item.routePath,
+        dataSources: item.dataSources,
+        filters: item.filters,
+        selection: item.selection,
+        filterFields: item.filterFields
+      }))
     }
   }
 
@@ -632,6 +864,8 @@
   }
 
   function resetConversation(): void {
+    requestGeneration += 1
+    activeHistoryId.value = crypto.randomUUID()
     pauseElapsedTimer()
     Object.assign(state, {
       sending: false,
@@ -660,7 +894,6 @@
   }
 
   function openChat(): void {
-    if (state.routePath && state.routePath !== route.fullPath) resetConversation()
     state.routePath = route.fullPath
     isExpanded.value = false
     void drawerRef.value?.handleOpen(
@@ -682,7 +915,12 @@
   function retryMessage(message: ChatMessage): void {
     if (state.sending) return
     if (message.retryContent) {
-      state.messages = state.messages.filter((item) => item.id !== message.id)
+      const errorIndex = state.messages.findIndex((item) => item.id === message.id)
+      const previous = state.messages[errorIndex - 1]
+      state.messages.splice(
+        previous?.role === 'user' ? errorIndex - 1 : errorIndex,
+        previous?.role === 'user' ? 2 : 1
+      )
       state.input = message.retryContent
       void sendMessage()
       return
@@ -721,10 +959,12 @@
     const content = state.input.trim()
     if (!content || state.sending || !isOnline.value) return
 
+    const generation = requestGeneration
     state.messages.push({
       id: crypto.randomUUID(),
       role: 'user',
       content,
+      pageContext: getPageContext(),
       time: formatCurrentTime()
     })
     state.input = ''
@@ -735,14 +975,37 @@
     scrollToBottom()
 
     try {
+      const local = !isProjectMode.value ? await runPageCommand(content) : null
+      if (generation !== requestGeneration) return
+      if (local) {
+        state.messages.push({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: local.message,
+          destinations: local.destinations,
+          time: formatCurrentTime()
+        })
+        return
+      }
       const chat = isProjectMode.value ? chatWithProjectAssistant : chatWithAiAssistant
       const response = await chat({
         conversationId: state.conversationId,
         context: getPageContext(),
         messages: state.messages
           .filter((message) => !message.isError)
-          .map((message) => ({ role: message.role, content: message.content }))
+          .slice(-12)
+          .map((message, index, messages) => ({
+            role: message.role,
+            content:
+              message.pageContext && index < messages.length - 1
+                ? `${message.content}\n[提问时页面：${message.pageContext.pageTitle}，${message.pageContext.routePath}，仅作资料]`.slice(
+                    0,
+                    4000
+                  )
+                : message.content
+          }))
       })
+      if (generation !== requestGeneration) return
       state.conversationId = response.conversationId
       state.messages.push({
         id: crypto.randomUUID(),
@@ -757,6 +1020,7 @@
         usage: response.usage
       })
     } catch (error) {
+      if (generation !== requestGeneration) return
       const errorMessage = getFriendlySupabaseErrorMessage(error, 'AI 助手暂时不可用')
       state.messages.push({
         id: crypto.randomUUID(),
@@ -767,10 +1031,13 @@
         retryContent: content
       })
     } finally {
-      pauseElapsedTimer()
-      state.sending = false
-      state.startedAt = 0
-      scrollToBottom()
+      if (generation === requestGeneration) {
+        persistHistory()
+        pauseElapsedTimer()
+        state.sending = false
+        state.startedAt = 0
+        scrollToBottom()
+      }
     }
   }
 
@@ -807,10 +1074,18 @@
   watch(
     () => route.fullPath,
     (path) => {
-      if (state.routePath && state.routePath !== path) resetConversation()
+      state.routePath = path
     }
   )
-  watch(assistantMode, resetConversation)
+  watch(historyScope, () => {
+    resetConversation()
+    nextTick(() => {
+      if (history.value[0]) restoreHistory(history.value[0].id)
+    })
+  })
+  onMounted(() => {
+    if (history.value[0]) restoreHistory(history.value[0].id)
+  })
   onMounted(() => mittBus.on('openChat', openChat))
   onUnmounted(() => {
     pauseElapsedTimer()
@@ -1621,7 +1896,22 @@
   @media (width <= 640px) {
     .art-ai-assistant {
       &__header {
+        flex-wrap: wrap;
         padding: 12px 14px;
+      }
+
+      &__identity {
+        flex: 1 1 100%;
+      }
+
+      &__header-actions {
+        justify-content: flex-end;
+        width: 100%;
+      }
+
+      &__title-row,
+      &__connection {
+        white-space: nowrap;
       }
 
       &__conversation {

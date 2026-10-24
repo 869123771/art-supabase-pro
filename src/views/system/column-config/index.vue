@@ -285,6 +285,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useAssistantPage } from '@/hooks/core/useAssistantPage'
   import { computed, onMounted, reactive, ref } from 'vue'
   import { useMediaQuery } from '@vueuse/core'
   import { onBeforeRouteLeave } from 'vue-router'
@@ -415,6 +416,17 @@
     const menu = page.menus.find((m) => m.id === selection.menuId)
     return menu ? resolveMenuLabel(menu) : '列方案'
   })
+  useAssistantPage(() => ({
+    label: selectedMenuLabel.value,
+    description: '以下为列配置的存储表。所选业务的数据来源需打开对应业务页面查看。',
+    routePath: selectedCatalog.value?.routePath,
+    dataSources: ['sys_menu', 'sys_table_column_catalog', 'sys_table_column_profile'],
+    filters: { 列标题: columnSearch.value },
+    filterFields: ['列标题'],
+    applyFilters: async (filters) => {
+      columnSearch.value = filters['列标题'] ?? ''
+    }
+  }))
   const scopeReady = computed(
     () =>
       selection.scope === 'platform' ||

@@ -1,0 +1,1 @@
+import{d as e}from"./D3a9VaQo.js";function t(t){let n=t.filter(e=>typeof e.revenue==`number`||typeof e.cost==`number`).slice(0,6);return{labels:n.map(e=>e.label),series:[{name:`营收`,data:n.map(e=>e.revenue)},{name:`已归集成本`,data:n.map(e=>e.cost)}],unit:`元`,axisUnit:`万元`,divisor:1e4,description:n.map(t=>t.label+`：营收 `+e(t.revenue)+` 元，已归集成本 `+e(t.cost)+` 元`).join(`；`)}}export{t};

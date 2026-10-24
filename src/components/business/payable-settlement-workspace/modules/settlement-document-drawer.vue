@@ -69,8 +69,27 @@
           :max-height="390"
         >
           <template v-for="field in referenceFields" :key="field" #[field]="{ row }">
+            <ElTreeSelect
+              v-if="editable && kind !== 'refund' && field === 'departmentId'"
+              v-model="row.departmentId"
+              aria-label="费用承担部门"
+              :data="organizationTree"
+              :props="{ label: 'organizationName', children: 'children' }"
+              node-key="id"
+              :disabled="referenceDisabled(row, field)"
+              :cache-data="
+                row.departmentId
+                  ? [{ id: row.departmentId, organizationName: referenceLabel(row, field) }]
+                  : []
+              "
+              check-strictly
+              filterable
+              clearable
+              class="w-full!"
+              @change="referenceChanged(row, field)"
+            />
             <ElSelect
-              v-if="
+              v-else-if="
                 editable &&
                 !(
                   kind === 'refund' &&
@@ -273,7 +292,9 @@
         :subtitle="
           kind === 'refund'
             ? '退款本金与失效折扣分开记录；保存时校准同源全额退款的失效折扣。'
-            : '申请、核准及预计金额由明细汇总；手续费不冲减供应商应付余额。'
+            : kind === 'application'
+              ? '申请、核准及预计金额由明细汇总；手续费不冲减供应商应付余额。'
+              : '实付金额由明细汇总；确认付款后登记资金流水，手续费不冲减供应商应付余额。'
         "
       >
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -327,6 +348,7 @@
   </ArtDrawer>
 </template>
 <script setup lang="ts">
+  import { fetchOrganizationOptionsTree } from '@/api/system-manage'
   import { cloneDeep } from 'lodash-es'
   import type { EmployeeIntegrationItem } from '@/api/integration/employees'
   import { ElMessage } from 'element-plus'
@@ -371,6 +393,7 @@
   const deleteGuardRef = ref<InstanceType<typeof MasterDataDeleteGuard>>()
   const document = ref<PayableSettlementDocument>()
   const options = ref<PayableSettlementOptions>()
+  const organizationTree = ref<Api.SystemManage.OrganizationListItem[]>([])
   const editable = ref(false)
   const loading = ref(false)
   const error = ref('')
@@ -509,9 +532,14 @@
     {
       key: 'organizationId',
       label: props.kind === 'refund' ? '退款组织' : '付款组织',
-      type: 'select',
+      type: 'treeSelect',
       span: props.kind === 'application' ? 12 : 8,
-      props: { options: toSelect('organization'), clearable: true }
+      api: () => fetchOrganizationOptionsTree({ tenantId: document.value?.tenantId }),
+      resultField: 'data',
+      labelField: 'organizationName',
+      valueField: 'id',
+      childrenField: 'children',
+      props: { clearable: true, filterable: true, checkStrictly: true }
     },
     {
       key: 'applicantName',
@@ -837,7 +865,10 @@
     error.value = ''
     try {
       const data = await fetchPayableSettlementOptions(props.kind, document.value.tenantId)
+      const organizations = await fetchOrganizationOptionsTree({ tenantId: data.tenantId })
+      if (organizations.error) throw organizations.error
       if (current !== requestVersion || !document.value) return
+      organizationTree.value = organizations.data ?? []
       options.value = data
       document.value.tenantId = data.tenantId
       document.value.documentTypeId ||=

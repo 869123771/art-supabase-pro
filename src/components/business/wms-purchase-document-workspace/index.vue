@@ -215,6 +215,7 @@
 </template>
 
 <script setup lang="tsx">
+  import { useAssistantPage } from '@/hooks/core/useAssistantPage'
   import { wmsDocumentClassificationColumns } from '@/utils/business/wms-document-columns'
   import { useWmsInitialObligationPush } from '@/hooks/business/useWmsInitialObligationPush'
   import PurchasePrintSheet from './modules/purchase-print-sheet.vue'
@@ -391,7 +392,13 @@
   const pushDialogRef = ref<ArtDialogExpose>()
   const workingId = ref<string>()
   const selectedRows = ref<
-    Array<{ documentId: string; lineId: string | null; kind: unknown; status: unknown }>
+    Array<{
+      documentId: string
+      documentNo?: string
+      lineId: string | null
+      kind: unknown
+      status: unknown
+    }>
   >([])
   const payableResultRef = ref<ArtDialogExpose>()
   const pushSourceRows = ref<typeof selectedRows.value>([])
@@ -481,6 +488,51 @@
     materialDescription: '',
     materialCode: ''
   })
+  useAssistantPage(() => ({
+    label: title.value,
+    dataSources: [
+      'wms_purchase_document_list',
+      'wms_purchase_document',
+      'wms_purchase_document_line'
+    ],
+    filters: { ...search },
+    selection: uniq(selectedRows.value.map((row) => row.documentNo || '已选单据')),
+    filterFields: ['供应商', '客户', '项目', '物料描述', '物料编码'],
+    viewSelection: async () => {
+      if (!hasAuth(permission.value.View)) throw new Error('当前账号没有查看此页面的权限')
+      const ids = uniq(selectedRows.value.map((row) => row.documentId))
+      if (ids.length !== 1) throw new Error('请先在列表中勾选一张单据，再发送“查看选中记录”')
+      const tenantId = effectiveTenantId.value
+      const owner = userStore.getUserInfo.userId
+      const path = route.path
+      const document = await fetchPageDocument(ids[0])
+      if (
+        tenantId !== effectiveTenantId.value ||
+        owner !== userStore.getUserInfo.userId ||
+        path !== route.path
+      )
+        throw new Error('页面或账号范围已变化，请重新选择单据')
+      await openPageDocument(document)
+    },
+    applyFilters: async (filters) => {
+      if (!hasAuth(permission.value.View)) throw new Error('当前账号没有查看此页面的权限')
+      const mapping: Record<string, keyof typeof search> = {
+        供应商: 'supplier',
+        客户: 'supplier',
+        项目: 'projectName',
+        物料描述: 'materialDescription',
+        物料编码: 'materialCode'
+      }
+      for (const [key, value] of Object.entries(filters)) {
+        const field = mapping[key]
+        if (field) search[field] = value
+      }
+      await nextTick()
+      await tableRef.value?.getData()
+      if (tableRef.value?.dataState.error.value)
+        throw new Error('筛选已填写，但列表查询失败，请在页面中重试')
+    }
+  }))
   const searchItems = computed<SearchFormItem[]>(() => [
     { label: '展示方式', key: 'displayMode', type: 'text', span: 6 },
     {
@@ -697,9 +749,17 @@
       : ''
   }
   function onSelectionChange(rows: Record<string, unknown>[]): void {
-    selectedRows.value = rows.flatMap(({ documentId, lineId, kind, status }) =>
+    selectedRows.value = rows.flatMap(({ documentId, documentNo, lineId, kind, status }) =>
       typeof documentId === 'string'
-        ? [{ documentId, lineId: typeof lineId === 'string' ? lineId : null, kind, status }]
+        ? [
+            {
+              documentId,
+              documentNo: typeof documentNo === 'string' ? documentNo : undefined,
+              lineId: typeof lineId === 'string' ? lineId : null,
+              kind,
+              status
+            }
+          ]
         : []
     )
   }
@@ -784,22 +844,28 @@
       ElMessage.error('受托加工后续业务草稿生成失败，请重试')
     }
   }
+  async function fetchPageDocument(id: string) {
+    const document = await fetchWmsPurchaseDocument(id)
+    if (
+      document.kind !== props.kind &&
+      !(props.kind === 'other_inbound' && document.kind === 'other_return')
+    )
+      throw new Error('单据类型不匹配')
+    return document
+  }
+  async function openPageDocument(
+    document: Awaited<ReturnType<typeof fetchWmsPurchaseDocument>>
+  ): Promise<void> {
+    if (!hasAuth(permission.value.View)) throw new Error('当前账号没有查看此页面的权限')
+    const target = document.kind === 'other_return' ? returnDrawerRef.value : drawerRef.value
+    if (!target) throw new Error('详情尚未就绪，请稍后重试')
+    await target.handleOpen({ mode: 'view', document })
+  }
   useRouteDocumentDrawer({
     routeName: () => permission.value.View.split(':')[0],
     canOpen: () => hasAuth(permission.value.View),
-    fetchDocument: async (id) => {
-      const document = await fetchWmsPurchaseDocument(id)
-      if (
-        document.kind !== props.kind &&
-        !(props.kind === 'other_inbound' && document.kind === 'other_return')
-      )
-        throw new Error('单据类型不匹配')
-      return document
-    },
-    openDocument: async (document) => {
-      const target = document.kind === 'other_return' ? returnDrawerRef.value : drawerRef.value
-      await target?.handleOpen({ mode: 'view', document })
-    },
+    fetchDocument: fetchPageDocument,
+    openDocument: openPageDocument,
     onError: () => ElMessage.error(`${title.value}加载失败，请刷新后重试`)
   })
   onMounted(async () => {

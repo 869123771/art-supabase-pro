@@ -35,6 +35,10 @@ const pages = [
     component: () => import('@fms/views/accounts-payable/payment-application/index.vue')
   },
   { kind: 'payment', component: () => import('@fms/views/accounts-payable/payment/index.vue') },
+  {
+    kind: 'refund',
+    component: () => import('@fms/views/accounts-payable/payment-refund/index.vue')
+  },
   { kind: 'cash', component: () => import('@fms/views/settlement/cash-transaction/index.vue') },
   {
     kind: 'purpose',
@@ -74,6 +78,10 @@ const router = createRouter({
     {
       path: financePaths.payablePayment,
       component: () => import('@fms/views/accounts-payable/payment/index.vue')
+    },
+    {
+      path: financePaths.payableRefund,
+      component: () => import('@fms/views/accounts-payable/payment-refund/index.vue')
     }
   ]
 })
@@ -83,7 +91,7 @@ setupGlobDirectives(app)
 useUserStore(store).setUserInfo({
   userId: 'purchase-preview-user',
   tenantId: '11111111-1111-4111-8111-111111111111',
-  platformSuper: parameters.get('kind') !== 'cash'
+  platformSuper: parameters.get('kind') !== 'cash' && !parameters.has('permissions')
 })
 if (parameters.get('kind') === 'cash') {
   const permissions = [
@@ -115,6 +123,13 @@ if (parameters.get('kind') === 'cash') {
     ]
   })
 }
+if (parameters.has('permissions'))
+  useMenuStore(store).setButtonList(
+    (parameters.get('permissions') || '')
+      .split(',')
+      .filter(Boolean)
+      .map((name) => ({ name, path: '', type: 'button', meta: { title: '应付验收权限' } }))
+  )
 useTenantScopeStore(store).selectedTenantId =
   parameters.get('scope') === 'all' ? null : '11111111-1111-4111-8111-111111111111'
 const setting = useSettingStore(store)

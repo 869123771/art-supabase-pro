@@ -33,12 +33,16 @@
         <template #payable-push="{ selectedRows }">
           <ElDropdown
             trigger="click"
-            :disabled="busy || selectedRows.length !== 1 || !!selectedRows[0]?.isCredit"
+            :disabled="pushDisabled(selectedRows)"
             @command="(command) => push(selectedRows[0]?.id, command)"
           >
             <ElButton
-              :disabled="busy || selectedRows.length !== 1 || !!selectedRows[0]?.isCredit"
-              :title="selectedRows[0]?.isCredit ? '红字冲减不能直接下推付款' : undefined"
+              :disabled="pushDisabled(selectedRows)"
+              :title="
+                kind === 'estimated' && selectedRows[0]?.standardPurchase
+                  ? '标准采购请从同源采购入库单生成财务应付'
+                  : undefined
+              "
               :loading="busy"
               plain
               ><ArtSvgIcon icon="ri:file-transfer-line" />下推<ArtSvgIcon
@@ -85,7 +89,11 @@
               ><ElDropdownMenu
                 ><ElDropdownItem command="preview"
                   ><ArtSvgIcon icon="ri:file-search-line" />预览凭证</ElDropdownItem
-                ><ElDropdownItem command="generate"
+                ><ElDropdownItem
+                  command="generate"
+                  :disabled="
+                    busy || selectedRows.length !== 1 || selectedRows[0]?.status !== 'approved'
+                  "
                   ><ArtSvgIcon icon="ri:file-add-line" />生成凭证</ElDropdownItem
                 ></ElDropdownMenu
               ></template
@@ -123,6 +131,7 @@
   </ArtPermissionGuard>
 </template>
 <script setup lang="tsx">
+  import { fetchOrganizationOptionsTree } from '@/api/system-manage'
   import FinanceVoucherPreview from '@/components/business/finance-voucher-preview/index.vue'
   import { useTenantScopeStore } from '@/store/modules/tenant-scope'
   import { formatTenantLabel } from '@/utils/tenant-display'
@@ -242,13 +251,13 @@
     {
       key: 'organizationId',
       label: '结算组织',
-      type: 'select',
-      api: async () =>
-        (await fetchPayableOptions('organization')).map((item) => ({
-          label: item.name,
-          value: item.id
-        })),
-      props: { clearable: true }
+      type: 'treeSelect',
+      api: () => fetchOrganizationOptionsTree(),
+      resultField: 'data',
+      labelField: 'organizationName',
+      valueField: 'id',
+      childrenField: 'children',
+      props: { clearable: true, filterable: true, checkStrictly: true }
     },
     {
       key: 'documentTypeId',
@@ -294,6 +303,19 @@
       : [])
   ])
   type ListRow = PurchasePayableDocument & { recordKey: string }
+  function selectionDisabled(rows: Record<string, unknown>[], status: string): boolean {
+    return (
+      busy.value || !rows.length || rows.some((row) => row.status !== status || !!row.isReversal)
+    )
+  }
+  function pushDisabled(rows: Record<string, unknown>[]): boolean {
+    return (
+      rows.length !== 1 ||
+      !!rows[0]?.isCredit ||
+      selectionDisabled(rows, 'approved') ||
+      (props.kind === 'estimated' && !!rows[0]?.standardPurchase)
+    )
+  }
   async function fetchRows(query: PayableSearch) {
     const result = await fetchPurchasePayables(props.kind, {
       ...query,
@@ -539,12 +561,9 @@
             `<section><h1>${escape(title.value)} ${escape(record.documentNo)}</h1><p>${escape(record.supplierName || '')} · ${escape(record.businessDate)} · ${escape(record.currencyCode || 'CNY')} · 记账汇率 ${record.exchangeRate ?? 1}</p><table><thead><tr><th>行号</th><th>物料描述</th><th>数量</th><th>金额</th><th>税额</th><th>价税合计</th></tr></thead><tbody>${record.lines.map((line) => `<tr><td>${line.lineNo}</td><td>${escape(line.materialDescription || '')}</td><td>${line.quantity}</td><td>${formatCurrencyValue(line.amount, record.currencyCode || 'CNY')}</td><td>${formatCurrencyValue(line.taxAmount, record.currencyCode || 'CNY')}</td><td>${formatCurrencyValue(line.totalAmount, record.currencyCode || 'CNY')}</td></tr>`).join('')}</tbody></table><p>合计 ${formatCurrencyValue(record.totalAmount, record.currencyCode || 'CNY')}</p></section>`
         )
         .join('')
-      if (
-        !printHtmlDocument(
-          `<html><head><title>${escape(title.value)}</title><style>body{font:14px sans-serif;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #888;padding:8px;text-align:left}section{break-after:page}</style></head><body>${body}</body></html>`
-        )
+      printHtmlDocument(
+        `<html><head><title>${escape(title.value)}</title><style>body{font:14px sans-serif;padding:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #888;padding:8px;text-align:left}section{break-after:page}</style></head><body>${body}</body></html>`
       )
-        ElMessage.warning('请允许弹出打印窗口后重试')
     })
   }
   const headerActions = computed<ArtTableQueryHeaderAction[]>(() => [
@@ -567,7 +586,7 @@
       icon: 'ri:send-plane-line',
       permission: permission('Submit'),
       selectionRequired: true,
-      disabled: busy.value,
+      disabled: ({ selectedRows }) => selectionDisabled(selectedRows, 'draft'),
       onClick: ({ selectedRows }) =>
         act(
           selectedRows.map((row) => String(row.id)),
@@ -580,7 +599,7 @@
       icon: 'ri:checkbox-circle-line',
       permission: permission('Approve'),
       selectionRequired: true,
-      disabled: busy.value,
+      disabled: ({ selectedRows }) => selectionDisabled(selectedRows, 'submitted'),
       onClick: ({ selectedRows }) =>
         act(
           selectedRows.map((row) => String(row.id)),
@@ -593,7 +612,7 @@
       icon: 'ri:delete-bin-line',
       permission: permission('Delete'),
       selectionRequired: true,
-      disabled: busy.value,
+      disabled: ({ selectedRows }) => selectionDisabled(selectedRows, 'draft'),
       onClick: ({ selectedRows }) => remove(selectedRows.map((row) => String(row.id)))
     },
     ...[
