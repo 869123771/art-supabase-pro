@@ -32,7 +32,7 @@ jobs:
             exit 1
           fi
       - name: Install CloudBase CLI
-        run: npm install --global @cloudbase/cli@3.8.3
+        run: npm install --global @cloudbase/cli@3.8.9
       - name: Authenticate CloudBase
         run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
       - name: Build and deploy the existing application
