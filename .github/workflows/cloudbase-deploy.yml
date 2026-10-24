@@ -35,4 +35,4 @@ jobs:
         run: npm install --global @cloudbase/cli@3.8.9
       - name: Build and deploy the existing application
         run: >-
-          tcb app deploy art-supabase-pro --env-id "$TCB_ENV_ID" --framework vue --install-command "npm run cloudbase:install" --build-command "npm run cloudbase:build" --output-dir ./docs --deploy-path /art-supabase-pro --enable-git-ignore --ignore "docs/**" --force
+          tcb --verbose app deploy art-supabase-pro --env-id "$TCB_ENV_ID" --framework vue --install-command "npm run cloudbase:install" --build-command "npm run cloudbase:build" --output-dir ./docs --deploy-path /art-supabase-pro --enable-git-ignore --ignore "docs/**" --force
