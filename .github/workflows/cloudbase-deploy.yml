@@ -18,8 +18,8 @@ jobs:
     timeout-minutes: 25
     env:
       TCB_ENV_ID: art-supabase-staging-d8a9e32316e
-      TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
-      TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+      TENCENTCLOUD_SECRETID: ${{ secrets.TCB_SECRET_ID }}
+      TENCENTCLOUD_SECRETKEY: ${{ secrets.TCB_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,14 +27,12 @@ jobs:
           node-version: '24'
       - name: Check deployment credentials
         run: |
-          if [ -z "$TCB_SECRET_ID" ] || [ -z "$TCB_SECRET_KEY" ]; then
+          if [ -z "$TENCENTCLOUD_SECRETID" ] || [ -z "$TENCENTCLOUD_SECRETKEY" ]; then
             echo '::error::Add TCB_SECRET_ID and TCB_SECRET_KEY to this repository Actions secrets before deploying.'
             exit 1
           fi
       - name: Install CloudBase CLI
         run: npm install --global @cloudbase/cli@3.8.9
-      - name: Authenticate CloudBase
-        run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
       - name: Build and deploy the existing application
         run: >-
           tcb app deploy art-supabase-pro --env-id "$TCB_ENV_ID" --framework vue --install-command "npm run cloudbase:install" --build-command "npm run cloudbase:build" --output-dir ./docs --deploy-path /art-supabase-pro --enable-git-ignore --force
