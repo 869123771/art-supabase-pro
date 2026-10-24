@@ -47,7 +47,7 @@ jobs:
               StaticCmd: {
                 InstallCmd: "npm run cloudbase:install",
                 BuildCmd: "npm run cloudbase:build",
-                DeployCmd: "tcb hosting deploy ./docs /art-supabase-pro"
+                DeployCmd: "tcb hosting deploy ./cloudbase-dist /art-supabase-pro"
               }
             }
           }')

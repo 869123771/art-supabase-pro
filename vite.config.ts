@@ -78,7 +78,7 @@ export default async ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, root)
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL, VITE_OUT_DIR } =
     env
-  const isProduction = mode === 'production'
+  const isProduction = mode === 'production' || mode === 'cloudbase'
   const isE2E = mode === 'e2e'
   const enableGeneratedDeclarations = !isProduction && !isE2E
   const enableBuildCompression = env.VITE_BUILD_COMPRESS === 'true'
