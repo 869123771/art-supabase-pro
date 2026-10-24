@@ -241,6 +241,10 @@ function buildDocs(repository: Repository): void {
 function commit(repository: Repository, message: string): void {
   console.log(`\n[commit] ${repository.name}`)
   git(repository, ['add', '--all'])
+  if (repository.path === projectRoot) {
+    run(process.execPath, ['scripts/cloudbase-modules.mjs', 'write'], projectRoot)
+    git(repository, ['add', '--', 'scripts/cloudbase-modules.json'])
+  }
   const staged = execute('git', ['diff', '--cached', '--quiet'], repository.path)
   if (staged.status === 0) {
     console.log(`[commit] ${repository.name} 没有需要提交的变化。`)

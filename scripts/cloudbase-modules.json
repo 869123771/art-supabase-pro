@@ -1,0 +1,62 @@
+[
+  {
+    "path": "modules/art-supabase-vms",
+    "url": "https://gitee.com/art-si/art-supabase-vms.git",
+    "ref": "9783a4cb12906c80646f046c203518ed47041b19"
+  },
+  {
+    "path": "modules/art-supabase-fms",
+    "url": "https://gitee.com/art-si/art-supabase-fms.git",
+    "ref": "35c4d2c671334890cc87dffa7118df22d67dd1b5"
+  },
+  {
+    "path": "modules/art-supabase-hr",
+    "url": "https://gitee.com/art-si/art-supabase-hr.git",
+    "ref": "7d95a6dd4a14361ff1647e3f8302a5d6d651de5b"
+  },
+  {
+    "path": "modules/art-supabase-smis",
+    "url": "https://gitee.com/art-si/art-supabase-smis.git",
+    "ref": "3769f54bfd6de7d3cbd1d5e04796446ee1be495f"
+  },
+  {
+    "path": "modules/art-supabase-tms",
+    "url": "https://gitee.com/art-si/art-supabase-tms.git",
+    "ref": "0b5db8f3b99d3247273fa1676ff9f94c7f3d1e6a"
+  },
+  {
+    "path": "modules/art-supabase-doc",
+    "url": "https://gitee.com/art-si/art-supabase-doc.git",
+    "ref": "c1c08858d3bf1317a323e96958caced1873bfc30"
+  },
+  {
+    "path": "modules/art-supabase-mdm",
+    "url": "https://gitee.com/art-si/art-supabase-mdm.git",
+    "ref": "35cb92c63e7e803704a976429eae49052cbc61db"
+  },
+  {
+    "path": "modules/art-supabase-wms",
+    "url": "https://gitee.com/art-si/art-supabase-wms.git",
+    "ref": "bd7ad4288236e4e5400564c1ac26952e224e5f93"
+  },
+  {
+    "path": "modules/art-supabase-mes",
+    "url": "https://gitee.com/art-si/art-supabase-mes.git",
+    "ref": "2369a72786159650f202e4559e96a0d56cbb72c0"
+  },
+  {
+    "path": "modules/art-supabase-pmis",
+    "url": "https://gitee.com/art-si/art-supabase-pmis.git",
+    "ref": "07d5c36ff4b66275ccff03639c77f067e3219691"
+  },
+  {
+    "path": "modules/art-supabase-scm",
+    "url": "https://gitee.com/art-si/art-supabase-scm.git",
+    "ref": "b7bcc4dd69f021fedb4cdd3fe62002f83f71b622"
+  },
+  {
+    "path": "modules/art-supabase-site",
+    "url": "https://gitee.com/art-si/art-supabase-site.git",
+    "ref": "59b9b572358ff91a083b78a2bd06074ac1005fd2"
+  }
+]
