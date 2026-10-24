@@ -36,6 +36,9 @@ jobs:
       - name: Build and deploy the existing application
         run: |
           set -euo pipefail
+          baseline=$(jq -nc --arg env "$TCB_ENV_ID" '{EnvId: $env, ServiceName: "art-supabase-pro", DeployType: "static-hosting", VersionName: "art-supabase-pro-006"}')
+          baseline=$(tcb --json api tcb DescribeCloudAppVersion --body "$baseline")
+          printf '%s\n' "$baseline" | sed -n '/^{/,$p' | jq '.data | {fields: keys, config: (.StaticConfig | {fields: keys, CodeSource, CodeRepo, CodeBranch})}'
           request=$(jq -nc --arg env "$TCB_ENV_ID" --arg sha "$GITHUB_SHA" '{
             EnvId: $env,
             ServiceName: "art-supabase-pro",
