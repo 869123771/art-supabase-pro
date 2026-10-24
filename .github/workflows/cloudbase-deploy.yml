@@ -36,20 +36,14 @@ jobs:
       - name: Build and deploy the existing application
         run: |
           set -euo pipefail
-          request=$(jq -nc --arg env "$TCB_ENV_ID" --arg sha "$GITHUB_SHA" '{
+          request=$(jq -nc --arg env "$TCB_ENV_ID" '{
             EnvId: $env,
             ServiceName: "art-supabase-pro",
             DeployType: "static-hosting",
             BuildType: "GIT",
-            Source: {
-              Type: "git", Repo: "https://github.com/art-si/art-supabase-pro.git",
-              Ref: "master", Channel: "github", IsPrivate: false,
-              CodeUrlWithAuth: "https://github.com/art-si/art-supabase-pro.git"
-            },
             StaticConfig: {
               Framework: "vue", NodeJsVersion: "24", AppPath: "/art-supabase-pro", BuildPath: "",
               CodeSource: "github", CodeRepo: "art-si/art-supabase-pro", CodeBranch: "master",
-              StaticEnv: {Variables: [{Key: "CLOUDBASE_SOURCE_COMMIT", Value: $sha}]},
               StaticCmd: {
                 InstallCmd: "npm run cloudbase:install",
                 BuildCmd: "npm run cloudbase:build",
@@ -59,7 +53,7 @@ jobs:
           }')
           response=$(tcb --json api tcb CreateCloudApp --body "$request")
           version=$(printf '%s\n' "$response" | sed -n '/^{/,$p' | jq -er '.data.VersionName')
-          echo "CloudBase version: $version; source commit: $GITHUB_SHA"
+          echo "CloudBase version: $version; branch: master; trigger commit: $GITHUB_SHA"
           query=$(jq -nc --arg env "$TCB_ENV_ID" --arg version "$version" '{
             EnvId: $env, ServiceName: "art-supabase-pro", DeployType: "static-hosting", VersionName: $version
           }')
