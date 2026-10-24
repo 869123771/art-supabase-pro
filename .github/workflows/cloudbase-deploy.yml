@@ -49,8 +49,9 @@ jobs:
             StaticConfig: {
               Framework: "vue", NodeJsVersion: "24", AppPath: "/art-supabase-pro", BuildPath: "",
               CodeSource: "github", CodeRepo: "art-si/art-supabase-pro", CodeBranch: "master",
+              StaticEnv: {Variables: [{Key: "CLOUDBASE_SOURCE_COMMIT", Value: $sha}]},
               StaticCmd: {
-                InstallCmd: ("git fetch --depth=1 origin " + $sha + " && git checkout --detach " + $sha + " && npm run cloudbase:install"),
+                InstallCmd: "npm run cloudbase:install",
                 BuildCmd: "npm run cloudbase:build",
                 DeployCmd: "tcb hosting deploy ./docs /art-supabase-pro"
               }
